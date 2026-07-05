@@ -9,6 +9,7 @@ type AppStateContextValue = {
   isOnboarded: boolean
   locale: Locale
   nickname: string
+  logout: () => void
   submittedName: string
   setCategory: (category: Category) => void
   setLocale: (locale: Locale) => void

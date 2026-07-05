@@ -26,6 +26,7 @@ interface Window {
   ipcRenderer: import('electron').IpcRenderer
   preferences: {
     get: () => Promise<import('../src/lib/preferences').UserPreferences>
+    resetOnboarding: () => Promise<import('../src/lib/preferences').UserPreferences>
     set: (
       preferences: Partial<import('../src/lib/preferences').UserPreferences>,
     ) => Promise<import('../src/lib/preferences').UserPreferences>

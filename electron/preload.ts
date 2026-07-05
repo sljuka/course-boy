@@ -31,4 +31,7 @@ contextBridge.exposeInMainWorld('preferences', {
   set(preferences: Partial<UserPreferences>) {
     return ipcRenderer.invoke('preferences:set', preferences) as Promise<UserPreferences>
   },
+  resetOnboarding() {
+    return ipcRenderer.invoke('preferences:reset-onboarding') as Promise<UserPreferences>
+  },
 })

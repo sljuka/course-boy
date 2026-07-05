@@ -82,11 +82,19 @@ function AppStateProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  function logout() {
+    setNicknameState('')
+    setSubmittedName('')
+    setCategoryState(null)
+    void window.preferences.resetOnboarding()
+  }
+
   const value = {
     category,
     isLoaded,
     isOnboarded: Boolean(submittedName),
     locale,
+    logout,
     nickname,
     submittedName,
     setCategory,

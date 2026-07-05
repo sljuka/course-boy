@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import Store from 'electron-store'
 
-type Locale = 'en' | 'sr'
+type Locale = 'en' | 'sr' | 'sr-Cyrl'
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
 type UserPreferences = {
   category?: Category
@@ -57,6 +57,13 @@ ipcMain.handle(
     return preferencesStore.store
   },
 )
+
+ipcMain.handle('preferences:reset-onboarding', () => {
+  preferencesStore.delete('nickname')
+  preferencesStore.delete('category')
+
+  return preferencesStore.store
+})
 
 function createWindow() {
   win = new BrowserWindow({

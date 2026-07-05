@@ -11,15 +11,15 @@ type OnboardingLayoutProps = {
 
 function OnboardingLayout({ children }: OnboardingLayoutProps) {
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-10">
-      <section className="w-full max-w-xl">
+    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center">
+      <section className="w-full max-w-2xl">
         <Card className="overflow-hidden">
           <CardContent>
             {children}
           </CardContent>
         </Card>
       </section>
-    </main>
+    </div>
   )
 }
 
