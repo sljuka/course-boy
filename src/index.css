@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #1c1917;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(249, 115, 22, 0.62), transparent 0 32%),
+    radial-gradient(circle at 86% 18%, rgba(244, 63, 94, 0.42), transparent 0 26%),
+    radial-gradient(circle at 50% 78%, rgba(251, 191, 36, 0.34), transparent 0 38%),
+    linear-gradient(155deg, #fff7ed 0%, #fed7aa 38%, #fdba74 72%, #fb7185 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.18), transparent 58%),
+    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: auto, 32px 32px, 32px 32px;
+  mask-image: radial-gradient(circle at center, black 52%, transparent 92%);
+  pointer-events: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
