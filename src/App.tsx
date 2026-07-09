@@ -7,6 +7,7 @@ import { OnboardingLayout } from "@/components/onboarding-layout";
 import { AppStateProvider } from "@/lib/app-state";
 import { CategoriesPage } from "@/pages/categories-page";
 import { RolePage } from "@/pages/role-page";
+import { TeacherPage } from "@/pages/teacher-page";
 import { WelcomePage } from "@/pages/welcome-page";
 import { useAppState } from "@/lib/use-app-state";
 
@@ -37,15 +38,15 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route element={<HeaderLayout />}>
-        <Route
-          element={
-            <OnboardingGuard>
-              <CategoriesPage />
-            </OnboardingGuard>
-          }
-          path="/"
-        />
+      <Route
+        element={
+          <OnboardingGuard>
+            <HeaderLayout />
+          </OnboardingGuard>
+        }
+      >
+        <Route element={<CategoriesPage />} path="/" />
+        <Route element={<TeacherPage />} path="/teacher" />
       </Route>
       <Route element={<OnboardingLayout />}>
         <Route element={<WelcomePage />} path="/onboarding" />

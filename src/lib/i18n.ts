@@ -10,10 +10,16 @@ const resources = {
         other: '✨ Other',
         preSchool: '🧸 Pre-school',
       },
+      back: 'Back',
       categorySubtitle:
         'Pick the learning level that fits what you want to explore first.',
       categoryTitle: 'Choose a category',
       continue: 'Continue',
+      inDevelopment: {
+        description:
+          "This part of Matko is still being built. The teacher workspace isn't ready yet, but the route is in place and will be available soon.",
+        title: 'Under development',
+      },
       language: {
         english: 'English',
         serbian: 'Srpski',
@@ -49,10 +55,16 @@ const resources = {
         other: '✨ Ostalo',
         preSchool: '🧸 Predškolsko',
       },
+      back: 'Nazad',
       categorySubtitle:
         'Odaberi nivo učenja koji najbolje odgovara onome što želiš prvo da istražiš.',
       categoryTitle: 'Izaberi kategoriju',
       continue: 'Nastavi',
+      inDevelopment: {
+        description:
+          'Ovaj deo Matka se još razvija. Nastavnički radni prostor još nije spreman, ali je ruta postavljena i uskoro će biti dostupna.',
+        title: 'U izradi',
+      },
       language: {
         english: 'English',
         serbian: 'Srpski',
@@ -88,10 +100,16 @@ const resources = {
         other: '✨ Остало',
         preSchool: '🧸 Предшколско',
       },
+      back: 'Назад',
       categorySubtitle:
         'Одабери ниво учења који најбоље одговара ономе што желиш прво да истражиш.',
       categoryTitle: 'Изабери категорију',
       continue: 'Настави',
+      inDevelopment: {
+        description:
+          'Овај део Матка се још развија. Наставнички радни простор још није спреман, али је рута постављена и ускоро ће бити доступна.',
+        title: 'У изради',
+      },
       language: {
         english: 'English',
         serbian: 'Srpski',
