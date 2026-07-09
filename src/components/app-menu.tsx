@@ -29,7 +29,7 @@ function AppMenu() {
         <Menu aria-hidden="true" className="h-4 w-4" />
       </button>
       {isOpen ? (
-        <div className="absolute right-0 top-12 z-50 min-w-40 overflow-hidden rounded-2xl border border-stone-300/90 bg-white shadow-[0_18px_40px_-24px_rgba(41,37,36,0.3)]">
+        <div className="absolute right-0 top-12 z-[60] min-w-40 overflow-hidden rounded-2xl border border-stone-300/90 bg-white shadow-[0_18px_40px_-24px_rgba(41,37,36,0.3)]">
           <button
             className="block w-full px-4 py-3 text-left text-sm text-stone-700 transition-colors hover:bg-stone-50"
             type="button"
