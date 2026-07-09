@@ -1,41 +1,66 @@
-import { useTranslation } from 'react-i18next'
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { categories } from '@/lib/categories'
-import { useAppState } from '@/lib/use-app-state'
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { categories } from "@/lib/categories";
+import type { Category } from "@/lib/preferences";
+import { useAppState } from "@/lib/use-app-state";
+
+const categoryRoutes: Partial<Record<Category, string>> = {
+  "high-school": "/high-school",
+  other: "/other",
+  "pre-school": "/pre-school",
+};
+
+const categoryIcons: Record<Category, string> = {
+  "elementary-school": "📘",
+  "high-school": "🎓",
+  other: "✨",
+  "pre-school": "🧸",
+};
 
 export const CategoriesPage = () => {
-  const { category, setCategory } = useAppState()
-  const { t } = useTranslation()
+  const { category, setCategory } = useAppState();
+  const { t } = useTranslation();
 
   return (
     <Card className="mx-auto w-full max-w-2xl overflow-hidden">
-      <CardContent className="space-y-5">
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-stone-900">
-            {t('categoryTitle')}
-          </h2>
-          <p className="text-sm leading-6 text-stone-500">
-            {t('categorySubtitle')}
-          </p>
-        </div>
+      <CardHeader>
+        <CardTitle className="text-xl">{t("categoryTitle")}</CardTitle>
+        <CardDescription>{t("categorySubtitle")}</CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
         <div className="grid gap-3 sm:grid-cols-2">
           {categories.map((categoryOption) => (
-            <Button
-              className="justify-start rounded-2xl px-5 text-left"
+            <Link
+              className={buttonVariants({
+                appearance: "squareTile",
+                size: "lg",
+                variant: category === categoryOption ? "default" : "secondary",
+              })}
+              to={categoryRoutes[categoryOption] ?? "/"}
               key={categoryOption}
               onClick={() => setCategory(categoryOption)}
-              type="button"
-              variant={category === categoryOption ? 'default' : 'secondary'}
             >
-              {t(
-                `categories.${categoryOption.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase())}`,
-              )}
-            </Button>
+              <span className="text-5xl leading-none">
+                {categoryIcons[categoryOption]}
+              </span>
+              <span>
+                {t(
+                  `categories.${categoryOption.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase())}`,
+                ).replace(/^[^\p{L}\p{N}]+\s*/u, "")}
+              </span>
+            </Link>
           ))}
         </div>
       </CardContent>
     </Card>
-  )
-}
+  );
+};

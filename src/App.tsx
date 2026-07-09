@@ -6,6 +6,9 @@ import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
 import { AppStateProvider } from "@/lib/app-state";
 import { CategoriesPage } from "@/pages/categories-page";
+import { HighSchoolPage } from "@/pages/high-school-page";
+import { OtherCategoryPage } from "@/pages/other-category-page";
+import { PreSchoolPage } from "@/pages/pre-school-page";
 import { RolePage } from "@/pages/role-page";
 import { TeacherPage } from "@/pages/teacher-page";
 import { WelcomePage } from "@/pages/welcome-page";
@@ -46,6 +49,9 @@ const AppRoutes = () => {
         }
       >
         <Route element={<CategoriesPage />} path="/" />
+        <Route element={<PreSchoolPage />} path="/pre-school" />
+        <Route element={<HighSchoolPage />} path="/high-school" />
+        <Route element={<OtherCategoryPage />} path="/other" />
         <Route element={<TeacherPage />} path="/teacher" />
       </Route>
       <Route element={<OnboardingLayout />}>
