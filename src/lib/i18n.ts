@@ -19,11 +19,23 @@ const resources = {
         serbian: 'Srpski',
         serbianCyrillic: 'Српски',
       },
+      menu: {
+        about: 'About',
+        logout: 'Logout',
+        settings: 'Settings',
+      },
       nameHint:
         "You don't need to use your real name. This isn't a government office. You can use a nickname like 'Lizard' or 'Quacky McDuck'. In general, it's better not to share personal data when there's no real need. Of course, you can use your real name too. Your choice.",
       nameLabel: 'what should I call you?',
       namePlaceholder: 'Type a name or nickname',
       niceToMeetYou: 'Nice to meet you, {{name}}.',
+      roleSubtitle:
+        'Choose the path that fits how you want to use Matko right now.',
+      roleTitle: 'Hi {{name}}, are you a student or a teacher?',
+      roles: {
+        student: 'Student',
+        teacher: 'Teacher',
+      },
       welcomeSubtitle:
         'Matko is an open platform for creating tutorials and tests, and for solving those tests either on the platform or on paper. The format is print-friendly, with a focus on making new tests easy to create, easy to complete, and enjoyable to learn from 😊',
       welcomeTitle: 'Welcome! 😊',
@@ -46,11 +58,23 @@ const resources = {
         serbian: 'Srpski',
         serbianCyrillic: 'Српски',
       },
+      menu: {
+        about: 'O aplikaciji',
+        logout: 'Odjavi se',
+        settings: 'Podešavanja',
+      },
       nameHint:
         "Ne moraš koristiti svoje pravo ime. Nije ovo MUP 👮. Možeš koristiti nadimak tipa 'Gušter 🦎' ili 'Patak Kvakanović'. Generalno ne treba unositi lične podatke gde nema potrebe. Naravno, može i lično ime da se koristi, izbor je na tebi.",
       nameLabel: 'Kako želiš da te oslovljavam?',
       namePlaceholder: 'Unesi ime ili nadimak',
       niceToMeetYou: 'Drago mi je, {{name}}.',
+      roleSubtitle:
+        'Izaberi putanju koja najbolje odgovara načinu na koji želiš sada da koristiš Matko.',
+      roleTitle: 'Zdravo {{name}}, da li si učenik ili nastavnik?',
+      roles: {
+        student: 'Učenik',
+        teacher: 'Nastavnik',
+      },
       welcomeSubtitle:
         'Matko je otvorena mreža za kreiranje tutorijala, testova kao i rešavanje kreiranih testova na platformi ili papiru (testovi su pogodnog formata za štampanje). Nadamo se da će te uživati u učenju novih stvari',
       welcomeTitle: 'Dobrodošli! 😊',
@@ -73,11 +97,23 @@ const resources = {
         serbian: 'Srpski',
         serbianCyrillic: 'Српски',
       },
+      menu: {
+        about: 'О апликацији',
+        logout: 'Одјави се',
+        settings: 'Подешавања',
+      },
       nameHint:
         "Не мораш користити своје право име. Није ово MUP 👮. Можеш користити надимак типа 'Гуштер 🦎' или 'Патак Квакановић'. Генерално не треба уносити личне податке где нема потребе. Наравно, може и лично име да се користи, избор је на теби.",
       nameLabel: 'Како желиш да те ословљавам?',
       namePlaceholder: 'Унеси име или надимак',
       niceToMeetYou: 'Драго ми је, {{name}}.',
+      roleSubtitle:
+        'Изабери путању која најбоље одговара начину на који желиш сада да користиш Матко.',
+      roleTitle: 'Здраво {{name}}, да ли си ученик или наставник?',
+      roles: {
+        student: 'Ученик',
+        teacher: 'Наставник',
+      },
       welcomeSubtitle:
         'Матко је отворена мрежа за креирање туторијала, тестова као и решавање креираних тестова на платформи или папиру (тестови су погодног формата за штампање). Надамо се да ћете уживати у учењу нових ствари',
       welcomeTitle: 'Добродошли! 😊',

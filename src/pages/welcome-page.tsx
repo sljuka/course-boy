@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { useAppState } from '@/lib/use-app-state'
 import { useTranslation } from 'react-i18next'
 
-function WelcomePage() {
+export const WelcomePage = () => {
   const navigate = useNavigate()
   const { locale, nickname, setLocale, setNickname, submitNickname } = useAppState()
   const { t } = useTranslation()
@@ -22,17 +22,17 @@ function WelcomePage() {
     }
 
     submitNickname(normalizedName)
-    navigate('/')
+    navigate('/onboarding/role')
   }
 
   return (
     <form className="space-y-5" onSubmit={handleSubmit}>
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-3 pr-2">
-          <CardTitle className="text-4xl text-amber-950 sm:text-5xl">
+          <CardTitle className="text-3xl text-amber-950 sm:text-4xl">
             {t('welcomeTitle')}
           </CardTitle>
-          <p className="max-w-lg text-sm leading-6 text-stone-500 sm:text-base">
+          <p className="max-w-lg text-sm leading-6 text-stone-500">
             {t('welcomeSubtitle')}
           </p>
         </div>
@@ -62,5 +62,3 @@ function WelcomePage() {
     </form>
   )
 }
-
-export { WelcomePage }

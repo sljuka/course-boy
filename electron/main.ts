@@ -5,10 +5,12 @@ import Store from 'electron-store'
 
 type Locale = 'en' | 'sr' | 'sr-Cyrl'
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
+type UserRole = 'student' | 'teacher'
 type UserPreferences = {
   category?: Category
   locale?: Locale
   nickname?: string
+  role?: UserRole
 }
 
 const preferencesStore = new Store<UserPreferences>()
@@ -54,6 +56,10 @@ ipcMain.handle(
       preferencesStore.set('category', preferences.category)
     }
 
+    if (typeof preferences.role === 'string') {
+      preferencesStore.set('role', preferences.role)
+    }
+
     return preferencesStore.store
   },
 )
@@ -61,6 +67,7 @@ ipcMain.handle(
 ipcMain.handle('preferences:reset-onboarding', () => {
   preferencesStore.delete('nickname')
   preferencesStore.delete('category')
+  preferencesStore.delete('role')
 
   return preferencesStore.store
 })

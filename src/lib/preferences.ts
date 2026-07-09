@@ -6,8 +6,11 @@ export type Category =
   | 'high-school'
   | 'other'
 
+export type UserRole = 'student' | 'teacher'
+
 export type UserPreferences = {
   category?: Category
   locale?: Locale
   nickname?: string
+  role?: UserRole
 }

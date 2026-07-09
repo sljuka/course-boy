@@ -5,7 +5,7 @@ import {
 } from 'react'
 
 import { detectLocale, i18n, type Locale } from '@/lib/i18n'
-import type { Category } from '@/lib/preferences'
+import type { Category, UserRole } from '@/lib/preferences'
 import { AppStateContext } from '@/lib/use-app-state'
 
 function AppStateProvider({ children }: { children: ReactNode }) {
@@ -13,6 +13,7 @@ function AppStateProvider({ children }: { children: ReactNode }) {
   const [nickname, setNicknameState] = useState('')
   const [submittedName, setSubmittedName] = useState('')
   const [category, setCategoryState] = useState<Category | null>(null)
+  const [role, setRoleState] = useState<UserRole | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
@@ -32,6 +33,7 @@ function AppStateProvider({ children }: { children: ReactNode }) {
         setNicknameState(preferences.nickname ?? '')
         setSubmittedName(preferences.nickname ?? '')
         setCategoryState(preferences.category ?? null)
+        setRoleState(preferences.role ?? null)
         setIsLoaded(true)
       })
       .catch(() => {
@@ -79,6 +81,16 @@ function AppStateProvider({ children }: { children: ReactNode }) {
       category: nextCategory,
       locale,
       nickname: submittedName,
+      role: role ?? undefined,
+    })
+  }
+
+  function setRole(nextRole: UserRole) {
+    setRoleState(nextRole)
+    void window.preferences.set({
+      locale,
+      nickname: submittedName,
+      role: nextRole,
     })
   }
 
@@ -86,20 +98,23 @@ function AppStateProvider({ children }: { children: ReactNode }) {
     setNicknameState('')
     setSubmittedName('')
     setCategoryState(null)
+    setRoleState(null)
     void window.preferences.resetOnboarding()
   }
 
   const value = {
     category,
     isLoaded,
-    isOnboarded: Boolean(submittedName),
+    isOnboarded: Boolean(submittedName && role),
     locale,
     logout,
     nickname,
+    role,
     submittedName,
     setCategory,
     setLocale,
     setNickname,
+    setRole,
     submitNickname,
   }
 

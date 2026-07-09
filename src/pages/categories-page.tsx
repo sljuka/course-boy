@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button'
 import { categories } from '@/lib/categories'
 import { useAppState } from '@/lib/use-app-state'
 
-function CategoriesPage() {
-  const { category, setCategory, submittedName } = useAppState()
+export const CategoriesPage = () => {
+  const { category, setCategory } = useAppState()
   const { t } = useTranslation()
 
   return (
@@ -33,11 +33,6 @@ function CategoriesPage() {
           </Button>
         ))}
       </div>
-      <p className="inline-flex w-fit rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-        {t('niceToMeetYou', { name: submittedName })}
-      </p>
     </div>
   )
 }
-
-export { CategoriesPage }

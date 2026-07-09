@@ -1,26 +1,22 @@
-import type { ReactNode } from 'react'
+import { Outlet } from 'react-router-dom'
 
 import {
   Card,
   CardContent,
 } from '@/components/ui/card'
 
-type OnboardingLayoutProps = {
-  children: ReactNode
-}
-
-function OnboardingLayout({ children }: OnboardingLayoutProps) {
+export const OnboardingLayout = () => {
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center">
-      <section className="w-full max-w-2xl">
-        <Card className="overflow-hidden">
-          <CardContent>
-            {children}
-          </CardContent>
-        </Card>
-      </section>
-    </div>
+    <main className="min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
+        <section className="w-full max-w-2xl">
+          <Card className="overflow-hidden">
+            <CardContent>
+              <Outlet />
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    </main>
   )
 }
-
-export { OnboardingLayout }

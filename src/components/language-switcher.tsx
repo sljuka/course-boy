@@ -20,9 +20,14 @@ function LanguageSwitcher({
   const { t } = useTranslation()
   const isSerbian = locale === 'sr' || locale === 'sr-Cyrl'
   const selectValue = isSerbian ? 'sr' : 'en'
+  const scriptLabel = locale === 'sr-Cyrl' ? 'C' : 'Ц'
+
+  function handleScriptToggle() {
+    onLocaleChange(locale === 'sr-Cyrl' ? 'sr' : 'sr-Cyrl')
+  }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <div className="relative">
         <label className="sr-only" htmlFor="language">
           {t('language.english')}
@@ -31,8 +36,8 @@ function LanguageSwitcher({
           onValueChange={(value) => onLocaleChange(value as 'en' | 'sr')}
           value={selectValue}
         >
-          <SelectTrigger aria-label="Language" className="w-[9.5rem] pl-10">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm">
+          <SelectTrigger aria-label="Language" className="h-10 w-[8.75rem] pl-9 text-xs">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs">
               {selectValue === 'en' ? '🇬🇧' : '🇷🇸'}
             </span>
             <SelectValue>
@@ -46,30 +51,13 @@ function LanguageSwitcher({
         </Select>
       </div>
       {isSerbian ? (
-        <div className="inline-flex overflow-hidden rounded-full border border-amber-200 bg-amber-50/80">
-          <button
-            className={`px-3 py-2 text-xs font-semibold transition-colors ${
-              locale === 'sr'
-                ? 'bg-amber-900 text-amber-50'
-                : 'text-amber-900 hover:bg-amber-100'
-            }`}
-            onClick={() => onLocaleChange('sr')}
-            type="button"
-          >
-            C
-          </button>
-          <button
-            className={`px-3 py-2 text-xs font-semibold transition-colors ${
-              locale === 'sr-Cyrl'
-                ? 'bg-amber-900 text-amber-50'
-                : 'text-amber-900 hover:bg-amber-100'
-            }`}
-            onClick={() => onLocaleChange('sr-Cyrl')}
-            type="button"
-          >
-            Ц
-          </button>
-        </div>
+        <button
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-[11px] font-semibold text-stone-700 transition-colors hover:bg-stone-50"
+          onClick={handleScriptToggle}
+          type="button"
+        >
+          {scriptLabel}
+        </button>
       ) : null}
     </div>
   )
