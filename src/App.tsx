@@ -6,6 +6,8 @@ import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
 import { AppStateProvider } from "@/lib/app-state";
 import { CategoriesPage } from "@/pages/categories-page";
+import { ElementarySchoolPage } from "@/pages/elementary-school-page";
+import { ElementarySubjectPage } from "@/pages/elementary-subject-page";
 import { HighSchoolPage } from "@/pages/high-school-page";
 import { OtherCategoryPage } from "@/pages/other-category-page";
 import { PreSchoolPage } from "@/pages/pre-school-page";
@@ -20,12 +22,12 @@ const HeaderLayout = () => {
   return (
     <main className="flex min-h-screen flex-col">
       <div className="relative z-40 border-b border-stone-300/90 bg-white/70 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-end gap-3 px-6 py-3">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-end gap-3 px-6 py-3">
           <LanguageSwitcher locale={locale} onLocaleChange={setLocale} />
           <AppMenu />
         </div>
       </div>
-      <div className="mx-auto flex w-full max-w-5xl flex-1 items-center px-6 py-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 items-center px-6 py-8">
         <Outlet />
       </div>
     </main>
@@ -49,6 +51,11 @@ const AppRoutes = () => {
         }
       >
         <Route element={<CategoriesPage />} path="/" />
+        <Route element={<ElementarySchoolPage />} path="/elementary-school" />
+        <Route
+          element={<ElementarySubjectPage />}
+          path="/elementary-school/:subject"
+        />
         <Route element={<PreSchoolPage />} path="/pre-school" />
         <Route element={<HighSchoolPage />} path="/high-school" />
         <Route element={<OtherCategoryPage />} path="/other" />

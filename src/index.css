@@ -35,11 +35,7 @@ body::after {
   content: '';
   position: fixed;
   inset: 0;
-  background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.18), transparent 58%),
-    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-  background-size: auto, 32px 32px, 32px 32px;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.18), transparent 58%);
   mask-image: radial-gradient(circle at center, black 52%, transparent 92%);
   pointer-events: none;
 }
