@@ -1,0 +1,13 @@
+{
+  "id": "serbian-elementary-school-1st-grade-math",
+  "slug": "serbian-elementary-school-1st-grade-math",
+  "entryLessonId": "lesson-01-numbers-to-20",
+  "lessonIds": [
+    "lesson-01-numbers-to-20"
+  ],
+  "templateIds": {
+    "exerciseCard": "shared/templates/exercise-card.md",
+    "lessonSummary": "shared/templates/lesson-summary.md",
+    "solutionCard": "shared/templates/solution-card.md"
+  }
+}

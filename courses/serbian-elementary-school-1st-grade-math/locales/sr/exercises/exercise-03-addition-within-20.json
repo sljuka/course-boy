@@ -1,0 +1,5 @@
+{
+  "title": "Sabiranje do 20",
+  "prompt": "Mateja je ujutru ubrala **{{left}}** cvetova, a kasnije još **{{right}}**. Koliko je cvetova Mateja ubrala ukupno?",
+  "hint": "Saberi oba broja."
+}

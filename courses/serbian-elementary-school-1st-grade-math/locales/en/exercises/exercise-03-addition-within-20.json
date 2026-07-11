@@ -1,0 +1,5 @@
+{
+  "title": "Add within 20",
+  "prompt": "Mateja picked **{{left}}** flowers in the morning and **{{right}}** more later. How many flowers did Mateja pick in total?",
+  "hint": "Add the two numbers."
+}

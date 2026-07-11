@@ -1,0 +1,5 @@
+{
+  "title": "Find the missing number",
+  "prompt": "Complete the equation: **{{known}} + ? = {{total}}**",
+  "hint": "Think about what number needs to be added to reach the total."
+}

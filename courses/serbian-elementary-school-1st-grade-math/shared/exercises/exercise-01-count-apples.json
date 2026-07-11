@@ -1,0 +1,21 @@
+{
+  "id": "exercise-01-count-apples",
+  "template": "shared/templates/exercise-card.md",
+  "variables": {
+    "a": {
+      "type": "integer",
+      "min": 3,
+      "max": 7
+    },
+    "b": {
+      "type": "integer",
+      "min": 3,
+      "max": 7
+    }
+  },
+  "solution": {
+    "formula": "a + b",
+    "precision": 0
+  },
+  "tags": ["counting", "addition", "within-20"]
+}

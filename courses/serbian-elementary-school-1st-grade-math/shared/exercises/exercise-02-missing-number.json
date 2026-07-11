@@ -1,0 +1,21 @@
+{
+  "id": "exercise-02-missing-number",
+  "template": "shared/templates/exercise-card.md",
+  "variables": {
+    "total": {
+      "type": "integer",
+      "min": 8,
+      "max": 18
+    },
+    "known": {
+      "type": "integer",
+      "min": 1,
+      "max": 9
+    }
+  },
+  "solution": {
+    "formula": "total - known",
+    "precision": 0
+  },
+  "tags": ["subtraction", "missing-number", "within-20"]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "lesson-01-numbers-to-20",
+  "slug": "numbers-to-20",
+  "exerciseIds": [
+    "exercise-01-count-apples",
+    "exercise-02-missing-number",
+    "exercise-03-addition-within-20"
+  ],
+  "template": "shared/templates/lesson-summary.md"
+}

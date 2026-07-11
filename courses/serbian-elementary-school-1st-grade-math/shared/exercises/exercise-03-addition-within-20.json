@@ -1,0 +1,21 @@
+{
+  "id": "exercise-03-addition-within-20",
+  "template": "shared/templates/exercise-card.md",
+  "variables": {
+    "left": {
+      "type": "integer",
+      "min": 2,
+      "max": 10
+    },
+    "right": {
+      "type": "integer",
+      "min": 2,
+      "max": 9
+    }
+  },
+  "solution": {
+    "formula": "left + right",
+    "precision": 0
+  },
+  "tags": ["addition", "story-problem", "within-20"]
+}

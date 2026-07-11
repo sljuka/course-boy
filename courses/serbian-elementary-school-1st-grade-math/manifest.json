@@ -1,0 +1,10 @@
+{
+  "id": "serbian-elementary-school-1st-grade-math",
+  "version": "0.1.0",
+  "defaultLocale": "sr",
+  "supportedLocales": ["en", "sr", "sr-Cyrl"],
+  "courseType": "math",
+  "sharedIndex": "shared/course.json",
+  "localesPath": "locales",
+  "sharedPath": "shared"
+}
