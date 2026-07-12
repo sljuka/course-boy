@@ -1,0 +1,171 @@
+{
+  "categories": {
+    "elementarySchool": "📘 Elementary school",
+    "highSchool": "🎓 High school",
+    "other": "✨ Other",
+    "preSchool": "🧸 Pre-school"
+  },
+  "elementarySchool": {
+    "subjects": {
+      "additionAndSubtraction": "Addition and subtraction",
+      "numbersTo20": "Numbers to 20",
+      "shapesAndMeasurement": "Shapes and measurement"
+    },
+    "subtitle": "Choose a 1st-grade math topic to continue.",
+    "title": "Serbian elementary school 1st grade math"
+  },
+  "back": "Back",
+  "continue": "Continue",
+  "courseSearch": {
+    "empty": "No courses match your search yet.",
+    "error": "Courses could not be loaded right now.",
+    "loading": "Loading courses...",
+    "locales": "Locales: {{locales}}",
+    "placeholder": "Search courses",
+    "subtitle": "Search installed courses by title, description, or id.",
+    "title": "Search courses",
+    "version": "Version {{version}}"
+  },
+  "courseDescriptions": {
+    "preSchoolDescription": "Early learning through play, language, counting, and creative activities.",
+    "programmingDescription": "A practical path into coding, problem solving, and building digital projects.",
+    "serbianElementarySchoolDescription": "First-grade math topics aligned with the Serbian elementary-school curriculum."
+  },
+  "courseItems": {
+    "additionAndSubtraction": {
+      "description": "Practice adding and subtracting with simple first-grade exercises.",
+      "title": "Addition and subtraction"
+    },
+    "appThinking": {
+      "description": "Think through screens, flows, and interactions behind simple apps.",
+      "title": "App thinking"
+    },
+    "buildProjects": {
+      "description": "Create simple interactive projects and learn by making.",
+      "title": "Build projects"
+    },
+    "colorsAndShapes": {
+      "description": "Recognize colors and basic shapes through simple playful tasks.",
+      "title": "Colors and shapes"
+    },
+    "compareNumbers": {
+      "description": "Compare larger and smaller numbers with simple visual practice.",
+      "title": "Compare numbers"
+    },
+    "creativeCoding": {
+      "description": "Mix art, motion, and code in playful programming exercises.",
+      "title": "Creative coding"
+    },
+    "debuggingBasics": {
+      "description": "Spot simple mistakes and learn how to fix broken code step by step.",
+      "title": "Debugging basics"
+    },
+    "firstNumbers": {
+      "description": "Start counting, comparing, and recognizing simple numbers.",
+      "title": "First numbers"
+    },
+    "gameLogic": {
+      "description": "Learn programming ideas by building simple game rules and interactions.",
+      "title": "Game logic"
+    },
+    "lettersAndSounds": {
+      "description": "Meet letters, sounds, and early reading patterns.",
+      "title": "Letters and sounds"
+    },
+    "logicAndAlgorithms": {
+      "description": "Practice step-by-step thinking and simple algorithms.",
+      "title": "Logic and algorithms"
+    },
+    "math": {
+      "description": "Work through arithmetic, reasoning, and core math practice.",
+      "title": "Math"
+    },
+    "mathGames": {
+      "description": "Reinforce first-grade math skills through playful practice.",
+      "title": "Math games"
+    },
+    "natureAndSeasons": {
+      "description": "Explore weather, plants, animals, and seasonal changes.",
+      "title": "Nature and seasons"
+    },
+    "numbersTo20": {
+      "description": "Count, compare, and recognize numbers up to 20.",
+      "title": "Numbers to 20"
+    },
+    "playAndCreate": {
+      "description": "Learn through drawing, games, and hands-on exploration.",
+      "title": "Play and create"
+    },
+    "patternsAndSequences": {
+      "description": "Notice, continue, and build simple number and shape patterns.",
+      "title": "Patterns and sequences"
+    },
+    "programmingBasics": {
+      "description": "Understand variables, sequences, and basic coding ideas.",
+      "title": "Programming basics"
+    },
+    "puzzlesAndLogic": {
+      "description": "Use matching, patterns, and simple puzzles to build thinking skills.",
+      "title": "Puzzles and logic"
+    },
+    "rhythmAndSongs": {
+      "description": "Practice listening, movement, and memory through music and songs.",
+      "title": "Rhythm and songs"
+    },
+    "shapesAndMeasurement": {
+      "description": "Explore basic shapes, sizes, length, and simple measurement.",
+      "title": "Shapes and measurement"
+    },
+    "socialSkills": {
+      "description": "Practice sharing, turn-taking, and everyday communication.",
+      "title": "Social skills"
+    },
+    "timeAndCalendar": {
+      "description": "Read hours, days, and simple calendar patterns.",
+      "title": "Time and calendar"
+    },
+    "webBasics": {
+      "description": "Start with pages, links, and the building blocks of the web.",
+      "title": "Web basics"
+    },
+    "wordProblems": {
+      "description": "Solve short story-based exercises using first-grade math.",
+      "title": "Word problems"
+    }
+  },
+  "courses": {
+    "preSchool": "Pre-school",
+    "programming": "Programming",
+    "serbianElementarySchool": "Serbian elementary school 1st grade math"
+  },
+  "coursesSubtitle": "Choose a course to continue. More courses will be added here over time.",
+  "coursesTitle": "Choose a course",
+  "favoriteCourse": "Favorite course",
+  "removeFavoriteCourse": "Remove favorite course",
+  "inDevelopment": {
+    "description": "This part of Matko is still being built. The teacher workspace isn't ready yet, but the route is in place and will be available soon.",
+    "title": "Under development"
+  },
+  "language": {
+    "english": "English",
+    "serbian": "Srpski",
+    "serbianCyrillic": "Српски"
+  },
+  "menu": {
+    "about": "About",
+    "logout": "Logout",
+    "settings": "Settings"
+  },
+  "nameHint": "You don't need to use your real name. This isn't a government office. You can use a nickname like 'Lizard' or 'Quacky McDuck'. In general, it's better not to share personal data when there's no real need. Of course, you can use your real name too. Your choice.",
+  "nameLabel": "what should I call you?",
+  "namePlaceholder": "Type a name or nickname",
+  "niceToMeetYou": "Nice to meet you, {{name}}.",
+  "roleSubtitle": "Choose the path that fits how you want to use Matko right now.",
+  "roleTitle": "Hi {{name}}, are you a student or a teacher?",
+  "roles": {
+    "student": "Student",
+    "teacher": "Teacher"
+  },
+  "welcomeSubtitle": "Matko is an open platform for creating tutorials and tests, and for solving those tests either on the platform or on paper. The format is print-friendly, with a focus on making new tests easy to create, easy to complete, and enjoyable to learn from 😊",
+  "welcomeTitle": "Welcome! 😊"
+}

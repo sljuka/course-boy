@@ -2,8 +2,10 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import Store from 'electron-store'
+import { getCourseDetails, listCourses } from './course-registry'
+import { getLocalCoursesRoot } from './course-paths'
+import type { Locale } from '../src/lib/i18n'
 
-type Locale = 'en' | 'sr' | 'sr-Cyrl'
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
 type UserRole = 'student' | 'teacher'
 type UserPreferences = {
@@ -71,6 +73,17 @@ ipcMain.handle('preferences:reset-onboarding', () => {
 
   return preferencesStore.store
 })
+
+ipcMain.handle('courses:list', (_event, locale?: Locale) => {
+  return listCourses(getLocalCoursesRoot(), locale)
+})
+
+ipcMain.handle(
+  'courses:get',
+  (_event, courseId: string, locale?: Locale) => {
+    return getCourseDetails(getLocalCoursesRoot(), courseId, locale)
+  },
+)
 
 function createWindow() {
   win = new BrowserWindow({

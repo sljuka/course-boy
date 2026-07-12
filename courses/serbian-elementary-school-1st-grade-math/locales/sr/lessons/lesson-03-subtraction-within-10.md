@@ -1,0 +1,1 @@
+# Oduzimanje do 10

@@ -1,0 +1,15 @@
+{
+  "id": "exercise-01-find-red-circle",
+  "template": "shared/templates/exercise-card.md",
+  "variables": {
+    "count": {
+      "type": "integer",
+      "min": 2,
+      "max": 5
+    }
+  },
+  "solution": {
+    "formula": "count",
+    "precision": 0
+  }
+}

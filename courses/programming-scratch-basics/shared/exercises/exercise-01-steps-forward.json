@@ -1,0 +1,15 @@
+{
+  "id": "exercise-01-steps-forward",
+  "template": "shared/templates/exercise-card.md",
+  "variables": {
+    "steps": {
+      "type": "integer",
+      "min": 5,
+      "max": 15
+    }
+  },
+  "solution": {
+    "formula": "steps",
+    "precision": 0
+  }
+}

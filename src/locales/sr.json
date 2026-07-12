@@ -1,0 +1,171 @@
+{
+  "categories": {
+    "elementarySchool": "📘 Osnovna škola",
+    "highSchool": "🎓 Srednja škola",
+    "other": "✨ Ostalo",
+    "preSchool": "🧸 Predškolsko"
+  },
+  "elementarySchool": {
+    "subjects": {
+      "additionAndSubtraction": "Sabiranje i oduzimanje",
+      "numbersTo20": "Brojevi do 20",
+      "shapesAndMeasurement": "Oblici i merenje"
+    },
+    "subtitle": "Odaberi temu iz matematike za prvi razred da nastaviš dalje.",
+    "title": "Matematika za 1. razred srpske osnovne škole"
+  },
+  "back": "Nazad",
+  "continue": "Nastavi",
+  "courseSearch": {
+    "empty": "Nijedan kurs još ne odgovara tvojoj pretrazi.",
+    "error": "Kursevi trenutno ne mogu da se učitaju.",
+    "loading": "Učitavanje kurseva...",
+    "locales": "Jezici: {{locales}}",
+    "placeholder": "Pretraži kurseve",
+    "subtitle": "Pretraži instalirane kurseve po nazivu, opisu ili identifikatoru.",
+    "title": "Pretraga kurseva",
+    "version": "Verzija {{version}}"
+  },
+  "courseDescriptions": {
+    "preSchoolDescription": "Rano učenje kroz igru, jezik, brojanje i kreativne aktivnosti.",
+    "programmingDescription": "Praktičan ulaz u kodiranje, rešavanje problema i pravljenje digitalnih projekata.",
+    "serbianElementarySchoolDescription": "Teme iz matematike za prvi razred usklađene sa nastavom srpske osnovne škole."
+  },
+  "courseItems": {
+    "additionAndSubtraction": {
+      "description": "Vežbaj sabiranje i oduzimanje kroz jednostavne zadatke za prvi razred.",
+      "title": "Sabiranje i oduzimanje"
+    },
+    "appThinking": {
+      "description": "Razmišljaj o ekranima, tokovima i interakcijama iza jednostavnih aplikacija.",
+      "title": "Razmišljanje o aplikacijama"
+    },
+    "buildProjects": {
+      "description": "Pravi jednostavne interaktivne projekte i uči kroz izradu.",
+      "title": "Izrada projekata"
+    },
+    "colorsAndShapes": {
+      "description": "Prepoznaj boje i osnovne oblike kroz jednostavne razigrane zadatke.",
+      "title": "Boje i oblici"
+    },
+    "compareNumbers": {
+      "description": "Upoređuj veće i manje brojeve kroz jednostavne vizuelne zadatke.",
+      "title": "Poređenje brojeva"
+    },
+    "creativeCoding": {
+      "description": "Spoji umetnost, pokret i kod kroz razigrane zadatke programiranja.",
+      "title": "Kreativno programiranje"
+    },
+    "debuggingBasics": {
+      "description": "Uoči jednostavne greške i uči kako da popraviš kod korak po korak.",
+      "title": "Osnove ispravljanja grešaka"
+    },
+    "firstNumbers": {
+      "description": "Počni sa brojanjem, poređenjem i prepoznavanjem brojeva.",
+      "title": "Prvi brojevi"
+    },
+    "gameLogic": {
+      "description": "Uči ideje programiranja kroz pravila jednostavnih igara i interakcija.",
+      "title": "Logika igara"
+    },
+    "lettersAndSounds": {
+      "description": "Upoznaj slova, glasove i prve obrasce čitanja.",
+      "title": "Slova i glasovi"
+    },
+    "logicAndAlgorithms": {
+      "description": "Vežbaj razmišljanje korak po korak i jednostavne algoritme.",
+      "title": "Logika i algoritmi"
+    },
+    "math": {
+      "description": "Vežbaj računanje, zaključivanje i osnovne matematičke veštine.",
+      "title": "Matematika"
+    },
+    "mathGames": {
+      "description": "Učvrsti matematiku za prvi razred kroz razigrano vežbanje.",
+      "title": "Matematičke igre"
+    },
+    "natureAndSeasons": {
+      "description": "Istražuj vreme, biljke, životinje i promene kroz godišnja doba.",
+      "title": "Priroda i godišnja doba"
+    },
+    "numbersTo20": {
+      "description": "Broj, upoređuj i prepoznaj brojeve do 20.",
+      "title": "Brojevi do 20"
+    },
+    "playAndCreate": {
+      "description": "Uči kroz crtanje, igru i praktično istraživanje.",
+      "title": "Igra i stvaranje"
+    },
+    "patternsAndSequences": {
+      "description": "Uoči, nastavi i gradi jednostavne obrasce sa brojevima i oblicima.",
+      "title": "Obrasci i nizovi"
+    },
+    "programmingBasics": {
+      "description": "Razumi promenljive, nizove koraka i osnovne ideje programiranja.",
+      "title": "Osnove programiranja"
+    },
+    "puzzlesAndLogic": {
+      "description": "Koristi slagalice, obrasce i jednostavne zadatke za razvoj mišljenja.",
+      "title": "Slagalice i logika"
+    },
+    "rhythmAndSongs": {
+      "description": "Vežbaj slušanje, pokret i pamćenje kroz muziku i pesme.",
+      "title": "Ritam i pesme"
+    },
+    "shapesAndMeasurement": {
+      "description": "Upoznaj osnovne oblike, veličine, dužine i jednostavno merenje.",
+      "title": "Oblici i merenje"
+    },
+    "socialSkills": {
+      "description": "Vežbaj deljenje, smenjivanje i svakodnevnu komunikaciju.",
+      "title": "Socijalne veštine"
+    },
+    "timeAndCalendar": {
+      "description": "Uči sate, dane i jednostavne obrasce u kalendaru.",
+      "title": "Vreme i kalendar"
+    },
+    "webBasics": {
+      "description": "Počni sa stranicama, linkovima i osnovnim delovima veba.",
+      "title": "Osnove veba"
+    },
+    "wordProblems": {
+      "description": "Rešavaj kratke tekstualne zadatke uz matematiku prvog razreda.",
+      "title": "Tekstualni zadaci"
+    }
+  },
+  "courses": {
+    "preSchool": "Predškolsko",
+    "programming": "Programiranje",
+    "serbianElementarySchool": "Matematika za 1. razred srpske osnovne škole"
+  },
+  "coursesSubtitle": "Odaberi kurs za nastavak. Vremenom će ovde biti dodato još kurseva.",
+  "coursesTitle": "Izaberi kurs",
+  "favoriteCourse": "Omiljeni kurs",
+  "removeFavoriteCourse": "Ukloni omiljeni kurs",
+  "inDevelopment": {
+    "description": "Ovaj deo Matka se još razvija. Nastavnički radni prostor još nije spreman, ali je ruta postavljena i uskoro će biti dostupna.",
+    "title": "U izradi"
+  },
+  "language": {
+    "english": "English",
+    "serbian": "Srpski",
+    "serbianCyrillic": "Српски"
+  },
+  "menu": {
+    "about": "O aplikaciji",
+    "logout": "Odjavi se",
+    "settings": "Podešavanja"
+  },
+  "nameHint": "Ne moraš koristiti svoje pravo ime. Nije ovo MUP 👮. Možeš koristiti nadimak tipa 'Gušter 🦎' ili 'Patak Kvakanović'. Generalno ne treba unositi lične podatke gde nema potrebe. Naravno, može i lično ime da se koristi, izbor je na tebi.",
+  "nameLabel": "Kako želiš da te oslovljavam?",
+  "namePlaceholder": "Unesi ime ili nadimak",
+  "niceToMeetYou": "Drago mi je, {{name}}.",
+  "roleSubtitle": "Izaberi putanju koja najbolje odgovara načinu na koji želiš sada da koristiš Matko.",
+  "roleTitle": "Zdravo {{name}}, da li si učenik ili nastavnik?",
+  "roles": {
+    "student": "Učenik",
+    "teacher": "Nastavnik"
+  },
+  "welcomeSubtitle": "Matko je otvorena mreža za kreiranje tutorijala, testova kao i rešavanje kreiranih testova na platformi ili papiru (testovi su pogodnog formata za štampanje). Nadamo se da će te uživati u učenju novih stvari",
+  "welcomeTitle": "Dobrodošli! 😊"
+}

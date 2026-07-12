@@ -1,5 +1,6 @@
 {
   "id": "lesson-01-numbers-to-20",
+  "icon": "assets/icons/numbers-to-20.svg",
   "slug": "numbers-to-20",
   "exerciseIds": [
     "exercise-01-count-apples",

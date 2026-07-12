@@ -1,0 +1,4 @@
+{
+  "title": "Ponovi kretanje",
+  "prompt": "Ako se lik pomeri {{step}} koraka i to ponovi {{times}} puta, koliko se ukupno pomerio?"
+}

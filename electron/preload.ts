@@ -1,4 +1,9 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import type {
+  CourseDetails,
+  CourseSummary,
+} from '../src/lib/course-package'
+import type { Locale } from '../src/lib/i18n'
 import type { UserPreferences } from '../src/lib/preferences'
 
 // --------- Expose some API to the Renderer process ---------
@@ -33,5 +38,14 @@ contextBridge.exposeInMainWorld('preferences', {
   },
   resetOnboarding() {
     return ipcRenderer.invoke('preferences:reset-onboarding') as Promise<UserPreferences>
+  },
+})
+
+contextBridge.exposeInMainWorld('courses', {
+  get(courseId: string, locale?: Locale) {
+    return ipcRenderer.invoke('courses:get', courseId, locale) as Promise<CourseDetails | null>
+  },
+  list(locale?: Locale) {
+    return ipcRenderer.invoke('courses:list', locale) as Promise<CourseSummary[]>
   },
 })

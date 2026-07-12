@@ -23,6 +23,15 @@ declare namespace NodeJS {
 
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
+  courses: {
+    get: (
+      courseId: string,
+      locale?: import('../src/lib/i18n').Locale,
+    ) => Promise<import('../src/lib/course-package').CourseDetails | null>
+    list: (
+      locale?: import('../src/lib/i18n').Locale,
+    ) => Promise<import('../src/lib/course-package').CourseSummary[]>
+  }
   ipcRenderer: import('electron').IpcRenderer
   preferences: {
     get: () => Promise<import('../src/lib/preferences').UserPreferences>

@@ -1,0 +1,9 @@
+{
+  "id": "lesson-01-colors-and-shapes",
+  "slug": "colors-and-shapes",
+  "exerciseIds": [
+    "exercise-01-find-red-circle",
+    "exercise-02-count-triangles"
+  ],
+  "template": "shared/templates/exercise-card.md"
+}

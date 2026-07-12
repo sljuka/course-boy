@@ -1,0 +1,10 @@
+{
+  "id": "preschool-colors-and-shapes",
+  "version": "0.1.0",
+  "defaultLocale": "sr",
+  "supportedLocales": ["en", "sr", "sr-Cyrl"],
+  "courseType": "pre-school",
+  "sharedIndex": "shared/course.json",
+  "localesPath": "locales",
+  "sharedPath": "shared"
+}

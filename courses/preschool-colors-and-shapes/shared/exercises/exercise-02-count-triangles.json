@@ -1,0 +1,15 @@
+{
+  "id": "exercise-02-count-triangles",
+  "template": "shared/templates/exercise-card.md",
+  "variables": {
+    "triangles": {
+      "type": "integer",
+      "min": 3,
+      "max": 6
+    }
+  },
+  "solution": {
+    "formula": "triangles",
+    "precision": 0
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "everyday-math-money-and-time",
+  "version": "0.1.0",
+  "defaultLocale": "en",
+  "supportedLocales": ["en", "sr", "sr-Cyrl"],
+  "courseType": "math",
+  "sharedIndex": "shared/course.json",
+  "localesPath": "locales",
+  "sharedPath": "shared"
+}

@@ -1,0 +1,16 @@
+{
+  "id": "everyday-math-money-and-time",
+  "slug": "everyday-math-money-and-time",
+  "entryLessonId": "lesson-01-coins-and-clocks",
+  "lessonIds": [
+    "lesson-01-coins-and-clocks",
+    "lesson-02-shopping-totals",
+    "lesson-03-morning-schedule",
+    "lesson-04-travel-time",
+    "lesson-05-sharing-snacks",
+    "lesson-06-classroom-measurements"
+  ],
+  "templateIds": {
+    "exerciseCard": "shared/templates/exercise-card.md"
+  }
+}

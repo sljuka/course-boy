@@ -19,7 +19,7 @@ export const RolePage = () => {
 
   function handleSelect(nextRole: UserRole) {
     setRole(nextRole)
-    navigate(nextRole === 'teacher' ? '/teacher' : '/')
+    navigate('/')
   }
 
   return (

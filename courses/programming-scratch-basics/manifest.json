@@ -1,0 +1,10 @@
+{
+  "id": "programming-scratch-basics",
+  "version": "0.1.0",
+  "defaultLocale": "en",
+  "supportedLocales": ["en", "sr", "sr-Cyrl"],
+  "courseType": "programming",
+  "sharedIndex": "shared/course.json",
+  "localesPath": "locales",
+  "sharedPath": "shared"
+}

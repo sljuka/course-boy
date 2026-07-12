@@ -3,7 +3,12 @@
   "slug": "serbian-elementary-school-1st-grade-math",
   "entryLessonId": "lesson-01-numbers-to-20",
   "lessonIds": [
-    "lesson-01-numbers-to-20"
+    "lesson-01-numbers-to-20",
+    "lesson-02-addition-within-10",
+    "lesson-03-subtraction-within-10",
+    "lesson-04-compare-numbers",
+    "lesson-05-shapes-and-lines",
+    "lesson-06-time-and-calendar"
   ],
   "templateIds": {
     "exerciseCard": "shared/templates/exercise-card.md",

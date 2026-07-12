@@ -1,0 +1,16 @@
+{
+  "id": "preschool-colors-and-shapes",
+  "slug": "preschool-colors-and-shapes",
+  "entryLessonId": "lesson-01-colors-and-shapes",
+  "lessonIds": [
+    "lesson-01-colors-and-shapes",
+    "lesson-02-count-and-match",
+    "lesson-03-big-and-small",
+    "lesson-04-playful-patterns",
+    "lesson-05-seasons-and-nature",
+    "lesson-06-music-and-movement"
+  ],
+  "templateIds": {
+    "exerciseCard": "shared/templates/exercise-card.md"
+  }
+}

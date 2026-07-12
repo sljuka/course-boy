@@ -1,0 +1,16 @@
+{
+  "id": "programming-scratch-basics",
+  "slug": "programming-scratch-basics",
+  "entryLessonId": "lesson-01-move-and-repeat",
+  "lessonIds": [
+    "lesson-01-move-and-repeat",
+    "lesson-02-turn-and-draw",
+    "lesson-03-events-and-start",
+    "lesson-04-simple-animations",
+    "lesson-05-sounds-and-dialogue",
+    "lesson-06-mini-game-logic"
+  ],
+  "templateIds": {
+    "exerciseCard": "shared/templates/exercise-card.md"
+  }
+}
