@@ -35,7 +35,8 @@
   "courseDetails": {
     "back": "Nazad na kurseve",
     "error": "Detalji kursa trenutno ne mogu da se učitaju.",
-    "lessons": "Lekcije",
+    "sections": "Sekcije",
+    "startCourse": "Počni kurs",
     "loading": "Učitavanje kursa...",
     "missing": "Ovaj kurs nije pronađen."
   },

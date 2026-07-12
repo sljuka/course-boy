@@ -725,10 +725,10 @@ var code$3 = {};
     }
     get names() {
       var _a;
-      return (_a = this._names) !== null && _a !== void 0 ? _a : this._names = this._items.reduce((names2, c) => {
+      return (_a = this._names) !== null && _a !== void 0 ? _a : this._names = this._items.reduce((names, c) => {
         if (c instanceof Name)
-          names2[c.str] = (names2[c.str] || 0) + 1;
-        return names2;
+          names[c.str] = (names[c.str] || 0) + 1;
+        return names;
       }, {});
     }
   }
@@ -1045,11 +1045,11 @@ var scope$1 = {};
       const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
       return `${varKind} ${this.name}${rhs};` + _n;
     }
-    optimizeNames(names2, constants2) {
-      if (!names2[this.name.str])
+    optimizeNames(names, constants2) {
+      if (!names[this.name.str])
         return;
       if (this.rhs)
-        this.rhs = optimizeExpr(this.rhs, names2, constants2);
+        this.rhs = optimizeExpr(this.rhs, names, constants2);
       return this;
     }
     get names() {
@@ -1066,15 +1066,15 @@ var scope$1 = {};
     render({ _n }) {
       return `${this.lhs} = ${this.rhs};` + _n;
     }
-    optimizeNames(names2, constants2) {
-      if (this.lhs instanceof code_12.Name && !names2[this.lhs.str] && !this.sideEffects)
+    optimizeNames(names, constants2) {
+      if (this.lhs instanceof code_12.Name && !names[this.lhs.str] && !this.sideEffects)
         return;
-      this.rhs = optimizeExpr(this.rhs, names2, constants2);
+      this.rhs = optimizeExpr(this.rhs, names, constants2);
       return this;
     }
     get names() {
-      const names2 = this.lhs instanceof code_12.Name ? {} : { ...this.lhs.names };
-      return addExprNames(names2, this.rhs);
+      const names = this.lhs instanceof code_12.Name ? {} : { ...this.lhs.names };
+      return addExprNames(names, this.rhs);
     }
   }
   class AssignOp extends Assign {
@@ -1130,8 +1130,8 @@ var scope$1 = {};
     optimizeNodes() {
       return `${this.code}` ? this : void 0;
     }
-    optimizeNames(names2, constants2) {
-      this.code = optimizeExpr(this.code, names2, constants2);
+    optimizeNames(names, constants2) {
+      this.code = optimizeExpr(this.code, names, constants2);
       return this;
     }
     get names() {
@@ -1160,20 +1160,20 @@ var scope$1 = {};
       }
       return nodes.length > 0 ? this : void 0;
     }
-    optimizeNames(names2, constants2) {
+    optimizeNames(names, constants2) {
       const { nodes } = this;
       let i = nodes.length;
       while (i--) {
         const n = nodes[i];
-        if (n.optimizeNames(names2, constants2))
+        if (n.optimizeNames(names, constants2))
           continue;
-        subtractNames(names2, n.names);
+        subtractNames(names, n.names);
         nodes.splice(i, 1);
       }
       return nodes.length > 0 ? this : void 0;
     }
     get names() {
-      return this.nodes.reduce((names2, n) => addNames(names2, n.names), {});
+      return this.nodes.reduce((names, n) => addNames(names, n.names), {});
     }
   }
   class BlockNode extends ParentNode {
@@ -1218,20 +1218,20 @@ var scope$1 = {};
         return void 0;
       return this;
     }
-    optimizeNames(names2, constants2) {
+    optimizeNames(names, constants2) {
       var _a;
-      this.else = (_a = this.else) === null || _a === void 0 ? void 0 : _a.optimizeNames(names2, constants2);
-      if (!(super.optimizeNames(names2, constants2) || this.else))
+      this.else = (_a = this.else) === null || _a === void 0 ? void 0 : _a.optimizeNames(names, constants2);
+      if (!(super.optimizeNames(names, constants2) || this.else))
         return;
-      this.condition = optimizeExpr(this.condition, names2, constants2);
+      this.condition = optimizeExpr(this.condition, names, constants2);
       return this;
     }
     get names() {
-      const names2 = super.names;
-      addExprNames(names2, this.condition);
+      const names = super.names;
+      addExprNames(names, this.condition);
       if (this.else)
-        addNames(names2, this.else.names);
-      return names2;
+        addNames(names, this.else.names);
+      return names;
     }
   }
   If.kind = "if";
@@ -1246,10 +1246,10 @@ var scope$1 = {};
     render(opts) {
       return `for(${this.iteration})` + super.render(opts);
     }
-    optimizeNames(names2, constants2) {
-      if (!super.optimizeNames(names2, constants2))
+    optimizeNames(names, constants2) {
+      if (!super.optimizeNames(names, constants2))
         return;
-      this.iteration = optimizeExpr(this.iteration, names2, constants2);
+      this.iteration = optimizeExpr(this.iteration, names, constants2);
       return this;
     }
     get names() {
@@ -1270,8 +1270,8 @@ var scope$1 = {};
       return `for(${varKind} ${name}=${from}; ${name}<${to}; ${name}++)` + super.render(opts);
     }
     get names() {
-      const names2 = addExprNames(super.names, this.from);
-      return addExprNames(names2, this.to);
+      const names = addExprNames(super.names, this.from);
+      return addExprNames(names, this.to);
     }
   }
   class ForIter extends For {
@@ -1285,10 +1285,10 @@ var scope$1 = {};
     render(opts) {
       return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
     }
-    optimizeNames(names2, constants2) {
-      if (!super.optimizeNames(names2, constants2))
+    optimizeNames(names, constants2) {
+      if (!super.optimizeNames(names, constants2))
         return;
-      this.iterable = optimizeExpr(this.iterable, names2, constants2);
+      this.iterable = optimizeExpr(this.iterable, names, constants2);
       return this;
     }
     get names() {
@@ -1330,20 +1330,20 @@ var scope$1 = {};
       (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
       return this;
     }
-    optimizeNames(names2, constants2) {
+    optimizeNames(names, constants2) {
       var _a, _b;
-      super.optimizeNames(names2, constants2);
-      (_a = this.catch) === null || _a === void 0 ? void 0 : _a.optimizeNames(names2, constants2);
-      (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names2, constants2);
+      super.optimizeNames(names, constants2);
+      (_a = this.catch) === null || _a === void 0 ? void 0 : _a.optimizeNames(names, constants2);
+      (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants2);
       return this;
     }
     get names() {
-      const names2 = super.names;
+      const names = super.names;
       if (this.catch)
-        addNames(names2, this.catch.names);
+        addNames(names, this.catch.names);
       if (this.finally)
-        addNames(names2, this.finally.names);
-      return names2;
+        addNames(names, this.finally.names);
+      return names;
     }
   }
   class Catch extends BlockNode {
@@ -1627,15 +1627,15 @@ var scope$1 = {};
     }
   }
   exports.CodeGen = CodeGen;
-  function addNames(names2, from) {
+  function addNames(names, from) {
     for (const n in from)
-      names2[n] = (names2[n] || 0) + (from[n] || 0);
-    return names2;
+      names[n] = (names[n] || 0) + (from[n] || 0);
+    return names;
   }
-  function addExprNames(names2, from) {
-    return from instanceof code_12._CodeOrName ? addNames(names2, from.names) : names2;
+  function addExprNames(names, from) {
+    return from instanceof code_12._CodeOrName ? addNames(names, from.names) : names;
   }
-  function optimizeExpr(expr, names2, constants2) {
+  function optimizeExpr(expr, names, constants2) {
     if (expr instanceof code_12.Name)
       return replaceName(expr);
     if (!canOptimize(expr))
@@ -1651,18 +1651,18 @@ var scope$1 = {};
     }, []));
     function replaceName(n) {
       const c = constants2[n.str];
-      if (c === void 0 || names2[n.str] !== 1)
+      if (c === void 0 || names[n.str] !== 1)
         return n;
-      delete names2[n.str];
+      delete names[n.str];
       return c;
     }
     function canOptimize(e) {
-      return e instanceof code_12._Code && e._items.some((c) => c instanceof code_12.Name && names2[c.str] === 1 && constants2[c.str] !== void 0);
+      return e instanceof code_12._Code && e._items.some((c) => c instanceof code_12.Name && names[c.str] === 1 && constants2[c.str] !== void 0);
     }
   }
-  function subtractNames(names2, from) {
+  function subtractNames(names, from) {
     for (const n in from)
-      names2[n] = (names2[n] || 0) - (from[n] || 0);
+      names[n] = (names[n] || 0) - (from[n] || 0);
   }
   function not2(x) {
     return typeof x == "boolean" || typeof x == "number" || x === null ? !x : (0, code_12._)`!${par(x)}`;
@@ -7717,10 +7717,10 @@ var code$1 = {};
     }
     get names() {
       var _a;
-      return (_a = this._names) !== null && _a !== void 0 ? _a : this._names = this._items.reduce((names2, c) => {
+      return (_a = this._names) !== null && _a !== void 0 ? _a : this._names = this._items.reduce((names, c) => {
         if (c instanceof Name)
-          names2[c.str] = (names2[c.str] || 0) + 1;
-        return names2;
+          names[c.str] = (names[c.str] || 0) + 1;
+        return names;
       }, {});
     }
   }
@@ -8037,11 +8037,11 @@ var scope = {};
       const rhs = this.rhs === void 0 ? "" : ` = ${this.rhs}`;
       return `${varKind} ${this.name}${rhs};` + _n;
     }
-    optimizeNames(names2, constants2) {
-      if (!names2[this.name.str])
+    optimizeNames(names, constants2) {
+      if (!names[this.name.str])
         return;
       if (this.rhs)
-        this.rhs = optimizeExpr(this.rhs, names2, constants2);
+        this.rhs = optimizeExpr(this.rhs, names, constants2);
       return this;
     }
     get names() {
@@ -8058,15 +8058,15 @@ var scope = {};
     render({ _n }) {
       return `${this.lhs} = ${this.rhs};` + _n;
     }
-    optimizeNames(names2, constants2) {
-      if (this.lhs instanceof code_12.Name && !names2[this.lhs.str] && !this.sideEffects)
+    optimizeNames(names, constants2) {
+      if (this.lhs instanceof code_12.Name && !names[this.lhs.str] && !this.sideEffects)
         return;
-      this.rhs = optimizeExpr(this.rhs, names2, constants2);
+      this.rhs = optimizeExpr(this.rhs, names, constants2);
       return this;
     }
     get names() {
-      const names2 = this.lhs instanceof code_12.Name ? {} : { ...this.lhs.names };
-      return addExprNames(names2, this.rhs);
+      const names = this.lhs instanceof code_12.Name ? {} : { ...this.lhs.names };
+      return addExprNames(names, this.rhs);
     }
   }
   class AssignOp extends Assign {
@@ -8122,8 +8122,8 @@ var scope = {};
     optimizeNodes() {
       return `${this.code}` ? this : void 0;
     }
-    optimizeNames(names2, constants2) {
-      this.code = optimizeExpr(this.code, names2, constants2);
+    optimizeNames(names, constants2) {
+      this.code = optimizeExpr(this.code, names, constants2);
       return this;
     }
     get names() {
@@ -8152,20 +8152,20 @@ var scope = {};
       }
       return nodes.length > 0 ? this : void 0;
     }
-    optimizeNames(names2, constants2) {
+    optimizeNames(names, constants2) {
       const { nodes } = this;
       let i = nodes.length;
       while (i--) {
         const n = nodes[i];
-        if (n.optimizeNames(names2, constants2))
+        if (n.optimizeNames(names, constants2))
           continue;
-        subtractNames(names2, n.names);
+        subtractNames(names, n.names);
         nodes.splice(i, 1);
       }
       return nodes.length > 0 ? this : void 0;
     }
     get names() {
-      return this.nodes.reduce((names2, n) => addNames(names2, n.names), {});
+      return this.nodes.reduce((names, n) => addNames(names, n.names), {});
     }
   }
   class BlockNode extends ParentNode {
@@ -8210,20 +8210,20 @@ var scope = {};
         return void 0;
       return this;
     }
-    optimizeNames(names2, constants2) {
+    optimizeNames(names, constants2) {
       var _a;
-      this.else = (_a = this.else) === null || _a === void 0 ? void 0 : _a.optimizeNames(names2, constants2);
-      if (!(super.optimizeNames(names2, constants2) || this.else))
+      this.else = (_a = this.else) === null || _a === void 0 ? void 0 : _a.optimizeNames(names, constants2);
+      if (!(super.optimizeNames(names, constants2) || this.else))
         return;
-      this.condition = optimizeExpr(this.condition, names2, constants2);
+      this.condition = optimizeExpr(this.condition, names, constants2);
       return this;
     }
     get names() {
-      const names2 = super.names;
-      addExprNames(names2, this.condition);
+      const names = super.names;
+      addExprNames(names, this.condition);
       if (this.else)
-        addNames(names2, this.else.names);
-      return names2;
+        addNames(names, this.else.names);
+      return names;
     }
   }
   If.kind = "if";
@@ -8238,10 +8238,10 @@ var scope = {};
     render(opts) {
       return `for(${this.iteration})` + super.render(opts);
     }
-    optimizeNames(names2, constants2) {
-      if (!super.optimizeNames(names2, constants2))
+    optimizeNames(names, constants2) {
+      if (!super.optimizeNames(names, constants2))
         return;
-      this.iteration = optimizeExpr(this.iteration, names2, constants2);
+      this.iteration = optimizeExpr(this.iteration, names, constants2);
       return this;
     }
     get names() {
@@ -8262,8 +8262,8 @@ var scope = {};
       return `for(${varKind} ${name}=${from}; ${name}<${to}; ${name}++)` + super.render(opts);
     }
     get names() {
-      const names2 = addExprNames(super.names, this.from);
-      return addExprNames(names2, this.to);
+      const names = addExprNames(super.names, this.from);
+      return addExprNames(names, this.to);
     }
   }
   class ForIter extends For {
@@ -8277,10 +8277,10 @@ var scope = {};
     render(opts) {
       return `for(${this.varKind} ${this.name} ${this.loop} ${this.iterable})` + super.render(opts);
     }
-    optimizeNames(names2, constants2) {
-      if (!super.optimizeNames(names2, constants2))
+    optimizeNames(names, constants2) {
+      if (!super.optimizeNames(names, constants2))
         return;
-      this.iterable = optimizeExpr(this.iterable, names2, constants2);
+      this.iterable = optimizeExpr(this.iterable, names, constants2);
       return this;
     }
     get names() {
@@ -8322,20 +8322,20 @@ var scope = {};
       (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNodes();
       return this;
     }
-    optimizeNames(names2, constants2) {
+    optimizeNames(names, constants2) {
       var _a, _b;
-      super.optimizeNames(names2, constants2);
-      (_a = this.catch) === null || _a === void 0 ? void 0 : _a.optimizeNames(names2, constants2);
-      (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names2, constants2);
+      super.optimizeNames(names, constants2);
+      (_a = this.catch) === null || _a === void 0 ? void 0 : _a.optimizeNames(names, constants2);
+      (_b = this.finally) === null || _b === void 0 ? void 0 : _b.optimizeNames(names, constants2);
       return this;
     }
     get names() {
-      const names2 = super.names;
+      const names = super.names;
       if (this.catch)
-        addNames(names2, this.catch.names);
+        addNames(names, this.catch.names);
       if (this.finally)
-        addNames(names2, this.finally.names);
-      return names2;
+        addNames(names, this.finally.names);
+      return names;
     }
   }
   class Catch extends BlockNode {
@@ -8619,15 +8619,15 @@ var scope = {};
     }
   }
   exports.CodeGen = CodeGen;
-  function addNames(names2, from) {
+  function addNames(names, from) {
     for (const n in from)
-      names2[n] = (names2[n] || 0) + (from[n] || 0);
-    return names2;
+      names[n] = (names[n] || 0) + (from[n] || 0);
+    return names;
   }
-  function addExprNames(names2, from) {
-    return from instanceof code_12._CodeOrName ? addNames(names2, from.names) : names2;
+  function addExprNames(names, from) {
+    return from instanceof code_12._CodeOrName ? addNames(names, from.names) : names;
   }
-  function optimizeExpr(expr, names2, constants2) {
+  function optimizeExpr(expr, names, constants2) {
     if (expr instanceof code_12.Name)
       return replaceName(expr);
     if (!canOptimize(expr))
@@ -8643,18 +8643,18 @@ var scope = {};
     }, []));
     function replaceName(n) {
       const c = constants2[n.str];
-      if (c === void 0 || names2[n.str] !== 1)
+      if (c === void 0 || names[n.str] !== 1)
         return n;
-      delete names2[n.str];
+      delete names[n.str];
       return c;
     }
     function canOptimize(e) {
-      return e instanceof code_12._Code && e._items.some((c) => c instanceof code_12.Name && names2[c.str] === 1 && constants2[c.str] !== void 0);
+      return e instanceof code_12._Code && e._items.some((c) => c instanceof code_12.Name && names[c.str] === 1 && constants2[c.str] !== void 0);
     }
   }
-  function subtractNames(names2, from) {
+  function subtractNames(names, from) {
     for (const n in from)
-      names2[n] = (names2[n] || 0) - (from[n] || 0);
+      names[n] = (names[n] || 0) - (from[n] || 0);
   }
   function not2(x) {
     return typeof x == "boolean" || typeof x == "number" || x === null ? !x : (0, code_12._)`!${par(x)}`;
@@ -8839,44 +8839,50 @@ function checkStrictMode(it, msg, mode = it.opts.strictSchema) {
 }
 util.checkStrictMode = checkStrictMode;
 var names$1 = {};
-Object.defineProperty(names$1, "__esModule", { value: true });
-const codegen_1$u = codegen;
-const names = {
-  // validation function arguments
-  data: new codegen_1$u.Name("data"),
-  // data passed to validation function
-  // args passed from referencing schema
-  valCxt: new codegen_1$u.Name("valCxt"),
-  // validation/data context - should not be used directly, it is destructured to the names below
-  instancePath: new codegen_1$u.Name("instancePath"),
-  parentData: new codegen_1$u.Name("parentData"),
-  parentDataProperty: new codegen_1$u.Name("parentDataProperty"),
-  rootData: new codegen_1$u.Name("rootData"),
-  // root data - same as the data passed to the first/top validation function
-  dynamicAnchors: new codegen_1$u.Name("dynamicAnchors"),
-  // used to support recursiveRef and dynamicRef
-  // function scoped variables
-  vErrors: new codegen_1$u.Name("vErrors"),
-  // null or array of validation errors
-  errors: new codegen_1$u.Name("errors"),
-  // counter of validation errors
-  this: new codegen_1$u.Name("this"),
-  // "globals"
-  self: new codegen_1$u.Name("self"),
-  scope: new codegen_1$u.Name("scope"),
-  // JTD serialize/parse name for JSON string and position
-  json: new codegen_1$u.Name("json"),
-  jsonPos: new codegen_1$u.Name("jsonPos"),
-  jsonLen: new codegen_1$u.Name("jsonLen"),
-  jsonPart: new codegen_1$u.Name("jsonPart")
-};
-names$1.default = names;
+var hasRequiredNames;
+function requireNames() {
+  if (hasRequiredNames) return names$1;
+  hasRequiredNames = 1;
+  Object.defineProperty(names$1, "__esModule", { value: true });
+  const codegen_12 = codegen;
+  const names = {
+    // validation function arguments
+    data: new codegen_12.Name("data"),
+    // data passed to validation function
+    // args passed from referencing schema
+    valCxt: new codegen_12.Name("valCxt"),
+    // validation/data context - should not be used directly, it is destructured to the names below
+    instancePath: new codegen_12.Name("instancePath"),
+    parentData: new codegen_12.Name("parentData"),
+    parentDataProperty: new codegen_12.Name("parentDataProperty"),
+    rootData: new codegen_12.Name("rootData"),
+    // root data - same as the data passed to the first/top validation function
+    dynamicAnchors: new codegen_12.Name("dynamicAnchors"),
+    // used to support recursiveRef and dynamicRef
+    // function scoped variables
+    vErrors: new codegen_12.Name("vErrors"),
+    // null or array of validation errors
+    errors: new codegen_12.Name("errors"),
+    // counter of validation errors
+    this: new codegen_12.Name("this"),
+    // "globals"
+    self: new codegen_12.Name("self"),
+    scope: new codegen_12.Name("scope"),
+    // JTD serialize/parse name for JSON string and position
+    json: new codegen_12.Name("json"),
+    jsonPos: new codegen_12.Name("jsonPos"),
+    jsonLen: new codegen_12.Name("jsonLen"),
+    jsonPart: new codegen_12.Name("jsonPart")
+  };
+  names$1.default = names;
+  return names$1;
+}
 (function(exports) {
   Object.defineProperty(exports, "__esModule", { value: true });
   exports.extendErrors = exports.resetErrorsCount = exports.reportExtraError = exports.reportError = exports.keyword$DataError = exports.keywordError = void 0;
   const codegen_12 = codegen;
   const util_12 = util;
-  const names_12 = names$1;
+  const names_12 = requireNames();
   exports.keywordError = {
     message: ({ keyword: keyword2 }) => (0, codegen_12.str)`must pass "${keyword2}" keyword validation`
   };
@@ -8996,7 +9002,7 @@ function requireBoolSchema() {
   boolSchema.boolOrEmptySchema = boolSchema.topBoolOrEmptySchema = void 0;
   const errors_12 = errors;
   const codegen_12 = codegen;
-  const names_12 = names$1;
+  const names_12 = requireNames();
   const boolError = {
     message: "boolean schema is false"
   };
@@ -9299,20 +9305,20 @@ var keyword = {};
 var code = {};
 Object.defineProperty(code, "__esModule", { value: true });
 code.validateUnion = code.validateArray = code.usePattern = code.callValidateCode = code.schemaProperties = code.allSchemaProperties = code.noPropertyInData = code.propertyInData = code.isOwnProperty = code.hasPropFunc = code.reportMissingProp = code.checkMissingProp = code.checkReportMissingProp = void 0;
-const codegen_1$q = codegen;
-const util_1$p = util;
-const names_1$5 = names$1;
+const codegen_1$o = codegen;
+const util_1$o = util;
+const names_1$4 = requireNames();
 const util_2$1 = util;
 function checkReportMissingProp(cxt, prop) {
   const { gen, data, it } = cxt;
   gen.if(noPropertyInData(gen, data, prop, it.opts.ownProperties), () => {
-    cxt.setParams({ missingProperty: (0, codegen_1$q._)`${prop}` }, true);
+    cxt.setParams({ missingProperty: (0, codegen_1$o._)`${prop}` }, true);
     cxt.error();
   });
 }
 code.checkReportMissingProp = checkReportMissingProp;
 function checkMissingProp({ gen, data, it: { opts } }, properties2, missing) {
-  return (0, codegen_1$q.or)(...properties2.map((prop) => (0, codegen_1$q.and)(noPropertyInData(gen, data, prop, opts.ownProperties), (0, codegen_1$q._)`${missing} = ${prop}`)));
+  return (0, codegen_1$o.or)(...properties2.map((prop) => (0, codegen_1$o.and)(noPropertyInData(gen, data, prop, opts.ownProperties), (0, codegen_1$o._)`${missing} = ${prop}`)));
 }
 code.checkMissingProp = checkMissingProp;
 function reportMissingProp(cxt, missing) {
@@ -9324,22 +9330,22 @@ function hasPropFunc(gen) {
   return gen.scopeValue("func", {
     // eslint-disable-next-line @typescript-eslint/unbound-method
     ref: Object.prototype.hasOwnProperty,
-    code: (0, codegen_1$q._)`Object.prototype.hasOwnProperty`
+    code: (0, codegen_1$o._)`Object.prototype.hasOwnProperty`
   });
 }
 code.hasPropFunc = hasPropFunc;
 function isOwnProperty(gen, data, property) {
-  return (0, codegen_1$q._)`${hasPropFunc(gen)}.call(${data}, ${property})`;
+  return (0, codegen_1$o._)`${hasPropFunc(gen)}.call(${data}, ${property})`;
 }
 code.isOwnProperty = isOwnProperty;
 function propertyInData(gen, data, property, ownProperties) {
-  const cond = (0, codegen_1$q._)`${data}${(0, codegen_1$q.getProperty)(property)} !== undefined`;
-  return ownProperties ? (0, codegen_1$q._)`${cond} && ${isOwnProperty(gen, data, property)}` : cond;
+  const cond = (0, codegen_1$o._)`${data}${(0, codegen_1$o.getProperty)(property)} !== undefined`;
+  return ownProperties ? (0, codegen_1$o._)`${cond} && ${isOwnProperty(gen, data, property)}` : cond;
 }
 code.propertyInData = propertyInData;
 function noPropertyInData(gen, data, property, ownProperties) {
-  const cond = (0, codegen_1$q._)`${data}${(0, codegen_1$q.getProperty)(property)} === undefined`;
-  return ownProperties ? (0, codegen_1$q.or)(cond, (0, codegen_1$q.not)(isOwnProperty(gen, data, property))) : cond;
+  const cond = (0, codegen_1$o._)`${data}${(0, codegen_1$o.getProperty)(property)} === undefined`;
+  return ownProperties ? (0, codegen_1$o.or)(cond, (0, codegen_1$o.not)(isOwnProperty(gen, data, property))) : cond;
 }
 code.noPropertyInData = noPropertyInData;
 function allSchemaProperties(schemaMap) {
@@ -9347,24 +9353,24 @@ function allSchemaProperties(schemaMap) {
 }
 code.allSchemaProperties = allSchemaProperties;
 function schemaProperties(it, schemaMap) {
-  return allSchemaProperties(schemaMap).filter((p) => !(0, util_1$p.alwaysValidSchema)(it, schemaMap[p]));
+  return allSchemaProperties(schemaMap).filter((p) => !(0, util_1$o.alwaysValidSchema)(it, schemaMap[p]));
 }
 code.schemaProperties = schemaProperties;
 function callValidateCode({ schemaCode, data, it: { gen, topSchemaRef, schemaPath, errorPath }, it }, func, context, passSchema) {
-  const dataAndSchema = passSchema ? (0, codegen_1$q._)`${schemaCode}, ${data}, ${topSchemaRef}${schemaPath}` : data;
+  const dataAndSchema = passSchema ? (0, codegen_1$o._)`${schemaCode}, ${data}, ${topSchemaRef}${schemaPath}` : data;
   const valCxt = [
-    [names_1$5.default.instancePath, (0, codegen_1$q.strConcat)(names_1$5.default.instancePath, errorPath)],
-    [names_1$5.default.parentData, it.parentData],
-    [names_1$5.default.parentDataProperty, it.parentDataProperty],
-    [names_1$5.default.rootData, names_1$5.default.rootData]
+    [names_1$4.default.instancePath, (0, codegen_1$o.strConcat)(names_1$4.default.instancePath, errorPath)],
+    [names_1$4.default.parentData, it.parentData],
+    [names_1$4.default.parentDataProperty, it.parentDataProperty],
+    [names_1$4.default.rootData, names_1$4.default.rootData]
   ];
   if (it.opts.dynamicRef)
-    valCxt.push([names_1$5.default.dynamicAnchors, names_1$5.default.dynamicAnchors]);
-  const args = (0, codegen_1$q._)`${dataAndSchema}, ${gen.object(...valCxt)}`;
-  return context !== codegen_1$q.nil ? (0, codegen_1$q._)`${func}.call(${context}, ${args})` : (0, codegen_1$q._)`${func}(${args})`;
+    valCxt.push([names_1$4.default.dynamicAnchors, names_1$4.default.dynamicAnchors]);
+  const args = (0, codegen_1$o._)`${dataAndSchema}, ${gen.object(...valCxt)}`;
+  return context !== codegen_1$o.nil ? (0, codegen_1$o._)`${func}.call(${context}, ${args})` : (0, codegen_1$o._)`${func}(${args})`;
 }
 code.callValidateCode = callValidateCode;
-const newRegExp = (0, codegen_1$q._)`new RegExp`;
+const newRegExp = (0, codegen_1$o._)`new RegExp`;
 function usePattern({ gen, it: { opts } }, pattern2) {
   const u = opts.unicodeRegExp ? "u" : "";
   const { regExp } = opts.code;
@@ -9372,7 +9378,7 @@ function usePattern({ gen, it: { opts } }, pattern2) {
   return gen.scopeValue("pattern", {
     key: rx.toString(),
     ref: rx,
-    code: (0, codegen_1$q._)`${regExp.code === "new RegExp" ? newRegExp : (0, util_2$1.useFunc)(gen, regExp)}(${pattern2}, ${u})`
+    code: (0, codegen_1$o._)`${regExp.code === "new RegExp" ? newRegExp : (0, util_2$1.useFunc)(gen, regExp)}(${pattern2}, ${u})`
   });
 }
 code.usePattern = usePattern;
@@ -9388,14 +9394,14 @@ function validateArray(cxt) {
   validateItems(() => gen.break());
   return valid2;
   function validateItems(notValid) {
-    const len = gen.const("len", (0, codegen_1$q._)`${data}.length`);
+    const len = gen.const("len", (0, codegen_1$o._)`${data}.length`);
     gen.forRange("i", 0, len, (i) => {
       cxt.subschema({
         keyword: keyword2,
         dataProp: i,
-        dataPropType: util_1$p.Type.Num
+        dataPropType: util_1$o.Type.Num
       }, valid2);
-      gen.if((0, codegen_1$q.not)(valid2), notValid);
+      gen.if((0, codegen_1$o.not)(valid2), notValid);
     });
   }
 }
@@ -9404,7 +9410,7 @@ function validateUnion(cxt) {
   const { gen, schema, keyword: keyword2, it } = cxt;
   if (!Array.isArray(schema))
     throw new Error("ajv implementation error");
-  const alwaysValid = schema.some((sch) => (0, util_1$p.alwaysValidSchema)(it, sch));
+  const alwaysValid = schema.some((sch) => (0, util_1$o.alwaysValidSchema)(it, sch));
   if (alwaysValid && !it.opts.unevaluated)
     return;
   const valid2 = gen.let("valid", false);
@@ -9415,10 +9421,10 @@ function validateUnion(cxt) {
       schemaProp: i,
       compositeRule: true
     }, schValid);
-    gen.assign(valid2, (0, codegen_1$q._)`${valid2} || ${schValid}`);
+    gen.assign(valid2, (0, codegen_1$o._)`${valid2} || ${schValid}`);
     const merged = cxt.mergeValidEvaluated(schCxt, schValid);
     if (!merged)
-      gen.if((0, codegen_1$q.not)(valid2));
+      gen.if((0, codegen_1$o.not)(valid2));
   }));
   cxt.result(valid2, () => cxt.reset(), () => cxt.error(true));
 }
@@ -9430,7 +9436,7 @@ function requireKeyword() {
   Object.defineProperty(keyword, "__esModule", { value: true });
   keyword.validateKeywordUsage = keyword.validSchemaType = keyword.funcKeywordCode = keyword.macroKeywordCode = void 0;
   const codegen_12 = codegen;
-  const names_12 = names$1;
+  const names_12 = requireNames();
   const code_12 = code;
   const errors_12 = errors;
   function macroKeywordCode(cxt, def2) {
@@ -9866,7 +9872,7 @@ const defaults_1 = requireDefaults();
 const keyword_1 = requireKeyword();
 const subschema_1 = requireSubschema();
 const codegen_1$n = codegen;
-const names_1$3 = names$1;
+const names_1$3 = requireNames();
 const resolve_1$2 = resolve$1;
 const util_1$m = util;
 const errors_1 = errors;
@@ -10388,7 +10394,7 @@ Object.defineProperty(compile, "__esModule", { value: true });
 compile.resolveSchema = compile.getCompilingSchema = compile.resolveRef = compile.compileSchema = compile.SchemaEnv = void 0;
 const codegen_1$m = codegen;
 const validation_error_1 = requireValidation_error();
-const names_1$2 = names$1;
+const names_1$2 = requireNames();
 const resolve_1 = resolve$1;
 const util_1$l = util;
 const validate_1$1 = validate;
@@ -11257,7 +11263,7 @@ ref.callRef = ref.getValidate = void 0;
 const ref_error_1$1 = ref_error;
 const code_1$8 = code;
 const codegen_1$l = codegen;
-const names_1$1 = names$1;
+const names_1$1 = requireNames();
 const compile_1$1 = compile;
 const util_1$k = util;
 const def$r = {
@@ -12150,7 +12156,7 @@ var additionalProperties = {};
 Object.defineProperty(additionalProperties, "__esModule", { value: true });
 const code_1$3 = code;
 const codegen_1$5 = codegen;
-const names_1 = names$1;
+const names_1 = requireNames();
 const util_1$8 = util;
 const error$4 = {
   message: "must NOT have additional properties",
@@ -15823,6 +15829,13 @@ function isLocalizedLessonMetadata(value) {
   const metadata2 = value;
   return typeof metadata2.title === "string" && typeof metadata2.description === "string";
 }
+function isLocalizedSectionMetadata(value) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const metadata2 = value;
+  return typeof metadata2.title === "string" && (typeof metadata2.description === "undefined" || typeof metadata2.description === "string");
+}
 function isSharedLessonDefinition(value) {
   if (!value || typeof value !== "object") {
     return false;
@@ -15943,6 +15956,15 @@ function resolveLocalizedLessonMetadataPath(courseRecord, locale, lessonId) {
     `${lessonId}.json`
   );
 }
+function resolveLocalizedSectionMetadataPath(courseRecord, locale, sectionId) {
+  return path.join(
+    courseRecord.directoryPath,
+    courseRecord.manifest.localesPath,
+    locale,
+    "sections",
+    `${sectionId}.json`
+  );
+}
 async function readLessonPreview(courseRecord, lessonId, preferredLocale) {
   const sharedLesson = await readSharedLessonDefinition(courseRecord, lessonId);
   const requestedLocales = [
@@ -16010,6 +16032,44 @@ async function readLessonPreviews(courseRecord, lessonIds, preferredLocale) {
     )
   );
 }
+function formatSectionTitle(sectionSlug) {
+  return sectionSlug.split("-").filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+}
+async function readCourseSections(courseRecord, sectionIds, preferredLocale) {
+  return Promise.all(
+    sectionIds.map(async (sectionId) => {
+      const section = await readSharedSectionDefinition(courseRecord, sectionId);
+      const requestedLocales = [
+        preferredLocale,
+        courseRecord.manifest.defaultLocale
+      ].filter((locale, index, locales) => {
+        return Boolean(locale) && locales.indexOf(locale) === index;
+      });
+      let localizedSectionMetadata = null;
+      for (const locale of requestedLocales) {
+        try {
+          localizedSectionMetadata = await readJsonFile(
+            resolveLocalizedSectionMetadataPath(courseRecord, locale, section.id),
+            isLocalizedSectionMetadata
+          );
+          break;
+        } catch {
+          continue;
+        }
+      }
+      return {
+        description: localizedSectionMetadata == null ? void 0 : localizedSectionMetadata.description,
+        id: section.id,
+        lessonPreviews: await readLessonPreviews(
+          courseRecord,
+          section.lessonIds,
+          preferredLocale
+        ),
+        title: (localizedSectionMetadata == null ? void 0 : localizedSectionMetadata.title) ?? formatSectionTitle(section.slug)
+      };
+    })
+  );
+}
 async function readCourseLessonIds(courseRecord, sectionIds) {
   const sections = await Promise.all(
     sectionIds.map((sectionId) => readSharedSectionDefinition(courseRecord, sectionId))
@@ -16069,6 +16129,11 @@ async function getCourseDetails(rootDirectoryPath, courseId, preferredLocale) {
     courseRecord,
     sharedCourseIndex.sectionIds
   );
+  const sections = await readCourseSections(
+    courseRecord,
+    sharedCourseIndex.sectionIds,
+    preferredLocale
+  );
   return {
     ...toCourseSummary(
       courseRecord,
@@ -16082,6 +16147,7 @@ async function getCourseDetails(rootDirectoryPath, courseId, preferredLocale) {
     courseType: courseRecord.manifest.courseType,
     entrySectionId: sharedCourseIndex.entrySectionId,
     lessonIds,
+    sections,
     sectionIds: sharedCourseIndex.sectionIds,
     slug: sharedCourseIndex.slug,
     templateIds: sharedCourseIndex.templateIds

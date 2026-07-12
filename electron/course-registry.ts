@@ -2,12 +2,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import type {
+  CourseSectionPreview,
   CourseDetails,
   CourseManifest,
   CourseSummary,
   LessonPreview,
   LocalizedCourseMetadata,
   LocalizedLessonMetadata,
+  LocalizedSectionMetadata,
   SharedCourseIndex,
 } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
@@ -110,6 +112,22 @@ function isLocalizedLessonMetadata(
   return (
     typeof metadata.title === "string" &&
     typeof metadata.description === "string"
+  );
+}
+
+function isLocalizedSectionMetadata(
+  value: unknown,
+): value is LocalizedSectionMetadata {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const metadata = value as Partial<LocalizedSectionMetadata>;
+
+  return (
+    typeof metadata.title === "string" &&
+    (typeof metadata.description === "undefined" ||
+      typeof metadata.description === "string")
   );
 }
 
@@ -294,6 +312,20 @@ function resolveLocalizedLessonMetadataPath(
   );
 }
 
+function resolveLocalizedSectionMetadataPath(
+  courseRecord: CourseRecord,
+  locale: Locale,
+  sectionId: string,
+): string {
+  return path.join(
+    courseRecord.directoryPath,
+    courseRecord.manifest.localesPath,
+    locale,
+    "sections",
+    `${sectionId}.json`,
+  );
+}
+
 async function readLessonPreview(
   courseRecord: CourseRecord,
   lessonId: string,
@@ -387,6 +419,56 @@ async function readLessonPreviews(
   );
 }
 
+function formatSectionTitle(sectionSlug: string): string {
+  return sectionSlug
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+async function readCourseSections(
+  courseRecord: CourseRecord,
+  sectionIds: string[],
+  preferredLocale?: Locale,
+): Promise<CourseSectionPreview[]> {
+  return Promise.all(
+    sectionIds.map(async (sectionId) => {
+      const section = await readSharedSectionDefinition(courseRecord, sectionId);
+      const requestedLocales = [
+        preferredLocale,
+        courseRecord.manifest.defaultLocale,
+      ].filter((locale, index, locales): locale is Locale => {
+        return Boolean(locale) && locales.indexOf(locale) === index;
+      });
+      let localizedSectionMetadata: LocalizedSectionMetadata | null = null;
+
+      for (const locale of requestedLocales) {
+        try {
+          localizedSectionMetadata = await readJsonFile(
+            resolveLocalizedSectionMetadataPath(courseRecord, locale, section.id),
+            isLocalizedSectionMetadata,
+          );
+          break;
+        } catch {
+          continue;
+        }
+      }
+
+      return {
+        description: localizedSectionMetadata?.description,
+        id: section.id,
+        lessonPreviews: await readLessonPreviews(
+          courseRecord,
+          section.lessonIds,
+          preferredLocale,
+        ),
+        title: localizedSectionMetadata?.title ?? formatSectionTitle(section.slug),
+      };
+    }),
+  );
+}
+
 async function readCourseLessonIds(
   courseRecord: CourseRecord,
   sectionIds: string[],
@@ -470,6 +552,11 @@ export async function getCourseDetails(
     courseRecord,
     sharedCourseIndex.sectionIds,
   );
+  const sections = await readCourseSections(
+    courseRecord,
+    sharedCourseIndex.sectionIds,
+    preferredLocale,
+  );
 
   return {
     ...toCourseSummary(
@@ -484,6 +571,7 @@ export async function getCourseDetails(
     courseType: courseRecord.manifest.courseType,
     entrySectionId: sharedCourseIndex.entrySectionId,
     lessonIds,
+    sections,
     sectionIds: sharedCourseIndex.sectionIds,
     slug: sharedCourseIndex.slug,
     templateIds: sharedCourseIndex.templateIds,

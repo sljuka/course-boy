@@ -29,10 +29,22 @@ export type LocalizedLessonMetadata = {
   title: string;
 };
 
+export type LocalizedSectionMetadata = {
+  description?: string;
+  title: string;
+};
+
 export type LessonPreview = {
   description: string;
   id: string;
   iconUrl: string | null;
+  title: string;
+};
+
+export type CourseSectionPreview = {
+  description?: string;
+  id: string;
+  lessonPreviews: LessonPreview[];
   title: string;
 };
 
@@ -50,6 +62,7 @@ export type CourseDetails = CourseSummary & {
   courseType: string;
   entrySectionId: string;
   lessonIds: string[];
+  sections: CourseSectionPreview[];
   sectionIds: string[];
   slug: string;
   templateIds: Record<string, string>;

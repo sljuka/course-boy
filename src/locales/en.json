@@ -35,7 +35,8 @@
   "courseDetails": {
     "back": "Back to courses",
     "error": "Course details could not be loaded right now.",
-    "lessons": "Lessons",
+    "sections": "Sections",
+    "startCourse": "Start course",
     "loading": "Loading course...",
     "missing": "This course could not be found."
   },
