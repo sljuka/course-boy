@@ -1,7 +1,7 @@
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, BookOpen, Star } from "lucide-react";
 import { Link, Navigate, useParams } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -10,8 +10,107 @@ import {
   CardDescription,
   CardTitle,
 } from "@/components/ui/card";
-import type { CourseDetails } from "@/lib/course-package";
+import {
+  Dialog,
+  DialogBody,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import type { CourseDetails, CourseExercise, CourseLesson } from "@/lib/course-package";
+import { evaluateFormula } from "@/lib/formula-dsl";
 import { useAppState } from "@/lib/use-app-state";
+
+type DialogStep = "complete" | "exercise" | "lesson";
+
+type ExerciseInstance = {
+  expectedAnswer: number;
+  variables: Record<string, number>;
+};
+
+function renderInlineMarkdown(source: string) {
+  const parts = source.split(/(\*\*.*?\*\*)/g).filter(Boolean);
+
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={`${part}-${index}`} className="font-semibold text-stone-950">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    return <Fragment key={`${part}-${index}`}>{part}</Fragment>;
+  });
+}
+
+function LessonMarkdown({ source }: { source: string }) {
+  const blocks = source
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="flex flex-col gap-4 text-base leading-7 text-stone-700">
+      {blocks.map((block, index) => {
+        const lines = block.split("\n");
+        const firstLine = lines[0]?.trim() ?? "";
+        const rest = lines.slice(1).join(" ").trim();
+
+        if (firstLine.startsWith("# ")) {
+          return (
+            <div className="flex flex-col gap-3" key={`${firstLine}-${index}`}>
+              <h3 className="text-2xl font-semibold leading-tight text-stone-950">
+                {firstLine.replace(/^#\s+/, "")}
+              </h3>
+              {rest ? <p>{renderInlineMarkdown(rest)}</p> : null}
+            </div>
+          );
+        }
+
+        return <p key={`${block}-${index}`}>{renderInlineMarkdown(lines.join(" "))}</p>;
+      })}
+    </div>
+  );
+}
+
+function interpolateTemplate(
+  template: string,
+  variables: Record<string, number>,
+): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_match, variableName: string) => {
+    return String(variables[variableName] ?? "");
+  });
+}
+
+function roundToPrecision(value: number, precision: number): number {
+  const multiplier = 10 ** precision;
+
+  return Math.round(value * multiplier) / multiplier;
+}
+
+function buildExerciseInstance(exercise: CourseExercise): ExerciseInstance {
+  const variables = Object.fromEntries(
+    Object.entries(exercise.variables).map(([variableName, variableDefinition]) => {
+      const span = variableDefinition.max - variableDefinition.min + 1;
+      const randomValue = Math.floor(Math.random() * span) + variableDefinition.min;
+
+      return [variableName, randomValue];
+    }),
+  );
+  const expectedAnswer = roundToPrecision(
+    evaluateFormula(exercise.formula, variables),
+    exercise.precision,
+  );
+
+  return {
+    expectedAnswer,
+    variables,
+  };
+}
 
 export const CourseDetailPage = () => {
   const { courseId } = useParams<{ courseId: string }>();
@@ -21,6 +120,30 @@ export const CourseDetailPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isCourseDialogOpen, setIsCourseDialogOpen] = useState(false);
+  const [activeLessonIndex, setActiveLessonIndex] = useState(0);
+  const [dialogStep, setDialogStep] = useState<DialogStep>("lesson");
+  const [exerciseAnswer, setExerciseAnswer] = useState("");
+  const [exerciseFeedback, setExerciseFeedback] = useState<string | null>(null);
+  const [isExercisePassed, setIsExercisePassed] = useState(false);
+  const [exerciseInstance, setExerciseInstance] = useState<ExerciseInstance | null>(null);
+
+  const lessonSequence = useMemo(() => {
+    if (!course) {
+      return [];
+    }
+
+    return course.sections.flatMap((section) =>
+      section.lessons.map((lesson) => ({
+        lesson,
+        sectionId: section.id,
+        sectionTitle: section.title,
+      })),
+    );
+  }, [course]);
+
+  const activeLessonEntry = lessonSequence[activeLessonIndex] ?? null;
+  const activeLesson = activeLessonEntry?.lesson ?? null;
 
   useEffect(() => {
     let isMounted = true;
@@ -33,6 +156,13 @@ export const CourseDetailPage = () => {
     setIsLoading(true);
     setErrorMessage(null);
     setIsFavorite(false);
+    setIsCourseDialogOpen(false);
+    setActiveLessonIndex(0);
+    setDialogStep("lesson");
+    setExerciseAnswer("");
+    setExerciseFeedback(null);
+    setIsExercisePassed(false);
+    setExerciseInstance(null);
 
     window.courses
       .get(courseId, locale)
@@ -57,6 +187,97 @@ export const CourseDetailPage = () => {
       isMounted = false;
     };
   }, [courseId, locale, t]);
+
+  function resetExerciseState() {
+    setExerciseAnswer("");
+    setExerciseFeedback(null);
+    setIsExercisePassed(false);
+    setExerciseInstance(null);
+  }
+
+  function openCourseDialog() {
+    if (!course) {
+      return;
+    }
+
+    const firstLessonIndex = lessonSequence.findIndex(
+      (entry) => entry.sectionId === course.entrySectionId,
+    );
+
+    setActiveLessonIndex(firstLessonIndex >= 0 ? firstLessonIndex : 0);
+    setDialogStep("lesson");
+    resetExerciseState();
+    setIsCourseDialogOpen(true);
+  }
+
+  function closeCourseDialog() {
+    setIsCourseDialogOpen(false);
+    setDialogStep("lesson");
+    resetExerciseState();
+  }
+
+  function moveToNextLesson() {
+    if (activeLessonIndex + 1 >= lessonSequence.length) {
+      setDialogStep("complete");
+      resetExerciseState();
+      return;
+    }
+
+    setActiveLessonIndex((currentValue) => currentValue + 1);
+    setDialogStep("lesson");
+    resetExerciseState();
+  }
+
+  function continueFromLesson(lesson: CourseLesson | null) {
+    if (!lesson) {
+      return;
+    }
+
+    if (!lesson.exercise) {
+      moveToNextLesson();
+      return;
+    }
+
+    setExerciseInstance(buildExerciseInstance(lesson.exercise));
+    setDialogStep("exercise");
+    setExerciseAnswer("");
+    setExerciseFeedback(null);
+    setIsExercisePassed(false);
+  }
+
+  function submitExercise(lesson: CourseLesson | null) {
+    if (!lesson?.exercise || !exerciseInstance) {
+      return;
+    }
+
+    const normalizedAnswer = exerciseAnswer.trim();
+
+    if (!normalizedAnswer) {
+      setExerciseFeedback(t("courseDetails.enterAnswer"));
+      return;
+    }
+
+    const parsedAnswer = Number(normalizedAnswer.replace(",", "."));
+
+    if (Number.isNaN(parsedAnswer)) {
+      setExerciseFeedback(t("courseDetails.enterAnswer"));
+      return;
+    }
+
+    const roundedAnswer = roundToPrecision(parsedAnswer, lesson.exercise.precision);
+
+    if (roundedAnswer === exerciseInstance.expectedAnswer) {
+      setExerciseFeedback(t("courseDetails.correctAnswer"));
+      setIsExercisePassed(true);
+      return;
+    }
+
+    setExerciseFeedback(
+      lesson.exercise.hint
+        ? t("courseDetails.incorrectAnswerWithHint", { hint: lesson.exercise.hint })
+        : t("courseDetails.incorrectAnswer"),
+    );
+  }
 
   if (!courseId) {
     return <Navigate replace to="/" />;
@@ -103,15 +324,9 @@ export const CourseDetailPage = () => {
                 </span>
               </div>
               <div className="flex items-center gap-3 sm:justify-end">
-                <a
-                  className={buttonVariants({
-                    size: "sm",
-                    variant: "default",
-                  })}
-                  href={`#${course.entrySectionId}`}
-                >
+                <Button onClick={openCourseDialog} size="sm" variant="default">
                   {t("courseDetails.startCourse")}
-                </a>
+                </Button>
                 <Button
                   aria-label={t(
                     isFavorite ? "removeFavoriteCourse" : "favoriteCourse",
@@ -152,7 +367,7 @@ export const CourseDetailPage = () => {
                   </div>
                   <div className="overflow-x-auto pb-2">
                     <div className="flex min-w-max gap-3">
-                      {section.lessonPreviews.map((lesson) => (
+                      {section.lessons.map((lesson) => (
                         <div
                           className="flex flex-col items-center gap-2"
                           key={lesson.id}
@@ -187,6 +402,122 @@ export const CourseDetailPage = () => {
               </Card>
             ))}
           </div>
+          <Dialog onOpenChange={setIsCourseDialogOpen} open={isCourseDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <div className="flex min-w-0 flex-col gap-2">
+                  <DialogTitle>{course.title}</DialogTitle>
+                  {activeLessonEntry ? (
+                    <DialogDescription className="text-base">
+                      {activeLessonEntry.sectionTitle}
+                      {" · "}
+                      {t("courseDetails.progress", {
+                        current: activeLessonIndex + 1,
+                        total: lessonSequence.length,
+                      })}
+                    </DialogDescription>
+                  ) : null}
+                </div>
+                <DialogClose
+                  aria-label={t("courseDetails.closeCourse")}
+                  className="shrink-0"
+                  onClick={closeCourseDialog}
+                />
+              </DialogHeader>
+              <DialogBody>
+                {dialogStep === "complete" ? (
+                  <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+                    <h3 className="text-3xl font-semibold text-stone-950">
+                      {t("courseDetails.completedTitle")}
+                    </h3>
+                    <p className="max-w-2xl text-base leading-7 text-stone-600">
+                      {t("courseDetails.completedDescription")}
+                    </p>
+                    <Button onClick={closeCourseDialog} size="lg" variant="default">
+                      {t("courseDetails.closeCourse")}
+                    </Button>
+                  </div>
+                ) : activeLesson ? (
+                  <div className="flex flex-col gap-6">
+                    <Card className="overflow-hidden border-stone-200/80 bg-white/85 shadow-none">
+                      <CardContent className="flex flex-col gap-6">
+                        {dialogStep === "lesson" ? (
+                          <>
+                            <LessonMarkdown source={activeLesson.body} />
+                            <div className="flex justify-end">
+                              <Button
+                                onClick={() => continueFromLesson(activeLesson)}
+                                size="lg"
+                                variant="default"
+                              >
+                                {t("continue")}
+                              </Button>
+                            </div>
+                          </>
+                        ) : activeLesson.exercise && exerciseInstance ? (
+                          <>
+                            <div className="flex flex-col gap-2">
+                              <h3 className="text-2xl font-semibold text-stone-950">
+                                {activeLesson.exercise.title}
+                              </h3>
+                              <p className="text-base leading-7 text-stone-700">
+                                {renderInlineMarkdown(
+                                  interpolateTemplate(
+                                    activeLesson.exercise.prompt,
+                                    exerciseInstance.variables,
+                                  ),
+                                )}
+                              </p>
+                            </div>
+                            <div className="flex max-w-xs flex-col gap-3">
+                              <label
+                                className="text-sm font-medium text-stone-700"
+                                htmlFor="course-exercise-answer"
+                              >
+                                {t("courseDetails.answerLabel")}
+                              </label>
+                              <Input
+                                id="course-exercise-answer"
+                                onChange={(event) => setExerciseAnswer(event.target.value)}
+                                placeholder={t("courseDetails.answerPlaceholder")}
+                                value={exerciseAnswer}
+                              />
+                            </div>
+                            {exerciseFeedback ? (
+                              <div
+                                className={
+                                  isExercisePassed
+                                    ? "text-sm font-medium text-emerald-700"
+                                    : "text-sm font-medium text-rose-700"
+                                }
+                              >
+                                {exerciseFeedback}
+                              </div>
+                            ) : null}
+                            <div className="flex justify-end">
+                              <Button
+                                onClick={() =>
+                                  isExercisePassed
+                                    ? moveToNextLesson()
+                                    : submitExercise(activeLesson)
+                                }
+                                size="lg"
+                                variant="default"
+                              >
+                                {isExercisePassed
+                                  ? t("continue")
+                                  : t("courseDetails.checkAnswer")}
+                              </Button>
+                            </div>
+                          </>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : null}
+              </DialogBody>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

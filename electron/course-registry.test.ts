@@ -52,4 +52,18 @@ describe("getCourseDetails", () => {
       "Вежбај бројање, редослед и поређење бројева са сигурношћу.",
     );
   });
+
+  it("returns localized lesson body and exercise data", async () => {
+    const course = await getCourseDetails(
+      coursesRoot,
+      "serbian-elementary-school-1st-grade-math",
+      "en",
+    );
+
+    expect(course?.sections[0]?.lessons[0]?.body).toContain("# Numbers to 20");
+    expect(course?.sections[0]?.lessons[0]?.exercise?.title).toBe(
+      "Count the apples",
+    );
+    expect(course?.sections[0]?.lessons[0]?.exercise?.formula).toBe("a + b");
+  });
 });

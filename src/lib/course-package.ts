@@ -34,6 +34,22 @@ export type LocalizedSectionMetadata = {
   title: string;
 };
 
+export type CourseExerciseVariable = {
+  max: number;
+  min: number;
+  type: "integer";
+};
+
+export type CourseExercise = {
+  hint?: string;
+  id: string;
+  precision: number;
+  prompt: string;
+  title: string;
+  variables: Record<string, CourseExerciseVariable>;
+  formula: string;
+};
+
 export type LessonPreview = {
   description: string;
   id: string;
@@ -41,10 +57,15 @@ export type LessonPreview = {
   title: string;
 };
 
+export type CourseLesson = LessonPreview & {
+  body: string;
+  exercise: CourseExercise | null;
+};
+
 export type CourseSectionPreview = {
   description?: string;
   id: string;
-  lessonPreviews: LessonPreview[];
+  lessons: CourseLesson[];
   title: string;
 };
 
