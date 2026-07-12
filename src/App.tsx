@@ -4,6 +4,7 @@ import { HeaderLayout } from "@/components/header-layout";
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
 import { AppStateProvider } from "@/lib/app-state";
+import { CourseDetailPage } from "@/pages/course-detail-page";
 import { CourseSearchPage } from "@/pages/course-search-page";
 import { RolePage } from "@/pages/role-page";
 import { WelcomePage } from "@/pages/welcome-page";
@@ -26,6 +27,7 @@ const AppRoutes = () => {
         }
       >
         <Route element={<CourseSearchPage />} path="/" />
+        <Route element={<CourseDetailPage />} path="/courses/:courseId" />
       </Route>
       <Route element={<OnboardingLayout />}>
         <Route element={<WelcomePage />} path="/onboarding" />

@@ -1,14 +1,11 @@
 {
   "id": "programming-scratch-basics",
   "slug": "programming-scratch-basics",
-  "entryLessonId": "lesson-01-move-and-repeat",
-  "lessonIds": [
-    "lesson-01-move-and-repeat",
-    "lesson-02-turn-and-draw",
-    "lesson-03-events-and-start",
-    "lesson-04-simple-animations",
-    "lesson-05-sounds-and-dialogue",
-    "lesson-06-mini-game-logic"
+  "entrySectionId": "section-01-core-movement",
+  "sectionIds": [
+    "section-01-core-movement",
+    "section-02-events-and-animation",
+    "section-03-media-and-games"
   ],
   "templateIds": {
     "exerciseCard": "shared/templates/exercise-card.md"

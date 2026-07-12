@@ -12,9 +12,9 @@ export type CourseManifest = {
 };
 
 export type SharedCourseIndex = {
-  entryLessonId: string;
+  entrySectionId: string;
   id: string;
-  lessonIds: string[];
+  sectionIds: string[];
   slug: string;
   templateIds: Record<string, string>;
 };
@@ -24,7 +24,13 @@ export type LocalizedCourseMetadata = {
   title: string;
 };
 
+export type LocalizedLessonMetadata = {
+  description: string;
+  title: string;
+};
+
 export type LessonPreview = {
+  description: string;
   id: string;
   iconUrl: string | null;
   title: string;
@@ -42,8 +48,9 @@ export type CourseSummary = {
 
 export type CourseDetails = CourseSummary & {
   courseType: string;
-  entryLessonId: string;
+  entrySectionId: string;
   lessonIds: string[];
+  sectionIds: string[];
   slug: string;
   templateIds: Record<string, string>;
 };

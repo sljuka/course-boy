@@ -1,0 +1,9 @@
+{
+  "id": "section-01-visual-discovery",
+  "slug": "visual-discovery",
+  "lessonIds": [
+    "lesson-01-colors-and-shapes",
+    "lesson-02-count-and-match",
+    "lesson-03-big-and-small"
+  ]
+}

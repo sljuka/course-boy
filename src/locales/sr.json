@@ -21,7 +21,8 @@
     "error": "Kursevi trenutno ne mogu da se učitaju.",
     "loading": "Učitavanje kurseva...",
     "locales": "Jezici: {{locales}}",
-    "placeholder": "Pretraži kurseve",
+    "localesLabel": "Podržani jezici",
+    "placeholder": "matematika za 1. razred",
     "subtitle": "Pretraži instalirane kurseve po nazivu, opisu ili identifikatoru.",
     "title": "Pretraga kurseva",
     "version": "Verzija {{version}}"
@@ -30,6 +31,13 @@
     "preSchoolDescription": "Rano učenje kroz igru, jezik, brojanje i kreativne aktivnosti.",
     "programmingDescription": "Praktičan ulaz u kodiranje, rešavanje problema i pravljenje digitalnih projekata.",
     "serbianElementarySchoolDescription": "Teme iz matematike za prvi razred usklađene sa nastavom srpske osnovne škole."
+  },
+  "courseDetails": {
+    "back": "Nazad na kurseve",
+    "error": "Detalji kursa trenutno ne mogu da se učitaju.",
+    "lessons": "Lekcije",
+    "loading": "Učitavanje kursa...",
+    "missing": "Ovaj kurs nije pronađen."
   },
   "courseItems": {
     "additionAndSubtraction": {

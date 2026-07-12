@@ -21,7 +21,8 @@
     "error": "Courses could not be loaded right now.",
     "loading": "Loading courses...",
     "locales": "Locales: {{locales}}",
-    "placeholder": "Search courses",
+    "localesLabel": "Supported languages",
+    "placeholder": "1st grade math",
     "subtitle": "Search installed courses by title, description, or id.",
     "title": "Search courses",
     "version": "Version {{version}}"
@@ -30,6 +31,13 @@
     "preSchoolDescription": "Early learning through play, language, counting, and creative activities.",
     "programmingDescription": "A practical path into coding, problem solving, and building digital projects.",
     "serbianElementarySchoolDescription": "First-grade math topics aligned with the Serbian elementary-school curriculum."
+  },
+  "courseDetails": {
+    "back": "Back to courses",
+    "error": "Course details could not be loaded right now.",
+    "lessons": "Lessons",
+    "loading": "Loading course...",
+    "missing": "This course could not be found."
   },
   "courseItems": {
     "additionAndSubtraction": {

@@ -1,0 +1,1 @@
+# Pomeranje i ponavljanje

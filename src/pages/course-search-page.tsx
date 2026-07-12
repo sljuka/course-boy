@@ -1,6 +1,7 @@
 import { BookOpen, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,12 @@ import {
 } from "@/components/ui/card";
 import type { CourseSummary } from "@/lib/course-package";
 import { useAppState } from "@/lib/use-app-state";
+
+const localeFlags: Record<CourseSummary["supportedLocales"][number], string> = {
+  en: "🇬🇧",
+  sr: "🇷🇸",
+  "sr-Cyrl": "🇷🇸",
+};
 
 export const CourseSearchPage = () => {
   const { locale } = useAppState();
@@ -113,7 +120,19 @@ export const CourseSearchPage = () => {
           {filteredCourses.map((course) => (
             <Card className="overflow-hidden" key={course.id}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-2xl">{course.title}</CardTitle>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <CardTitle className="text-2xl">
+                    <Link
+                      className="transition-colors hover:text-blue-700"
+                      to={`/courses/${course.id}`}
+                    >
+                      {course.title}
+                    </Link>
+                  </CardTitle>
+                  <span className="text-sm text-stone-500">
+                    {t("courseSearch.version", { version: course.version })}
+                  </span>
+                </div>
                 <CardDescription className="text-base">
                   {course.description}
                 </CardDescription>
@@ -123,12 +142,14 @@ export const CourseSearchPage = () => {
                   {course.id}
                 </span>
                 <span className="rounded-full border border-stone-300/80 bg-white/60 px-3 py-1">
-                  {t("courseSearch.version", { version: course.version })}
-                </span>
-                <span className="rounded-full border border-stone-300/80 bg-white/60 px-3 py-1">
-                  {t("courseSearch.locales", {
-                    locales: course.supportedLocales.join(", "),
-                  })}
+                  <span aria-label={t("courseSearch.localesLabel")}>
+                    {[...new Set(
+                      course.supportedLocales.map(
+                        (supportedLocale) => localeFlags[supportedLocale] ?? "🏳️",
+                      ),
+                    )]
+                      .join(" ")}
+                  </span>
                 </span>
               </CardContent>
               <CardContent className="pt-4">

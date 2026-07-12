@@ -1,0 +1,1 @@
+# Okreni i nacrtaj

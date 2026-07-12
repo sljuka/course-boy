@@ -1,0 +1,27 @@
+import path from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import { listCourses } from "./course-registry";
+
+const coursesRoot = path.resolve(process.cwd(), "courses");
+
+describe("listCourses", () => {
+  it("returns localized lesson preview titles for Serbian", async () => {
+    const courses = await listCourses(coursesRoot, "sr");
+    const mathCourse = courses.find(
+      (course) => course.id === "serbian-elementary-school-1st-grade-math",
+    );
+
+    expect(mathCourse?.lessonPreviews[0]?.title).toBe("Brojevi do 20");
+  });
+
+  it("returns localized lesson preview titles for Serbian Cyrillic", async () => {
+    const courses = await listCourses(coursesRoot, "sr-Cyrl");
+    const mathCourse = courses.find(
+      (course) => course.id === "serbian-elementary-school-1st-grade-math",
+    );
+
+    expect(mathCourse?.lessonPreviews[0]?.title).toBe("Бројеви до 20");
+  });
+});

@@ -504,7 +504,7 @@ if (!IS_WINDOWS) {
 if (IS_LINUX) {
   Signals.push("SIGIO", "SIGPOLL", "SIGPWR", "SIGSTKFLT");
 }
-class Interceptor {
+let Interceptor$1 = class Interceptor {
   /* CONSTRUCTOR */
   constructor() {
     this.callbacks = /* @__PURE__ */ new Set();
@@ -541,9 +541,9 @@ class Interceptor {
     };
     this.hook();
   }
-}
-const Interceptor$1 = new Interceptor();
-const whenExit = Interceptor$1.register;
+};
+const Interceptor2 = new Interceptor$1();
+const whenExit = Interceptor2.register;
 const Temp = {
   /* VARIABLES */
   store: {},
@@ -3370,14 +3370,14 @@ function getData$1($data, { dataLevel, dataNames, dataPathArr }) {
 validate$1.getData = getData$1;
 var validation_error$1 = {};
 Object.defineProperty(validation_error$1, "__esModule", { value: true });
-class ValidationError extends Error {
+let ValidationError$1 = class ValidationError extends Error {
   constructor(errors2) {
     super("validation failed");
     this.errors = errors2;
     this.ajv = this.validation = true;
   }
-}
-validation_error$1.default = ValidationError;
+};
+validation_error$1.default = ValidationError$1;
 var ref_error$1 = {};
 Object.defineProperty(ref_error$1, "__esModule", { value: true });
 const resolve_1$4 = resolve$4;
@@ -8988,49 +8988,55 @@ names$1.default = names;
       keyValues.push([E.propertyName, propertyName]);
   }
 })(errors);
-Object.defineProperty(boolSchema, "__esModule", { value: true });
-boolSchema.boolOrEmptySchema = boolSchema.topBoolOrEmptySchema = void 0;
-const errors_1$3 = errors;
-const codegen_1$t = codegen;
-const names_1$6 = names$1;
-const boolError = {
-  message: "boolean schema is false"
-};
-function topBoolOrEmptySchema(it) {
-  const { gen, schema, validateName } = it;
-  if (schema === false) {
-    falseSchemaError(it, false);
-  } else if (typeof schema == "object" && schema.$async === true) {
-    gen.return(names_1$6.default.data);
-  } else {
-    gen.assign((0, codegen_1$t._)`${validateName}.errors`, null);
-    gen.return(true);
-  }
-}
-boolSchema.topBoolOrEmptySchema = topBoolOrEmptySchema;
-function boolOrEmptySchema(it, valid2) {
-  const { gen, schema } = it;
-  if (schema === false) {
-    gen.var(valid2, false);
-    falseSchemaError(it);
-  } else {
-    gen.var(valid2, true);
-  }
-}
-boolSchema.boolOrEmptySchema = boolOrEmptySchema;
-function falseSchemaError(it, overrideAllErrors) {
-  const { gen, data } = it;
-  const cxt = {
-    gen,
-    keyword: "false schema",
-    data,
-    schema: false,
-    schemaCode: false,
-    schemaValue: false,
-    params: {},
-    it
+var hasRequiredBoolSchema;
+function requireBoolSchema() {
+  if (hasRequiredBoolSchema) return boolSchema;
+  hasRequiredBoolSchema = 1;
+  Object.defineProperty(boolSchema, "__esModule", { value: true });
+  boolSchema.boolOrEmptySchema = boolSchema.topBoolOrEmptySchema = void 0;
+  const errors_12 = errors;
+  const codegen_12 = codegen;
+  const names_12 = names$1;
+  const boolError = {
+    message: "boolean schema is false"
   };
-  (0, errors_1$3.reportError)(cxt, boolError, void 0, overrideAllErrors);
+  function topBoolOrEmptySchema(it) {
+    const { gen, schema, validateName } = it;
+    if (schema === false) {
+      falseSchemaError(it, false);
+    } else if (typeof schema == "object" && schema.$async === true) {
+      gen.return(names_12.default.data);
+    } else {
+      gen.assign((0, codegen_12._)`${validateName}.errors`, null);
+      gen.return(true);
+    }
+  }
+  boolSchema.topBoolOrEmptySchema = topBoolOrEmptySchema;
+  function boolOrEmptySchema(it, valid2) {
+    const { gen, schema } = it;
+    if (schema === false) {
+      gen.var(valid2, false);
+      falseSchemaError(it);
+    } else {
+      gen.var(valid2, true);
+    }
+  }
+  boolSchema.boolOrEmptySchema = boolOrEmptySchema;
+  function falseSchemaError(it, overrideAllErrors) {
+    const { gen, data } = it;
+    const cxt = {
+      gen,
+      keyword: "false schema",
+      data,
+      schema: false,
+      schemaCode: false,
+      schemaValue: false,
+      params: {},
+      it
+    };
+    (0, errors_12.reportError)(cxt, boolError, void 0, overrideAllErrors);
+  }
+  return boolSchema;
 }
 var dataType = {};
 var rules = {};
@@ -9253,35 +9259,41 @@ function getTypeErrorContext(it) {
   };
 }
 var defaults = {};
-Object.defineProperty(defaults, "__esModule", { value: true });
-defaults.assignDefaults = void 0;
-const codegen_1$r = codegen;
-const util_1$q = util;
-function assignDefaults(it, ty) {
-  const { properties: properties2, items: items2 } = it.schema;
-  if (ty === "object" && properties2) {
-    for (const key in properties2) {
-      assignDefault(it, key, properties2[key].default);
+var hasRequiredDefaults;
+function requireDefaults() {
+  if (hasRequiredDefaults) return defaults;
+  hasRequiredDefaults = 1;
+  Object.defineProperty(defaults, "__esModule", { value: true });
+  defaults.assignDefaults = void 0;
+  const codegen_12 = codegen;
+  const util_12 = util;
+  function assignDefaults(it, ty) {
+    const { properties: properties2, items: items2 } = it.schema;
+    if (ty === "object" && properties2) {
+      for (const key in properties2) {
+        assignDefault(it, key, properties2[key].default);
+      }
+    } else if (ty === "array" && Array.isArray(items2)) {
+      items2.forEach((sch, i) => assignDefault(it, i, sch.default));
     }
-  } else if (ty === "array" && Array.isArray(items2)) {
-    items2.forEach((sch, i) => assignDefault(it, i, sch.default));
   }
-}
-defaults.assignDefaults = assignDefaults;
-function assignDefault(it, prop, defaultValue) {
-  const { gen, compositeRule, data, opts } = it;
-  if (defaultValue === void 0)
-    return;
-  const childData = (0, codegen_1$r._)`${data}${(0, codegen_1$r.getProperty)(prop)}`;
-  if (compositeRule) {
-    (0, util_1$q.checkStrictMode)(it, `default is ignored for: ${childData}`);
-    return;
+  defaults.assignDefaults = assignDefaults;
+  function assignDefault(it, prop, defaultValue) {
+    const { gen, compositeRule, data, opts } = it;
+    if (defaultValue === void 0)
+      return;
+    const childData = (0, codegen_12._)`${data}${(0, codegen_12.getProperty)(prop)}`;
+    if (compositeRule) {
+      (0, util_12.checkStrictMode)(it, `default is ignored for: ${childData}`);
+      return;
+    }
+    let condition = (0, codegen_12._)`${childData} === undefined`;
+    if (opts.useDefaults === "empty") {
+      condition = (0, codegen_12._)`${condition} || ${childData} === null || ${childData} === ""`;
+    }
+    gen.if(condition, (0, codegen_12._)`${childData} = ${(0, codegen_12.stringify)(defaultValue)}`);
   }
-  let condition = (0, codegen_1$r._)`${childData} === undefined`;
-  if (opts.useDefaults === "empty") {
-    condition = (0, codegen_1$r._)`${condition} || ${childData} === null || ${childData} === ""`;
-  }
-  gen.if(condition, (0, codegen_1$r._)`${childData} = ${(0, codegen_1$r.stringify)(defaultValue)}`);
+  return defaults;
 }
 var keyword = {};
 var code = {};
@@ -9411,194 +9423,206 @@ function validateUnion(cxt) {
   cxt.result(valid2, () => cxt.reset(), () => cxt.error(true));
 }
 code.validateUnion = validateUnion;
-Object.defineProperty(keyword, "__esModule", { value: true });
-keyword.validateKeywordUsage = keyword.validSchemaType = keyword.funcKeywordCode = keyword.macroKeywordCode = void 0;
-const codegen_1$p = codegen;
-const names_1$4 = names$1;
-const code_1$9 = code;
-const errors_1$1 = errors;
-function macroKeywordCode(cxt, def2) {
-  const { gen, keyword: keyword2, schema, parentSchema, it } = cxt;
-  const macroSchema = def2.macro.call(it.self, schema, parentSchema, it);
-  const schemaRef = useKeyword(gen, keyword2, macroSchema);
-  if (it.opts.validateSchema !== false)
-    it.self.validateSchema(macroSchema, true);
-  const valid2 = gen.name("valid");
-  cxt.subschema({
-    schema: macroSchema,
-    schemaPath: codegen_1$p.nil,
-    errSchemaPath: `${it.errSchemaPath}/${keyword2}`,
-    topSchemaRef: schemaRef,
-    compositeRule: true
-  }, valid2);
-  cxt.pass(valid2, () => cxt.error(true));
-}
-keyword.macroKeywordCode = macroKeywordCode;
-function funcKeywordCode(cxt, def2) {
-  var _a;
-  const { gen, keyword: keyword2, schema, parentSchema, $data, it } = cxt;
-  checkAsyncKeyword(it, def2);
-  const validate2 = !$data && def2.compile ? def2.compile.call(it.self, schema, parentSchema, it) : def2.validate;
-  const validateRef = useKeyword(gen, keyword2, validate2);
-  const valid2 = gen.let("valid");
-  cxt.block$data(valid2, validateKeyword);
-  cxt.ok((_a = def2.valid) !== null && _a !== void 0 ? _a : valid2);
-  function validateKeyword() {
-    if (def2.errors === false) {
-      assignValid();
-      if (def2.modifying)
-        modifyData(cxt);
-      reportErrs(() => cxt.error());
-    } else {
-      const ruleErrs = def2.async ? validateAsync() : validateSync();
-      if (def2.modifying)
-        modifyData(cxt);
-      reportErrs(() => addErrs(cxt, ruleErrs));
+var hasRequiredKeyword;
+function requireKeyword() {
+  if (hasRequiredKeyword) return keyword;
+  hasRequiredKeyword = 1;
+  Object.defineProperty(keyword, "__esModule", { value: true });
+  keyword.validateKeywordUsage = keyword.validSchemaType = keyword.funcKeywordCode = keyword.macroKeywordCode = void 0;
+  const codegen_12 = codegen;
+  const names_12 = names$1;
+  const code_12 = code;
+  const errors_12 = errors;
+  function macroKeywordCode(cxt, def2) {
+    const { gen, keyword: keyword2, schema, parentSchema, it } = cxt;
+    const macroSchema = def2.macro.call(it.self, schema, parentSchema, it);
+    const schemaRef = useKeyword(gen, keyword2, macroSchema);
+    if (it.opts.validateSchema !== false)
+      it.self.validateSchema(macroSchema, true);
+    const valid2 = gen.name("valid");
+    cxt.subschema({
+      schema: macroSchema,
+      schemaPath: codegen_12.nil,
+      errSchemaPath: `${it.errSchemaPath}/${keyword2}`,
+      topSchemaRef: schemaRef,
+      compositeRule: true
+    }, valid2);
+    cxt.pass(valid2, () => cxt.error(true));
+  }
+  keyword.macroKeywordCode = macroKeywordCode;
+  function funcKeywordCode(cxt, def2) {
+    var _a;
+    const { gen, keyword: keyword2, schema, parentSchema, $data, it } = cxt;
+    checkAsyncKeyword(it, def2);
+    const validate2 = !$data && def2.compile ? def2.compile.call(it.self, schema, parentSchema, it) : def2.validate;
+    const validateRef = useKeyword(gen, keyword2, validate2);
+    const valid2 = gen.let("valid");
+    cxt.block$data(valid2, validateKeyword);
+    cxt.ok((_a = def2.valid) !== null && _a !== void 0 ? _a : valid2);
+    function validateKeyword() {
+      if (def2.errors === false) {
+        assignValid();
+        if (def2.modifying)
+          modifyData(cxt);
+        reportErrs(() => cxt.error());
+      } else {
+        const ruleErrs = def2.async ? validateAsync() : validateSync();
+        if (def2.modifying)
+          modifyData(cxt);
+        reportErrs(() => addErrs(cxt, ruleErrs));
+      }
+    }
+    function validateAsync() {
+      const ruleErrs = gen.let("ruleErrs", null);
+      gen.try(() => assignValid((0, codegen_12._)`await `), (e) => gen.assign(valid2, false).if((0, codegen_12._)`${e} instanceof ${it.ValidationError}`, () => gen.assign(ruleErrs, (0, codegen_12._)`${e}.errors`), () => gen.throw(e)));
+      return ruleErrs;
+    }
+    function validateSync() {
+      const validateErrs = (0, codegen_12._)`${validateRef}.errors`;
+      gen.assign(validateErrs, null);
+      assignValid(codegen_12.nil);
+      return validateErrs;
+    }
+    function assignValid(_await = def2.async ? (0, codegen_12._)`await ` : codegen_12.nil) {
+      const passCxt = it.opts.passContext ? names_12.default.this : names_12.default.self;
+      const passSchema = !("compile" in def2 && !$data || def2.schema === false);
+      gen.assign(valid2, (0, codegen_12._)`${_await}${(0, code_12.callValidateCode)(cxt, validateRef, passCxt, passSchema)}`, def2.modifying);
+    }
+    function reportErrs(errors2) {
+      var _a2;
+      gen.if((0, codegen_12.not)((_a2 = def2.valid) !== null && _a2 !== void 0 ? _a2 : valid2), errors2);
     }
   }
-  function validateAsync() {
-    const ruleErrs = gen.let("ruleErrs", null);
-    gen.try(() => assignValid((0, codegen_1$p._)`await `), (e) => gen.assign(valid2, false).if((0, codegen_1$p._)`${e} instanceof ${it.ValidationError}`, () => gen.assign(ruleErrs, (0, codegen_1$p._)`${e}.errors`), () => gen.throw(e)));
-    return ruleErrs;
+  keyword.funcKeywordCode = funcKeywordCode;
+  function modifyData(cxt) {
+    const { gen, data, it } = cxt;
+    gen.if(it.parentData, () => gen.assign(data, (0, codegen_12._)`${it.parentData}[${it.parentDataProperty}]`));
   }
-  function validateSync() {
-    const validateErrs = (0, codegen_1$p._)`${validateRef}.errors`;
-    gen.assign(validateErrs, null);
-    assignValid(codegen_1$p.nil);
-    return validateErrs;
+  function addErrs(cxt, errs) {
+    const { gen } = cxt;
+    gen.if((0, codegen_12._)`Array.isArray(${errs})`, () => {
+      gen.assign(names_12.default.vErrors, (0, codegen_12._)`${names_12.default.vErrors} === null ? ${errs} : ${names_12.default.vErrors}.concat(${errs})`).assign(names_12.default.errors, (0, codegen_12._)`${names_12.default.vErrors}.length`);
+      (0, errors_12.extendErrors)(cxt);
+    }, () => cxt.error());
   }
-  function assignValid(_await = def2.async ? (0, codegen_1$p._)`await ` : codegen_1$p.nil) {
-    const passCxt = it.opts.passContext ? names_1$4.default.this : names_1$4.default.self;
-    const passSchema = !("compile" in def2 && !$data || def2.schema === false);
-    gen.assign(valid2, (0, codegen_1$p._)`${_await}${(0, code_1$9.callValidateCode)(cxt, validateRef, passCxt, passSchema)}`, def2.modifying);
+  function checkAsyncKeyword({ schemaEnv }, def2) {
+    if (def2.async && !schemaEnv.$async)
+      throw new Error("async keyword in sync schema");
   }
-  function reportErrs(errors2) {
-    var _a2;
-    gen.if((0, codegen_1$p.not)((_a2 = def2.valid) !== null && _a2 !== void 0 ? _a2 : valid2), errors2);
+  function useKeyword(gen, keyword2, result) {
+    if (result === void 0)
+      throw new Error(`keyword "${keyword2}" failed to compile`);
+    return gen.scopeValue("keyword", typeof result == "function" ? { ref: result } : { ref: result, code: (0, codegen_12.stringify)(result) });
   }
-}
-keyword.funcKeywordCode = funcKeywordCode;
-function modifyData(cxt) {
-  const { gen, data, it } = cxt;
-  gen.if(it.parentData, () => gen.assign(data, (0, codegen_1$p._)`${it.parentData}[${it.parentDataProperty}]`));
-}
-function addErrs(cxt, errs) {
-  const { gen } = cxt;
-  gen.if((0, codegen_1$p._)`Array.isArray(${errs})`, () => {
-    gen.assign(names_1$4.default.vErrors, (0, codegen_1$p._)`${names_1$4.default.vErrors} === null ? ${errs} : ${names_1$4.default.vErrors}.concat(${errs})`).assign(names_1$4.default.errors, (0, codegen_1$p._)`${names_1$4.default.vErrors}.length`);
-    (0, errors_1$1.extendErrors)(cxt);
-  }, () => cxt.error());
-}
-function checkAsyncKeyword({ schemaEnv }, def2) {
-  if (def2.async && !schemaEnv.$async)
-    throw new Error("async keyword in sync schema");
-}
-function useKeyword(gen, keyword2, result) {
-  if (result === void 0)
-    throw new Error(`keyword "${keyword2}" failed to compile`);
-  return gen.scopeValue("keyword", typeof result == "function" ? { ref: result } : { ref: result, code: (0, codegen_1$p.stringify)(result) });
-}
-function validSchemaType(schema, schemaType, allowUndefined = false) {
-  return !schemaType.length || schemaType.some((st) => st === "array" ? Array.isArray(schema) : st === "object" ? schema && typeof schema == "object" && !Array.isArray(schema) : typeof schema == st || allowUndefined && typeof schema == "undefined");
-}
-keyword.validSchemaType = validSchemaType;
-function validateKeywordUsage({ schema, opts, self, errSchemaPath }, def2, keyword2) {
-  if (Array.isArray(def2.keyword) ? !def2.keyword.includes(keyword2) : def2.keyword !== keyword2) {
-    throw new Error("ajv implementation error");
+  function validSchemaType(schema, schemaType, allowUndefined = false) {
+    return !schemaType.length || schemaType.some((st) => st === "array" ? Array.isArray(schema) : st === "object" ? schema && typeof schema == "object" && !Array.isArray(schema) : typeof schema == st || allowUndefined && typeof schema == "undefined");
   }
-  const deps = def2.dependencies;
-  if (deps === null || deps === void 0 ? void 0 : deps.some((kwd) => !Object.prototype.hasOwnProperty.call(schema, kwd))) {
-    throw new Error(`parent schema must have dependencies of ${keyword2}: ${deps.join(",")}`);
-  }
-  if (def2.validateSchema) {
-    const valid2 = def2.validateSchema(schema[keyword2]);
-    if (!valid2) {
-      const msg = `keyword "${keyword2}" value is invalid at path "${errSchemaPath}": ` + self.errorsText(def2.validateSchema.errors);
-      if (opts.validateSchema === "log")
-        self.logger.error(msg);
-      else
-        throw new Error(msg);
+  keyword.validSchemaType = validSchemaType;
+  function validateKeywordUsage({ schema, opts, self, errSchemaPath }, def2, keyword2) {
+    if (Array.isArray(def2.keyword) ? !def2.keyword.includes(keyword2) : def2.keyword !== keyword2) {
+      throw new Error("ajv implementation error");
+    }
+    const deps = def2.dependencies;
+    if (deps === null || deps === void 0 ? void 0 : deps.some((kwd) => !Object.prototype.hasOwnProperty.call(schema, kwd))) {
+      throw new Error(`parent schema must have dependencies of ${keyword2}: ${deps.join(",")}`);
+    }
+    if (def2.validateSchema) {
+      const valid2 = def2.validateSchema(schema[keyword2]);
+      if (!valid2) {
+        const msg = `keyword "${keyword2}" value is invalid at path "${errSchemaPath}": ` + self.errorsText(def2.validateSchema.errors);
+        if (opts.validateSchema === "log")
+          self.logger.error(msg);
+        else
+          throw new Error(msg);
+      }
     }
   }
+  keyword.validateKeywordUsage = validateKeywordUsage;
+  return keyword;
 }
-keyword.validateKeywordUsage = validateKeywordUsage;
 var subschema = {};
-Object.defineProperty(subschema, "__esModule", { value: true });
-subschema.extendSubschemaMode = subschema.extendSubschemaData = subschema.getSubschema = void 0;
-const codegen_1$o = codegen;
-const util_1$o = util;
-function getSubschema(it, { keyword: keyword2, schemaProp, schema, schemaPath, errSchemaPath, topSchemaRef }) {
-  if (keyword2 !== void 0 && schema !== void 0) {
-    throw new Error('both "keyword" and "schema" passed, only one allowed');
-  }
-  if (keyword2 !== void 0) {
-    const sch = it.schema[keyword2];
-    return schemaProp === void 0 ? {
-      schema: sch,
-      schemaPath: (0, codegen_1$o._)`${it.schemaPath}${(0, codegen_1$o.getProperty)(keyword2)}`,
-      errSchemaPath: `${it.errSchemaPath}/${keyword2}`
-    } : {
-      schema: sch[schemaProp],
-      schemaPath: (0, codegen_1$o._)`${it.schemaPath}${(0, codegen_1$o.getProperty)(keyword2)}${(0, codegen_1$o.getProperty)(schemaProp)}`,
-      errSchemaPath: `${it.errSchemaPath}/${keyword2}/${(0, util_1$o.escapeFragment)(schemaProp)}`
-    };
-  }
-  if (schema !== void 0) {
-    if (schemaPath === void 0 || errSchemaPath === void 0 || topSchemaRef === void 0) {
-      throw new Error('"schemaPath", "errSchemaPath" and "topSchemaRef" are required with "schema"');
+var hasRequiredSubschema;
+function requireSubschema() {
+  if (hasRequiredSubschema) return subschema;
+  hasRequiredSubschema = 1;
+  Object.defineProperty(subschema, "__esModule", { value: true });
+  subschema.extendSubschemaMode = subschema.extendSubschemaData = subschema.getSubschema = void 0;
+  const codegen_12 = codegen;
+  const util_12 = util;
+  function getSubschema(it, { keyword: keyword2, schemaProp, schema, schemaPath, errSchemaPath, topSchemaRef }) {
+    if (keyword2 !== void 0 && schema !== void 0) {
+      throw new Error('both "keyword" and "schema" passed, only one allowed');
     }
-    return {
-      schema,
-      schemaPath,
-      topSchemaRef,
-      errSchemaPath
-    };
+    if (keyword2 !== void 0) {
+      const sch = it.schema[keyword2];
+      return schemaProp === void 0 ? {
+        schema: sch,
+        schemaPath: (0, codegen_12._)`${it.schemaPath}${(0, codegen_12.getProperty)(keyword2)}`,
+        errSchemaPath: `${it.errSchemaPath}/${keyword2}`
+      } : {
+        schema: sch[schemaProp],
+        schemaPath: (0, codegen_12._)`${it.schemaPath}${(0, codegen_12.getProperty)(keyword2)}${(0, codegen_12.getProperty)(schemaProp)}`,
+        errSchemaPath: `${it.errSchemaPath}/${keyword2}/${(0, util_12.escapeFragment)(schemaProp)}`
+      };
+    }
+    if (schema !== void 0) {
+      if (schemaPath === void 0 || errSchemaPath === void 0 || topSchemaRef === void 0) {
+        throw new Error('"schemaPath", "errSchemaPath" and "topSchemaRef" are required with "schema"');
+      }
+      return {
+        schema,
+        schemaPath,
+        topSchemaRef,
+        errSchemaPath
+      };
+    }
+    throw new Error('either "keyword" or "schema" must be passed');
   }
-  throw new Error('either "keyword" or "schema" must be passed');
+  subschema.getSubschema = getSubschema;
+  function extendSubschemaData(subschema2, it, { dataProp, dataPropType: dpType, data, dataTypes, propertyName }) {
+    if (data !== void 0 && dataProp !== void 0) {
+      throw new Error('both "data" and "dataProp" passed, only one allowed');
+    }
+    const { gen } = it;
+    if (dataProp !== void 0) {
+      const { errorPath, dataPathArr, opts } = it;
+      const nextData = gen.let("data", (0, codegen_12._)`${it.data}${(0, codegen_12.getProperty)(dataProp)}`, true);
+      dataContextProps(nextData);
+      subschema2.errorPath = (0, codegen_12.str)`${errorPath}${(0, util_12.getErrorPath)(dataProp, dpType, opts.jsPropertySyntax)}`;
+      subschema2.parentDataProperty = (0, codegen_12._)`${dataProp}`;
+      subschema2.dataPathArr = [...dataPathArr, subschema2.parentDataProperty];
+    }
+    if (data !== void 0) {
+      const nextData = data instanceof codegen_12.Name ? data : gen.let("data", data, true);
+      dataContextProps(nextData);
+      if (propertyName !== void 0)
+        subschema2.propertyName = propertyName;
+    }
+    if (dataTypes)
+      subschema2.dataTypes = dataTypes;
+    function dataContextProps(_nextData) {
+      subschema2.data = _nextData;
+      subschema2.dataLevel = it.dataLevel + 1;
+      subschema2.dataTypes = [];
+      it.definedProperties = /* @__PURE__ */ new Set();
+      subschema2.parentData = it.data;
+      subschema2.dataNames = [...it.dataNames, _nextData];
+    }
+  }
+  subschema.extendSubschemaData = extendSubschemaData;
+  function extendSubschemaMode(subschema2, { jtdDiscriminator, jtdMetadata, compositeRule, createErrors, allErrors }) {
+    if (compositeRule !== void 0)
+      subschema2.compositeRule = compositeRule;
+    if (createErrors !== void 0)
+      subschema2.createErrors = createErrors;
+    if (allErrors !== void 0)
+      subschema2.allErrors = allErrors;
+    subschema2.jtdDiscriminator = jtdDiscriminator;
+    subschema2.jtdMetadata = jtdMetadata;
+  }
+  subschema.extendSubschemaMode = extendSubschemaMode;
+  return subschema;
 }
-subschema.getSubschema = getSubschema;
-function extendSubschemaData(subschema2, it, { dataProp, dataPropType: dpType, data, dataTypes, propertyName }) {
-  if (data !== void 0 && dataProp !== void 0) {
-    throw new Error('both "data" and "dataProp" passed, only one allowed');
-  }
-  const { gen } = it;
-  if (dataProp !== void 0) {
-    const { errorPath, dataPathArr, opts } = it;
-    const nextData = gen.let("data", (0, codegen_1$o._)`${it.data}${(0, codegen_1$o.getProperty)(dataProp)}`, true);
-    dataContextProps(nextData);
-    subschema2.errorPath = (0, codegen_1$o.str)`${errorPath}${(0, util_1$o.getErrorPath)(dataProp, dpType, opts.jsPropertySyntax)}`;
-    subschema2.parentDataProperty = (0, codegen_1$o._)`${dataProp}`;
-    subschema2.dataPathArr = [...dataPathArr, subschema2.parentDataProperty];
-  }
-  if (data !== void 0) {
-    const nextData = data instanceof codegen_1$o.Name ? data : gen.let("data", data, true);
-    dataContextProps(nextData);
-    if (propertyName !== void 0)
-      subschema2.propertyName = propertyName;
-  }
-  if (dataTypes)
-    subschema2.dataTypes = dataTypes;
-  function dataContextProps(_nextData) {
-    subschema2.data = _nextData;
-    subschema2.dataLevel = it.dataLevel + 1;
-    subschema2.dataTypes = [];
-    it.definedProperties = /* @__PURE__ */ new Set();
-    subschema2.parentData = it.data;
-    subschema2.dataNames = [...it.dataNames, _nextData];
-  }
-}
-subschema.extendSubschemaData = extendSubschemaData;
-function extendSubschemaMode(subschema2, { jtdDiscriminator, jtdMetadata, compositeRule, createErrors, allErrors }) {
-  if (compositeRule !== void 0)
-    subschema2.compositeRule = compositeRule;
-  if (createErrors !== void 0)
-    subschema2.createErrors = createErrors;
-  if (allErrors !== void 0)
-    subschema2.allErrors = allErrors;
-  subschema2.jtdDiscriminator = jtdDiscriminator;
-  subschema2.jtdMetadata = jtdMetadata;
-}
-subschema.extendSubschemaMode = extendSubschemaMode;
 var resolve$1 = {};
 var jsonSchemaTraverse = { exports: {} };
 var traverse$1 = jsonSchemaTraverse.exports = function(schema, opts, cb) {
@@ -9834,13 +9858,13 @@ function getSchemaRefs(schema, baseId) {
 resolve$1.getSchemaRefs = getSchemaRefs;
 Object.defineProperty(validate, "__esModule", { value: true });
 validate.getData = validate.KeywordCxt = validate.validateFunctionCode = void 0;
-const boolSchema_1 = boolSchema;
+const boolSchema_1 = requireBoolSchema();
 const dataType_1$1 = dataType;
 const applicability_1 = applicability;
 const dataType_2 = dataType;
-const defaults_1 = defaults;
-const keyword_1 = keyword;
-const subschema_1 = subschema;
+const defaults_1 = requireDefaults();
+const keyword_1 = requireKeyword();
+const subschema_1 = requireSubschema();
 const codegen_1$n = codegen;
 const names_1$3 = names$1;
 const resolve_1$2 = resolve$1;
@@ -14959,7 +14983,7 @@ const ltr = ltr_1;
 const intersects = intersects_1;
 const simplifyRange = simplify;
 const subset = subset_1;
-var semver = {
+var semver$1 = {
   parse,
   valid,
   clean,
@@ -15007,7 +15031,7 @@ var semver = {
   compareIdentifiers: identifiers.compareIdentifiers,
   rcompareIdentifiers: identifiers.rcompareIdentifiers
 };
-const semver$1 = /* @__PURE__ */ getDefaultExportFromCjs(semver);
+const semver = /* @__PURE__ */ getDefaultExportFromCjs(semver$1);
 const objectToString = Object.prototype.toString;
 const uint8ArrayStringified = "[object Uint8Array]";
 const arrayBufferStringified = "[object ArrayBuffer]";
@@ -15517,7 +15541,7 @@ class Conf {
         throw new Error(`Something went wrong during the migration! Changes applied to the store until this failed migration will be restored. ${errorMessage}`);
       }
     }
-    if (this._isVersionInRangeFormat(previousMigratedVersion) || !semver$1.eq(previousMigratedVersion, versionToMigrate)) {
+    if (this._isVersionInRangeFormat(previousMigratedVersion) || !semver.eq(previousMigratedVersion, versionToMigrate)) {
       this._set(MIGRATION_KEY, versionToMigrate);
     }
   }
@@ -15548,19 +15572,19 @@ class Conf {
     return candidate === INTERNAL_KEY || candidate.startsWith(`${INTERNAL_KEY}.`);
   }
   _isVersionInRangeFormat(version) {
-    return semver$1.clean(version) === null;
+    return semver.clean(version) === null;
   }
   _shouldPerformMigration(candidateVersion, previousMigratedVersion, versionToMigrate) {
     if (this._isVersionInRangeFormat(candidateVersion)) {
-      if (previousMigratedVersion !== "0.0.0" && semver$1.satisfies(previousMigratedVersion, candidateVersion)) {
+      if (previousMigratedVersion !== "0.0.0" && semver.satisfies(previousMigratedVersion, candidateVersion)) {
         return false;
       }
-      return semver$1.satisfies(versionToMigrate, candidateVersion);
+      return semver.satisfies(versionToMigrate, candidateVersion);
     }
-    if (semver$1.lte(candidateVersion, previousMigratedVersion)) {
+    if (semver.lte(candidateVersion, previousMigratedVersion)) {
       return false;
     }
-    if (semver$1.gt(candidateVersion, versionToMigrate)) {
+    if (semver.gt(candidateVersion, versionToMigrate)) {
       return false;
     }
     return true;
@@ -15781,11 +15805,18 @@ function isSharedCourseIndex(value) {
     return false;
   }
   const courseIndex = value;
-  return typeof courseIndex.id === "string" && typeof courseIndex.slug === "string" && typeof courseIndex.entryLessonId === "string" && Array.isArray(courseIndex.lessonIds) && courseIndex.lessonIds.every((lessonId) => typeof lessonId === "string") && Boolean(courseIndex.templateIds) && typeof courseIndex.templateIds === "object" && Object.values(courseIndex.templateIds).every(
+  return typeof courseIndex.id === "string" && typeof courseIndex.slug === "string" && typeof courseIndex.entrySectionId === "string" && Array.isArray(courseIndex.sectionIds) && courseIndex.sectionIds.every((sectionId) => typeof sectionId === "string") && Boolean(courseIndex.templateIds) && typeof courseIndex.templateIds === "object" && Object.values(courseIndex.templateIds).every(
     (templatePath) => typeof templatePath === "string"
   );
 }
 function isLocalizedCourseMetadata(value) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const metadata2 = value;
+  return typeof metadata2.title === "string" && typeof metadata2.description === "string";
+}
+function isLocalizedLessonMetadata(value) {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -15798,6 +15829,13 @@ function isSharedLessonDefinition(value) {
   }
   const lesson = value;
   return typeof lesson.id === "string" && typeof lesson.slug === "string" && (typeof lesson.icon === "undefined" || typeof lesson.icon === "string");
+}
+function isSharedSectionDefinition(value) {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const section = value;
+  return typeof section.id === "string" && typeof section.slug === "string" && Array.isArray(section.lessonIds) && section.lessonIds.every((lessonId) => typeof lessonId === "string");
 }
 async function readJsonFile(filePath, validator) {
   const fileContents = await fs$1.readFile(filePath, "utf8");
@@ -15885,18 +15923,25 @@ async function readSharedLessonDefinition(courseRecord, lessonId) {
     isSharedLessonDefinition
   );
 }
-function resolveLocalizedLessonPath(courseRecord, locale, lessonSlug) {
+async function readSharedSectionDefinition(courseRecord, sectionId) {
+  return readJsonFile(
+    path.join(
+      courseRecord.directoryPath,
+      courseRecord.manifest.sharedPath,
+      "sections",
+      `${sectionId}.json`
+    ),
+    isSharedSectionDefinition
+  );
+}
+function resolveLocalizedLessonMetadataPath(courseRecord, locale, lessonId) {
   return path.join(
     courseRecord.directoryPath,
     courseRecord.manifest.localesPath,
     locale,
     "lessons",
-    `${lessonSlug}.md`
+    `${lessonId}.json`
   );
-}
-function extractMarkdownTitle(markdownSource) {
-  const titleLine = markdownSource.split(/\r?\n/).find((line) => line.trim().startsWith("# "));
-  return titleLine ? titleLine.replace(/^#\s+/, "").trim() : null;
 }
 async function readLessonPreview(courseRecord, lessonId, preferredLocale) {
   const sharedLesson = await readSharedLessonDefinition(courseRecord, lessonId);
@@ -15908,23 +15953,26 @@ async function readLessonPreview(courseRecord, lessonId, preferredLocale) {
   });
   for (const locale of requestedLocales) {
     try {
-      const lessonMarkdown = await fs$1.readFile(
-        resolveLocalizedLessonPath(courseRecord, locale, sharedLesson.slug),
-        "utf8"
+      const lessonMetadata = await readJsonFile(
+        resolveLocalizedLessonMetadataPath(
+          courseRecord,
+          locale,
+          lessonId
+        ),
+        isLocalizedLessonMetadata
       );
-      const title2 = extractMarkdownTitle(lessonMarkdown);
-      if (title2) {
-        return {
-          id: lessonId,
-          iconUrl: await resolveLessonIconUrl(courseRecord, sharedLesson.icon),
-          title: title2
-        };
-      }
+      return {
+        description: lessonMetadata.description,
+        id: lessonId,
+        iconUrl: await resolveLessonIconUrl(courseRecord, sharedLesson.icon),
+        title: lessonMetadata.title
+      };
     } catch {
       continue;
     }
   }
   return {
+    description: "",
     id: lessonId,
     iconUrl: await resolveLessonIconUrl(courseRecord, sharedLesson.icon),
     title: sharedLesson.slug.replace(/-/g, " ")
@@ -15962,6 +16010,12 @@ async function readLessonPreviews(courseRecord, lessonIds, preferredLocale) {
     )
   );
 }
+async function readCourseLessonIds(courseRecord, sectionIds) {
+  const sections = await Promise.all(
+    sectionIds.map((sectionId) => readSharedSectionDefinition(courseRecord, sectionId))
+  );
+  return [...new Set(sections.flatMap((section) => section.lessonIds))];
+}
 function toCourseSummary(courseRecord, localizedCourseMetadata, lessonPreviews) {
   return {
     defaultLocale: courseRecord.manifest.defaultLocale,
@@ -15981,9 +16035,13 @@ async function listCourses(rootDirectoryPath, preferredLocale) {
         readLocalizedCourseMetadata(courseRecord, preferredLocale),
         readSharedCourseIndex(courseRecord)
       ]);
+      const lessonIds = await readCourseLessonIds(
+        courseRecord,
+        sharedCourseIndex.sectionIds
+      );
       const lessonPreviews = await readLessonPreviews(
         courseRecord,
-        sharedCourseIndex.lessonIds,
+        lessonIds,
         preferredLocale
       );
       return toCourseSummary(
@@ -15994,7 +16052,7 @@ async function listCourses(rootDirectoryPath, preferredLocale) {
     })
   );
   return courseSummaries.sort(
-    (leftCourse, rightCourse) => leftCourse.title.localeCompare(rightCourse.title)
+    (leftCourse, rightCourse) => leftCourse.id.localeCompare(rightCourse.id)
   );
 }
 async function getCourseDetails(rootDirectoryPath, courseId, preferredLocale) {
@@ -16007,19 +16065,24 @@ async function getCourseDetails(rootDirectoryPath, courseId, preferredLocale) {
     readLocalizedCourseMetadata(courseRecord, preferredLocale),
     readSharedCourseIndex(courseRecord)
   ]);
+  const lessonIds = await readCourseLessonIds(
+    courseRecord,
+    sharedCourseIndex.sectionIds
+  );
   return {
     ...toCourseSummary(
       courseRecord,
       localizedCourseMetadata,
       await readLessonPreviews(
         courseRecord,
-        sharedCourseIndex.lessonIds,
+        lessonIds,
         preferredLocale
       )
     ),
     courseType: courseRecord.manifest.courseType,
-    entryLessonId: sharedCourseIndex.entryLessonId,
-    lessonIds: sharedCourseIndex.lessonIds,
+    entrySectionId: sharedCourseIndex.entrySectionId,
+    lessonIds,
+    sectionIds: sharedCourseIndex.sectionIds,
     slug: sharedCourseIndex.slug,
     templateIds: sharedCourseIndex.templateIds
   };

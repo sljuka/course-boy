@@ -1,0 +1,1 @@
+# Kupovina i ukupni iznos
