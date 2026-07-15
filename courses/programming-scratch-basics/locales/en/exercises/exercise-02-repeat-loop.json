@@ -1,4 +1,0 @@
-{
-  "title": "Repeat the move",
-  "prompt": "If the sprite moves {{step}} steps and repeats that {{times}} times, how many steps does it move in total?"
-}

@@ -1,0 +1,18 @@
+{
+  "id": "lesson-04-travel-time",
+  "slug": "travel-time",
+  "locales": {
+    "en": {
+      "title": "Travel time",
+      "description": ""
+    },
+    "sr": {
+      "title": "Vreme putovanja",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Време путовања",
+      "description": ""
+    }
+  }
+}

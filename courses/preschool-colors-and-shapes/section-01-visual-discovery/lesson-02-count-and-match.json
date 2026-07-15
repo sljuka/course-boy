@@ -1,0 +1,18 @@
+{
+  "id": "lesson-02-count-and-match",
+  "slug": "count-and-match",
+  "locales": {
+    "en": {
+      "title": "Count and match",
+      "description": ""
+    },
+    "sr": {
+      "title": "Broji i poveži",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Броји и повежи",
+      "description": ""
+    }
+  }
+}

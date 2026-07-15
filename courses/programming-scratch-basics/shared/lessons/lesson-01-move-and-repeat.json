@@ -1,9 +1,0 @@
-{
-  "id": "lesson-01-move-and-repeat",
-  "slug": "move-and-repeat",
-  "exerciseIds": [
-    "exercise-01-steps-forward",
-    "exercise-02-repeat-loop"
-  ],
-  "template": "shared/templates/exercise-card.md"
-}

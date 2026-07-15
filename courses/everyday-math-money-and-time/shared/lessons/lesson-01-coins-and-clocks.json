@@ -1,9 +1,0 @@
-{
-  "id": "lesson-01-coins-and-clocks",
-  "slug": "coins-and-clocks",
-  "exerciseIds": [
-    "exercise-01-count-coins",
-    "exercise-02-elapsed-hours"
-  ],
-  "template": "shared/templates/exercise-card.md"
-}

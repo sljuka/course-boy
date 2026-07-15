@@ -1,0 +1,19 @@
+{
+  "id": "lesson-02-addition-within-10",
+  "slug": "addition-within-10",
+  "template": "templates/lesson-summary.md",
+  "locales": {
+    "en": {
+      "title": "Addition within 10",
+      "description": ""
+    },
+    "sr": {
+      "title": "Sabiranje do 10",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Сабирање до 10",
+      "description": ""
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "section-02-patterns-and-nature",
+  "slug": "patterns-and-nature",
+  "locales": {
+    "en": {
+      "title": "Patterns and nature",
+      "description": "Spot repeating patterns and connect them with the world around you."
+    },
+    "sr": {
+      "title": "Obrasci i priroda",
+      "description": "Prepoznaj ponavljanja i poveži ih sa svetom oko sebe."
+    },
+    "sr-Cyrl": {
+      "title": "Обрасци и природа",
+      "description": "Препознај понављања и повежи их са светом око себе."
+    }
+  }
+}

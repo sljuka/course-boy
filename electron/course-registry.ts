@@ -2,18 +2,20 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import type {
-  CourseExercise,
+  CourseTest,
+  CourseTestStructureRule,
   CourseExerciseVariable,
   CourseLesson,
   CourseSectionPreview,
   CourseDetails,
   CourseManifest,
+  CoursePreviewItem,
   CourseSummary,
   LessonPreview,
   LocalizedCourseMetadata,
   LocalizedLessonMetadata,
   LocalizedSectionMetadata,
-  SharedCourseIndex,
+  StoredSectionDefinition,
 } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 
@@ -23,33 +25,34 @@ type CourseRecord = {
 };
 
 type SharedLessonDefinition = {
-  exerciseIds?: string[];
   id: string;
   icon?: string;
+  locales: Record<Locale, LocalizedLessonMetadata>;
   slug: string;
   template?: string;
 };
 
 type SharedSectionDefinition = {
   id: string;
+  locales: Record<Locale, LocalizedSectionMetadata>;
   lessonIds: string[];
   slug: string;
 };
 
-type SharedExerciseDefinition = {
-  id: string;
+type SharedTestExerciseDefinition = {
+  locales: Record<Locale, { hint?: string; prompt: string }>;
   solution: {
     formula: string;
     precision: number;
   };
-  template: string;
+  tags: string[];
   variables: Record<string, CourseExerciseVariable>;
 };
 
-type LocalizedExerciseMetadata = {
-  hint?: string;
-  prompt: string;
-  title: string;
+type SharedTestDefinition = {
+  exercises: SharedTestExerciseDefinition[];
+  structure?: CourseTestStructureRule[];
+  template: string;
 };
 
 const allowedIconExtensions = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);
@@ -60,6 +63,11 @@ const iconMimeTypes: Record<string, string> = {
   ".svg": "image/svg+xml",
   ".webp": "image/webp",
 };
+const sectionDirectoryPattern = /^section-(\d{2})-[a-z0-9-]+$/;
+
+function extractTemplateVariables(source: string): string[] {
+  return [...source.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]);
+}
 
 function isLocale(value: unknown): value is Locale {
   return value === "en" || value === "sr" || value === "sr-Cyrl";
@@ -76,32 +84,16 @@ function isCourseManifest(value: unknown): value is CourseManifest {
     typeof manifest.id === "string" &&
     typeof manifest.version === "string" &&
     typeof manifest.courseType === "string" &&
-    typeof manifest.sharedIndex === "string" &&
-    typeof manifest.sharedPath === "string" &&
-    typeof manifest.localesPath === "string" &&
+    typeof manifest.slug === "string" &&
+    Boolean(manifest.locales) &&
+    typeof manifest.locales === "object" &&
+    Object.entries(manifest.locales).every(([locale, metadata]) => {
+      return isLocale(locale) && isLocalizedCourseMetadata(metadata);
+    }) &&
     isLocale(manifest.defaultLocale) &&
     Array.isArray(manifest.supportedLocales) &&
-    manifest.supportedLocales.every(isLocale)
-  );
-}
-
-function isSharedCourseIndex(value: unknown): value is SharedCourseIndex {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const courseIndex = value as Partial<SharedCourseIndex>;
-
-  return (
-    typeof courseIndex.id === "string" &&
-    typeof courseIndex.slug === "string" &&
-    typeof courseIndex.entrySectionId === "string" &&
-    Array.isArray(courseIndex.sectionIds) &&
-    courseIndex.sectionIds.every((sectionId) => typeof sectionId === "string") &&
-    Boolean(courseIndex.templateIds) &&
-    typeof courseIndex.templateIds === "object" &&
-    Object.values(courseIndex.templateIds).every(
-      (templatePath) => typeof templatePath === "string",
+    manifest.supportedLocales.every(
+      (locale) => isLocale(locale) && Boolean(manifest.locales?.[locale]),
     )
   );
 }
@@ -164,79 +156,147 @@ function isSharedLessonDefinition(
   return (
     typeof lesson.id === "string" &&
     typeof lesson.slug === "string" &&
+    Boolean(lesson.locales) &&
+    typeof lesson.locales === "object" &&
+    Object.entries(lesson.locales).every(([locale, metadata]) => {
+      return isLocale(locale) && isLocalizedLessonMetadata(metadata);
+    }) &&
     (typeof lesson.icon === "undefined" || typeof lesson.icon === "string") &&
-    (typeof lesson.exerciseIds === "undefined" ||
-      (Array.isArray(lesson.exerciseIds) &&
-        lesson.exerciseIds.every((exerciseId) => typeof exerciseId === "string"))) &&
     (typeof lesson.template === "undefined" || typeof lesson.template === "string")
   );
 }
 
-function isSharedSectionDefinition(
+function isStoredSectionDefinition(
   value: unknown,
-): value is SharedSectionDefinition {
+): value is StoredSectionDefinition {
   if (!value || typeof value !== "object") {
     return false;
   }
 
-  const section = value as Partial<SharedSectionDefinition>;
+  const section = value as Partial<StoredSectionDefinition>;
 
   return (
     typeof section.id === "string" &&
     typeof section.slug === "string" &&
-    Array.isArray(section.lessonIds) &&
-    section.lessonIds.every((lessonId) => typeof lessonId === "string")
-  );
-}
-
-function isSharedExerciseDefinition(
-  value: unknown,
-): value is SharedExerciseDefinition {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const exercise = value as Partial<SharedExerciseDefinition>;
-
-  return (
-    typeof exercise.id === "string" &&
-    typeof exercise.template === "string" &&
-    Boolean(exercise.solution) &&
-    typeof exercise.solution === "object" &&
-    typeof exercise.solution.formula === "string" &&
-    typeof exercise.solution.precision === "number" &&
-    Boolean(exercise.variables) &&
-    typeof exercise.variables === "object" &&
-    Object.values(exercise.variables).every((variable) => {
-      if (!variable || typeof variable !== "object") {
-        return false;
-      }
-
-      const typedVariable = variable as Partial<CourseExerciseVariable>;
-
-      return (
-        typedVariable.type === "integer" &&
-        typeof typedVariable.min === "number" &&
-        typeof typedVariable.max === "number"
-      );
+    Boolean(section.locales) &&
+    typeof section.locales === "object" &&
+    Object.entries(section.locales).every(([locale, metadata]) => {
+      return isLocale(locale) && isLocalizedSectionMetadata(metadata);
     })
   );
 }
 
-function isLocalizedExerciseMetadata(
+function isSharedTestDefinition(
   value: unknown,
-): value is LocalizedExerciseMetadata {
+): value is SharedTestDefinition {
   if (!value || typeof value !== "object") {
     return false;
   }
 
-  const metadata = value as Partial<LocalizedExerciseMetadata>;
+  const test = value as Partial<SharedTestDefinition>;
 
-  return (
-    typeof metadata.title === "string" &&
-    typeof metadata.prompt === "string" &&
-    (typeof metadata.hint === "undefined" || typeof metadata.hint === "string")
-  );
+  if (
+    typeof test.template !== "string" ||
+    !Array.isArray(test.exercises) ||
+    test.exercises.length === 0
+  ) {
+    return false;
+  }
+
+  const exercisesAreValid = test.exercises.every((exercise) => {
+    if (!exercise || typeof exercise !== "object") {
+      return false;
+    }
+
+    if (
+      !Array.isArray(exercise.tags) ||
+      exercise.tags.length === 0 ||
+      !exercise.tags.every((tag) => typeof tag === "string" && tag.length > 0)
+    ) {
+      return false;
+    }
+
+    if (
+      !exercise.locales ||
+      typeof exercise.locales !== "object" ||
+      !Object.entries(exercise.locales).every(([locale, metadata]) => {
+        return (
+          isLocale(locale) &&
+          Boolean(metadata) &&
+          typeof metadata === "object" &&
+          typeof metadata.prompt === "string" &&
+          (typeof metadata.hint === "undefined" || typeof metadata.hint === "string")
+        );
+      })
+    ) {
+      return false;
+    }
+
+    if (
+      !exercise.solution ||
+      typeof exercise.solution !== "object" ||
+      typeof exercise.solution.formula !== "string" ||
+      typeof exercise.solution.precision !== "number" ||
+      !exercise.variables ||
+      typeof exercise.variables !== "object" ||
+      !Object.values(exercise.variables).every((variable) => {
+        if (!variable || typeof variable !== "object") {
+          return false;
+        }
+
+        const typedVariable = variable as Partial<CourseExerciseVariable>;
+
+        return (
+          typedVariable.type === "integer" &&
+          typeof typedVariable.min === "number" &&
+          typeof typedVariable.max === "number"
+        );
+      })
+    ) {
+      return false;
+    }
+
+    const variableNames = new Set(Object.keys(exercise.variables));
+
+    return Object.values(exercise.locales).every((metadata) => {
+      return extractTemplateVariables(metadata.prompt).every((variableName) =>
+        variableNames.has(variableName),
+      );
+    });
+  });
+
+  if (!exercisesAreValid) {
+    return false;
+  }
+
+  if (typeof test.structure === "undefined") {
+    return true;
+  }
+
+  if (
+    !Array.isArray(test.structure) ||
+    !test.structure.every((rule) => {
+      return (
+        Boolean(rule) &&
+        typeof rule === "object" &&
+        typeof rule.tag === "string" &&
+        typeof rule.count === "number" &&
+        Number.isInteger(rule.count) &&
+        rule.count > 0
+      );
+    })
+  ) {
+    return false;
+  }
+
+  const exerciseTagCounts = new Map<string, number>();
+  for (const exercise of test.exercises) {
+    for (const tag of exercise.tags) {
+      exerciseTagCounts.set(tag, (exerciseTagCounts.get(tag) ?? 0) + 1);
+    }
+  }
+
+  return test.structure.every((rule) => (exerciseTagCounts.get(rule.tag) ?? 0) >= rule.count);
 }
 
 async function readJsonFile<T>(
@@ -295,18 +355,6 @@ async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecor
   );
 }
 
-function resolveLocalizedCourseMetadataPath(
-  courseRecord: CourseRecord,
-  locale: Locale,
-): string {
-  return path.join(
-    courseRecord.directoryPath,
-    courseRecord.manifest.localesPath,
-    locale,
-    "course.json",
-  );
-}
-
 async function readLocalizedCourseMetadata(
   courseRecord: CourseRecord,
   preferredLocale?: Locale,
@@ -319,13 +367,10 @@ async function readLocalizedCourseMetadata(
   });
 
   for (const locale of requestedLocales) {
-    try {
-      return await readJsonFile(
-        resolveLocalizedCourseMetadataPath(courseRecord, locale),
-        isLocalizedCourseMetadata,
-      );
-    } catch {
-      continue;
+    const metadata = courseRecord.manifest.locales[locale];
+
+    if (metadata) {
+      return metadata;
     }
   }
 
@@ -334,26 +379,28 @@ async function readLocalizedCourseMetadata(
   );
 }
 
-async function readSharedCourseIndex(
+function resolveSectionDirectoryPath(
   courseRecord: CourseRecord,
-): Promise<SharedCourseIndex> {
-  return readJsonFile(
-    path.join(courseRecord.directoryPath, courseRecord.manifest.sharedIndex),
-    isSharedCourseIndex,
-  );
+  sectionId: string,
+): string {
+  return path.join(courseRecord.directoryPath, sectionId);
+}
+
+function resolveSectionLocaleDirectoryPath(
+  courseRecord: CourseRecord,
+  sectionId: string,
+  locale: Locale,
+): string {
+  return path.join(resolveSectionDirectoryPath(courseRecord, sectionId), "locales", locale);
 }
 
 async function readSharedLessonDefinition(
   courseRecord: CourseRecord,
+  sectionId: string,
   lessonId: string,
 ): Promise<SharedLessonDefinition> {
   return readJsonFile(
-    path.join(
-      courseRecord.directoryPath,
-      courseRecord.manifest.sharedPath,
-      "lessons",
-      `${lessonId}.json`,
-    ),
+    path.join(resolveSectionDirectoryPath(courseRecord, sectionId), `${lessonId}.json`),
     isSharedLessonDefinition,
   );
 }
@@ -362,94 +409,59 @@ async function readSharedSectionDefinition(
   courseRecord: CourseRecord,
   sectionId: string,
 ): Promise<SharedSectionDefinition> {
-  return readJsonFile(
-    path.join(
-      courseRecord.directoryPath,
-      courseRecord.manifest.sharedPath,
-      "sections",
-      `${sectionId}.json`,
-    ),
-    isSharedSectionDefinition,
+  const sectionDirectoryPath = resolveSectionDirectoryPath(courseRecord, sectionId);
+  const storedSection = await readJsonFile(
+    path.join(sectionDirectoryPath, "section.json"),
+    isStoredSectionDefinition,
   );
+  const directoryEntries = await fs.readdir(sectionDirectoryPath, {
+    withFileTypes: true,
+  });
+  const lessonIds = directoryEntries
+    .filter((entry) => entry.isFile() && /^lesson-\d{2}-.*\.json$/.test(entry.name))
+    .map((entry) => entry.name.replace(/\.json$/, ""))
+    .sort((leftLessonId, rightLessonId) => leftLessonId.localeCompare(rightLessonId, undefined, { numeric: true }));
+
+  if (lessonIds.length === 0) {
+    throw new Error(`Section "${sectionId}" does not contain any lesson-xx-* files`);
+  }
+
+  return {
+    ...storedSection,
+    lessonIds,
+  };
 }
 
-async function readSharedExerciseDefinition(
+async function readSharedTestDefinition(
   courseRecord: CourseRecord,
-  exerciseId: string,
-): Promise<SharedExerciseDefinition> {
-  return readJsonFile(
-    path.join(
-      courseRecord.directoryPath,
-      courseRecord.manifest.sharedPath,
-      "exercises",
-      `${exerciseId}.json`,
-    ),
-    isSharedExerciseDefinition,
-  );
-}
-
-function resolveLocalizedLessonMetadataPath(
-  courseRecord: CourseRecord,
-  locale: Locale,
-  lessonId: string,
-): string {
-  return path.join(
-    courseRecord.directoryPath,
-    courseRecord.manifest.localesPath,
-    locale,
-    "lessons",
-    `${lessonId}.json`,
-  );
-}
-
-function resolveLocalizedSectionMetadataPath(
-  courseRecord: CourseRecord,
-  locale: Locale,
   sectionId: string,
-): string {
-  return path.join(
-    courseRecord.directoryPath,
-    courseRecord.manifest.localesPath,
-    locale,
-    "sections",
-    `${sectionId}.json`,
+  testId: string,
+): Promise<SharedTestDefinition> {
+  return readJsonFile(
+    path.join(resolveSectionDirectoryPath(courseRecord, sectionId), `${testId}.json`),
+    isSharedTestDefinition,
   );
 }
 
 function resolveLocalizedLessonBodyPath(
   courseRecord: CourseRecord,
+  sectionId: string,
   locale: Locale,
   lessonId: string,
 ): string {
   return path.join(
-    courseRecord.directoryPath,
-    courseRecord.manifest.localesPath,
-    locale,
-    "lessons",
+    resolveSectionLocaleDirectoryPath(courseRecord, sectionId, locale),
     `${lessonId}.md`,
-  );
-}
-
-function resolveLocalizedExerciseMetadataPath(
-  courseRecord: CourseRecord,
-  locale: Locale,
-  exerciseId: string,
-): string {
-  return path.join(
-    courseRecord.directoryPath,
-    courseRecord.manifest.localesPath,
-    locale,
-    "exercises",
-    `${exerciseId}.json`,
   );
 }
 
 async function readLessonPreview(
   courseRecord: CourseRecord,
+  sectionId: string,
   lessonId: string,
   preferredLocale?: Locale,
 ): Promise<LessonPreview> {
-  const sharedLesson = await readSharedLessonDefinition(courseRecord, lessonId);
+  const sharedLesson = await readSharedLessonDefinition(courseRecord, sectionId, lessonId);
   const requestedLocales = [
     preferredLocale,
     courseRecord.manifest.defaultLocale,
@@ -458,24 +470,14 @@ async function readLessonPreview(
   });
 
   for (const locale of requestedLocales) {
-    try {
-      const lessonMetadata = await readJsonFile(
-        resolveLocalizedLessonMetadataPath(
-          courseRecord,
-          locale,
-          lessonId,
-        ),
-        isLocalizedLessonMetadata,
-      );
-
+    const lessonMetadata = sharedLesson.locales[locale];
+    if (lessonMetadata) {
       return {
         description: lessonMetadata.description,
         id: lessonId,
         iconUrl: await resolveLessonIconUrl(courseRecord, sharedLesson.icon),
         title: lessonMetadata.title,
       };
-    } catch {
-      continue;
     }
   }
 
@@ -489,6 +491,7 @@ async function readLessonPreview(
 
 async function readLocalizedLessonBody(
   courseRecord: CourseRecord,
+  sectionId: string,
   lessonId: string,
   preferredLocale?: Locale,
 ): Promise<string> {
@@ -502,7 +505,7 @@ async function readLocalizedLessonBody(
   for (const locale of requestedLocales) {
     try {
       return await fs.readFile(
-        resolveLocalizedLessonBodyPath(courseRecord, locale, lessonId),
+        resolveLocalizedLessonBodyPath(courseRecord, sectionId, locale, lessonId),
         "utf8",
       );
     } catch {
@@ -513,11 +516,13 @@ async function readLocalizedLessonBody(
   return "";
 }
 
-async function readLocalizedExerciseMetadata(
+async function readLessonTest(
   courseRecord: CourseRecord,
-  exerciseId: string,
+  sectionId: string,
+  testId: string,
   preferredLocale?: Locale,
-): Promise<LocalizedExerciseMetadata | null> {
+): Promise<CourseTest | null> {
+  const sharedTest = await readSharedTestDefinition(courseRecord, sectionId, testId);
   const requestedLocales = [
     preferredLocale,
     courseRecord.manifest.defaultLocale,
@@ -525,67 +530,47 @@ async function readLocalizedExerciseMetadata(
     return Boolean(locale) && locales.indexOf(locale) === index;
   });
 
-  for (const locale of requestedLocales) {
-    try {
-      return await readJsonFile(
-        resolveLocalizedExerciseMetadataPath(courseRecord, locale, exerciseId),
-        isLocalizedExerciseMetadata,
-      );
-    } catch {
-      continue;
-    }
-  }
-
-  return null;
+  return {
+    exercises: sharedTest.exercises.map((exercise, index) => ({
+      formula: exercise.solution.formula,
+      hint: requestedLocales
+        .map((locale) => exercise.locales[locale]?.hint)
+        .find((hint) => typeof hint === "string"),
+      id: `${testId}#${index + 1}`,
+      precision: exercise.solution.precision,
+      prompt:
+        requestedLocales
+          .map((locale) => exercise.locales[locale]?.prompt)
+          .find((prompt) => typeof prompt === "string") ?? "",
+      tags: exercise.tags,
+      variables: exercise.variables,
+    })),
+    id: testId,
+    structure: sharedTest.structure,
+  };
 }
 
-async function readLessonExercise(
-  courseRecord: CourseRecord,
-  exerciseId: string,
-  preferredLocale?: Locale,
-): Promise<CourseExercise | null> {
-  const [sharedExercise, localizedExercise] = await Promise.all([
-    readSharedExerciseDefinition(courseRecord, exerciseId),
-    readLocalizedExerciseMetadata(courseRecord, exerciseId, preferredLocale),
-  ]);
-
-  if (!localizedExercise) {
-    return null;
-  }
-
-  return {
-    formula: sharedExercise.solution.formula,
-    hint: localizedExercise.hint,
-    id: exerciseId,
-    precision: sharedExercise.solution.precision,
-    prompt: localizedExercise.prompt,
-    title: localizedExercise.title,
-    variables: sharedExercise.variables,
-  };
+function resolveTestIdForLesson(lessonId: string): string {
+  return lessonId.replace(/^lesson-/, "test-");
 }
 
 async function readCourseLesson(
   courseRecord: CourseRecord,
+  sectionId: string,
   lessonId: string,
   preferredLocale?: Locale,
 ): Promise<CourseLesson> {
-  const sharedLesson = await readSharedLessonDefinition(courseRecord, lessonId);
-  const preview = await readLessonPreview(courseRecord, lessonId, preferredLocale);
-  const [body, exercise] = await Promise.all([
-    readLocalizedLessonBody(courseRecord, lessonId, preferredLocale),
-    sharedLesson.exerciseIds?.[0]
-      ? readLessonExercise(
-          courseRecord,
-          sharedLesson.exerciseIds[0],
-          preferredLocale,
-        )
-      : Promise.resolve(null),
+  const preview = await readLessonPreview(courseRecord, sectionId, lessonId, preferredLocale);
+  const testId = resolveTestIdForLesson(lessonId);
+  const [body, test] = await Promise.all([
+    readLocalizedLessonBody(courseRecord, sectionId, lessonId, preferredLocale),
+    readLessonTest(courseRecord, sectionId, testId, preferredLocale).catch(() => null),
   ]);
 
   return {
     ...preview,
     body,
-    exercise,
+    test,
   };
 }
 
@@ -629,14 +614,75 @@ async function resolveLessonIconUrl(
 
 async function readLessonPreviews(
   courseRecord: CourseRecord,
-  lessonIds: string[],
+  sections: SharedSectionDefinition[],
   preferredLocale?: Locale,
 ): Promise<LessonPreview[]> {
   return Promise.all(
-    lessonIds.slice(0, 6).map((lessonId) =>
-      readLessonPreview(courseRecord, lessonId, preferredLocale),
+    sections
+      .flatMap((section) =>
+        section.lessonIds.map((lessonId) => ({
+          lessonId,
+          sectionId: section.id,
+        })),
+      )
+      .slice(0, 6)
+      .map(({ lessonId, sectionId }) =>
+        readLessonPreview(courseRecord, sectionId, lessonId, preferredLocale),
+      ),
+  );
+}
+
+async function hasLessonTest(
+  courseRecord: CourseRecord,
+  sectionId: string,
+  lessonId: string,
+): Promise<boolean> {
+  const testId = resolveTestIdForLesson(lessonId);
+
+  try {
+    await fs.access(
+      path.join(resolveSectionDirectoryPath(courseRecord, sectionId), `${testId}.json`),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readCoursePreviewItems(
+  courseRecord: CourseRecord,
+  sections: SharedSectionDefinition[],
+  preferredLocale?: Locale,
+): Promise<CoursePreviewItem[]> {
+  const previewItems = await Promise.all(
+    sections.flatMap((section) =>
+      section.lessonIds.map(async (lessonId) => {
+        const [lessonPreview, lessonHasTest] = await Promise.all([
+          readLessonPreview(courseRecord, section.id, lessonId, preferredLocale),
+          hasLessonTest(courseRecord, section.id, lessonId),
+        ]);
+
+        return [
+          {
+            ...lessonPreview,
+            kind: "lesson" as const,
+          },
+          ...(lessonHasTest
+            ? [
+                {
+                  iconUrl: null,
+                  id: resolveTestIdForLesson(lessonId),
+                  kind: "test" as const,
+                  title: resolveTestIdForLesson(lessonId),
+                },
+              ]
+            : []),
+        ];
+      }),
     ),
   );
+
+  return previewItems.flat().slice(0, 6);
 }
 
 function formatSectionTitle(sectionSlug: string): string {
@@ -649,38 +695,28 @@ function formatSectionTitle(sectionSlug: string): string {
 
 async function readCourseSections(
   courseRecord: CourseRecord,
-  sectionIds: string[],
+  sections: SharedSectionDefinition[],
   preferredLocale?: Locale,
 ): Promise<CourseSectionPreview[]> {
   return Promise.all(
-    sectionIds.map(async (sectionId) => {
-      const section = await readSharedSectionDefinition(courseRecord, sectionId);
+    sections.map(async (section) => {
       const requestedLocales = [
         preferredLocale,
         courseRecord.manifest.defaultLocale,
       ].filter((locale, index, locales): locale is Locale => {
         return Boolean(locale) && locales.indexOf(locale) === index;
       });
-      let localizedSectionMetadata: LocalizedSectionMetadata | null = null;
-
-      for (const locale of requestedLocales) {
-        try {
-          localizedSectionMetadata = await readJsonFile(
-            resolveLocalizedSectionMetadataPath(courseRecord, locale, section.id),
-            isLocalizedSectionMetadata,
-          );
-          break;
-        } catch {
-          continue;
-        }
-      }
+      const localizedSectionMetadata =
+        requestedLocales
+          .map((locale) => section.locales[locale])
+          .find((metadata) => Boolean(metadata)) ?? null;
 
       return {
         description: localizedSectionMetadata?.description,
         id: section.id,
         lessons: await Promise.all(
           section.lessonIds.map((lessonId) =>
-            readCourseLesson(courseRecord, lessonId, preferredLocale),
+            readCourseLesson(courseRecord, section.id, lessonId, preferredLocale),
           ),
         ),
         title: localizedSectionMetadata?.title ?? formatSectionTitle(section.slug),
@@ -690,26 +726,89 @@ async function readCourseSections(
 }
 
 async function readCourseLessonIds(
-  courseRecord: CourseRecord,
-  sectionIds: string[],
+  sections: SharedSectionDefinition[],
 ): Promise<string[]> {
-  const sections = await Promise.all(
-    sectionIds.map((sectionId) => readSharedSectionDefinition(courseRecord, sectionId)),
-  );
-
   return [...new Set(sections.flatMap((section) => section.lessonIds))];
+}
+
+async function readSharedSectionDefinitions(
+  courseRecord: CourseRecord,
+): Promise<SharedSectionDefinition[]> {
+  let directoryEntries;
+
+  try {
+    directoryEntries = await fs.readdir(courseRecord.directoryPath, {
+      withFileTypes: true,
+    });
+  } catch {
+    throw new Error(
+      `Unable to read sections for course "${courseRecord.manifest.id}"`,
+    );
+  }
+
+  const sectionDirectories = directoryEntries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => sectionDirectoryPattern.test(name));
+
+  if (sectionDirectories.length === 0) {
+    throw new Error(
+      `Course "${courseRecord.manifest.id}" does not contain any section-xx-* directories`,
+    );
+  }
+
+  const indexedSectionDirectories = sectionDirectories.map((sectionId) => {
+    const matchedPattern = sectionId.match(sectionDirectoryPattern);
+
+    if (!matchedPattern) {
+      throw new Error(
+        `Invalid section directory name "${sectionId}" in course "${courseRecord.manifest.id}"`,
+      );
+    }
+
+    return {
+      index: Number.parseInt(matchedPattern[1], 10),
+      sectionId,
+    };
+  });
+
+  const sectionIndexSet = new Set(indexedSectionDirectories.map(({ index }) => index));
+
+  if (sectionIndexSet.size !== indexedSectionDirectories.length) {
+    throw new Error(
+      `Course "${courseRecord.manifest.id}" contains duplicate section indexes`,
+    );
+  }
+
+  indexedSectionDirectories.sort((left, right) => left.index - right.index);
+
+  for (let index = 0; index < indexedSectionDirectories.length; index += 1) {
+    if (indexedSectionDirectories[index].index !== index + 1) {
+      throw new Error(
+        `Course "${courseRecord.manifest.id}" must use contiguous section indexes starting at 01`,
+      );
+    }
+  }
+
+  return Promise.all(
+    indexedSectionDirectories.map(({ sectionId }) =>
+      readSharedSectionDefinition(courseRecord, sectionId),
+    ),
+  );
 }
 
 function toCourseSummary(
   courseRecord: CourseRecord,
   localizedCourseMetadata: LocalizedCourseMetadata,
   lessonPreviews: LessonPreview[],
+  previewItems: CoursePreviewItem[],
 ): CourseSummary {
   return {
     defaultLocale: courseRecord.manifest.defaultLocale,
     description: localizedCourseMetadata.description,
     id: courseRecord.manifest.id,
     lessonPreviews,
+    previewItems,
     supportedLocales: courseRecord.manifest.supportedLocales,
     title: localizedCourseMetadata.title,
     version: courseRecord.manifest.version,
@@ -724,17 +823,15 @@ export async function listCourses(
 
   const courseSummaries = await Promise.all(
     courseRecords.map(async (courseRecord) => {
-      const [localizedCourseMetadata, sharedCourseIndex] = await Promise.all([
-        readLocalizedCourseMetadata(courseRecord, preferredLocale),
-        readSharedCourseIndex(courseRecord),
-      ]);
-      const lessonIds = await readCourseLessonIds(
+      const localizedCourseMetadata = await readLocalizedCourseMetadata(
         courseRecord,
-        sharedCourseIndex.sectionIds,
+        preferredLocale,
       );
-      const lessonPreviews = await readLessonPreviews(
+      const sections = await readSharedSectionDefinitions(courseRecord);
+      const lessonPreviews = await readLessonPreviews(courseRecord, sections, preferredLocale);
+      const previewItems = await readCoursePreviewItems(
         courseRecord,
-        lessonIds,
+        sections,
         preferredLocale,
       );
 
@@ -742,6 +839,7 @@ export async function listCourses(
         courseRecord,
         localizedCourseMetadata,
         lessonPreviews,
+        previewItems,
       );
     }),
   );
@@ -764,17 +862,17 @@ export async function getCourseDetails(
     return null;
   }
 
-  const [localizedCourseMetadata, sharedCourseIndex] = await Promise.all([
-    readLocalizedCourseMetadata(courseRecord, preferredLocale),
-    readSharedCourseIndex(courseRecord),
-  ]);
-  const lessonIds = await readCourseLessonIds(
+  const localizedCourseMetadata = await readLocalizedCourseMetadata(
     courseRecord,
-    sharedCourseIndex.sectionIds,
+    preferredLocale,
   );
-  const sections = await readCourseSections(
+  const sharedSections = await readSharedSectionDefinitions(courseRecord);
+  const sectionIds = sharedSections.map((section) => section.id);
+  const lessonIds = await readCourseLessonIds(sharedSections);
+  const sections = await readCourseSections(courseRecord, sharedSections, preferredLocale);
+  const previewItems = await readCoursePreviewItems(
     courseRecord,
-    sharedCourseIndex.sectionIds,
+    sharedSections,
     preferredLocale,
   );
 
@@ -783,15 +881,15 @@ export async function getCourseDetails(
       courseRecord,
       localizedCourseMetadata,
       sections.flatMap((section) =>
-        section.lessons.map(({ body: _body, exercise: _exercise, ...preview }) => preview),
+        section.lessons.map(({ body: _body, test: _test, ...preview }) => preview),
       ),
+      previewItems,
     ),
     courseType: courseRecord.manifest.courseType,
-    entrySectionId: sharedCourseIndex.entrySectionId,
+    entrySectionId: sectionIds[0],
     lessonIds,
     sections,
-    sectionIds: sharedCourseIndex.sectionIds,
-    slug: sharedCourseIndex.slug,
-    templateIds: sharedCourseIndex.templateIds,
+    sectionIds,
+    slug: courseRecord.manifest.slug,
   };
 }

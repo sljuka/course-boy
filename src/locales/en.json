@@ -24,6 +24,7 @@
     "localesLabel": "Supported languages",
     "placeholder": "1st grade math",
     "subtitle": "Search installed courses by title, description, or id.",
+    "testTile": "Test {{index}}",
     "title": "Search courses",
     "version": "Version {{version}}"
   },
@@ -46,6 +47,8 @@
     "incorrectAnswer": "That answer is not correct yet.",
     "incorrectAnswerWithHint": "That answer is not correct yet. Hint: {{hint}}",
     "progress": "Lesson {{current}} of {{total}}",
+    "printCourse": "Print course",
+    "refreshExercise": "Refresh exercise",
     "sections": "Sections",
     "startCourse": "Start course",
     "loading": "Loading course...",

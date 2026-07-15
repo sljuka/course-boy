@@ -2,9 +2,25 @@
   "id": "preschool-colors-and-shapes",
   "version": "0.1.0",
   "defaultLocale": "sr",
-  "supportedLocales": ["en", "sr", "sr-Cyrl"],
+  "supportedLocales": [
+    "en",
+    "sr",
+    "sr-Cyrl"
+  ],
   "courseType": "pre-school",
-  "sharedIndex": "shared/course.json",
-  "localesPath": "locales",
-  "sharedPath": "shared"
+  "slug": "preschool-colors-and-shapes",
+  "locales": {
+    "en": {
+      "title": "Pre-school colors and shapes",
+      "description": "A playful starter course for recognizing colors, circles, and triangles."
+    },
+    "sr": {
+      "title": "Predškolsko boje i oblici",
+      "description": "Razigrani početni kurs za prepoznavanje boja, krugova i trouglova."
+    },
+    "sr-Cyrl": {
+      "title": "Предшколско боје и облици",
+      "description": "Разиграни почетни курс за препознавање боја, кругова и троуглова."
+    }
+  }
 }

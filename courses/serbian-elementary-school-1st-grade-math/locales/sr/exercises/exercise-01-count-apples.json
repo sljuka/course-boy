@@ -1,5 +1,0 @@
-{
-  "title": "Prebroj jabuke",
-  "prompt": "Ima **{{a}}** crvenih jabuka i **{{b}}** zelenih jabuka. Koliko ukupno ima jabuka?",
-  "hint": "Prebroj obe grupe zajedno."
-}

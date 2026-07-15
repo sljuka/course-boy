@@ -1,0 +1,18 @@
+{
+  "id": "section-02-time-and-routines",
+  "slug": "time-and-routines",
+  "locales": {
+    "en": {
+      "title": "Time and routines",
+      "description": "Read simple schedules and estimate time across daily activities."
+    },
+    "sr": {
+      "title": "Vreme i rutina",
+      "description": "Čitaj jednostavne rasporede i procenjuj vreme u svakodnevnim aktivnostima."
+    },
+    "sr-Cyrl": {
+      "title": "Време и рутина",
+      "description": "Читај једноставне распореде и процењуј време у свакодневним активностима."
+    }
+  }
+}

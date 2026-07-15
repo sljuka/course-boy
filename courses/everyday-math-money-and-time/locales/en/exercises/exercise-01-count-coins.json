@@ -1,4 +1,0 @@
-{
-  "title": "Count the coins",
-  "prompt": "You have {{coins2}} coins worth 2 and {{coins5}} coins worth 5. How much money do you have?"
-}

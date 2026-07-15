@@ -2,9 +2,25 @@
   "id": "serbian-elementary-school-1st-grade-math",
   "version": "0.1.0",
   "defaultLocale": "sr",
-  "supportedLocales": ["en", "sr", "sr-Cyrl"],
+  "supportedLocales": [
+    "en",
+    "sr",
+    "sr-Cyrl"
+  ],
   "courseType": "math",
-  "sharedIndex": "shared/course.json",
-  "localesPath": "locales",
-  "sharedPath": "shared"
+  "slug": "serbian-elementary-school-1st-grade-math",
+  "locales": {
+    "en": {
+      "title": "Serbian elementary school 1st grade math",
+      "description": "A simple starter course for counting, missing numbers, and addition within 20."
+    },
+    "sr": {
+      "title": "Matematika za 1. razred srpske osnovne škole",
+      "description": "Jednostavan početni kurs za brojanje, nedostajući broj i sabiranje do 20."
+    },
+    "sr-Cyrl": {
+      "title": "Математика за 1. разред српске основне школе",
+      "description": "Једноставан почетни курс за бројање, недостајући број и сабирање до 20."
+    }
+  }
 }

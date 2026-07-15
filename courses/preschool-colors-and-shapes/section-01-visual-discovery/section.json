@@ -1,0 +1,18 @@
+{
+  "id": "section-01-visual-discovery",
+  "slug": "visual-discovery",
+  "locales": {
+    "en": {
+      "title": "Visual discovery",
+      "description": "Notice colors, shapes, and simple size differences through play."
+    },
+    "sr": {
+      "title": "Vizuelno otkrivanje",
+      "description": "Kroz igru uočavaj boje, oblike i jednostavne razlike u veličini."
+    },
+    "sr-Cyrl": {
+      "title": "Визуелно откривање",
+      "description": "Кроз игру уочавај боје, облике и једноставне разлике у величини."
+    }
+  }
+}

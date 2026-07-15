@@ -1,4 +1,0 @@
-{
-  "title": "Koliko će biti sati kasnije?",
-  "prompt": "Ako je sada {{start}} sati i prođe {{hours}} sati, koliko će tada biti sati?"
-}

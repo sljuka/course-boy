@@ -1,0 +1,18 @@
+{
+  "id": "lesson-03-big-and-small",
+  "slug": "big-and-small",
+  "locales": {
+    "en": {
+      "title": "Big and small",
+      "description": ""
+    },
+    "sr": {
+      "title": "Veliko i malo",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Велико и мало",
+      "description": ""
+    }
+  }
+}

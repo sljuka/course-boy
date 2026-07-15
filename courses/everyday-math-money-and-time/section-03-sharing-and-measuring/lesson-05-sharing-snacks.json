@@ -1,0 +1,18 @@
+{
+  "id": "lesson-05-sharing-snacks",
+  "slug": "sharing-snacks",
+  "locales": {
+    "en": {
+      "title": "Sharing snacks",
+      "description": ""
+    },
+    "sr": {
+      "title": "Deljenje užine",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Дељење ужине",
+      "description": ""
+    }
+  }
+}

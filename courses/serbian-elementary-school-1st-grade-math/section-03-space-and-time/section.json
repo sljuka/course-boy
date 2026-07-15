@@ -1,0 +1,18 @@
+{
+  "id": "section-03-space-and-time",
+  "slug": "space-and-time",
+  "locales": {
+    "en": {
+      "title": "Space and time",
+      "description": "Explore shapes, lines, and everyday time concepts."
+    },
+    "sr": {
+      "title": "Prostor i vreme",
+      "description": "Istraži oblike, linije i svakodnevne pojmove vremena."
+    },
+    "sr-Cyrl": {
+      "title": "Простор и време",
+      "description": "Истражи облике, линије и свакодневне појмове времена."
+    }
+  }
+}

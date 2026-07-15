@@ -1,0 +1,19 @@
+{
+  "id": "lesson-06-time-and-calendar",
+  "slug": "time-and-calendar",
+  "template": "templates/lesson-summary.md",
+  "locales": {
+    "en": {
+      "title": "Time and calendar",
+      "description": ""
+    },
+    "sr": {
+      "title": "Vreme i kalendar",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Време и календар",
+      "description": ""
+    }
+  }
+}

@@ -56,3 +56,23 @@ button:disabled {
 #root {
   min-height: 100vh;
 }
+
+@media print {
+  :root {
+    background: #fff;
+    color: #1c1917;
+  }
+
+  body {
+    min-height: auto;
+    background: #fff;
+  }
+
+  body::after {
+    display: none;
+  }
+
+  #root {
+    min-height: auto;
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "lesson-06-music-and-movement",
+  "slug": "music-and-movement",
+  "locales": {
+    "en": {
+      "title": "Music and movement",
+      "description": ""
+    },
+    "sr": {
+      "title": "Muzika i pokret",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Музика и покрет",
+      "description": ""
+    }
+  }
+}

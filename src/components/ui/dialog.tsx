@@ -84,7 +84,7 @@ function DialogContent({
   return createPortal(
     <div
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 p-4 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 backdrop-blur-sm"
       role="dialog"
     >
       <button
@@ -95,7 +95,7 @@ function DialogContent({
       />
       <div
         className={cn(
-          "relative flex h-[92vh] w-[96vw] max-w-7xl flex-col overflow-hidden rounded-[2rem] border border-stone-300/80 bg-stone-50 shadow-[0_36px_120px_-40px_rgba(28,25,23,0.55)]",
+          "relative flex h-screen w-screen flex-col overflow-hidden bg-stone-50",
           className,
         )}
         {...props}

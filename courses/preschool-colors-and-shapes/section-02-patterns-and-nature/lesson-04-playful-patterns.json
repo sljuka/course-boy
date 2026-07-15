@@ -1,0 +1,18 @@
+{
+  "id": "lesson-04-playful-patterns",
+  "slug": "playful-patterns",
+  "locales": {
+    "en": {
+      "title": "Playful patterns",
+      "description": ""
+    },
+    "sr": {
+      "title": "Razigrani obrasci",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Разиграни обрасци",
+      "description": ""
+    }
+  }
+}

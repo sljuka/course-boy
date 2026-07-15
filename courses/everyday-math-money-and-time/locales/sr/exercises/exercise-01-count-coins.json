@@ -1,4 +1,0 @@
-{
-  "title": "Prebroj novčiće",
-  "prompt": "Imaš {{coins2}} novčića od 2 i {{coins5}} novčića od 5. Koliko novca ukupno imaš?"
-}

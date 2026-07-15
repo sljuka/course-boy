@@ -1,9 +1,10 @@
-import { BookOpen, Search } from "lucide-react";
+import { ArrowRight, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { buttonVariants } from "@/components/ui/button";
+import { CoursePreviewStrip } from "@/components/course-preview-strip";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Card,
@@ -120,28 +121,27 @@ export const CourseSearchPage = () => {
           {filteredCourses.map((course) => (
             <Card className="overflow-hidden" key={course.id}>
               <CardHeader className="pb-3">
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <CardTitle className="text-2xl">
-                    <Link
-                      className="transition-colors hover:text-blue-700"
-                      to={`/courses/${course.id}`}
-                    >
-                      {course.title}
-                    </Link>
-                  </CardTitle>
-                  <span className="text-sm text-stone-500">
-                    {t("courseSearch.version", { version: course.version })}
-                  </span>
-                </div>
+                <CardTitle className="text-2xl">
+                  <Link
+                    className="inline-flex items-center gap-1 transition-colors hover:text-stone-700"
+                    to={`/courses/${course.id}`}
+                  >
+                    {course.title}
+                    <ArrowRight aria-hidden="true" className="h-5 w-5" />
+                  </Link>
+                </CardTitle>
                 <CardDescription className="text-base">
                   {course.description}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-3 pt-0 text-sm text-stone-600">
-                <span className="rounded-full border border-stone-300/80 bg-white/60 px-3 py-1">
+                <Badge>
                   {course.id}
-                </span>
-                <span className="rounded-full border border-stone-300/80 bg-white/60 px-3 py-1">
+                </Badge>
+                <Badge className="font-normal" variant="secondary">
+                  {t("courseSearch.version", { version: course.version })}
+                </Badge>
+                <Badge>
                   <span aria-label={t("courseSearch.localesLabel")}>
                     {[...new Set(
                       course.supportedLocales.map(
@@ -150,38 +150,11 @@ export const CourseSearchPage = () => {
                     )]
                       .join(" ")}
                   </span>
-                </span>
+                </Badge>
               </CardContent>
               <CardContent className="pt-4">
                 <div className="-mx-2 overflow-x-auto px-2 pb-2">
-                  <div className="flex min-w-max gap-3">
-                    {course.lessonPreviews.slice(0, 6).map((lesson) => (
-                      <div className="flex flex-col items-center gap-2" key={lesson.id}>
-                        <div
-                          className={buttonVariants({
-                            appearance: "squareTileMd",
-                            variant: "secondary",
-                          })}
-                        >
-                          {lesson.iconUrl ? (
-                            <img
-                              alt=""
-                              className="h-12 w-12 object-contain"
-                              src={lesson.iconUrl}
-                            />
-                          ) : (
-                            <BookOpen
-                              aria-hidden="true"
-                              className="h-12 w-12 text-stone-700"
-                            />
-                          )}
-                        </div>
-                        <span className="max-w-32 text-center text-sm font-semibold text-stone-900">
-                          {lesson.title}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <CoursePreviewStrip items={course.previewItems} />
                 </div>
               </CardContent>
             </Card>

@@ -4,19 +4,10 @@ export type CourseManifest = {
   courseType: string;
   defaultLocale: Locale;
   id: string;
-  localesPath: string;
-  sharedIndex: string;
-  sharedPath: string;
+  locales: Record<Locale, LocalizedCourseMetadata>;
+  slug: string;
   supportedLocales: Locale[];
   version: string;
-};
-
-export type SharedCourseIndex = {
-  entrySectionId: string;
-  id: string;
-  sectionIds: string[];
-  slug: string;
-  templateIds: Record<string, string>;
 };
 
 export type LocalizedCourseMetadata = {
@@ -45,9 +36,20 @@ export type CourseExercise = {
   id: string;
   precision: number;
   prompt: string;
-  title: string;
+  tags: string[];
   variables: Record<string, CourseExerciseVariable>;
   formula: string;
+};
+
+export type CourseTestStructureRule = {
+  count: number;
+  tag: string;
+};
+
+export type CourseTest = {
+  exercises: CourseExercise[];
+  id: string;
+  structure?: CourseTestStructureRule[];
 };
 
 export type LessonPreview = {
@@ -57,9 +59,16 @@ export type LessonPreview = {
   title: string;
 };
 
+export type CoursePreviewItem = {
+  iconUrl: string | null;
+  id: string;
+  kind: "lesson" | "test";
+  title: string;
+};
+
 export type CourseLesson = LessonPreview & {
   body: string;
-  exercise: CourseExercise | null;
+  test: CourseTest | null;
 };
 
 export type CourseSectionPreview = {
@@ -69,11 +78,18 @@ export type CourseSectionPreview = {
   title: string;
 };
 
+export type StoredSectionDefinition = {
+  id: string;
+  locales: Record<Locale, LocalizedSectionMetadata>;
+  slug: string;
+};
+
 export type CourseSummary = {
   defaultLocale: Locale;
   description: string;
   id: string;
   lessonPreviews: LessonPreview[];
+  previewItems: CoursePreviewItem[];
   supportedLocales: Locale[];
   title: string;
   version: string;
@@ -86,5 +102,4 @@ export type CourseDetails = CourseSummary & {
   sections: CourseSectionPreview[];
   sectionIds: string[];
   slug: string;
-  templateIds: Record<string, string>;
 };

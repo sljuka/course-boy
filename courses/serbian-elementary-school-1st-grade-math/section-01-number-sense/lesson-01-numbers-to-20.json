@@ -1,0 +1,20 @@
+{
+  "id": "lesson-01-numbers-to-20",
+  "icon": "assets/icons/numbers-to-20.svg",
+  "slug": "numbers-to-20",
+  "template": "templates/lesson-summary.md",
+  "locales": {
+    "en": {
+      "title": "Numbers to 20",
+      "description": "In this lesson, you practice counting, spotting a missing number, and adding small values up to 20."
+    },
+    "sr": {
+      "title": "Brojevi do 20",
+      "description": "U ovoj lekciji vežbaš brojanje, pronalaženje nedostajućeg broja i sabiranje malih vrednosti do 20."
+    },
+    "sr-Cyrl": {
+      "title": "Бројеви до 20",
+      "description": "У овој лекцији вежбаш бројање, проналажење недостајућег броја и сабирање малих вредности до 20."
+    }
+  }
+}

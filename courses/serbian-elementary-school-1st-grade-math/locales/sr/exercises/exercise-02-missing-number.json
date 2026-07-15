@@ -1,5 +1,0 @@
-{
-  "title": "Pronađi nedostajući broj",
-  "prompt": "Dopuni jednačinu: **{{known}} + ? = {{total}}**",
-  "hint": "Razmisli koji broj treba dodati da bi se dobio ukupan zbir."
-}

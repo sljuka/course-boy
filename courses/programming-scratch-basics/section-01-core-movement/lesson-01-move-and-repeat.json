@@ -1,0 +1,19 @@
+{
+  "id": "lesson-01-move-and-repeat",
+  "slug": "move-and-repeat",
+  "template": "templates/exercise-card.md",
+  "locales": {
+    "en": {
+      "title": "Move and repeat",
+      "description": ""
+    },
+    "sr": {
+      "title": "Pomeranje i ponavljanje",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Померање и понављање",
+      "description": ""
+    }
+  }
+}

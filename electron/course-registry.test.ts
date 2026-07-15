@@ -14,6 +14,15 @@ describe("listCourses", () => {
     );
 
     expect(mathCourse?.lessonPreviews[0]?.title).toBe("Brojevi do 20");
+    expect(mathCourse?.previewItems[0]).toMatchObject({
+      id: "lesson-01-numbers-to-20",
+      kind: "lesson",
+      title: "Brojevi do 20",
+    });
+    expect(mathCourse?.previewItems[1]).toMatchObject({
+      id: "test-01-numbers-to-20",
+      kind: "test",
+    });
   });
 
   it("returns localized lesson preview titles for Serbian Cyrillic", async () => {
@@ -61,9 +70,11 @@ describe("getCourseDetails", () => {
     );
 
     expect(course?.sections[0]?.lessons[0]?.body).toContain("# Numbers to 20");
-    expect(course?.sections[0]?.lessons[0]?.exercise?.title).toBe(
-      "Count the apples",
+    expect(course?.sections[0]?.lessons[0]?.test?.exercises[0]?.prompt).toContain(
+      "red apples",
     );
-    expect(course?.sections[0]?.lessons[0]?.exercise?.formula).toBe("a + b");
+    expect(course?.sections[0]?.lessons[0]?.test?.exercises[0]?.formula).toBe("a + b");
+    expect(course?.sections[0]?.lessons[0]?.test?.exercises).toHaveLength(10);
+    expect(course?.sections[0]?.lessons[0]?.test?.structure).toHaveLength(3);
   });
 });

@@ -2,9 +2,25 @@
   "id": "everyday-math-money-and-time",
   "version": "0.1.0",
   "defaultLocale": "en",
-  "supportedLocales": ["en", "sr", "sr-Cyrl"],
+  "supportedLocales": [
+    "en",
+    "sr",
+    "sr-Cyrl"
+  ],
   "courseType": "math",
-  "sharedIndex": "shared/course.json",
-  "localesPath": "locales",
-  "sharedPath": "shared"
+  "slug": "everyday-math-money-and-time",
+  "locales": {
+    "en": {
+      "title": "Everyday math money and time",
+      "description": "Practice simple coins, prices, and clock-based questions from everyday life."
+    },
+    "sr": {
+      "title": "Svakodnevna matematika novac i vreme",
+      "description": "Vežbaj jednostavne zadatke sa novcem, cenama i satom iz svakodnevnog života."
+    },
+    "sr-Cyrl": {
+      "title": "Свакодневна математика новац и време",
+      "description": "Вежбај једноставне задатке са новцем, ценама и сатом из свакодневног живота."
+    }
+  }
 }

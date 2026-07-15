@@ -1,0 +1,18 @@
+{
+  "id": "lesson-03-morning-schedule",
+  "slug": "morning-schedule",
+  "locales": {
+    "en": {
+      "title": "Morning schedule",
+      "description": ""
+    },
+    "sr": {
+      "title": "Jutarnji raspored",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Јутарњи распоред",
+      "description": ""
+    }
+  }
+}

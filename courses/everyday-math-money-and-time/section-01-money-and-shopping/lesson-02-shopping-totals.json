@@ -1,0 +1,18 @@
+{
+  "id": "lesson-02-shopping-totals",
+  "slug": "shopping-totals",
+  "locales": {
+    "en": {
+      "title": "Shopping totals",
+      "description": ""
+    },
+    "sr": {
+      "title": "Kupovina i ukupni iznos",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Куповина и укупан износ",
+      "description": ""
+    }
+  }
+}

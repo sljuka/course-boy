@@ -1,0 +1,18 @@
+{
+  "id": "section-03-sharing-and-measuring",
+  "slug": "sharing-and-measuring",
+  "locales": {
+    "en": {
+      "title": "Sharing and measuring",
+      "description": "Use fairness and classroom measurement in practical exercises."
+    },
+    "sr": {
+      "title": "Deljenje i merenje",
+      "description": "Koristi pravednu podelu i merenje u učionici kroz praktične zadatke."
+    },
+    "sr-Cyrl": {
+      "title": "Дељење и мерење",
+      "description": "Користи праведну поделу и мерење у учионици кроз практичне задатке."
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "lesson-05-sounds-and-dialogue",
+  "slug": "sounds-and-dialogue",
+  "locales": {
+    "en": {
+      "title": "Sounds and dialogue",
+      "description": ""
+    },
+    "sr": {
+      "title": "Zvukovi i dijalog",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Звукови и дијалог",
+      "description": ""
+    }
+  }
+}

@@ -24,6 +24,7 @@
     "localesLabel": "Podržani jezici",
     "placeholder": "matematika za 1. razred",
     "subtitle": "Pretraži instalirane kurseve po nazivu, opisu ili identifikatoru.",
+    "testTile": "Test {{index}}",
     "title": "Pretraga kurseva",
     "version": "Verzija {{version}}"
   },
@@ -46,6 +47,8 @@
     "incorrectAnswer": "Taj odgovor još nije tačan.",
     "incorrectAnswerWithHint": "Taj odgovor još nije tačan. Pomoć: {{hint}}",
     "progress": "Lekcija {{current}} od {{total}}",
+    "printCourse": "Štampaj kurs",
+    "refreshExercise": "Osveži zadatak",
     "sections": "Sekcije",
     "startCourse": "Počni kurs",
     "loading": "Učitavanje kursa...",

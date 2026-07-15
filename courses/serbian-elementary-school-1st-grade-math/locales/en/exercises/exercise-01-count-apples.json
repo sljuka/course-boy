@@ -1,5 +1,0 @@
-{
-  "title": "Count the apples",
-  "prompt": "There are **{{a}}** red apples and **{{b}}** green apples. How many apples are there altogether?",
-  "hint": "Count both groups together."
-}

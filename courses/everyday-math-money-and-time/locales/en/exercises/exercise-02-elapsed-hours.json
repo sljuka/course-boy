@@ -1,4 +1,0 @@
-{
-  "title": "What time is it later?",
-  "prompt": "If it is {{start}} o'clock now and {{hours}} hours pass, what time will it be?"
-}

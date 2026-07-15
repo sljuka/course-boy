@@ -1,0 +1,18 @@
+{
+  "id": "lesson-04-simple-animations",
+  "slug": "simple-animations",
+  "locales": {
+    "en": {
+      "title": "Simple animations",
+      "description": ""
+    },
+    "sr": {
+      "title": "Jednostavne animacije",
+      "description": ""
+    },
+    "sr-Cyrl": {
+      "title": "Једноставне анимације",
+      "description": ""
+    }
+  }
+}
