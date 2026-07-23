@@ -5,7 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CourseExercise } from "@/lib/course-package";
-import { interpolateTemplate, type ExerciseInstance } from "@/lib/course-player-utils";
+import {
+  interpolateTemplate,
+  type ExerciseInstance,
+} from "@/lib/course-player-utils";
 
 type ExerciseResult = {
   feedback: string | null;
@@ -59,7 +62,7 @@ export const CourseTestContent = ({
           >
             <p className="flex items-start gap-1.5 text-base leading-7 text-stone-700">
               <Badge
-                className="mt-0.5 size-6 shrink-0 justify-center rounded-full px-0 py-0"
+                className="size-6 shrink-0 justify-center"
                 variant="secondary"
               >
                 {index + 1}

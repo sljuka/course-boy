@@ -6,8 +6,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { CourseLoadingCard } from "@/components/course-loading-card";
 import {
   buildSectionPreviewItems,
-  CoursePreviewStrip,
   type CoursePreviewStripItem,
+} from "@/components/course-preview-strip-items";
+import {
+  CoursePreviewStrip,
 } from "@/components/course-preview-strip";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";

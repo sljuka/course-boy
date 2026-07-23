@@ -6,8 +6,9 @@ import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
 import { AppStateProvider } from "@/lib/app-state";
 import { CourseDetailPage } from "@/pages/course-detail-page";
-import { CoursePlayerPage } from "@/pages/course-player-page";
+import { CourseLessonPlayerPage } from "@/pages/course-lesson-player-page";
 import { CourseSearchPage } from "@/pages/course-search-page";
+import { CourseTestPlayerPage } from "@/pages/course-test-player-page";
 import { RolePage } from "@/pages/role-page";
 import { WelcomePage } from "@/pages/welcome-page";
 import { useAppState } from "@/lib/use-app-state";
@@ -38,9 +39,12 @@ const AppRoutes = () => {
           </OnboardingGuard>
         }
       >
-        <Route element={<CoursePlayerPage />} path="/courses/:courseId/lessons/:lessonId" />
         <Route
-          element={<CoursePlayerPage />}
+          element={<CourseLessonPlayerPage />}
+          path="/courses/:courseId/lessons/:lessonId"
+        />
+        <Route
+          element={<CourseTestPlayerPage />}
           path="/courses/:courseId/lessons/:lessonId/test"
         />
       </Route>

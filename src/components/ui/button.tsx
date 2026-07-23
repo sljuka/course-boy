@@ -12,7 +12,7 @@ const buttonVariants = cva(
           "h-auto min-h-28 flex-col items-start justify-center gap-2 rounded-[2rem] border-2 px-5 py-5 text-left font-semibold shadow-none",
         default: '',
         squareTileMd:
-          '!w-[9.75rem] h-[9.75rem] !min-w-[9.75rem] shrink-0 flex-col items-center justify-center gap-2 rounded-[2.1rem] border-2 px-3 text-center font-semibold shadow-none',
+          '!w-[9.75rem] h-[9.75rem] !min-w-[9.75rem] shrink-0 flex-col items-center justify-center gap-2 rounded-[1.5rem] border-2 px-3 text-center font-semibold shadow-none',
         squareTile:
           'aspect-square h-auto min-h-44 flex-col items-center justify-center gap-4 rounded-[2.75rem] border-2 text-center font-semibold shadow-none',
       },

@@ -1,1 +1,2 @@
-export { CoursePlayer } from "@/components/course-player/course-player";
+export { LessonPlayer } from "@/components/course-player/lesson-player";
+export { TestPlayer } from "@/components/course-player/test-player";
