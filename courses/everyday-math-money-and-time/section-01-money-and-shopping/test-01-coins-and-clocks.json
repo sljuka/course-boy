@@ -166,7 +166,8 @@
       },
       "solution": {
         "formula": "wallet - cost",
-        "precision": 0
+        "precision": 0,
+        "space": "md"
       },
       "locales": {
         "en": {
@@ -202,7 +203,8 @@
       },
       "solution": {
         "formula": "leave + travel",
-        "precision": 0
+        "precision": 0,
+        "space": 2
       },
       "locales": {
         "en": {
@@ -278,7 +280,8 @@
       },
       "solution": {
         "formula": "budget - snack - ride",
-        "precision": 0
+        "precision": 0,
+        "space": "xl"
       },
       "locales": {
         "en": {
@@ -311,7 +314,8 @@
       },
       "solution": {
         "formula": "afternoon - morning",
-        "precision": 0
+        "precision": 0,
+        "space": "xl"
       },
       "locales": {
         "en": {

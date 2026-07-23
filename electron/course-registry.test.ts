@@ -74,7 +74,19 @@ describe("getCourseDetails", () => {
       "red apples",
     );
     expect(course?.sections[0]?.lessons[0]?.test?.exercises[0]?.formula).toBe("a + b");
+    expect(course?.sections[0]?.lessons[0]?.test?.exercises[0]?.solutionSpace).toBe("sm");
     expect(course?.sections[0]?.lessons[0]?.test?.exercises).toHaveLength(10);
     expect(course?.sections[0]?.lessons[0]?.test?.structure).toHaveLength(3);
+  });
+
+  it("returns configured solution space for worksheet-style exercises", async () => {
+    const course = await getCourseDetails(
+      coursesRoot,
+      "everyday-math-money-and-time",
+      "en",
+    );
+
+    expect(course?.sections[0]?.lessons[0]?.test?.exercises[4]?.solutionSpace).toBe("md");
+    expect(course?.sections[0]?.lessons[0]?.test?.exercises[7]?.solutionSpace).toBe("xl");
   });
 });

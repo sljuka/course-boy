@@ -46,13 +46,26 @@
     "error": "Detalji kursa trenutno ne mogu da se učitaju.",
     "incorrectAnswer": "Taj odgovor još nije tačan.",
     "incorrectAnswerWithHint": "Taj odgovor još nije tačan. Pomoć: {{hint}}",
+    "dismissPrintHint": "Zatvori savet za štampu",
     "progress": "Lekcija {{current}} od {{total}}",
+    "printHintBody": "Možeš da odštampaš ovaj test, rešiš ga olovkom na papiru, pa zatim ovde uneseš odgovore da proveriš da li su tačni.",
+    "printHintTitle": "Više ti odgovara papir? Prvo odštampaj test.",
+    "printAnswerStyle": "Prostor za odgovor",
+    "printAnswerStyleBox": "Okvir",
+    "printAnswerStyleEmpty": "Prazan prostor",
+    "printAnswerStyleLines": "Linije",
+    "printOptionHeader": "Štampaj zaglavlje",
+    "printOptionSeparators": "Štampaj razdelnike zadataka",
+    "printOptions": "Opcije štampe",
+    "printNow": "Štampaj",
     "printCourse": "Štampaj kurs",
     "refreshExercise": "Osveži zadatak",
     "sections": "Sekcije",
     "startCourse": "Počni kurs",
     "loading": "Učitavanje kursa...",
-    "missing": "Ovaj kurs nije pronađen."
+    "lessonLabel": "Lekcija",
+    "missing": "Ovaj kurs nije pronađen.",
+    "testLabel": "Test"
   },
   "courseItems": {
     "additionAndSubtraction": {

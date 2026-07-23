@@ -4,6 +4,7 @@ import path from "node:path";
 import type {
   CourseTest,
   CourseTestStructureRule,
+  CourseExerciseSolutionSpace,
   CourseExerciseVariable,
   CourseLesson,
   CourseSectionPreview,
@@ -44,6 +45,7 @@ type SharedTestExerciseDefinition = {
   solution: {
     formula: string;
     precision: number;
+    space?: CourseExerciseSolutionSpace;
   };
   tags: string[];
   variables: Record<string, CourseExerciseVariable>;
@@ -203,6 +205,20 @@ function isSharedTestDefinition(
     return false;
   }
 
+  function isSolutionSpace(
+    solutionSpace: unknown,
+  ): solutionSpace is CourseExerciseSolutionSpace {
+    return (
+      (typeof solutionSpace === "number" &&
+        Number.isInteger(solutionSpace) &&
+        solutionSpace > 0) ||
+      solutionSpace === "sm" ||
+      solutionSpace === "md" ||
+      solutionSpace === "lg" ||
+      solutionSpace === "xl"
+    );
+  }
+
   const exercisesAreValid = test.exercises.every((exercise) => {
     if (!exercise || typeof exercise !== "object") {
       return false;
@@ -237,6 +253,8 @@ function isSharedTestDefinition(
       typeof exercise.solution !== "object" ||
       typeof exercise.solution.formula !== "string" ||
       typeof exercise.solution.precision !== "number" ||
+      (typeof exercise.solution.space !== "undefined" &&
+        !isSolutionSpace(exercise.solution.space)) ||
       !exercise.variables ||
       typeof exercise.variables !== "object" ||
       !Object.values(exercise.variables).every((variable) => {
@@ -542,6 +560,7 @@ async function readLessonTest(
         requestedLocales
           .map((locale) => exercise.locales[locale]?.prompt)
           .find((prompt) => typeof prompt === "string") ?? "",
+      solutionSpace: exercise.solution.space ?? "sm",
       tags: exercise.tags,
       variables: exercise.variables,
     })),

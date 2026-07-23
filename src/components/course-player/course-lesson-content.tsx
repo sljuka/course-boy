@@ -16,7 +16,7 @@ export const CourseLessonContent = ({
   return (
     <>
       <LessonMarkdown source={activeLesson.body} />
-      <div className="flex justify-end">
+      <div className="flex justify-end print:hidden">
         <Button onClick={() => onContinueFromLesson(activeLesson)} size="lg">
           {t("continue")}
         </Button>

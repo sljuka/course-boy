@@ -46,13 +46,26 @@
     "error": "Course details could not be loaded right now.",
     "incorrectAnswer": "That answer is not correct yet.",
     "incorrectAnswerWithHint": "That answer is not correct yet. Hint: {{hint}}",
+    "dismissPrintHint": "Dismiss print hint",
     "progress": "Lesson {{current}} of {{total}}",
+    "printHintBody": "You can print this test, solve it with pen and paper, and then enter the answers here to check whether they are correct.",
+    "printHintTitle": "Prefer paper? Print this test first.",
+    "printAnswerStyle": "Answer area",
+    "printAnswerStyleBox": "Box",
+    "printAnswerStyleEmpty": "Empty space",
+    "printAnswerStyleLines": "Lines",
+    "printOptionHeader": "Print header",
+    "printOptionSeparators": "Print exercise separators",
+    "printOptions": "Print options",
+    "printNow": "Print",
     "printCourse": "Print course",
     "refreshExercise": "Refresh exercise",
     "sections": "Sections",
     "startCourse": "Start course",
     "loading": "Loading course...",
-    "missing": "This course could not be found."
+    "lessonLabel": "Lesson",
+    "missing": "This course could not be found.",
+    "testLabel": "Test"
   },
   "courseItems": {
     "additionAndSubtraction": {

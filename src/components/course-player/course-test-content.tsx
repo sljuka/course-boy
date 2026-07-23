@@ -9,11 +9,30 @@ import {
   interpolateTemplate,
   type ExerciseInstance,
 } from "@/lib/course-player-utils";
+import type { CoursePrintAnswerStyle } from "@/lib/print-options";
 
 type ExerciseResult = {
   feedback: string | null;
   isCorrect: boolean;
 };
+
+function resolveSolutionSpaceRows(solutionSpace: CourseExercise["solutionSpace"]) {
+  if (typeof solutionSpace === "number") {
+    return solutionSpace;
+  }
+
+  switch (solutionSpace) {
+    case "md":
+      return 3;
+    case "lg":
+      return 5;
+    case "xl":
+      return 8;
+    case "sm":
+    default:
+      return 1;
+  }
+}
 
 export const CourseTestContent = ({
   activeTestExercises,
@@ -24,6 +43,8 @@ export const CourseTestContent = ({
   onContinueAfterExercise,
   onSubmitExercise,
   onUpdateExerciseAnswer,
+  printAnswerStyle,
+  showPrintTestSeparators,
   testFeedback,
 }: {
   activeTestExercises: CourseExercise[];
@@ -34,6 +55,8 @@ export const CourseTestContent = ({
   onContinueAfterExercise: () => void;
   onSubmitExercise: () => void;
   onUpdateExerciseAnswer: (index: number, value: string) => void;
+  printAnswerStyle: CoursePrintAnswerStyle;
+  showPrintTestSeparators: boolean;
   testFeedback: string | null;
 }) => {
   const { t } = useTranslation();
@@ -46,7 +69,7 @@ export const CourseTestContent = ({
   }
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
       {activeTestExercises.map((exercise, index) => {
         const exerciseInstance = activeTestInstances[index];
         const exerciseResult = exerciseResults[index];
@@ -57,7 +80,9 @@ export const CourseTestContent = ({
 
         return (
           <div
-            className="flex flex-col gap-3 border-b border-stone-200 pb-6 last:border-b-0 last:pb-0"
+            className={`flex break-inside-avoid flex-col gap-3 border-b border-stone-200 pb-4 last:border-b-0 last:pb-0 print:gap-3 ${
+              showPrintTestSeparators ? "" : "print:border-b-0"
+            }`}
             key={exercise.id}
           >
             <p className="flex items-start gap-1.5 text-base leading-7 text-stone-700">
@@ -74,13 +99,7 @@ export const CourseTestContent = ({
                 )}
               />
             </p>
-            <div className="flex max-w-xs flex-col gap-3">
-              <label
-                className="text-sm font-medium text-stone-700"
-                htmlFor={`course-exercise-answer-${index}`}
-              >
-                {t("courseDetails.answerLabel")}
-              </label>
+            <div className="flex max-w-xs flex-col gap-3 print:hidden">
               <Input
                 id={`course-exercise-answer-${index}`}
                 onChange={(event) =>
@@ -90,8 +109,36 @@ export const CourseTestContent = ({
                 value={exerciseAnswers[index] ?? ""}
               />
             </div>
+            <div className="hidden print:block">
+              {printAnswerStyle === "lines" ? (
+                <div className="flex flex-col gap-3">
+                  {Array.from({
+                    length: resolveSolutionSpaceRows(exercise.solutionSpace),
+                  }).map((_, rowIndex) => (
+                    <div
+                      className="h-8 border-b border-stone-500"
+                      key={`${exercise.id}-solution-row-${rowIndex + 1}`}
+                    />
+                  ))}
+                </div>
+              ) : printAnswerStyle === "box" ? (
+                <div
+                  className="rounded-md border border-dashed border-stone-300"
+                  style={{
+                    minHeight: `${resolveSolutionSpaceRows(exercise.solutionSpace) * 2.75}rem`,
+                  }}
+                />
+              ) : (
+                <div
+                  className="bg-transparent"
+                  style={{
+                    minHeight: `${resolveSolutionSpaceRows(exercise.solutionSpace) * 2.75}rem`,
+                  }}
+                />
+              )}
+            </div>
             {exerciseResult?.feedback && (
-              <div className="text-sm font-medium text-rose-700">
+              <div className="text-sm font-medium text-rose-700 print:hidden">
                 {exerciseResult.feedback}
               </div>
             )}
@@ -102,14 +149,14 @@ export const CourseTestContent = ({
         <div
           className={
             isTestPassed
-              ? "text-sm font-medium text-emerald-700"
-              : "text-sm font-medium text-rose-700"
+              ? "text-sm font-medium text-emerald-700 print:hidden"
+              : "text-sm font-medium text-rose-700 print:hidden"
           }
         >
           {testFeedback}
         </div>
       )}
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end gap-3 print:hidden">
         <Button
           onClick={() =>
             isTestPassed ? onContinueAfterExercise() : onSubmitExercise()
@@ -119,6 +166,6 @@ export const CourseTestContent = ({
           {isTestPassed ? t("continue") : t("courseDetails.checkAnswer")}
         </Button>
       </div>
-    </>
+    </div>
   );
 };

@@ -46,13 +46,26 @@
     "error": "Детаљи курса тренутно не могу да се учитају.",
     "incorrectAnswer": "Тај одговор још није тачан.",
     "incorrectAnswerWithHint": "Тај одговор још није тачан. Помоћ: {{hint}}",
+    "dismissPrintHint": "Затвори савет за штампу",
     "progress": "Лекција {{current}} од {{total}}",
+    "printHintBody": "Можеш да одштампаш овај тест, решиш га оловком на папиру, па затим овде унесеш одговоре да провериш да ли су тачни.",
+    "printHintTitle": "Више ти одговара папир? Прво одштампај тест.",
+    "printAnswerStyle": "Простор за одговор",
+    "printAnswerStyleBox": "Оквир",
+    "printAnswerStyleEmpty": "Празан простор",
+    "printAnswerStyleLines": "Линије",
+    "printOptionHeader": "Штампај заглавље",
+    "printOptionSeparators": "Штампај разделнике задатака",
+    "printOptions": "Опције штампе",
+    "printNow": "Штампај",
     "printCourse": "Штампај курс",
     "refreshExercise": "Освежи задатак",
     "sections": "Секције",
     "startCourse": "Почни курс",
     "loading": "Учитавање курса...",
-    "missing": "Овај курс није пронађен."
+    "lessonLabel": "Лекција",
+    "missing": "Овај курс није пронађен.",
+    "testLabel": "Тест"
   },
   "courseItems": {
     "additionAndSubtraction": {

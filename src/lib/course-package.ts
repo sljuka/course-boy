@@ -31,11 +31,14 @@ export type CourseExerciseVariable = {
   type: "integer";
 };
 
+export type CourseExerciseSolutionSpace = number | "sm" | "md" | "lg" | "xl";
+
 export type CourseExercise = {
   hint?: string;
   id: string;
   precision: number;
   prompt: string;
+  solutionSpace: CourseExerciseSolutionSpace;
   tags: string[];
   variables: Record<string, CourseExerciseVariable>;
   formula: string;

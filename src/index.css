@@ -43,7 +43,7 @@ body::after {
 
 button,
 input {
-  font: inherit;
+  font-family: inherit;
 }
 
 button {
@@ -81,6 +81,10 @@ button:disabled {
 }
 
 @media print {
+  @page {
+    margin: 14mm;
+  }
+
   :root {
     background: #fff;
     color: #1c1917;
@@ -97,5 +101,10 @@ button:disabled {
 
   #root {
     min-height: auto;
+  }
+
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
   }
 }
