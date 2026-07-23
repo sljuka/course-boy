@@ -50,7 +50,7 @@ function LanguageSwitcher({
           </SelectContent>
         </Select>
       </div>
-      {isSerbian ? (
+      {isSerbian && (
         <button
           className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-[11px] font-semibold text-stone-700 transition-colors hover:bg-stone-50"
           onClick={handleScriptToggle}
@@ -58,7 +58,7 @@ function LanguageSwitcher({
         >
           {scriptLabel}
         </button>
-      ) : null}
+      )}
     </div>
   )
 }

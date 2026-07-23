@@ -335,7 +335,7 @@ async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecor
       .filter((directoryEntry) => directoryEntry.isDirectory())
       .map(async (directoryEntry) => {
         const directoryPath = path.join(rootDirectoryPath, directoryEntry.name);
-        const manifestPath = path.join(directoryPath, "manifest.json");
+        const manifestPath = path.join(directoryPath, "course.json");
 
         try {
           const manifest = await readJsonFile(manifestPath, isCourseManifest);

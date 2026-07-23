@@ -1,5 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 
+import { BlankLayout } from "@/components/blank-layout";
 import { HeaderLayout } from "@/components/header-layout";
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
@@ -33,11 +34,16 @@ const AppRoutes = () => {
       <Route
         element={
           <OnboardingGuard>
-            <CoursePlayerPage />
+            <BlankLayout />
           </OnboardingGuard>
         }
-        path="/courses/:courseId/learn"
-      />
+      >
+        <Route element={<CoursePlayerPage />} path="/courses/:courseId/lessons/:lessonId" />
+        <Route
+          element={<CoursePlayerPage />}
+          path="/courses/:courseId/lessons/:lessonId/test"
+        />
+      </Route>
       <Route element={<OnboardingLayout />}>
         <Route element={<WelcomePage />} path="/onboarding" />
         <Route element={<RolePage />} path="/onboarding/role" />

@@ -1,4 +1,5 @@
 import * as React from "react";
+import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -6,7 +7,7 @@ function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
-        "rounded-3xl border border-stone-300/80 bg-white/75 shadow-[0_24px_80px_-32px_rgba(41,37,36,0.35)] backdrop-blur",
+        "rounded-3xl border border-stone-300/80 bg-white/75 p-6 shadow-[0_24px_80px_-32px_rgba(41,37,36,0.35)] backdrop-blur",
         className,
       )}
       {...props}
@@ -15,13 +16,56 @@ function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
 }
 
 function CardHeader({
+  children,
   className,
+  subtitle,
+  title,
   ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("space-y-2 p-8 pb-4", className)} {...props} />;
+}: Omit<React.HTMLAttributes<HTMLDivElement>, "title"> & {
+  children?: ReactNode;
+  subtitle?: ReactNode;
+  title: ReactNode;
+}) {
+  return (
+    <div className={cn("space-y-2", className)} {...props}>
+      {title}
+      {subtitle}
+      {children}
+    </div>
+  );
 }
 
 function CardTitle({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h1
+      className={cn(
+        "text-3xl font-semibold leading-tight tracking-tight text-stone-950",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function LessonTitle({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h1
+      className={cn(
+        "text-2xl font-semibold leading-tight tracking-tight text-stone-950",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+function CourseTitle({
   className,
   ...props
 }: React.HTMLAttributes<HTMLHeadingElement>) {
@@ -52,7 +96,15 @@ function CardContent({
   className,
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("p-8", className)} {...props} />;
+  return <div className={cn("flex flex-col gap-4", className)} {...props} />;
 }
 
-export { Card, CardContent, CardDescription, CardHeader, CardTitle };
+export {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CourseTitle,
+  LessonTitle,
+};

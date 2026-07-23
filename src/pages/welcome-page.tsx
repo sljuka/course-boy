@@ -28,7 +28,7 @@ export const WelcomePage = () => {
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-4 pr-2">
+        <div className="flex flex-col gap-4 pr-2">
           <CardTitle className="text-3xl text-amber-950 sm:text-4xl">
             {t('welcomeTitle')}
           </CardTitle>
@@ -40,7 +40,7 @@ export const WelcomePage = () => {
           <LanguageSwitcher locale={locale} onLocaleChange={setLocale} />
         </div>
       </div>
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         <Label htmlFor="name">{t('nameLabel')}</Label>
         <div className="flex flex-col gap-4 sm:flex-row">
           <Input

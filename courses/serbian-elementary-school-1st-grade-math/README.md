@@ -4,7 +4,7 @@ Sample downloadable Matko course package.
 
 Structure:
 
-- `manifest.json`: top-level package metadata
+- `course.json`: top-level package metadata
 - `shared/`: locale-independent course structure, formulas, and templates
 - `locales/`: locale-specific labels, lesson text, and exercise prompts
 
