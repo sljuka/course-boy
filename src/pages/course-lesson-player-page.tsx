@@ -1,7 +1,7 @@
 import { Navigate, useParams } from "react-router-dom";
 
-import { LessonPlayer } from "@/components/course-player";
 import { CoursePlayerPageLayout } from "@/components/course-player-page-layout";
+import { LessonPlayer } from "@/components/lesson-player";
 
 export const CourseLessonPlayerPage = () => {
   const { courseId, lessonId } = useParams<{

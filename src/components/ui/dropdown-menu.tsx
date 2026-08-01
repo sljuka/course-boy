@@ -3,6 +3,11 @@ import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+type DropdownMenuTriggerChildProps = {
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void;
+  ref?: React.Ref<HTMLElement>;
+};
+
 type DropdownMenuContextValue = {
   contentId: string;
   open: boolean;
@@ -73,7 +78,7 @@ function DropdownMenuTrigger({
   children,
 }: {
   asChild?: boolean;
-  children: React.ReactElement<Record<string, any>>;
+  children: React.ReactElement<DropdownMenuTriggerChildProps>;
 }) {
   const { contentId, open, setOpen, triggerRef } = useDropdownMenuContext();
 

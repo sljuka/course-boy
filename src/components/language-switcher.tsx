@@ -36,7 +36,7 @@ function LanguageSwitcher({
           onValueChange={(value) => onLocaleChange(value as 'en' | 'sr')}
           value={selectValue}
         >
-          <SelectTrigger aria-label="Language" className="h-10 w-[8.75rem] pl-9 text-xs">
+          <SelectTrigger aria-label="Language" className="h-10 w-[8.75rem] pl-9">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs">
               {selectValue === 'en' ? '🇬🇧' : '🇷🇸'}
             </span>

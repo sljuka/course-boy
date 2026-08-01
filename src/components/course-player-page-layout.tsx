@@ -22,7 +22,7 @@ export function CoursePlayerPageLayout({
           fallback={<CourseErrorCard message={t("courseDetails.error")} />}
           key={`${playerKey}-${locale}`}
         >
-          {children}
+          <div className="flex flex-col gap-4 print:block">{children}</div>
         </ErrorBoundary>
       </div>
     </main>

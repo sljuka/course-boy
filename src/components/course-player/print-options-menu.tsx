@@ -11,115 +11,141 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { CoursePrintOptions } from "@/lib/print-options";
+import type {
+  CoursePrintAnswerStyle,
+  CoursePrintExerciseHintStyle,
+  CoursePrintOptions,
+} from "@/lib/print-options";
+
+export type PrintOptionsMenuLabels = {
+  answerStyle?: {
+    box: string;
+    empty: string;
+    label: string;
+    lines: string;
+    squares: string;
+  };
+  exerciseHints?: {
+    hidden: string;
+    label: string;
+    upsideDown: string;
+    visible: string;
+  };
+  header: string;
+  printNow: string;
+  testSeparators?: string;
+  title: string;
+};
+
+type PrintOptionsMenuTriggerProps = {
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void;
+  ref?: React.Ref<HTMLElement>;
+};
 
 export function PrintOptionsMenu({
   children,
+  labels,
   onPrint,
   onPrintOptionsChange,
-  printAnswerStyleLabel,
-  printAnswerStyleBoxLabel,
-  printAnswerStyleEmptyLabel,
-  printAnswerStyleLinesLabel,
-  printHeaderLabel,
-  printNowLabel,
   printOptions,
-  printTestSeparatorsLabel,
-  showAnswerStyleOptions,
-  showTestSeparatorsOption,
-  title,
 }: {
-  children: React.ReactElement<Record<string, any>>;
+  children: React.ReactElement<PrintOptionsMenuTriggerProps>;
+  labels: PrintOptionsMenuLabels;
   onPrint: () => void;
   onPrintOptionsChange: (nextOptions: CoursePrintOptions) => void;
-  printAnswerStyleLabel?: string;
-  printAnswerStyleBoxLabel?: string;
-  printAnswerStyleEmptyLabel?: string;
-  printAnswerStyleLinesLabel?: string;
-  printHeaderLabel: string;
-  printNowLabel: string;
   printOptions: CoursePrintOptions;
-  printTestSeparatorsLabel?: string;
-  showAnswerStyleOptions?: boolean;
-  showTestSeparatorsOption?: boolean;
-  title: string;
 }) {
+  function updateOption<Key extends keyof CoursePrintOptions>(
+    key: Key,
+    value: CoursePrintOptions[Key],
+  ) {
+    onPrintOptionsChange({
+      ...printOptions,
+      [key]: value,
+    });
+  }
+
+  function renderAnswerStyleOption(
+    value: CoursePrintAnswerStyle,
+    label: string,
+  ) {
+    return (
+      <DropdownMenuRadioItem
+        onSelect={() => updateOption("answerStyle", value)}
+        selected={printOptions.answerStyle === value}
+      >
+        {label}
+      </DropdownMenuRadioItem>
+    );
+  }
+
+  function renderExerciseHintOption(
+    value: CoursePrintExerciseHintStyle,
+    label: string,
+  ) {
+    return (
+      <DropdownMenuRadioItem
+        onSelect={() => updateOption("exerciseHintStyle", value)}
+        selected={printOptions.exerciseHintStyle === value}
+      >
+        {label}
+      </DropdownMenuRadioItem>
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{title}</DropdownMenuLabel>
+        <DropdownMenuLabel>{labels.title}</DropdownMenuLabel>
         <DropdownMenuCheckboxItem
           checked={printOptions.showHeader}
-          onCheckedChange={(checked) =>
-            onPrintOptionsChange({
-              ...printOptions,
-              showHeader: checked,
-            })
-          }
+          onCheckedChange={(checked) => updateOption("showHeader", checked)}
         >
-          {printHeaderLabel}
+          {labels.header}
         </DropdownMenuCheckboxItem>
-        {showTestSeparatorsOption && (
+        {labels.testSeparators && (
           <DropdownMenuCheckboxItem
             checked={printOptions.showTestSeparators}
             onCheckedChange={(checked) =>
-              onPrintOptionsChange({
-                ...printOptions,
-                showTestSeparators: checked,
-              })
+              updateOption("showTestSeparators", checked)
             }
           >
-            {printTestSeparatorsLabel ?? ""}
+            {labels.testSeparators}
           </DropdownMenuCheckboxItem>
         )}
-        {showAnswerStyleOptions && (
+        {labels.answerStyle && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="pt-1">{labels.answerStyle.label}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup>
+              {renderAnswerStyleOption("lines", labels.answerStyle.lines)}
+              {renderAnswerStyleOption("box", labels.answerStyle.box)}
+              {renderAnswerStyleOption("empty", labels.answerStyle.empty)}
+              {renderAnswerStyleOption("squares", labels.answerStyle.squares)}
+            </DropdownMenuRadioGroup>
+          </>
+        )}
+        {labels.exerciseHints && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="pt-1">
-              {printAnswerStyleLabel ?? ""}
+              {labels.exerciseHints.label}
             </DropdownMenuLabel>
             <DropdownMenuRadioGroup>
-              <DropdownMenuRadioItem
-                onSelect={() =>
-                  onPrintOptionsChange({
-                    ...printOptions,
-                    answerStyle: "lines",
-                  })
-                }
-                selected={printOptions.answerStyle === "lines"}
-              >
-                {printAnswerStyleLinesLabel ?? ""}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem
-                onSelect={() =>
-                  onPrintOptionsChange({
-                    ...printOptions,
-                    answerStyle: "box",
-                  })
-                }
-                selected={printOptions.answerStyle === "box"}
-              >
-                {printAnswerStyleBoxLabel ?? ""}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem
-                onSelect={() =>
-                  onPrintOptionsChange({
-                    ...printOptions,
-                    answerStyle: "empty",
-                  })
-                }
-                selected={printOptions.answerStyle === "empty"}
-              >
-                {printAnswerStyleEmptyLabel ?? ""}
-              </DropdownMenuRadioItem>
+              {renderExerciseHintOption("hidden", labels.exerciseHints.hidden)}
+              {renderExerciseHintOption("visible", labels.exerciseHints.visible)}
+              {renderExerciseHintOption(
+                "upside-down",
+                labels.exerciseHints.upsideDown,
+              )}
             </DropdownMenuRadioGroup>
           </>
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onPrint}>
           <Printer aria-hidden="true" className="h-4 w-4" />
-          <span>{printNowLabel}</span>
+          <span>{labels.printNow}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
