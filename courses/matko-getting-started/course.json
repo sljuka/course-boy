@@ -1,0 +1,27 @@
+{
+  "courseSchemaVersion": "1",
+  "id": "matko-getting-started",
+  "version": "0.1.0",
+  "defaultLocale": "en",
+  "supportedLocales": [
+    "en"
+  ],
+  "courseType": "app-guide",
+  "slug": "matko-getting-started",
+  "entrySectionId": "section-01-welcome",
+  "minAppVersion": "0.1.0",
+  "createdAt": "2026-08-01T00:00:00Z",
+  "updatedAt": "2026-08-01T00:00:00Z",
+  "publisher": {
+    "id": "matko",
+    "displayName": "Matko"
+  },
+  "distribution": "bundled",
+  "isSeededOnFirstRun": true,
+  "locales": {
+    "en": {
+      "title": "Getting Started with Matko",
+      "description": "Learn onboarding, taking courses, creating course packages, keys, sharing, and the basics of using Matko."
+    }
+  }
+}

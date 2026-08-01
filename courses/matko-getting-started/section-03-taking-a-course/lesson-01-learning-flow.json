@@ -1,0 +1,10 @@
+{
+  "id": "lesson-01-learning-flow",
+  "slug": "learning-flow",
+  "locales": {
+    "en": {
+      "title": "Learning Flow",
+      "description": "How to browse a course, open lessons, and work through tests."
+    }
+  }
+}

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import Store from 'electron-store'
 import { getCourseDetails, listCourses } from './course-registry'
-import { getLocalCoursesRoot } from './course-paths'
+import { ensureLocalCoursesRoot } from './course-paths'
 import type { Locale } from '../src/lib/i18n'
 
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
@@ -75,13 +75,17 @@ ipcMain.handle('preferences:reset-onboarding', () => {
 })
 
 ipcMain.handle('courses:list', (_event, locale?: Locale) => {
-  return listCourses(getLocalCoursesRoot(), locale)
+  return ensureLocalCoursesRoot().then((coursesRoot) =>
+    listCourses(coursesRoot, locale),
+  )
 })
 
 ipcMain.handle(
   'courses:get',
   (_event, courseId: string, locale?: Locale) => {
-    return getCourseDetails(getLocalCoursesRoot(), courseId, locale)
+    return ensureLocalCoursesRoot().then((coursesRoot) =>
+      getCourseDetails(coursesRoot, courseId, locale),
+    )
   },
 )
 

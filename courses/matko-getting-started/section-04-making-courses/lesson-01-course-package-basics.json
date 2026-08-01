@@ -1,0 +1,10 @@
+{
+  "id": "lesson-01-course-package-basics",
+  "slug": "course-package-basics",
+  "locales": {
+    "en": {
+      "title": "Course Package Basics",
+      "description": "How course metadata, sections, lessons, tests, and localized bodies fit together."
+    }
+  }
+}

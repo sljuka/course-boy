@@ -1,0 +1,10 @@
+{
+  "id": "section-05-keys-and-identity",
+  "slug": "keys-and-identity",
+  "locales": {
+    "en": {
+      "title": "Keys and Identity",
+      "description": "Why publishers need key pairs and how identity is attached to a course."
+    }
+  }
+}

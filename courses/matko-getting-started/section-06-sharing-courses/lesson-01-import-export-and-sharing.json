@@ -1,0 +1,10 @@
+{
+  "id": "lesson-01-import-export-and-sharing",
+  "slug": "import-export-and-sharing",
+  "locales": {
+    "en": {
+      "title": "Import, Export, and Sharing",
+      "description": "The difference between local package exchange and future networked distribution."
+    }
+  }
+}

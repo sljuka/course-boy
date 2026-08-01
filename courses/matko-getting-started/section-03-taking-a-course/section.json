@@ -1,0 +1,10 @@
+{
+  "id": "section-03-taking-a-course",
+  "slug": "taking-a-course",
+  "locales": {
+    "en": {
+      "title": "Taking a Course",
+      "description": "How learners move through lessons, tests, and course navigation."
+    }
+  }
+}

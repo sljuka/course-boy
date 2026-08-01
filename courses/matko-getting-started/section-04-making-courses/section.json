@@ -1,0 +1,10 @@
+{
+  "id": "section-04-making-courses",
+  "slug": "making-courses",
+  "locales": {
+    "en": {
+      "title": "Making Courses",
+      "description": "The structure of a course package and the files that define it."
+    }
+  }
+}

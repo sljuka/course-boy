@@ -1,0 +1,10 @@
+{
+  "id": "section-01-welcome",
+  "slug": "welcome",
+  "locales": {
+    "en": {
+      "title": "Welcome",
+      "description": "What Matko is, who it is for, and how the app is organized."
+    }
+  }
+}

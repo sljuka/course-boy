@@ -1,1 +1,0 @@
-# Jednostavne animacije

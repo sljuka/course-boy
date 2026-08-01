@@ -1,1 +1,0 @@
-# Sabiranje do 10

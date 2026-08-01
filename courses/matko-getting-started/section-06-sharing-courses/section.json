@@ -1,0 +1,10 @@
+{
+  "id": "section-06-sharing-courses",
+  "slug": "sharing-courses",
+  "locales": {
+    "en": {
+      "title": "Sharing Courses",
+      "description": "How course packages move between people and systems."
+    }
+  }
+}

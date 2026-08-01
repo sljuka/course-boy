@@ -1,0 +1,10 @@
+{
+  "id": "section-02-onboarding",
+  "slug": "onboarding",
+  "locales": {
+    "en": {
+      "title": "Onboarding",
+      "description": "First-run setup, language, role, and basic profile choices."
+    }
+  }
+}

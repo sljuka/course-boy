@@ -1,0 +1,10 @@
+{
+  "id": "lesson-01-publisher-keys",
+  "slug": "publisher-keys",
+  "locales": {
+    "en": {
+      "title": "Publisher Keys",
+      "description": "What a key pair is and how it helps users trust shared courses."
+    }
+  }
+}

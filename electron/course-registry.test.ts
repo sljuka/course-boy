@@ -7,86 +7,55 @@ import { getCourseDetails, listCourses } from "./course-registry";
 const coursesRoot = path.resolve(process.cwd(), "courses");
 
 describe("listCourses", () => {
-  it("returns localized lesson preview titles for Serbian", async () => {
-    const courses = await listCourses(coursesRoot, "sr");
-    const mathCourse = courses.find(
-      (course) => course.id === "serbian-elementary-school-1st-grade-math",
+  it("returns the bundled getting started course", async () => {
+    const courses = await listCourses(coursesRoot, "en");
+    const gettingStartedCourse = courses.find(
+      (course) => course.id === "matko-getting-started",
     );
 
-    expect(mathCourse?.lessonPreviews[0]?.title).toBe("Brojevi do 20");
-    expect(mathCourse?.previewItems[0]).toMatchObject({
-      id: "lesson-01-numbers-to-20",
+    expect(courses).toHaveLength(1);
+    expect(gettingStartedCourse?.lessonPreviews[0]?.title).toBe("What Matko Is");
+    expect(gettingStartedCourse?.previewItems[0]).toMatchObject({
+      id: "lesson-01-what-is-matko",
       kind: "lesson",
-      title: "Brojevi do 20",
+      title: "What Matko Is",
     });
-    expect(mathCourse?.previewItems[1]).toMatchObject({
-      id: "test-01-numbers-to-20",
-      kind: "test",
-    });
-  });
-
-  it("returns localized lesson preview titles for Serbian Cyrillic", async () => {
-    const courses = await listCourses(coursesRoot, "sr-Cyrl");
-    const mathCourse = courses.find(
-      (course) => course.id === "serbian-elementary-school-1st-grade-math",
-    );
-
-    expect(mathCourse?.lessonPreviews[0]?.title).toBe("Бројеви до 20");
+    expect(gettingStartedCourse?.previewItems).toHaveLength(6);
   });
 });
 
 describe("getCourseDetails", () => {
-  it("returns localized section metadata for Serbian", async () => {
+  it("returns the configured entry section and section order", async () => {
     const course = await getCourseDetails(
       coursesRoot,
-      "serbian-elementary-school-1st-grade-math",
-      "sr",
-    );
-
-    expect(course?.sections[0]?.title).toBe("Osećaj za brojeve");
-    expect(course?.sections[0]?.description).toBe(
-      "Vežbaj brojanje, redosled i poređenje brojeva sa sigurnošću.",
-    );
-  });
-
-  it("returns localized section metadata for Serbian Cyrillic", async () => {
-    const course = await getCourseDetails(
-      coursesRoot,
-      "serbian-elementary-school-1st-grade-math",
-      "sr-Cyrl",
-    );
-
-    expect(course?.sections[0]?.title).toBe("Осећај за бројеве");
-    expect(course?.sections[0]?.description).toBe(
-      "Вежбај бројање, редослед и поређење бројева са сигурношћу.",
-    );
-  });
-
-  it("returns localized lesson body and exercise data", async () => {
-    const course = await getCourseDetails(
-      coursesRoot,
-      "serbian-elementary-school-1st-grade-math",
+      "matko-getting-started",
       "en",
     );
 
-    expect(course?.sections[0]?.lessons[0]?.body).toContain("# Numbers to 20");
-    expect(course?.sections[0]?.lessons[0]?.test?.exercises[0]?.prompt).toContain(
-      "red apples",
-    );
-    expect(course?.sections[0]?.lessons[0]?.test?.exercises[0]?.formula).toBe("a + b");
-    expect(course?.sections[0]?.lessons[0]?.test?.exercises[0]?.solutionSpace).toBe("sm");
-    expect(course?.sections[0]?.lessons[0]?.test?.exercises).toHaveLength(10);
-    expect(course?.sections[0]?.lessons[0]?.test?.structure).toHaveLength(3);
+    expect(course?.entrySectionId).toBe("section-01-welcome");
+    expect(course?.sectionIds).toEqual([
+      "section-01-welcome",
+      "section-02-onboarding",
+      "section-03-taking-a-course",
+      "section-04-making-courses",
+      "section-05-keys-and-identity",
+      "section-06-sharing-courses",
+      "section-07-safety-and-trust",
+    ]);
   });
 
-  it("returns configured solution space for worksheet-style exercises", async () => {
+  it("returns localized section and lesson content for the bundled guide", async () => {
     const course = await getCourseDetails(
       coursesRoot,
-      "everyday-math-money-and-time",
+      "matko-getting-started",
       "en",
     );
 
-    expect(course?.sections[0]?.lessons[0]?.test?.exercises[4]?.solutionSpace).toBe("md");
-    expect(course?.sections[0]?.lessons[0]?.test?.exercises[7]?.solutionSpace).toBe("xl");
+    expect(course?.sections[0]?.title).toBe("Welcome");
+    expect(course?.sections[0]?.description).toBe(
+      "What Matko is, who it is for, and how the app is organized.",
+    );
+    expect(course?.sections[0]?.lessons[0]?.body).toContain("# What Matko Is");
+    expect(course?.sections[0]?.lessons[0]?.test).toBeNull();
   });
 });

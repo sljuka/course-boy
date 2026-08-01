@@ -1,0 +1,10 @@
+{
+  "id": "lesson-01-what-is-matko",
+  "slug": "what-is-matko",
+  "locales": {
+    "en": {
+      "title": "What Matko Is",
+      "description": "A quick overview of the app and the kinds of courses it is built to handle."
+    }
+  }
+}

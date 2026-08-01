@@ -1,0 +1,10 @@
+{
+  "id": "lesson-01-first-run-setup",
+  "slug": "first-run-setup",
+  "locales": {
+    "en": {
+      "title": "First-Run Setup",
+      "description": "How onboarding works and which settings matter right away."
+    }
+  }
+}
