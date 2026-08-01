@@ -22,7 +22,7 @@ function AppMenu() {
       <button
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-50"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-50"
         onClick={() => setIsOpen((open) => !open)}
         type="button"
       >

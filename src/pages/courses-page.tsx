@@ -5,7 +5,7 @@ import { CourseSearch } from "@/components/course-search/course-search";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PageContent } from "@/components/page-content";
 
-export const CourseSearchPage = () => {
+export const CoursesPage = () => {
   const { t } = useTranslation();
 
   return (

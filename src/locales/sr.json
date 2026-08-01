@@ -214,6 +214,17 @@
     "student": "Učenik",
     "teacher": "Nastavnik"
   },
-  "welcomeSubtitle": "Matko je otvorena mreža za kreiranje tutorijala, testova kao i rešavanje kreiranih testova na platformi ili papiru (testovi su pogodnog formata za štampanje). Nadamo se da će te uživati u učenju novih stvari",
+  "sidebar": {
+    "createCourse": "Napravi novi kurs",
+    "createCourseDescription": "Pokreni novi radni prostor za kurs i napravi njegovu strukturu, lekcije, testove i metapodatke.",
+    "drafts": "Nacrti",
+    "draftsDescription": "Pregledaj i nastavi uređivanje nacrta kurseva koji još nisu spremni za objavu.",
+    "myCourses": "Moji kursevi",
+    "myCoursesDescription": "Pregledaj kurseve koje održavaš, ažuriraš ili objavljuješ sa ovog uređaja.",
+    "navigation": "Radni prostor",
+    "searchCourses": "Pretraga kurseva",
+    "title": "Nastavnički radni prostor"
+  },
+  "welcomeSubtitle": "Matko je otvorena mreža za kreiranje tutorijala, testova kao i rešavanje kreiranih testova na platformi ili papiru (testovi su pogodnog formata za štampanje). Nadamo se da će te naučiti nešto novo",
   "welcomeTitle": "Dobrodošli! 😊"
 }

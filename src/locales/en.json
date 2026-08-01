@@ -214,6 +214,17 @@
     "student": "Student",
     "teacher": "Teacher"
   },
+  "sidebar": {
+    "createCourse": "Create new course",
+    "createCourseDescription": "Start a new course workspace and build its package structure, lessons, tests, and metadata.",
+    "drafts": "Drafts",
+    "draftsDescription": "Review and continue editing course drafts that are not ready to publish yet.",
+    "myCourses": "My courses",
+    "myCoursesDescription": "Browse the courses you maintain, update, or publish from this device.",
+    "navigation": "Workspace",
+    "searchCourses": "Search courses",
+    "title": "Teacher workspace"
+  },
   "welcomeSubtitle": "Matko is an open platform for creating tutorials and tests, and for solving those tests either on the platform or on paper. The format is print-friendly, with a focus on making new tests easy to create, easy to complete, and enjoyable to learn from 😊",
   "welcomeTitle": "Welcome! 😊"
 }
