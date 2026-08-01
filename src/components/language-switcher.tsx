@@ -6,6 +6,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Locale } from '@/lib/i18n'
+import { getLocaleFlag } from '@/lib/locale-flags'
 import { useTranslation } from 'react-i18next'
 
 type LanguageSwitcherProps = {
@@ -38,15 +39,15 @@ function LanguageSwitcher({
         >
           <SelectTrigger aria-label="Language" className="h-10 w-[8.75rem] pl-9">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs">
-              {selectValue === 'en' ? '🇬🇧' : '🇷🇸'}
+              {getLocaleFlag(selectValue)}
             </span>
             <SelectValue>
               {selectValue === 'sr' ? t('language.serbian') : t('language.english')}
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="en">🇬🇧 {t('language.english')}</SelectItem>
-            <SelectItem value="sr">🇷🇸 {t('language.serbian')}</SelectItem>
+            <SelectItem value="en">{getLocaleFlag('en')} {t('language.english')}</SelectItem>
+            <SelectItem value="sr">{getLocaleFlag('sr')} {t('language.serbian')}</SelectItem>
           </SelectContent>
         </Select>
       </div>

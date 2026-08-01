@@ -31,6 +31,7 @@ interface Window {
     list: (
       locale?: import('../src/lib/i18n').Locale,
     ) => Promise<import('../src/lib/course-package').CourseSummary[]>
+    remove: (courseId: string) => Promise<void>
   }
   preferences: {
     get: () => Promise<import('../src/lib/preferences').UserPreferences>

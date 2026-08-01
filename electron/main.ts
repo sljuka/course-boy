@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import Store from 'electron-store'
 import { getCourseDetails, listCourses } from './course-registry'
-import { ensureLocalCoursesRoot } from './course-paths'
+import { ensureLocalCoursesRoot, removeLocalCourse } from './course-paths'
 import type { Locale } from '../src/lib/i18n'
 
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
@@ -88,6 +88,10 @@ ipcMain.handle(
     )
   },
 )
+
+ipcMain.handle('courses:remove', (_event, courseId: string) => {
+  return removeLocalCourse(courseId)
+})
 
 function createWindow() {
   win = new BrowserWindow({

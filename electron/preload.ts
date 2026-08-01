@@ -25,4 +25,7 @@ contextBridge.exposeInMainWorld('courses', {
   list(locale?: Locale) {
     return ipcRenderer.invoke('courses:list', locale) as Promise<CourseSummary[]>
   },
+  remove(courseId: string) {
+    return ipcRenderer.invoke('courses:remove', courseId) as Promise<void>
+  },
 })

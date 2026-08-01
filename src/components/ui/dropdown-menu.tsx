@@ -231,9 +231,11 @@ function DropdownMenuRadioItem({
 }
 
 function DropdownMenuItem({
+  className,
   children,
   onSelect,
 }: {
+  className?: string;
   children: React.ReactNode;
   onSelect: () => void;
 }) {
@@ -241,7 +243,10 @@ function DropdownMenuItem({
 
   return (
     <button
-      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm leading-5 font-medium text-stone-900 transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+      className={cn(
+        "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm leading-5 font-medium text-stone-900 transition-colors hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white",
+        className,
+      )}
       onClick={() => {
         onSelect();
         setOpen(false);
