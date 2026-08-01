@@ -32,7 +32,6 @@ interface Window {
       locale?: import('../src/lib/i18n').Locale,
     ) => Promise<import('../src/lib/course-package').CourseSummary[]>
   }
-  ipcRenderer: import('electron').IpcRenderer
   preferences: {
     get: () => Promise<import('../src/lib/preferences').UserPreferences>
     resetOnboarding: () => Promise<import('../src/lib/preferences').UserPreferences>
