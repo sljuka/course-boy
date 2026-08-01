@@ -46,7 +46,7 @@ export function CourseCard({ course, onRemove }: CourseCardProps) {
                   className="flex min-w-0 items-center gap-1 transition-colors hover:text-stone-700"
                   to={`/courses/${course.id}`}
                 >
-                  <span className="min-w-0 break-words">{course.title}</span>
+                  <span className="min-w-0 wrap-break-word">{course.title}</span>
                   <ArrowRight aria-hidden="true" className="h-5 w-5 shrink-0" />
                 </Link>
               </CardTitle>
