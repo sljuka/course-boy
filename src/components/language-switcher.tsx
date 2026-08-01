@@ -38,7 +38,7 @@ function LanguageSwitcher({
           value={selectValue}
         >
           <SelectTrigger aria-label="Language" className="h-10 w-[8.75rem] pl-9">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg leading-none">
               {getLocaleFlag(selectValue)}
             </span>
             <SelectValue>
@@ -46,8 +46,12 @@ function LanguageSwitcher({
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="en">{getLocaleFlag('en')} {t('language.english')}</SelectItem>
-            <SelectItem value="sr">{getLocaleFlag('sr')} {t('language.serbian')}</SelectItem>
+            <SelectItem value="en">
+              <span className="text-lg leading-none">{getLocaleFlag('en')}</span> {t('language.english')}
+            </SelectItem>
+            <SelectItem value="sr">
+              <span className="text-lg leading-none">{getLocaleFlag('sr')}</span> {t('language.serbian')}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -2,7 +2,6 @@ import { ArrowRight, MoreHorizontal, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { CoursePreviewStrip } from "@/components/course-preview-strip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -84,7 +83,10 @@ export function CourseCard({ course, onRemove }: CourseCardProps) {
               {t("courseSearch.version", { version: course.version })}
             </Badge>
             <Badge className="max-w-full">
-              <span aria-label={t("courseSearch.localesLabel")}>
+              <span
+                aria-label={t("courseSearch.localesLabel")}
+                className="text-lg leading-none"
+              >
                 {[
                   ...new Set(
                     course.supportedLocales.map(
@@ -96,9 +98,6 @@ export function CourseCard({ course, onRemove }: CourseCardProps) {
             </Badge>
           </div>
         </CardHeader>
-        <div className="max-w-full overflow-x-auto">
-          <CoursePreviewStrip items={course.previewItems} />
-        </div>
       </CardContent>
     </Card>
   );
