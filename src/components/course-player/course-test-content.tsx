@@ -116,7 +116,7 @@ export const CourseTestContent = ({
               }`}
               key={exercise.id}
             >
-              <p className="flex items-start gap-1.5 text-base leading-7 text-stone-700">
+              <p className="flex items-start gap-1.5 text-base leading-7 font-semibold text-stone-700">
                 <Badge
                   className="size-6 shrink-0 justify-center"
                   variant="secondary"
