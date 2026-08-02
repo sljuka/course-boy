@@ -122,7 +122,7 @@ function Sidebar({
       {isMobile && isOpen ? (
         <button
           aria-label="Close sidebar overlay"
-          className="fixed inset-0 z-40 bg-stone-950/25 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-stone-950/25 backdrop-blur-sm transition-opacity duration-200 ease-out motion-reduce:transition-none lg:hidden"
           onClick={() => setOpenMobile(false)}
           type="button"
         />
@@ -130,7 +130,7 @@ function Sidebar({
       {isMobile ? (
         <aside
           className={cn(
-            "fixed top-0 z-50 h-[100dvh] w-[18rem]",
+            "fixed top-0 z-50 h-[100dvh] w-[18rem] transition-transform duration-200 ease-out motion-reduce:transition-none will-change-transform",
             side === "right" ? "right-0" : "left-0",
             isOpen
               ? "translate-x-0"
@@ -145,7 +145,7 @@ function Sidebar({
       ) : (
         <div
           className={cn(
-            "relative sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-hidden",
+            "relative sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none",
             isOpen
               ? "w-64 opacity-100"
               : "w-0 opacity-100",
@@ -153,12 +153,12 @@ function Sidebar({
         >
           <aside
             className={cn(
-              "h-full w-64",
+              "h-full w-64 transition-[transform,opacity] duration-200 ease-out motion-reduce:transition-none will-change-transform",
               isOpen
-                ? "translate-x-0"
+                ? "translate-x-0 opacity-100"
                 : side === "right"
-                  ? "translate-x-full"
-                  : "-translate-x-full",
+                  ? "translate-x-full opacity-0"
+                  : "-translate-x-full opacity-0",
             )}
             {...props}
           >

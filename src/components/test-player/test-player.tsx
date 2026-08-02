@@ -1,4 +1,4 @@
-import { Printer } from "lucide-react";
+import { Play, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
@@ -12,6 +12,7 @@ import { useCoursePlayer } from "@/components/course-player/use-course-player";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { CardDescription, LessonTitle } from "@/components/ui/card";
+import { AlertInteractiveMode } from "@/components/test-player/alert-interactive-mode";
 import { TestPlayerPrintHint } from "@/components/test-player/test-player-print-hint";
 import type { CourseExercise } from "@/lib/course-package";
 import { defaultTestPrintOptions } from "@/lib/print-options";
@@ -48,6 +49,8 @@ export function TestPlayer({
   const [testFeedback, setTestFeedback] = useState<string | null>(null);
   const [isTestPassed, setIsTestPassed] = useState(false);
   const [isPrintHintVisible, setIsPrintHintVisible] = useState(true);
+  const [isInteractiveHintVisible, setIsInteractiveHintVisible] =
+    useState(true);
   const [printOptions, setPrintOptions] = useState(defaultTestPrintOptions);
   const readyPlayerState = playerState.status === "ready" ? playerState : null;
   const printMenuLabels = {
@@ -82,6 +85,7 @@ export function TestPlayer({
   useEffect(() => {
     resetExerciseState();
     setIsPrintHintVisible(true);
+    setIsInteractiveHintVisible(true);
 
     if (
       !readyPlayerState?.activeLesson.test ||
@@ -246,21 +250,34 @@ export function TestPlayer({
                 setIsTestPassed(false);
               }}
               printControl={
-                <PrintOptionsMenu
-                  labels={printMenuLabels}
-                  onPrint={() => window.print()}
-                  onPrintOptionsChange={setPrintOptions}
-                  printOptions={printOptions}
-                >
+                <div className="flex items-center gap-2">
+                  <PrintOptionsMenu
+                    labels={printMenuLabels}
+                    onPrint={() => window.print()}
+                    onPrintOptionsChange={setPrintOptions}
+                    printOptions={printOptions}
+                  >
+                    <Button
+                      aria-label={t("courseDetails.printCourse")}
+                      className="rounded-full"
+                      size="icon"
+                      variant="secondary"
+                    >
+                      <Printer aria-hidden="true" className="h-5 w-5" />
+                    </Button>
+                  </PrintOptionsMenu>
                   <Button
-                    aria-label={t("courseDetails.printCourse")}
+                    aria-label={t("courseDetails.interactiveHintTitle")}
                     className="rounded-full"
                     size="icon"
                     variant="secondary"
                   >
-                    <Printer aria-hidden="true" className="h-5 w-5" />
+                    <Play
+                      aria-hidden="true"
+                      className="h-5 w-5 fill-emerald-600 text-emerald-600"
+                    />
                   </Button>
-                </PrintOptionsMenu>
+                </div>
               }
             />
           }
@@ -273,6 +290,11 @@ export function TestPlayer({
             onDismiss={() => setIsPrintHintVisible(false)}
             onPrintOptionsChange={setPrintOptions}
             printOptions={printOptions}
+          />
+        )}
+        {isInteractiveHintVisible && (
+          <AlertInteractiveMode
+            onDismiss={() => setIsInteractiveHintVisible(false)}
           />
         )}
         <CourseTestContent

@@ -2,6 +2,7 @@ import { RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { RoleGuard } from "@/components/role-guard";
 import { Button } from "@/components/ui/button";
 
 export const CoursePlayerActions = ({
@@ -19,17 +20,19 @@ export const CoursePlayerActions = ({
 
   return (
     <>
-      {isRefreshingAvailable && (
-        <Button
-          aria-label={t("courseDetails.refreshExercise")}
-          className="rounded-full"
-          onClick={onRefreshExercise}
-          size="icon"
-          variant="secondary"
-        >
-          <RotateCw aria-hidden="true" className="h-5 w-5" />
-        </Button>
-      )}
+      <RoleGuard roles="teacher">
+        {isRefreshingAvailable && (
+          <Button
+            aria-label={t("courseDetails.refreshExercise")}
+            className="rounded-full"
+            onClick={onRefreshExercise}
+            size="icon"
+            variant="secondary"
+          >
+            <RotateCw aria-hidden="true" className="h-5 w-5" />
+          </Button>
+        )}
+      </RoleGuard>
       {printControl}
       <Link
         aria-label={t("courseDetails.closeCourse")}

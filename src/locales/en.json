@@ -51,6 +51,8 @@
     "correctAnswer": "Correct. You can continue to the next lesson.",
     "enterAnswer": "Enter a valid answer before continuing.",
     "error": "Course details could not be loaded right now.",
+    "interactiveHintBody": "In interactive mode, you solve exercises one by one and get the answer after submitting each exercise. It is a nicer way to take the test.",
+    "interactiveHintTitle": "Try interactive mode",
     "incorrectAnswer": "That answer is not correct yet.",
     "incorrectAnswerWithHint": "That answer is not correct yet. Hint: {{hint}}",
     "dismissPrintHint": "Dismiss print hint",
