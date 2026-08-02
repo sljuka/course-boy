@@ -1,4 +1,5 @@
 import { Printer } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import {
   DropdownMenu,
@@ -17,26 +18,6 @@ import type {
   CoursePrintOptions,
 } from "@/lib/print-options";
 
-export type PrintOptionsMenuLabels = {
-  answerStyle?: {
-    box: string;
-    empty: string;
-    label: string;
-    lines: string;
-    squares: string;
-  };
-  exerciseHints?: {
-    hidden: string;
-    label: string;
-    upsideDown: string;
-    visible: string;
-  };
-  header: string;
-  printNow: string;
-  testSeparators?: string;
-  title: string;
-};
-
 type PrintOptionsMenuTriggerProps = {
   onClick?: (event: React.MouseEvent<HTMLElement>) => void;
   ref?: React.Ref<HTMLElement>;
@@ -44,17 +25,46 @@ type PrintOptionsMenuTriggerProps = {
 
 export function PrintOptionsMenu({
   children,
-  labels,
+  mode,
   onPrint,
   onPrintOptionsChange,
   printOptions,
 }: {
   children: React.ReactElement<PrintOptionsMenuTriggerProps>;
-  labels: PrintOptionsMenuLabels;
+  mode: "lesson" | "test";
   onPrint: () => void;
   onPrintOptionsChange: (nextOptions: CoursePrintOptions) => void;
   printOptions: CoursePrintOptions;
 }) {
+  const { t } = useTranslation();
+
+  const labels = {
+    answerStyle:
+      mode === "test"
+        ? {
+            box: t("courseDetails.printAnswerStyleBox"),
+            empty: t("courseDetails.printAnswerStyleEmpty"),
+            label: t("courseDetails.printAnswerStyle"),
+            lines: t("courseDetails.printAnswerStyleLines"),
+            squares: t("courseDetails.printAnswerStyleSquares"),
+          }
+        : undefined,
+    exerciseHints:
+      mode === "test"
+        ? {
+            hidden: t("courseDetails.printExerciseHintsHide"),
+            label: t("courseDetails.printExerciseHints"),
+            upsideDown: t("courseDetails.printExerciseHintsUpsideDown"),
+            visible: t("courseDetails.printExerciseHintsPrint"),
+          }
+        : undefined,
+    header: t("courseDetails.printOptionHeader"),
+    printNow: t("courseDetails.printNow"),
+    testSeparators:
+      mode === "test" ? t("courseDetails.printOptionSeparators") : undefined,
+    title: t("courseDetails.printOptions"),
+  };
+
   function updateOption<Key extends keyof CoursePrintOptions>(
     key: Key,
     value: CoursePrintOptions[Key],

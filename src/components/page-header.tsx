@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 type PageHeaderProps = {
@@ -6,6 +7,7 @@ type PageHeaderProps = {
   right?: ReactNode;
   children?: ReactNode;
   top?: ReactNode;
+  className?: string;
 };
 
 export const PageHeader = ({
@@ -14,9 +16,10 @@ export const PageHeader = ({
   right,
   children,
   top,
+  className,
 }: PageHeaderProps) => {
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn(className, "flex flex-col gap-2")}>
       {top}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">

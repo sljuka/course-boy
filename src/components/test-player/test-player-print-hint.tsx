@@ -1,23 +1,18 @@
 import { Info, Printer, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import {
-  PrintOptionsMenu,
-  type PrintOptionsMenuLabels,
-} from "@/components/course-player/print-options-menu";
+import { PrintOptionsMenu } from "@/components/course-player/print-options-menu";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { CoursePrintOptions } from "@/lib/print-options";
 
 type TestPlayerPrintHintProps = {
-  labels: PrintOptionsMenuLabels;
   onDismiss: () => void;
   onPrintOptionsChange: (nextOptions: CoursePrintOptions) => void;
   printOptions: CoursePrintOptions;
 };
 
 export function TestPlayerPrintHint({
-  labels,
   onDismiss,
   onPrintOptionsChange,
   printOptions,
@@ -39,7 +34,7 @@ export function TestPlayerPrintHint({
         </div>
         <div className="flex items-start gap-2">
           <PrintOptionsMenu
-            labels={labels}
+            mode="test"
             onPrint={() => window.print()}
             onPrintOptionsChange={onPrintOptionsChange}
             printOptions={printOptions}

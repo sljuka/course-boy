@@ -61,11 +61,7 @@ export function LessonPlayer({
                 onRefreshExercise={() => {}}
                 printControl={
                   <PrintOptionsMenu
-                    labels={{
-                      header: t("courseDetails.printOptionHeader"),
-                      printNow: t("courseDetails.printNow"),
-                      title: t("courseDetails.printOptions"),
-                    }}
+                    mode="lesson"
                     onPrint={() => window.print()}
                     onPrintOptionsChange={setPrintOptions}
                     printOptions={printOptions}
