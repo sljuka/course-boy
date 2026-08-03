@@ -1,9 +1,9 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-import en from '@/locales/en.json'
-import sr from '@/locales/sr.json'
-import srCyrl from '@/locales/sr-Cyrl.json'
+import en from '../locales/en.json'
+import sr from '../locales/sr.json'
+import srCyrl from '../locales/sr-Cyrl.json'
 
 const resources = {
   en: {

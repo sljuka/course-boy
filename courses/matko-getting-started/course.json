@@ -6,8 +6,9 @@
   "supportedLocales": [
     "en"
   ],
-  "courseType": "app-guide",
+  "builtin": false,
   "slug": "matko-getting-started",
+  "status": "published",
   "entrySectionId": "section-01-welcome",
   "minAppVersion": "0.1.0",
   "createdAt": "2026-08-01T00:00:00Z",

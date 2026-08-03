@@ -3,7 +3,12 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import Store from 'electron-store'
 import { getCourseDetails, listCourses } from './course-registry'
-import { ensureLocalCoursesRoot, removeLocalCourse } from './course-paths'
+import {
+  createLocalCourseDraft,
+  ensureLocalCoursesRoot,
+  removeLocalCourse,
+} from './course-paths'
+import type { CreateCourseDraftInput } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
@@ -88,6 +93,10 @@ ipcMain.handle(
     )
   },
 )
+
+ipcMain.handle('courses:create-draft', (_event, input: CreateCourseDraftInput) => {
+  return createLocalCourseDraft(input)
+})
 
 ipcMain.handle('courses:remove', (_event, courseId: string) => {
   return removeLocalCourse(courseId)

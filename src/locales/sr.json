@@ -216,6 +216,75 @@
     "student": "Učenik",
     "teacher": "Nastavnik"
   },
+  "courseCreate": {
+    "creating": "Pravljenje kursa...",
+    "description": "Pokreni lokalni nacrt paketa kursa sa početnim podacima o kursu. Posle pravljenja nastavljaš izradu nacrta dodavanjem sekcija.",
+    "errorBody": "Nacrt paketa kursa trenutno ne može da se napravi.",
+    "errorTitle": "Kurs ne može da se napravi",
+    "emptySupportedLocales": "Nijedan jezik nije pronađen.",
+    "fields": {
+      "defaultLocaleHelp": "Ovo je jezik koji će korisnik videti ako njegov izabrani jezik nije među jezicima kursa.",
+      "defaultLocale": "Podrazumevani jezik",
+      "deriveSrCyrlFromSr": "Automatski izvedi sr-Cyrl iz sr.",
+      "description": "Opis",
+      "supportedLocales": "Podržani jezici",
+      "title": "Naziv kursa"
+    },
+    "placeholders": {
+      "description": "O čemu je ovaj kurs i kome je namenjen?",
+      "supportedLocales": "Dodaj jezike kursa",
+      "title": "Uvod u razlomke"
+    },
+    "previewDescription": "Opis nacrta će se prikazati ovde.",
+    "previewIncludes": "Početni paket",
+    "previewIncludesValue": "1 sekcija, 1 lekcija, lokalizovani markdown sadržaj",
+    "previewLabel": "Pregled",
+    "previewUntitled": "Kurs bez naziva",
+    "submit": "Napravi nacrt kursa",
+    "title": "Napravi Novi Kurs"
+  },
+  "draftDetails": {
+    "actions": {
+      "addSection": "Dodaj sekciju",
+      "editCourse": "Uredi podatke kursa"
+    },
+    "back": "Nazad na nacrte",
+    "badges": {
+      "draft": "Nacrt"
+    },
+    "editor": {
+      "description": "Ovaj panel postaje radni prostor za uređivanje nacrta. Za novi kurs prvi korak je dodavanje početne sekcije.",
+      "emptyTitle": "Počni izradu kursa",
+      "helperDescription": "Pravljenje sekcija i uređivanje kursa će biti smešteni ovde u sledećem koraku toka. Stranica već odvaja uređivanje nacrta od prikaza kursa za učenje.",
+      "helperTitle": "Radni prostor za autora",
+      "nextStepEmpty": "Ovaj nacrt je spreman za prvu sekciju. Kada se sekcija doda, panel strukture postaje pregled kursa.",
+      "nextStepReady": "Izaberi sekciju iz panela strukture da nastaviš uređivanje nacrta.",
+      "nextStepTitle": "Sledeći korak",
+      "title": "Uređivanje nacrta"
+    },
+    "error": "Radni prostor za nacrt ne može da se učita.",
+    "loading": "Učitavanje radnog prostora za nacrt...",
+    "meta": {
+      "lessons": "{{count}} lekcija",
+      "sections": "{{count}} sekcija",
+      "version": "Verzija {{version}}"
+    },
+    "missing": "Ovaj nacrt nije pronađen.",
+    "structure": {
+      "description": "Ovde praviš strukturu kursa dodavanjem sekcija redosledom kojim učenici treba da ih prate.",
+      "emptyDescription": "Još nema sekcija. Dodaj prvu da počneš oblikovanje kursa.",
+      "emptyTitle": "Još nema sekcija",
+      "sectionLabel": "Sekcija {{index}}",
+      "title": "Struktura kursa"
+    }
+  },
+  "drafts": {
+    "description": "Pregledaj nacrte kurseva i nastavi izradu njihove strukture pre nego što budu spremni za učenike.",
+    "empty": "Nijedan nacrt kursa još ne odgovara ovoj pretrazi.",
+    "error": "Lista nacrta ne može da se učita.",
+    "searchPlaceholder": "Pretraži nacrte kurseva",
+    "title": "Nacrti Kurseva"
+  },
   "sidebar": {
     "createCourse": "Napravi novi kurs",
     "createCourseDescription": "Pokreni novi radni prostor za kurs i napravi njegovu strukturu, lekcije, testove i metapodatke.",

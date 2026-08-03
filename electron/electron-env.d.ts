@@ -24,6 +24,9 @@ declare namespace NodeJS {
 // Used in Renderer process, expose in `preload.ts`
 interface Window {
   courses: {
+    createDraft: (
+      input: import('../src/lib/course-package').CreateCourseDraftInput,
+    ) => Promise<import('../src/lib/course-package').CreateCourseDraftResult>
     get: (
       courseId: string,
       locale?: import('../src/lib/i18n').Locale,

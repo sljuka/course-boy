@@ -39,7 +39,7 @@ export const HeaderLayout = () => {
             <AppSidebar />
           </RoleGuard>
           <SidebarInset className="min-w-0">
-            <main className="min-h-[calc(100vh-4rem)] w-full rounded-bl-[1.5rem] border-l border-stone-200 bg-white shadow-[0_20px_48px_-28px_rgba(41,37,36,0.18)]">
+            <main className="min-h-[calc(100vh-4rem)] w-full rounded-bl-3xl border-l border-stone-200 bg-white shadow-[0_20px_48px_-28px_rgba(41,37,36,0.18)]">
               <div className="flex bg-white p-4">
                 <div className="flex w-full items-start">
                   <Outlet />

@@ -130,7 +130,7 @@ function Sidebar({
       {isMobile ? (
         <aside
           className={cn(
-            "fixed top-0 z-50 h-[100dvh] w-[18rem] transition-transform duration-200 ease-out motion-reduce:transition-none will-change-transform",
+            "fixed top-0 z-50 h-dvh w-[18rem] transition-transform duration-200 ease-out motion-reduce:transition-none will-change-transform",
             side === "right" ? "right-0" : "left-0",
             isOpen
               ? "translate-x-0"
@@ -145,7 +145,7 @@ function Sidebar({
       ) : (
         <div
           className={cn(
-            "relative sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none",
+            "sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none",
             isOpen
               ? "w-64 opacity-100"
               : "w-0 opacity-100",

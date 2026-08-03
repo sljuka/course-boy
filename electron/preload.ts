@@ -1,5 +1,7 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type {
+  CreateCourseDraftInput,
+  CreateCourseDraftResult,
   CourseDetails,
   CourseSummary,
 } from '../src/lib/course-package'
@@ -19,6 +21,9 @@ contextBridge.exposeInMainWorld('preferences', {
 })
 
 contextBridge.exposeInMainWorld('courses', {
+  createDraft(input: CreateCourseDraftInput) {
+    return ipcRenderer.invoke('courses:create-draft', input) as Promise<CreateCourseDraftResult>
+  },
   get(courseId: string, locale?: Locale) {
     return ipcRenderer.invoke('courses:get', courseId, locale) as Promise<CourseDetails | null>
   },

@@ -1,11 +1,14 @@
 import type { Locale } from "@/lib/i18n";
 
+export type CourseStatus = "draft" | "published";
+
 export type CourseManifest = {
-  courseType: string;
+  builtin: boolean;
   defaultLocale: Locale;
   id: string;
   locales: Record<Locale, LocalizedCourseMetadata>;
   slug: string;
+  status: CourseStatus;
   supportedLocales: Locale[];
   version: string;
 };
@@ -93,16 +96,28 @@ export type CourseSummary = {
   id: string;
   lessonPreviews: LessonPreview[];
   previewItems: CoursePreviewItem[];
+  status: CourseStatus;
   supportedLocales: Locale[];
   title: string;
   version: string;
 };
 
 export type CourseDetails = CourseSummary & {
-  courseType: string;
-  entrySectionId: string;
+  builtin: boolean;
+  entrySectionId: string | null;
   lessonIds: string[];
   sections: CourseSectionPreview[];
   sectionIds: string[];
   slug: string;
+};
+
+export type CreateCourseDraftInput = {
+  defaultLocale: Locale;
+  deriveSrCyrlFromSr?: boolean;
+  locales: Partial<Record<Locale, LocalizedCourseMetadata>>;
+  supportedLocales: Locale[];
+};
+
+export type CreateCourseDraftResult = {
+  courseId: string;
 };

@@ -2,7 +2,8 @@ import { BookOpen, FileText, Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -36,9 +37,15 @@ function AppSidebar() {
             <SidebarMenu>
               {sidebarItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={location.pathname === item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === item.href}
+                  >
                     <Link to={item.href}>
-                      <item.icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                      <item.icon
+                        aria-hidden="true"
+                        className="h-4 w-4 shrink-0"
+                      />
                       <span>{t(`sidebar.${item.id}`)}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -49,12 +56,16 @@ function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t-0 px-3 pb-4 pt-2">
-        <Button className="justify-start rounded-xl" size="md" variant="primary">
-          <Link className="flex w-full items-center gap-3" to="/courses/new">
-            <Plus aria-hidden="true" className="h-4 w-4 shrink-0" />
-            <span>{t("sidebar.createCourse")}</span>
-          </Link>
-        </Button>
+        <Link
+          to="/courses/new"
+          className={cn(
+            buttonVariants({ size: "md", variant: "primary" }),
+            "gap-2",
+          )}
+        >
+          <Plus aria-hidden="true" className="h-4 w-4 shrink-0" />
+          <span>{t("sidebar.createCourse")}</span>
+        </Link>
       </SidebarFooter>
     </Sidebar>
   );

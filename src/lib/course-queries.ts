@@ -1,6 +1,11 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import type { CourseDetails, CourseSummary } from "@/lib/course-package";
+import type {
+  CourseDetails,
+  CourseSummary,
+  CreateCourseDraftInput,
+  CreateCourseDraftResult,
+} from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { queryClient } from "@/lib/query-client";
 
@@ -32,6 +37,20 @@ export function useRemoveCourseMutation() {
   return useMutation({
     mutationFn: (courseId: string) => window.courses.remove(courseId),
     onSuccess: async (_result, courseId) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses"],
+      });
+      queryClient.removeQueries({
+        queryKey: ["courses", "detail", courseId],
+      });
+    },
+  });
+}
+
+export function useCreateCourseDraftMutation() {
+  return useMutation<CreateCourseDraftResult, Error, CreateCourseDraftInput>({
+    mutationFn: (input) => window.courses.createDraft(input),
+    onSuccess: async ({ courseId }) => {
       await queryClient.invalidateQueries({
         queryKey: ["courses"],
       });

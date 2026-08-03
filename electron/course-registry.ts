@@ -12,17 +12,22 @@ import type {
   CourseManifest,
   CoursePreviewItem,
   CourseSummary,
+  CourseStatus,
   LessonPreview,
   LocalizedCourseMetadata,
   LocalizedLessonMetadata,
   LocalizedSectionMetadata,
   StoredSectionDefinition,
-} from "@/lib/course-package";
-import type { Locale } from "@/lib/i18n";
+} from "../src/lib/course-package";
+import type { Locale } from "../src/lib/i18n";
 
 type CourseRecord = {
   directoryPath: string;
   manifest: CourseManifest;
+};
+
+type RawCourseManifest = Omit<CourseManifest, "status"> & {
+  status?: CourseStatus;
 };
 
 type SharedLessonDefinition = {
@@ -75,18 +80,23 @@ function isLocale(value: unknown): value is Locale {
   return value === "en" || value === "sr" || value === "sr-Cyrl";
 }
 
-function isCourseManifest(value: unknown): value is CourseManifest {
+function isCourseStatus(value: unknown): value is CourseStatus {
+  return value === "draft" || value === "published";
+}
+
+function isRawCourseManifest(value: unknown): value is RawCourseManifest {
   if (!value || typeof value !== "object") {
     return false;
   }
 
-  const manifest = value as Partial<CourseManifest>;
+  const manifest = value as Partial<RawCourseManifest>;
 
   return (
     typeof manifest.id === "string" &&
     typeof manifest.version === "string" &&
-    typeof manifest.courseType === "string" &&
+    typeof manifest.builtin === "boolean" &&
     typeof manifest.slug === "string" &&
+    (typeof manifest.status === "undefined" || isCourseStatus(manifest.status)) &&
     Boolean(manifest.locales) &&
     typeof manifest.locales === "object" &&
     Object.entries(manifest.locales).every(([locale, metadata]) => {
@@ -331,6 +341,13 @@ async function readJsonFile<T>(
   return parsedValue;
 }
 
+function normalizeCourseManifest(manifest: RawCourseManifest): CourseManifest {
+  return {
+    ...manifest,
+    status: manifest.status ?? "published",
+  };
+}
+
 async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecord[]> {
   let directoryEntries;
 
@@ -356,7 +373,8 @@ async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecor
         const manifestPath = path.join(directoryPath, "course.json");
 
         try {
-          const manifest = await readJsonFile(manifestPath, isCourseManifest);
+          const rawManifest = await readJsonFile(manifestPath, isRawCourseManifest);
+          const manifest = normalizeCourseManifest(rawManifest);
 
           return {
             directoryPath,
@@ -771,6 +789,10 @@ async function readSharedSectionDefinitions(
     .filter((name) => sectionDirectoryPattern.test(name));
 
   if (sectionDirectories.length === 0) {
+    if (courseRecord.manifest.status === "draft") {
+      return [];
+    }
+
     throw new Error(
       `Course "${courseRecord.manifest.id}" does not contain any section-xx-* directories`,
     );
@@ -828,6 +850,7 @@ function toCourseSummary(
     id: courseRecord.manifest.id,
     lessonPreviews,
     previewItems,
+    status: courseRecord.manifest.status,
     supportedLocales: courseRecord.manifest.supportedLocales,
     title: localizedCourseMetadata.title,
     version: courseRecord.manifest.version,
@@ -904,8 +927,8 @@ export async function getCourseDetails(
       ),
       previewItems,
     ),
-    courseType: courseRecord.manifest.courseType,
-    entrySectionId: sectionIds[0],
+    builtin: courseRecord.manifest.builtin,
+    entrySectionId: sectionIds[0] ?? null,
     lessonIds,
     sections,
     sectionIds,

@@ -47,6 +47,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   }
 
   const resolvedCourse = course;
+  const entryLessonId = getEntryLessonId(resolvedCourse);
 
   function handlePreviewItemSelect(item: CoursePreviewStripItem) {
     const targetLessonId = item.targetLessonId ?? item.id;
@@ -60,8 +61,6 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   }
 
   function startCourse() {
-    const entryLessonId = getEntryLessonId(resolvedCourse);
-
     if (!entryLessonId) {
       return;
     }
@@ -75,7 +74,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         children={<></>}
         right={
           <>
-            <Button onClick={startCourse} size="sm">
+            <Button disabled={!entryLessonId} onClick={startCourse} size="sm">
               {t("courseDetails.startCourse")}
             </Button>
             <Button

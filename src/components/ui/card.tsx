@@ -1,15 +1,36 @@
 import * as React from "react";
 import type { ReactNode } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+const cardVariants = cva(
+  "flex flex-col gap-4 rounded-3xl border p-6",
+  {
+    variants: {
+      variant: {
+        default:
+          "border-stone-300/80 bg-white shadow-[0_24px_80px_-32px_rgba(41,37,36,0.35)]",
+        muted:
+          "border-stone-200 bg-stone-50/80 shadow-[0_16px_36px_-28px_rgba(41,37,36,0.18)]",
+        dashed:
+          "border-dashed border-stone-300 bg-stone-50/70 shadow-none",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
+
+function Card({
+  className,
+  variant,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof cardVariants>) {
   return (
     <div
-      className={cn(
-        "rounded-3xl border border-stone-300/80 bg-white p-6 shadow-[0_24px_80px_-32px_rgba(41,37,36,0.35)]",
-        className,
-      )}
+      className={cn(cardVariants({ className, variant }))}
       {...props}
     />
   );
@@ -42,7 +63,7 @@ function CardTitle({
   return (
     <h1
       className={cn(
-        "text-3xl font-semibold leading-tight tracking-tight text-stone-950",
+        "text-2xl font-semibold leading-tight tracking-tight text-stone-950",
         className,
       )}
       {...props}
@@ -72,7 +93,7 @@ function CourseTitle({
   return (
     <h1
       className={cn(
-        "text-3xl font-semibold leading-tight tracking-tight text-stone-950",
+        "text-2xl font-semibold leading-tight tracking-tight text-stone-950",
         className,
       )}
       {...props}

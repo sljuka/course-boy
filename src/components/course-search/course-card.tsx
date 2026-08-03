@@ -22,10 +22,11 @@ import { getLocaleFlag } from "@/lib/locale-flags";
 
 type CourseCardProps = {
   course: CourseSummary;
+  href: string;
   onRemove: (course: CourseSummary) => void;
 };
 
-export function CourseCard({ course, onRemove }: CourseCardProps) {
+export function CourseCard({ course, href, onRemove }: CourseCardProps) {
   const { t } = useTranslation();
 
   return (
@@ -43,10 +44,10 @@ export function CourseCard({ course, onRemove }: CourseCardProps) {
               <CardTitle className="min-w-0 flex-1 text-2xl">
                 <Link
                   className="flex min-w-0 items-center gap-1 transition-colors hover:text-stone-700"
-                  to={`/courses/${course.id}`}
+                  to={href}
                 >
                   <span className="min-w-0 wrap-break-word">{course.title}</span>
-                  <ArrowRight aria-hidden="true" className="h-5 w-5 shrink-0" />
+                  <ArrowRight aria-hidden="true" className="size-5 shrink-0" />
                 </Link>
               </CardTitle>
               <DropdownMenu>

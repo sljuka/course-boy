@@ -216,6 +216,75 @@
     "student": "Student",
     "teacher": "Teacher"
   },
+  "courseCreate": {
+    "creating": "Creating course...",
+    "description": "Start a local draft course package with the initial course details. After creating it, you will continue building the draft by adding sections.",
+    "errorBody": "The draft course package could not be created right now.",
+    "errorTitle": "Could not create course",
+    "emptySupportedLocales": "No languages found.",
+    "fields": {
+      "defaultLocaleHelp": "This is the language the user will see if their selected language is not included in the course languages.",
+      "defaultLocale": "Default language",
+      "deriveSrCyrlFromSr": "Derive sr-Cyrl from sr automatically.",
+      "description": "Description",
+      "supportedLocales": "Supported languages",
+      "title": "Course title"
+    },
+    "placeholders": {
+      "description": "What is this course about and who is it for?",
+      "supportedLocales": "Add course languages",
+      "title": "Introduction to fractions"
+    },
+    "previewDescription": "Your draft description will appear here.",
+    "previewIncludes": "Starter package",
+    "previewIncludesValue": "1 section, 1 lesson, localized markdown body",
+    "previewLabel": "Preview",
+    "previewUntitled": "Untitled course",
+    "submit": "Create draft course",
+    "title": "Create New Course"
+  },
+  "draftDetails": {
+    "actions": {
+      "addSection": "Add section",
+      "editCourse": "Edit course details"
+    },
+    "back": "Back to drafts",
+    "badges": {
+      "draft": "Draft"
+    },
+    "editor": {
+      "description": "This panel becomes the draft editor workspace. For a new course, the first action is to add the opening section.",
+      "emptyTitle": "Start building your course",
+      "helperDescription": "Section creation and course editing actions will live here in the next step of the flow. The page already separates draft authoring from the learner-facing course view.",
+      "helperTitle": "Authoring workspace",
+      "nextStepEmpty": "This draft is ready for its first section. Once a section is added, the structure panel will become the course outline.",
+      "nextStepReady": "Select a section from the structure panel to continue editing the draft.",
+      "nextStepTitle": "Next step",
+      "title": "Draft editor"
+    },
+    "error": "The draft workspace could not be loaded.",
+    "loading": "Loading draft workspace...",
+    "meta": {
+      "lessons": "{{count}} lessons",
+      "sections": "{{count}} sections",
+      "version": "Version {{version}}"
+    },
+    "missing": "This draft could not be found.",
+    "structure": {
+      "description": "Build the course outline here by adding sections in the order learners should follow.",
+      "emptyDescription": "There are no sections yet. Add the first one to start shaping the course.",
+      "emptyTitle": "No sections yet",
+      "sectionLabel": "Section {{index}}",
+      "title": "Course structure"
+    }
+  },
+  "drafts": {
+    "description": "Review draft courses and continue building their structure before they are ready for learners.",
+    "empty": "No draft courses match this search yet.",
+    "error": "The drafts list could not be loaded.",
+    "searchPlaceholder": "Search draft courses",
+    "title": "Draft Courses"
+  },
   "sidebar": {
     "createCourse": "Create new course",
     "createCourseDescription": "Start a new course workspace and build its package structure, lessons, tests, and metadata.",
