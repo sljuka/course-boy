@@ -145,10 +145,8 @@ function Sidebar({
       ) : (
         <div
           className={cn(
-            "sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none",
-            isOpen
-              ? "w-64 opacity-100"
-              : "w-0 opacity-100",
+            "sticky top-0 h-screen shrink-0 self-start overflow-hidden transition-[width] duration-200 ease-out motion-reduce:transition-none",
+            isOpen ? "w-64 opacity-100" : "w-0 opacity-100",
           )}
         >
           <aside
@@ -177,7 +175,7 @@ function SidebarInset({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex min-h-screen min-w-0 flex-1 flex-col", className)}
+      className={cn("flex min-h-screen min-w-0 flex-1", className)}
       {...props}
     >
       {children}
@@ -190,7 +188,10 @@ function SidebarHeader({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("border-b border-stone-200 px-4 py-4", className)} {...props} />
+    <div
+      className={cn("border-b border-stone-200 px-4 py-4", className)}
+      {...props}
+    />
   );
 }
 

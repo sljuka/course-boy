@@ -3,7 +3,9 @@ import path from "node:path";
 import { app } from "electron";
 import type {
   CreateCourseDraftInput,
+  CreateCourseSectionInput,
   CourseStatus,
+  CourseManifest,
 } from "../src/lib/course-package";
 import { locales, type Locale } from "../src/lib/i18n";
 import { transliterateSerbianLatinToCyrillic } from "../src/lib/serbian-transliteration";
@@ -167,6 +169,64 @@ async function resolveUniqueCourseId(
   return candidateId;
 }
 
+function resolveCourseDirectoryPath(
+  localCoursesRoot: string,
+  courseId: string,
+): string {
+  const courseDirectoryPath = path.join(localCoursesRoot, courseId);
+  const resolvedCourseDirectoryPath = path.resolve(courseDirectoryPath);
+  const relativeToCoursesRoot = path.relative(
+    localCoursesRoot,
+    resolvedCourseDirectoryPath,
+  );
+
+  if (
+    relativeToCoursesRoot.startsWith("..") ||
+    path.isAbsolute(relativeToCoursesRoot)
+  ) {
+    throw new Error(`Invalid course id "${courseId}"`);
+  }
+
+  return resolvedCourseDirectoryPath;
+}
+
+async function readCourseManifest(
+  courseDirectoryPath: string,
+): Promise<CourseManifest> {
+  const fileContents = await fs.readFile(
+    path.join(courseDirectoryPath, "course.json"),
+    "utf8",
+  );
+
+  return JSON.parse(fileContents) as CourseManifest;
+}
+
+async function writeCourseManifest(
+  courseDirectoryPath: string,
+  manifest: CourseManifest & Record<string, unknown>,
+): Promise<void> {
+  await fs.writeFile(
+    path.join(courseDirectoryPath, "course.json"),
+    JSON.stringify(manifest, null, 2),
+  );
+}
+
+async function resolveNextSectionId(courseDirectoryPath: string, title: string) {
+  const directoryEntries = await fs.readdir(courseDirectoryPath, {
+    withFileTypes: true,
+  });
+  const sectionIndexes = directoryEntries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name.match(/^section-(\d{2})-[a-z0-9-]+$/))
+    .filter((match): match is RegExpMatchArray => Boolean(match))
+    .map((match) => Number.parseInt(match[1], 10))
+    .sort((left, right) => left - right);
+  const nextIndex = (sectionIndexes.at(-1) ?? 0) + 1;
+  const slug = slugify(title) || "untitled-section";
+
+  return `section-${String(nextIndex).padStart(2, "0")}-${slug}`;
+}
+
 function normalizeSupportedLocales(
   defaultLocale: Locale,
   supportedLocales: Locale[],
@@ -280,4 +340,62 @@ export async function createLocalCourseDraft(
   );
 
   return { courseId };
+}
+
+export async function createLocalCourseSection(
+  input: CreateCourseSectionInput,
+): Promise<{ sectionId: string }> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const normalizedTitle = input.title.trim();
+  const normalizedDescription = input.description?.trim() ?? "";
+
+  if (!normalizedTitle) {
+    throw new Error("Section title is required");
+  }
+
+  const sectionId = await resolveNextSectionId(courseDirectoryPath, normalizedTitle);
+  const sectionDirectoryPath = path.join(courseDirectoryPath, sectionId);
+  const defaultLocale = manifest.defaultLocale;
+  const localizedSectionMetadata = Object.fromEntries(
+    manifest.supportedLocales.map((locale) => [
+      locale,
+      {
+        title: normalizedTitle,
+        description:
+          locale === defaultLocale ? normalizedDescription : "",
+      },
+    ]),
+  );
+  const nowIso = new Date().toISOString();
+
+  await fs.mkdir(sectionDirectoryPath, { recursive: true });
+  await fs.writeFile(
+    path.join(sectionDirectoryPath, "section.json"),
+    JSON.stringify(
+      {
+        id: sectionId,
+        slug: sectionId.replace(/^section-\d{2}-/, ""),
+        locales: localizedSectionMetadata,
+      },
+      null,
+      2,
+    ),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: nowIso,
+  });
+
+  return { sectionId };
 }

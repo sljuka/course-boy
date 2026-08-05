@@ -5,6 +5,8 @@ import type {
   CourseSummary,
   CreateCourseDraftInput,
   CreateCourseDraftResult,
+  CreateCourseSectionInput,
+  CreateCourseSectionResult,
 } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { queryClient } from "@/lib/query-client";
@@ -56,6 +58,17 @@ export function useCreateCourseDraftMutation() {
       });
       queryClient.removeQueries({
         queryKey: ["courses", "detail", courseId],
+      });
+    },
+  });
+}
+
+export function useCreateCourseSectionMutation() {
+  return useMutation<CreateCourseSectionResult, Error, CreateCourseSectionInput>({
+    mutationFn: (input) => window.courses.createSection(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
       });
     },
   });

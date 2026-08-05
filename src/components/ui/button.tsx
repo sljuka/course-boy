@@ -1,27 +1,25 @@
-import * as React from 'react'
-import { type VariantProps } from 'class-variance-authority'
+import * as React from "react";
+import { type VariantProps } from "class-variance-authority";
 
-import { cn } from '@/lib/utils'
-import { buttonVariants } from '@/components/ui/button-variants'
+import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants>
+  VariantProps<typeof buttonVariants>;
 
-function Button({
+export const Button = ({
   appearance,
   className,
   size,
-  type = 'button',
+  type = "button",
   variant,
   ...props
-}: ButtonProps) {
+}: ButtonProps) => {
   return (
     <button
       className={cn(buttonVariants({ appearance, className, size, variant }))}
       type={type}
       {...props}
     />
-  )
-}
-
-export { Button }
+  );
+};

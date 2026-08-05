@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
 
-export const PageContent = ({ children }: { children: ReactNode }) => {
-  return <div className="flex w-full flex-col gap-4">{children}</div>;
+type PageContentProps = {
+  children: ReactNode;
+};
+
+export const PageContent = ({ children }: PageContentProps) => {
+  return <div className="flex flex-col gap-4 p-4">{children}</div>;
 };

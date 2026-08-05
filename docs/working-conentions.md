@@ -1,5 +1,6 @@
 # Working Conventions
 
+- Read [persistence-notes.md](docs/persistence-notes.md:1) when making decisions about draft storage, publishing, local state, or future sharing architecture.
 - Treat Matko as a course sharing app, not just a local course player/editor.
 - Courses are stored locally today, but the architecture should stay compatible with future peer-to-peer sharing.
 - Prefer portable course-package logic and avoid coupling core course behavior to device-local assumptions when that would make future sharing harder.

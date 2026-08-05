@@ -5,10 +5,14 @@ import Store from 'electron-store'
 import { getCourseDetails, listCourses } from './course-registry'
 import {
   createLocalCourseDraft,
+  createLocalCourseSection,
   ensureLocalCoursesRoot,
   removeLocalCourse,
 } from './course-paths'
-import type { CreateCourseDraftInput } from '../src/lib/course-package'
+import type {
+  CreateCourseDraftInput,
+  CreateCourseSectionInput,
+} from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
@@ -96,6 +100,10 @@ ipcMain.handle(
 
 ipcMain.handle('courses:create-draft', (_event, input: CreateCourseDraftInput) => {
   return createLocalCourseDraft(input)
+})
+
+ipcMain.handle('courses:create-section', (_event, input: CreateCourseSectionInput) => {
+  return createLocalCourseSection(input)
 })
 
 ipcMain.handle('courses:remove', (_event, courseId: string) => {

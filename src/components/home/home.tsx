@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -6,13 +7,18 @@ import { CourseSearchField } from "@/components/course-search/course-search-fiel
 import { PageHeader } from "@/components/page-header";
 import { CardDescription, CourseTitle } from "@/components/ui/card";
 
-export const CourseSearch = () => {
+type HomeProps = {
+  actions?: ReactNode;
+};
+
+export const Home = ({ actions }: HomeProps) => {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
 
   return (
     <>
       <PageHeader
+        right={actions}
         subtitle={
           <CardDescription className="max-w-3xl text-base text-stone-700">
             {t("courseSearch.subtitle")}

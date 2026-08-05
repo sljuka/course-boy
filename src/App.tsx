@@ -1,17 +1,17 @@
 import { Route, Routes } from "react-router-dom";
 
 import { BlankLayout } from "@/components/blank-layout";
-import { HeaderLayout } from "@/components/header-layout";
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
+import { SidebarLayout } from "@/components/sidebar-layout";
 import { AppStateProvider } from "@/lib/app-state";
 import { CourseCreatePage } from "@/pages/course-create-page";
 import { CourseDetailPage } from "@/pages/course-detail-page";
 import { CourseLessonPlayerPage } from "@/pages/course-lesson-player-page";
 import { CourseTestPlayerPage } from "@/pages/course-test-player-page";
-import { CoursesPage } from "@/pages/courses-page";
 import { DraftDetailPage } from "@/pages/draft-detail-page";
 import { DraftsPage } from "@/pages/drafts-page";
+import { HomePage } from "@/pages/home-page";
 import { PlaceholderPage } from "@/pages/placeholder-page";
 import { RolePage } from "@/pages/role-page";
 import { WelcomePage } from "@/pages/welcome-page";
@@ -31,11 +31,11 @@ const AppRoutes = () => {
       <Route
         element={
           <OnboardingGuard>
-            <HeaderLayout />
+            <SidebarLayout />
           </OnboardingGuard>
         }
       >
-        <Route element={<CoursesPage />} path="/" />
+        <Route element={<HomePage />} path="/" />
         <Route
           element={
             <PlaceholderPage

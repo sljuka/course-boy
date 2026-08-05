@@ -121,3 +121,13 @@ export type CreateCourseDraftInput = {
 export type CreateCourseDraftResult = {
   courseId: string;
 };
+
+export type CreateCourseSectionInput = {
+  courseId: string;
+  description?: string;
+  title: string;
+};
+
+export type CreateCourseSectionResult = {
+  sectionId: string;
+};

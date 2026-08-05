@@ -239,6 +239,7 @@
     "previewIncludes": "Starter package",
     "previewIncludesValue": "1 section, 1 lesson, localized markdown body",
     "previewLabel": "Preview",
+    "selectLanguageFirst": "Select at least one supported language to start entering course details.",
     "previewUntitled": "Untitled course",
     "submit": "Create draft course",
     "title": "Create New Course"
@@ -252,14 +253,35 @@
     "badges": {
       "draft": "Draft"
     },
+    "createSection": {
+      "cancel": "Cancel",
+      "creating": "Creating section...",
+      "description": "Give the section a clear title and optional description. It will be added to the draft outline immediately.",
+      "descriptionHint": "Descriptions are optional. You can refine the structure and localized content later.",
+      "fields": {
+        "description": "Section description",
+        "title": "Section title"
+      },
+      "placeholders": {
+        "description": "What should learners expect from this section?",
+        "title": "Getting started"
+      },
+      "submit": "Create section",
+      "title": "Create new section",
+      "validationDescription": "A section title is required before the section can be created.",
+      "validationTitle": "Section title required"
+    },
     "editor": {
       "description": "This panel becomes the draft editor workspace. For a new course, the first action is to add the opening section.",
       "emptyTitle": "Start building your course",
       "helperDescription": "Section creation and course editing actions will live here in the next step of the flow. The page already separates draft authoring from the learner-facing course view.",
       "helperTitle": "Authoring workspace",
       "nextStepEmpty": "This draft is ready for its first section. Once a section is added, the structure panel will become the course outline.",
-      "nextStepReady": "Select a section from the structure panel to continue editing the draft.",
       "nextStepTitle": "Next step",
+      "sectionNextDescription": "This section has been added to the draft. The next authoring step is to add lessons inside it.",
+      "sectionNextTitle": "Section created",
+      "selectedDescription": "This section does not have a description yet.",
+      "selectedTitle": "Selected section",
       "title": "Draft editor"
     },
     "error": "The draft workspace could not be loaded.",
@@ -293,7 +315,7 @@
     "myCourses": "My courses",
     "myCoursesDescription": "Browse the courses you maintain, update, or publish from this device.",
     "navigation": "Workspace",
-    "searchCourses": "Search courses",
+    "home": "Home",
     "title": "Teacher workspace"
   },
   "welcomeSubtitle": "Matko is an open platform for creating tutorials and tests, and for solving those tests either on the platform or on paper. The format is print-friendly, with a focus on making new tests easy to create, easy to complete, and enjoyable to learn from 😊",

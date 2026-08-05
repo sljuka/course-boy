@@ -239,6 +239,7 @@
     "previewIncludes": "Početni paket",
     "previewIncludesValue": "1 sekcija, 1 lekcija, lokalizovani markdown sadržaj",
     "previewLabel": "Pregled",
+    "selectLanguageFirst": "Izaberi bar jedan podržani jezik da bi počeo da unosiš podatke o kursu.",
     "previewUntitled": "Kurs bez naziva",
     "submit": "Napravi nacrt kursa",
     "title": "Napravi Novi Kurs"
@@ -252,14 +253,35 @@
     "badges": {
       "draft": "Nacrt"
     },
+    "createSection": {
+      "cancel": "Otkaži",
+      "creating": "Pravljenje sekcije...",
+      "description": "Daj sekciji jasan naslov i opciono opis. Biće odmah dodata u strukturu nacrta.",
+      "descriptionHint": "Opis nije obavezan. Strukturu i lokalizovani sadržaj možeš doraditi kasnije.",
+      "fields": {
+        "description": "Opis sekcije",
+        "title": "Naziv sekcije"
+      },
+      "placeholders": {
+        "description": "Šta učenici treba da očekuju od ove sekcije?",
+        "title": "Početak"
+      },
+      "submit": "Napravi sekciju",
+      "title": "Napravi novu sekciju",
+      "validationDescription": "Naziv sekcije je obavezan pre nego što sekcija može da se napravi.",
+      "validationTitle": "Naziv sekcije je obavezan"
+    },
     "editor": {
       "description": "Ovaj panel postaje radni prostor za uređivanje nacrta. Za novi kurs prvi korak je dodavanje početne sekcije.",
       "emptyTitle": "Počni izradu kursa",
       "helperDescription": "Pravljenje sekcija i uređivanje kursa će biti smešteni ovde u sledećem koraku toka. Stranica već odvaja uređivanje nacrta od prikaza kursa za učenje.",
       "helperTitle": "Radni prostor za autora",
       "nextStepEmpty": "Ovaj nacrt je spreman za prvu sekciju. Kada se sekcija doda, panel strukture postaje pregled kursa.",
-      "nextStepReady": "Izaberi sekciju iz panela strukture da nastaviš uređivanje nacrta.",
       "nextStepTitle": "Sledeći korak",
+      "sectionNextDescription": "Ova sekcija je dodata u nacrt. Sledeći korak u izradi je dodavanje lekcija unutar nje.",
+      "sectionNextTitle": "Sekcija je napravljena",
+      "selectedDescription": "Ova sekcija još nema opis.",
+      "selectedTitle": "Izabrana sekcija",
       "title": "Uređivanje nacrta"
     },
     "error": "Radni prostor za nacrt ne može da se učita.",
@@ -293,7 +315,7 @@
     "myCourses": "Moji kursevi",
     "myCoursesDescription": "Pregledaj kurseve koje održavaš, ažuriraš ili objavljuješ sa ovog uređaja.",
     "navigation": "Radni prostor",
-    "searchCourses": "Pretraga kurseva",
+    "home": "Početna",
     "title": "Nastavnički radni prostor"
   },
   "welcomeSubtitle": "Matko je otvorena mreža za kreiranje tutorijala, testova kao i rešavanje kreiranih testova na platformi ili papiru (testovi su pogodnog formata za štampanje). Nadamo se da će te naučiti nešto novo",

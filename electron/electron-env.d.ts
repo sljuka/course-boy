@@ -27,6 +27,9 @@ interface Window {
     createDraft: (
       input: import('../src/lib/course-package').CreateCourseDraftInput,
     ) => Promise<import('../src/lib/course-package').CreateCourseDraftResult>
+    createSection: (
+      input: import('../src/lib/course-package').CreateCourseSectionInput,
+    ) => Promise<import('../src/lib/course-package').CreateCourseSectionResult>
     get: (
       courseId: string,
       locale?: import('../src/lib/i18n').Locale,

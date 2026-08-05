@@ -4,6 +4,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 
 import { PageContent } from "@/components/page-content";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,7 +35,6 @@ import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { useAppState } from "@/lib/use-app-state";
 
-const defaultLocale: Locale = "en";
 const selectableLocales: Locale[] = ["en", "sr"];
 
 function isLocale(value: string): value is Locale {
@@ -42,7 +42,7 @@ function isLocale(value: string): value is Locale {
 }
 
 function normalizeSupportedLocales(nextLocales: string[]): Locale[] {
-  const localeSet = new Set<Locale>([defaultLocale]);
+  const localeSet = new Set<Locale>();
 
   for (const locale of nextLocales) {
     if (isLocale(locale)) {
@@ -84,6 +84,14 @@ function getEffectiveSupportedLocales(
   return supportedLocales;
 }
 
+function resolveDefaultLocale(supportedLocales: Locale[]): Locale | null {
+  if (supportedLocales.includes("en")) {
+    return "en";
+  }
+
+  return supportedLocales[0] ?? null;
+}
+
 function createEmptyLocalizedCourse(): LocalizedCourseMetadata {
   return {
     description: "",
@@ -110,14 +118,12 @@ function CourseCreate() {
   const { role } = useAppState();
   const createDraftMutation = useCreateCourseDraftMutation();
   const supportedLocalesAnchor = useComboboxAnchor();
-  const [supportedLocales, setSupportedLocales] = useState<Locale[]>(["en"]);
+  const [supportedLocales, setSupportedLocales] = useState<Locale[]>([]);
   const [deriveSrCyrlFromSr, setDeriveSrCyrlFromSr] = useState(true);
-  const [activeLocale, setActiveLocale] = useState<Locale>("en");
+  const [activeLocale, setActiveLocale] = useState<Locale | null>(null);
   const [localizedCourse, setLocalizedCourse] = useState<
     Record<Locale, LocalizedCourseMetadata>
-  >({
-    en: createEmptyLocalizedCourse(),
-  } as Record<Locale, LocalizedCourseMetadata>);
+  >({} as Record<Locale, LocalizedCourseMetadata>);
 
   useEffect(() => {
     setLocalizedCourse((currentLocalizedCourse) => {
@@ -132,9 +138,11 @@ function CourseCreate() {
   }, [supportedLocales]);
 
   useEffect(() => {
-    if (!supportedLocales.includes(activeLocale)) {
-      setActiveLocale(defaultLocale);
+    if (activeLocale && supportedLocales.includes(activeLocale)) {
+      return;
     }
+
+    setActiveLocale(supportedLocales[0] ?? null);
   }, [activeLocale, supportedLocales]);
 
   useEffect(() => {
@@ -143,8 +151,10 @@ function CourseCreate() {
     }
   }, [supportedLocales]);
 
+  const defaultLocale = resolveDefaultLocale(supportedLocales);
   const defaultCourseLocale =
-    localizedCourse[defaultLocale] ?? createEmptyLocalizedCourse();
+    (defaultLocale ? localizedCourse[defaultLocale] : undefined) ??
+    createEmptyLocalizedCourse();
   const normalizedTitle = defaultCourseLocale.title.trim();
   const normalizedDescription = defaultCourseLocale.description.trim();
   const effectiveSupportedLocales = getEffectiveSupportedLocales(
@@ -152,9 +162,12 @@ function CourseCreate() {
     deriveSrCyrlFromSr,
   );
   const canSubmit =
+    Boolean(defaultLocale) &&
+    supportedLocales.length > 0 &&
     supportedLocales.every((locale) =>
       isLocalizedCourseComplete(localizedCourse[locale]),
-    ) && !createDraftMutation.isPending;
+    ) &&
+    !createDraftMutation.isPending;
 
   if (role !== "teacher") {
     return <Navigate replace to="/" />;
@@ -172,9 +185,9 @@ function CourseCreate() {
           title={<CardTitle>{t("courseCreate.title")}</CardTitle>}
         />
         <CardContent>
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-4 xl:grid xl:grid-cols-2">
             <form
-              className="flex flex-1 flex-col gap-4"
+              className="flex min-w-0 flex-col gap-4"
               onSubmit={(event) => {
                 event.preventDefault();
 
@@ -184,7 +197,7 @@ function CourseCreate() {
 
                 createDraftMutation.mutate(
                   {
-                    defaultLocale,
+                    defaultLocale: defaultLocale!,
                     deriveSrCyrlFromSr,
                     locales: Object.fromEntries(
                       supportedLocales.map((locale) => [
@@ -229,7 +242,7 @@ function CourseCreate() {
                         {supportedLocales.map((locale) => (
                           <ComboboxChip
                             key={locale}
-                            showRemove={locale !== defaultLocale}
+                            showRemove
                           >
                             <span className="text-base leading-none">
                               {getLocaleFlag(locale)}
@@ -278,86 +291,96 @@ function CourseCreate() {
                   </Label>
                 )}
               </div>
-              <Tabs
-                onValueChange={(value) => {
-                  if (isLocale(value)) {
-                    setActiveLocale(value);
-                  }
-                }}
-                value={activeLocale}
-              >
-                <TabsList variant="line">
+              {supportedLocales.length > 0 && activeLocale ? (
+                <Tabs
+                  onValueChange={(value) => {
+                    if (isLocale(value)) {
+                      setActiveLocale(value);
+                    }
+                  }}
+                  value={activeLocale}
+                >
+                  <TabsList variant="line">
+                    {supportedLocales.map((locale) => (
+                      <TabsTrigger key={locale} value={locale}>
+                        <span className="text-base leading-none">
+                          {getLocaleFlag(locale)}
+                        </span>
+                        <span>{getLocaleCode(locale)}</span>
+                        {!isLocalizedCourseComplete(localizedCourse[locale]) && (
+                          <span
+                            aria-hidden="true"
+                            className="mt-0.5 h-1.5 w-1.5 shrink-0 self-center rounded-full bg-rose-500"
+                          />
+                        )}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
                   {supportedLocales.map((locale) => (
-                    <TabsTrigger key={locale} value={locale}>
-                      <span className="text-base leading-none">
-                        {getLocaleFlag(locale)}
-                      </span>
-                      <span>{getLocaleCode(locale)}</span>
-                      {!isLocalizedCourseComplete(localizedCourse[locale]) && (
-                        <span
-                          aria-hidden="true"
-                          className="mt-0.5 h-1.5 w-1.5 shrink-0 self-center rounded-full bg-rose-500"
-                        />
-                      )}
-                    </TabsTrigger>
+                    <TabsContent
+                      className="rounded-3xl border border-stone-200 bg-white p-6 shadow-[0_16px_30px_-24px_rgba(28,25,23,0.18)]"
+                      key={locale}
+                      value={locale}
+                    >
+                      <div className="space-y-5">
+                        <div className="space-y-2">
+                          <Label htmlFor={`course-create-title-${locale}`}>
+                            {t("courseCreate.fields.title")}
+                          </Label>
+                          <Input
+                            id={`course-create-title-${locale}`}
+                            onChange={(event) =>
+                              setLocalizedCourse((currentLocalizedCourse) => ({
+                                ...currentLocalizedCourse,
+                                [locale]: {
+                                  ...currentLocalizedCourse[locale],
+                                  description:
+                                    currentLocalizedCourse[locale]
+                                      ?.description ?? "",
+                                  title: event.target.value,
+                                },
+                              }))
+                            }
+                            placeholder={t("courseCreate.placeholders.title")}
+                            value={localizedCourse[locale]?.title ?? ""}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`course-create-description-${locale}`}>
+                            {t("courseCreate.fields.description")}
+                          </Label>
+                          <Textarea
+                            id={`course-create-description-${locale}`}
+                            onChange={(event) =>
+                              setLocalizedCourse((currentLocalizedCourse) => ({
+                                ...currentLocalizedCourse,
+                                [locale]: {
+                                  ...currentLocalizedCourse[locale],
+                                  description: event.target.value,
+                                  title:
+                                    currentLocalizedCourse[locale]?.title ?? "",
+                                },
+                              }))
+                            }
+                            placeholder={t(
+                              "courseCreate.placeholders.description",
+                            )}
+                            value={localizedCourse[locale]?.description ?? ""}
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
                   ))}
-                </TabsList>
-                {supportedLocales.map((locale) => (
-                  <TabsContent
-                    className="rounded-3xl border border-stone-200 bg-white p-6 shadow-[0_16px_30px_-24px_rgba(28,25,23,0.18)]"
-                    key={locale}
-                    value={locale}
-                  >
-                    <div className="space-y-5">
-                      <div className="space-y-2">
-                        <Label htmlFor={`course-create-title-${locale}`}>
-                          {t("courseCreate.fields.title")}
-                        </Label>
-                        <Input
-                          id={`course-create-title-${locale}`}
-                          onChange={(event) =>
-                            setLocalizedCourse((currentLocalizedCourse) => ({
-                              ...currentLocalizedCourse,
-                              [locale]: {
-                                ...currentLocalizedCourse[locale],
-                                description:
-                                  currentLocalizedCourse[locale]?.description ??
-                                  "",
-                                title: event.target.value,
-                              },
-                            }))
-                          }
-                          placeholder={t("courseCreate.placeholders.title")}
-                          value={localizedCourse[locale]?.title ?? ""}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`course-create-description-${locale}`}>
-                          {t("courseCreate.fields.description")}
-                        </Label>
-                        <Textarea
-                          id={`course-create-description-${locale}`}
-                          onChange={(event) =>
-                            setLocalizedCourse((currentLocalizedCourse) => ({
-                              ...currentLocalizedCourse,
-                              [locale]: {
-                                ...currentLocalizedCourse[locale],
-                                description: event.target.value,
-                                title:
-                                  currentLocalizedCourse[locale]?.title ?? "",
-                              },
-                            }))
-                          }
-                          placeholder={t(
-                            "courseCreate.placeholders.description",
-                          )}
-                          value={localizedCourse[locale]?.description ?? ""}
-                        />
-                      </div>
-                    </div>
-                  </TabsContent>
-                ))}
-              </Tabs>
+                </Tabs>
+              ) : (
+                <Card variant="dashed">
+                  <CardContent>
+                    <CardDescription>
+                      {t("courseCreate.selectLanguageFirst")}
+                    </CardDescription>
+                  </CardContent>
+                </Card>
+              )}
               {createDraftMutation.isError && (
                 <Alert className="border-rose-200 bg-rose-50/90 text-rose-950 shadow-[0_12px_28px_-24px_rgba(244,63,94,0.35)]">
                   <AlertTitle className="text-rose-950">
@@ -376,40 +399,36 @@ function CourseCreate() {
                 </Button>
               </div>
             </form>
-            <div className="rounded-3xl  border border-stone-200 bg-stone-50 p-5">
-              <div className="space-y-3">
+            <div className="min-w-0 rounded-3xl border border-stone-200 bg-stone-50 p-5">
+              <div className="flex flex-col gap-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
                   {t("courseCreate.previewLabel")}
                 </p>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <h2 className="text-xl font-semibold text-stone-950">
                     {normalizedTitle || t("courseCreate.previewUntitled")}
                   </h2>
-                  <p className="text-sm leading-6 text-stone-600">
+                  <p className="break-words text-sm leading-6 text-stone-600">
                     {normalizedDescription ||
                       t("courseCreate.previewDescription")}
                   </p>
                 </div>
-                <dl className="space-y-3 pt-2 text-sm text-stone-700">
-                  <div className="flex items-start justify-between gap-4">
-                    <dt className="text-stone-500">
-                      {t("courseCreate.fields.defaultLocale")}
-                    </dt>
-                    <dd className="font-medium text-stone-950">
-                      {t("language.english")}
-                    </dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4">
-                    <dt className="text-stone-500">
-                      {t("courseCreate.fields.supportedLocales")}
-                    </dt>
-                    <dd className="text-right font-medium text-stone-950">
-                      {effectiveSupportedLocales
-                        .map((locale) => getLocaleLabel(locale, t))
-                        .join(", ")}
-                    </dd>
-                  </div>
-                </dl>
+                <div>
+                  <Badge className="max-w-full" variant="secondary">
+                    <span
+                      aria-label={t("courseSearch.localesLabel")}
+                      className="text-lg leading-none"
+                    >
+                      {[
+                        ...new Set(
+                          effectiveSupportedLocales.map((supportedLocale) =>
+                            getLocaleFlag(supportedLocale),
+                          ),
+                        ),
+                      ].join(" ")}
+                    </span>
+                  </Badge>
+                </div>
               </div>
             </div>
           </div>

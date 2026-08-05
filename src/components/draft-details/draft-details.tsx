@@ -1,19 +1,16 @@
-import { ArrowLeft, FileText, FolderTree, PencilLine, Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate } from "react-router-dom";
 
 import { CourseLoadingCard } from "@/components/course-loading-card";
+import { DraftEditorPanel } from "@/components/draft-details/draft-editor-panel";
+import { DraftStructurePanel } from "@/components/draft-details/draft-structure-panel";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CourseTitle,
-} from "@/components/ui/card";
-import { useCourseDetailsQuery } from "@/lib/course-queries";
+import { Card, CardContent, CardDescription, CourseTitle } from "@/components/ui/card";
+import { useCourseDetailsQuery, useCreateCourseSectionMutation } from "@/lib/course-queries";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { useAppState } from "@/lib/use-app-state";
 
@@ -23,6 +20,36 @@ export function DraftDetails({ courseId }: { courseId: string }) {
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
     throwOnError: true,
   });
+  const createSectionMutation = useCreateCourseSectionMutation();
+  const [isCreatingSection, setIsCreatingSection] = useState(false);
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!course) {
+      return;
+    }
+
+    if (
+      selectedSectionId &&
+      course.sections.some((section) => section.id === selectedSectionId)
+    ) {
+      return;
+    }
+
+    setSelectedSectionId(course.sections[0]?.id ?? null);
+  }, [course, selectedSectionId]);
+
+  const activeSection = useMemo(() => {
+    if (!course) {
+      return null;
+    }
+
+    return (
+      course.sections.find((section) => section.id === selectedSectionId) ??
+      course.sections[0] ??
+      null
+    );
+  }, [course, selectedSectionId]);
 
   if (role !== "teacher") {
     return <Navigate replace to="/" />;
@@ -56,12 +83,15 @@ export function DraftDetails({ courseId }: { courseId: string }) {
       <PageHeader
         right={
           <>
-            <Button className="gap-2" disabled size="sm">
-              <Plus aria-hidden="true" className="h-4 w-4" />
+            <Button
+              className="gap-2"
+              disabled={isCreatingSection || createSectionMutation.isPending}
+              onClick={() => setIsCreatingSection(true)}
+              size="sm"
+            >
               {t("draftDetails.actions.addSection")}
             </Button>
             <Button className="gap-2" disabled size="sm" variant="secondary">
-              <PencilLine aria-hidden="true" className="h-4 w-4" />
               {t("draftDetails.actions.editCourse")}
             </Button>
           </>
@@ -111,106 +141,33 @@ export function DraftDetails({ courseId }: { courseId: string }) {
         </div>
       </PageHeader>
       <div className="flex flex-col gap-4 xl:flex-row">
-        <Card className="xl:max-w-sm xl:flex-1" variant="muted">
-          <CardHeader
-            subtitle={
-              <CardDescription>
-                {t("draftDetails.structure.description")}
-              </CardDescription>
-            }
-            title={
-              <div className="flex items-center gap-2 text-stone-950">
-                <FolderTree aria-hidden="true" className="h-5 w-5" />
-                <span className="text-lg font-semibold">
-                  {t("draftDetails.structure.title")}
-                </span>
-              </div>
-            }
-          />
-          <CardContent>
-            {course.sections.length === 0 ? (
-              <Card variant="dashed">
-                <CardContent className="gap-2">
-                  <div className="text-sm font-semibold text-stone-950">
-                    {t("draftDetails.structure.emptyTitle")}
-                  </div>
-                  <CardDescription>
-                    {t("draftDetails.structure.emptyDescription")}
-                  </CardDescription>
-                </CardContent>
-              </Card>
-            ) : (
-              course.sections.map((section, index) => (
-                <Card key={section.id} variant="dashed">
-                  <CardContent className="gap-2">
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
-                      {t("draftDetails.structure.sectionLabel", {
-                        index: index + 1,
-                      })}
-                    </div>
-                    <div className="text-base font-semibold text-stone-950">
-                      {section.title}
-                    </div>
-                    {section.description && (
-                      <CardDescription>{section.description}</CardDescription>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </CardContent>
-        </Card>
-        <Card className="xl:flex-[1.4]" variant="dashed">
-          <CardHeader
-            subtitle={
-              <CardDescription className="max-w-2xl">
-                {t("draftDetails.editor.description")}
-              </CardDescription>
-            }
-            title={
-              <div className="flex items-center gap-2 text-stone-950">
-                <FileText aria-hidden="true" className="h-5 w-5" />
-                <span className="text-lg font-semibold">
-                  {course.sections.length === 0
-                    ? t("draftDetails.editor.emptyTitle")
-                    : t("draftDetails.editor.title")}
-                </span>
-              </div>
-            }
-          />
-          <CardContent className="gap-4">
-            <div className="flex flex-col gap-2">
-              <div className="text-sm font-semibold text-stone-950">
-                {t("draftDetails.editor.nextStepTitle")}
-              </div>
-              <CardDescription>
-                {course.sections.length === 0
-                  ? t("draftDetails.editor.nextStepEmpty")
-                  : t("draftDetails.editor.nextStepReady")}
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button className="gap-2" disabled size="lg">
-                <Plus aria-hidden="true" className="h-4 w-4" />
-                {t("draftDetails.actions.addSection")}
-              </Button>
-              <Button className="gap-2" disabled size="lg" variant="secondary">
-                <PencilLine aria-hidden="true" className="h-4 w-4" />
-                {t("draftDetails.actions.editCourse")}
-              </Button>
-            </div>
-            <Card variant="muted">
-              <CardContent className="gap-2">
-                <div className="text-sm font-semibold text-stone-950">
-                  {t("draftDetails.editor.helperTitle")}
-                </div>
-                <CardDescription>
-                  {t("draftDetails.editor.helperDescription")}
-                </CardDescription>
-              </CardContent>
-            </Card>
-          </CardContent>
-        </Card>
+        <DraftStructurePanel sections={course.sections} />
+        <DraftEditorPanel
+          activeSection={activeSection}
+          isCreatingSection={isCreatingSection}
+          isPending={createSectionMutation.isPending}
+          onCancelCreateSection={() => {
+            setIsCreatingSection(false);
+          }}
+          onOpenCreateSection={() => {
+            setIsCreatingSection(true);
+          }}
+          onSubmitCreateSection={({ description, title }) => {
+            createSectionMutation.mutate(
+              {
+                courseId,
+                description,
+                title,
+              },
+              {
+                onSuccess: ({ sectionId }) => {
+                  setSelectedSectionId(sectionId);
+                  setIsCreatingSection(false);
+                },
+              },
+            );
+          }}
+        />
       </div>
     </>
   );

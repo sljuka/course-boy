@@ -459,6 +459,13 @@ async function readSharedSectionDefinition(
     .sort((leftLessonId, rightLessonId) => leftLessonId.localeCompare(rightLessonId, undefined, { numeric: true }));
 
   if (lessonIds.length === 0) {
+    if (courseRecord.manifest.status === "draft") {
+      return {
+        ...storedSection,
+        lessonIds: [],
+      };
+    }
+
     throw new Error(`Section "${sectionId}" does not contain any lesson-xx-* files`);
   }
 
