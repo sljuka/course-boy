@@ -97,7 +97,7 @@ function CardDescription({
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-sm leading-6 text-stone-600", className)}
+      className={cn("text-sm leading-6 text-stone-500", className)}
       {...props}
     />
   );

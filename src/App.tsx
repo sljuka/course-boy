@@ -8,9 +8,11 @@ import { AppStateProvider } from "@/lib/app-state";
 import { CourseCreatePage } from "@/pages/course-create-page";
 import { CourseDetailPage } from "@/pages/course-detail-page";
 import { CourseLessonPlayerPage } from "@/pages/course-lesson-player-page";
+import { CourseStructurePrototypePage } from "@/pages/course-structure-prototype-page";
 import { CourseTestPlayerPage } from "@/pages/course-test-player-page";
 import { DraftDetailPage } from "@/pages/draft-detail-page";
 import { DraftsPage } from "@/pages/drafts-page";
+import { EditorPrototypePage } from "@/pages/editor-prototype-page";
 import { HomePage } from "@/pages/home-page";
 import { PlaceholderPage } from "@/pages/placeholder-page";
 import { RolePage } from "@/pages/role-page";
@@ -28,13 +30,7 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route
-        element={
-          <OnboardingGuard>
-            <SidebarLayout />
-          </OnboardingGuard>
-        }
-      >
+      <Route element={<SidebarLayout />}>
         <Route element={<HomePage />} path="/" />
         <Route
           element={
@@ -47,6 +43,11 @@ const AppRoutes = () => {
         />
         <Route element={<DraftsPage />} path="/drafts" />
         <Route element={<CourseCreatePage />} path="/courses/new" />
+        <Route element={<EditorPrototypePage />} path="/courses/prototype" />
+        <Route
+          element={<CourseStructurePrototypePage />}
+          path="/courses/prototype-2"
+        />
         <Route element={<DraftDetailPage />} path="/drafts/:courseId" />
         <Route element={<CourseDetailPage />} path="/courses/:courseId" />
       </Route>

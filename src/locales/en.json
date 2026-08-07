@@ -316,6 +316,8 @@
     "myCoursesDescription": "Browse the courses you maintain, update, or publish from this device.",
     "navigation": "Workspace",
     "home": "Home",
+    "prototype": "Prototype",
+    "prototype2": "Prototype 2",
     "title": "Teacher workspace"
   },
   "welcomeSubtitle": "Matko is an open platform for creating tutorials and tests, and for solving those tests either on the platform or on paper. The format is print-friendly, with a focus on making new tests easy to create, easy to complete, and enjoyable to learn from 😊",

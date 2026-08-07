@@ -1,4 +1,4 @@
-import { BookOpen, FileText, Home } from "lucide-react";
+import { BookOpen, FileText, FlaskConical, Home } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
@@ -22,6 +22,8 @@ const sidebarItems = [
   { href: "/", icon: Home, id: "home" },
   { href: "/my-courses", icon: BookOpen, id: "myCourses" },
   { href: "/drafts", icon: FileText, id: "drafts" },
+  { href: "/courses/prototype", icon: FlaskConical, id: "prototype" },
+  { href: "/courses/prototype-2", icon: FlaskConical, id: "prototype2" },
 ] as const;
 
 function AppSidebar() {

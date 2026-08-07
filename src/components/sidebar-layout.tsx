@@ -4,25 +4,28 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppHeader } from "./app-header";
 import { HomePageActions } from "@/pages/home-page";
+import { OnboardingGuard } from "./onboarding-guard";
 
 export const SidebarLayout = () => {
   return (
-    <SidebarProvider>
-      <div className="flex flex-1 min-h-screen bg-white">
-        <AppSidebar />
-        <div className="flex flex-1 flex-col">
-          <AppHeader>
-            <Routes>
-              <Route element={<HomePageActions />} path="/" />
-            </Routes>
-          </AppHeader>
-          <main className="min-h-screen flex justify-center flex-1 border-l border-stone-200 bg-white">
-            <div className="lg:max-w-5xl">
-              <Outlet />
-            </div>
-          </main>
+    <OnboardingGuard>
+      <SidebarProvider>
+        <div className="flex flex-1 min-h-screen bg-white">
+          <AppSidebar />
+          <div className="flex flex-1 flex-col">
+            <AppHeader>
+              <Routes>
+                <Route element={<HomePageActions />} path="/" />
+              </Routes>
+            </AppHeader>
+            <main className="min-h-screen flex justify-center flex-1 border-l border-stone-200 bg-white">
+              <div className="lg:max-w-5xl">
+                <Outlet />
+              </div>
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </OnboardingGuard>
   );
 };
