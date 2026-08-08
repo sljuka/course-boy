@@ -22,6 +22,10 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
+import {
+  courseRootId,
+  type StructureSelection,
+} from "@/components/course-structure-prototype/course-structure-prototype-types";
 
 type DocumentNode = {
   id: string;
@@ -47,7 +51,6 @@ type SectionNode = {
 type RootNode = DocumentNode | TestNode | SectionNode;
 type RootNodeType = RootNode["type"];
 type SectionChildNodeType = SectionChildNode["type"];
-
 const nodeTypeLabels = {
   document: "Document",
   section: "Section",
@@ -76,9 +79,17 @@ const initialNodes: RootNode[] = [
 const courseRootTitle = "Course";
 
 export function CourseStructurePrototype({
+  courseTitle = courseRootTitle,
   compact = false,
+  onSelectionChange,
+  selectedNodeId = courseRootId,
+  showFrameHeader = true,
 }: {
+  courseTitle?: string;
   compact?: boolean;
+  onSelectionChange?: (selection: StructureSelection) => void;
+  selectedNodeId?: string;
+  showFrameHeader?: boolean;
 }) {
   const [nodes, setNodes] = useState<RootNode[]>(initialNodes);
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
@@ -241,17 +252,14 @@ export function CourseStructurePrototype({
         </div>
       )}
 
-      <section className="overflow-hidden rounded-sm border border-stone-200 bg-white shadow-[0_12px_30px_-24px_rgba(28,25,23,0.35)]">
-        <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-4 py-2">
-          <div>
+      <section className="overflow-hidden rounded-sm border border-stone-200 bg-white shadow-[0_12px_30px_-24px_rgba(28,25,23,0.12)]">
+        {showFrameHeader ? (
+          <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-4 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
               Explorer
             </p>
-            <p className={compact ? "text-xs text-stone-700" : "text-sm text-stone-700"}>
-              Course structure
-            </p>
           </div>
-        </div>
+        ) : null}
 
         <div className={compact ? "p-1.5" : "p-2"}>
           <div className="space-y-0.5">
@@ -261,14 +269,22 @@ export function CourseStructurePrototype({
               icon={Folder}
               isExpanded={isCourseRootExpanded}
               isFixed
+              isSelected={selectedNodeId === courseRootId}
               label="Root"
+              onSelect={() =>
+                onSelectionChange?.({
+                  id: courseRootId,
+                  title: courseTitle,
+                  type: "course",
+                })
+              }
               onInsertDocument={() => insertRootNode("document")}
               onInsertSection={() => insertRootNode("section")}
               onInsertTest={() => insertRootNode("test")}
               onMoveDown={() => {}}
               onMoveUp={() => {}}
               onToggle={() => setIsCourseRootExpanded((current) => !current)}
-              title={courseRootTitle}
+              title={courseTitle}
             />
             {isCourseRootExpanded ? (
               <div className="ml-3 border-l border-stone-200 pl-3">
@@ -288,11 +304,13 @@ export function CourseStructurePrototype({
                       onRootNodeChange={updateRootNode}
                       onRootNodeDelete={removeRootNode}
                       onRootNodeMove={moveRootNode}
+                      onSelectionChange={onSelectionChange}
                       onSectionChildChange={updateSectionChild}
                       onSectionChildDelete={removeSectionChild}
                       onSectionChildInsert={insertSectionChild}
                       onSectionChildMove={moveSectionChild}
                       onSectionToggle={toggleSection}
+                      selectedNodeId={selectedNodeId}
                       sectionIsExpanded={expandedSectionIds.includes(node.id)}
                       setEditingNodeId={setEditingNodeId}
                       totalRootNodes={nodes.length}
@@ -316,11 +334,13 @@ function TreeNodeRow({
   onRootNodeChange,
   onRootNodeDelete,
   onRootNodeMove,
+  onSelectionChange,
   onSectionChildChange,
   onSectionChildDelete,
   onSectionChildInsert,
   onSectionChildMove,
   onSectionToggle,
+  selectedNodeId,
   sectionIsExpanded,
   setEditingNodeId,
   totalRootNodes,
@@ -332,6 +352,7 @@ function TreeNodeRow({
   onRootNodeChange: (id: string, title: string) => void;
   onRootNodeDelete: (id: string) => void;
   onRootNodeMove: (index: number, direction: -1 | 1) => void;
+  onSelectionChange?: (selection: StructureSelection) => void;
   onSectionChildChange: (sectionId: string, childId: string, title: string) => void;
   onSectionChildDelete: (sectionId: string, childId: string) => void;
   onSectionChildInsert: (
@@ -341,6 +362,7 @@ function TreeNodeRow({
   ) => void;
   onSectionChildMove: (sectionId: string, index: number, direction: -1 | 1) => void;
   onSectionToggle: (sectionId: string) => void;
+  selectedNodeId: string;
   sectionIsExpanded: boolean;
   setEditingNodeId: (id: string | null) => void;
   totalRootNodes: number;
@@ -356,6 +378,7 @@ function TreeNodeRow({
         icon={nodeTypeIcons[node.type]}
         isEditing={editingNodeId === node.id}
         isExpanded={isSection ? sectionIsExpanded : undefined}
+        isSelected={selectedNodeId === node.id}
         label={nodeTypeLabels[node.type]}
         onChange={(title) => onRootNodeChange(node.id, title)}
         onDelete={() => onRootNodeDelete(node.id)}
@@ -374,6 +397,13 @@ function TreeNodeRow({
         onMoveDown={() => onRootNodeMove(index, 1)}
         onMoveUp={() => onRootNodeMove(index, -1)}
         onOpen={node.type === "section" ? undefined : () => {}}
+        onSelect={() =>
+          onSelectionChange?.({
+            id: node.id,
+            title: node.title,
+            type: node.type,
+          })
+        }
         onToggle={isSection ? () => onSectionToggle(node.id) : undefined}
         title={node.title}
       />
@@ -387,6 +417,7 @@ function TreeNodeRow({
               canMoveUp={childIndex > 0}
               icon={nodeTypeIcons[child.type]}
               isEditing={editingNodeId === child.id}
+              isSelected={selectedNodeId === child.id}
               key={child.id}
               label={nodeTypeLabels[child.type]}
               onChange={(title) => onSectionChildChange(node.id, child.id, title)}
@@ -396,6 +427,13 @@ function TreeNodeRow({
               onMoveDown={() => onSectionChildMove(node.id, childIndex, 1)}
               onMoveUp={() => onSectionChildMove(node.id, childIndex, -1)}
               onOpen={() => {}}
+              onSelect={() =>
+                onSelectionChange?.({
+                  id: child.id,
+                  title: child.title,
+                  type: child.type,
+                })
+              }
               title={child.title}
             />
           ))}
@@ -414,7 +452,7 @@ function ExplorerRow({
   isFixed = false,
   isEditing = false,
   isExpanded,
-  isOpen = false,
+  isSelected = false,
   label,
   onChange,
   onDelete,
@@ -426,6 +464,7 @@ function ExplorerRow({
   onMoveDown,
   onMoveUp,
   onOpen,
+  onSelect,
   onToggle,
   title,
 }: {
@@ -436,7 +475,7 @@ function ExplorerRow({
   isFixed?: boolean;
   isEditing?: boolean;
   isExpanded?: boolean;
-  isOpen?: boolean;
+  isSelected?: boolean;
   label: string;
   onChange?: (title: string) => void;
   onDelete?: () => void;
@@ -448,6 +487,7 @@ function ExplorerRow({
   onMoveDown: () => void;
   onMoveUp: () => void;
   onOpen?: () => void;
+  onSelect?: () => void;
   onToggle?: () => void;
   title: string;
 }) {
@@ -467,9 +507,10 @@ function ExplorerRow({
       <ContextMenuTrigger>
         <div
           className={[
-            "group/row flex min-h-8 items-center gap-1 rounded-sm px-1 text-sm text-stone-700 hover:bg-stone-100",
-            isOpen || isContextMenuOpen ? "bg-stone-100 text-stone-950" : "",
+            "group/row flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1 text-sm text-stone-700 hover:bg-stone-100",
+            isSelected || isContextMenuOpen ? "bg-stone-100 text-stone-950" : "",
           ].join(" ")}
+          onClick={onSelect}
         >
           <button
             className={[

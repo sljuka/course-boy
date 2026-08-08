@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import {
   CardDescription,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 
 const blockTypes: EditorPrototypeBlockType[] = [
   "heading",
@@ -31,7 +30,6 @@ const blockTypeLabels: Record<EditorPrototypeBlockType, string> = {
 };
 
 export function EditorPrototype() {
-  const [title, setTitle] = useState("");
   const [blocks, setBlocks] = useState<EditorPrototypeBlock[]>(initialPrototypeBlocks);
   const [autoFocusBlockId, setAutoFocusBlockId] = useState<string | null>(null);
 
@@ -73,13 +71,7 @@ export function EditorPrototype() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="space-y-3 border-b border-stone-200 pb-6">
-        <Input
-          className="h-auto border-0 bg-transparent px-0 text-5xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="Untitled course"
-          value={title}
-        />
+      <div className="flex flex-col gap-3 border-b border-stone-200 pb-6">
         <CardDescription className="max-w-3xl text-base text-stone-700">
           Prototype a notebook-style course editor with document blocks,
           immediate typing, and inline previews underneath the active source.

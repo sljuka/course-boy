@@ -6,8 +6,10 @@ import { CourseList } from "@/components/course-search/course-list";
 import { CourseSearchField } from "@/components/course-search/course-search-field";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PageContent } from "@/components/page-content";
+import { PageActions } from "@/components/page-actions";
 import { PageHeader } from "@/components/page-header";
 import { CardDescription, CourseTitle } from "@/components/ui/card";
+import { HomePageActions } from "@/pages/home-page";
 
 export function DraftsPage() {
   const { t } = useTranslation();
@@ -17,6 +19,11 @@ export function DraftsPage() {
     <PageContent>
       <ErrorBoundary fallback={<CourseErrorCard message={t("drafts.error")} />}>
         <PageHeader
+          right={
+            <PageActions>
+              <HomePageActions />
+            </PageActions>
+          }
           subtitle={
             <CardDescription className="max-w-3xl text-base text-stone-700">
               {t("drafts.description")}

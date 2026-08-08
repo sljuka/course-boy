@@ -1,9 +1,9 @@
 import { Route, Routes } from "react-router-dom";
 
 import { BlankLayout } from "@/components/blank-layout";
+import { CourseLayout } from "@/components/course-layout";
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
-import { SidebarFullPageLayout } from "@/components/sidebar-full-page-layout";
 import { SidebarLayout } from "@/components/sidebar-layout";
 import { AppStateProvider } from "@/lib/app-state";
 import { CourseCreatePage } from "@/pages/course-create-page";
@@ -51,7 +51,7 @@ const AppRoutes = () => {
         />
         <Route element={<CourseDetailPage />} path="/courses/:courseId" />
       </Route>
-      <Route element={<SidebarFullPageLayout />}>
+      <Route element={<CourseLayout />}>
         <Route element={<DraftDetailPage />} path="/drafts/:courseId" />
       </Route>
       <Route

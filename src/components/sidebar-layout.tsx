@@ -19,7 +19,7 @@ export const SidebarLayout = () => {
               </Routes>
             </AppHeader>
             <main className="min-h-screen flex justify-center flex-1 border-l border-stone-200 bg-white">
-              <div className="lg:max-w-5xl">
+              <div className="w-full lg:max-w-5xl">
                 <Outlet />
               </div>
             </main>
