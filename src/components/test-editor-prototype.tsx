@@ -1,0 +1,470 @@
+import { useEffect, useRef, useState } from "react";
+import { FlaskConical, Plus } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { CardDescription } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
+import { PageActions } from "@/components/page-actions";
+import {
+  addConstraintToVariable,
+  countMatchingExercises,
+  createInitialState,
+  removeConstraintFromVariable,
+  removeVariableFromExercise,
+  syncExercisePrompt,
+} from "@/components/test-editor-prototype-logic";
+import type {
+  BlueprintRule,
+  TestEditorState,
+  TestExercise,
+} from "@/components/test-editor-prototype-types";
+import type { Locale } from "@/lib/i18n";
+import { getLocaleFlag } from "@/lib/locale-flags";
+
+type TestEditorPrototypeProps = {
+  initialState?: TestEditorState;
+  initialTitle: string;
+  onStateChange?: (state: TestEditorState) => void;
+  supportedLocales: Locale[];
+};
+
+export function TestEditorPrototype({
+  initialState,
+  initialTitle,
+  onStateChange,
+  supportedLocales,
+}: TestEditorPrototypeProps) {
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
+  const [collapsedExerciseIds, setCollapsedExerciseIds] = useState<string[]>([]);
+  const [state, setState] = useState<TestEditorState>(() =>
+    initialState ?? createInitialState(supportedLocales, initialTitle),
+  );
+  const hasInitializedExternalStateRef = useRef(false);
+
+  useEffect(() => {
+    if (!initialState || hasInitializedExternalStateRef.current) {
+      return;
+    }
+
+    setCollapsedExerciseIds([]);
+    setState(initialState);
+    hasInitializedExternalStateRef.current = true;
+  }, [initialState]);
+
+  useEffect(() => {
+    if (initialState) {
+      return;
+    }
+
+    const nextState = createInitialState(supportedLocales, initialTitle);
+    const firstExerciseId = nextState.exercises[0]?.id ?? "";
+    setCollapsedExerciseIds([]);
+    setState({
+      ...nextState,
+      activeExerciseId: firstExerciseId,
+    });
+  }, [initialState, initialTitle, supportedLocales]);
+
+  useEffect(() => {
+    if (state.activeExerciseId) {
+      return;
+    }
+
+    const firstExerciseId = state.exercises[0]?.id ?? "";
+
+    if (firstExerciseId) {
+      setState((currentState) => ({
+        ...currentState,
+        activeExerciseId: firstExerciseId,
+      }));
+    }
+  }, [state.activeExerciseId, state.exercises]);
+
+  useEffect(() => {
+    const textarea = descriptionRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [state.description]);
+
+  useEffect(() => {
+    onStateChange?.(state);
+  }, [onStateChange, state]);
+
+  function updateExercise(
+    exerciseId: string,
+    updater: (exercise: TestExercise) => TestExercise,
+  ) {
+    setState((currentState) => ({
+      ...currentState,
+      exercises: currentState.exercises.map((exercise) =>
+        exercise.id === exerciseId ? updater(exercise) : exercise,
+      ),
+    }));
+  }
+
+  function setTitle(title: string) {
+    setState((currentState) => ({
+      ...currentState,
+      title,
+    }));
+  }
+
+  function setDescription(description: string) {
+    setState((currentState) => ({
+      ...currentState,
+      description,
+    }));
+  }
+
+  function updateBlueprintRule(ruleId: string, nextRule: Partial<BlueprintRule>) {
+    setState((currentState) => ({
+      ...currentState,
+      blueprint: currentState.blueprint.map((rule) =>
+        rule.id === ruleId ? { ...rule, ...nextRule } : rule,
+      ),
+    }));
+  }
+
+  function addBlueprintRule() {
+    setState((currentState) => ({
+      ...currentState,
+      blueprint: [
+        ...currentState.blueprint,
+        {
+          count: 1,
+          id: `rule_${Math.random().toString(36).slice(2, 8)}`,
+          tag: "new-tag",
+        },
+      ],
+    }));
+  }
+
+  function toggleBlueprintUsage() {
+    setState((currentState) => ({
+      ...currentState,
+      useBlueprint: !currentState.useBlueprint,
+    }));
+  }
+
+  function addExercise() {
+    const nextState = createInitialState(supportedLocales, state.title);
+    const nextExercise = nextState.exercises[0];
+
+    if (!nextExercise) {
+      return;
+    }
+
+    setState((currentState) => ({
+      ...currentState,
+      activeExerciseId: nextExercise.id,
+      exercises: [...currentState.exercises, nextExercise],
+    }));
+  }
+
+  function setExerciseCollapsed(exerciseId: string, collapsed: boolean) {
+    setCollapsedExerciseIds((currentIds) => {
+      const isCurrentlyCollapsed = currentIds.includes(exerciseId);
+
+      if (isCurrentlyCollapsed === collapsed) {
+        return currentIds;
+      }
+
+      return collapsed
+        ? [...currentIds, exerciseId]
+        : currentIds.filter((id) => id !== exerciseId);
+    });
+  }
+
+  function moveExercise(exerciseId: string, direction: -1 | 1) {
+    setState((currentState) => {
+      const currentIndex = currentState.exercises.findIndex(
+        (exercise) => exercise.id === exerciseId,
+      );
+      const nextIndex = currentIndex + direction;
+
+      if (
+        currentIndex < 0 ||
+        nextIndex < 0 ||
+        nextIndex >= currentState.exercises.length
+      ) {
+        return currentState;
+      }
+
+      const nextExercises = [...currentState.exercises];
+      const [movedExercise] = nextExercises.splice(currentIndex, 1);
+      nextExercises.splice(nextIndex, 0, movedExercise);
+
+      return {
+        ...currentState,
+        exercises: nextExercises,
+      };
+    });
+  }
+
+  function removeExercise(exerciseId: string) {
+    setCollapsedExerciseIds((currentIds) =>
+      currentIds.filter((id) => id !== exerciseId),
+    );
+    setState((currentState) => ({
+      ...currentState,
+      exercises: currentState.exercises.filter((exercise) => exercise.id !== exerciseId),
+    }));
+  }
+
+  return (
+    <div className="h-full p-4 sm:p-5 lg:p-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <Eyebrow>Test</Eyebrow>
+              <Input
+                className="h-auto border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-3xl"
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Untitled test"
+                value={state.title}
+              />
+              <Textarea
+                className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-base font-medium text-stone-600 shadow-none placeholder:text-stone-400 focus-visible:ring-0 md:text-base"
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Add a short description"
+                ref={descriptionRef}
+                rows={1}
+                value={state.description}
+              />
+            </div>
+            <PageActions>
+              <Button className="gap-2" onClick={addExercise} variant="primary">
+                <Plus aria-hidden="true" className="h-4 w-4" />
+                Add exercise
+              </Button>
+            </PageActions>
+          </div>
+
+          <Accordion
+            multiple
+            onValueChange={(value) =>
+              setState((currentState) => ({
+                ...currentState,
+                selectedAdvancedSections: value as string[],
+              }))
+            }
+            value={state.selectedAdvancedSections}
+          >
+            <AccordionItem value="advanced">
+              <AccordionTrigger>Advanced</AccordionTrigger>
+              <AccordionContent>
+                <div className="flex flex-col gap-4">
+                  <CardDescription>
+                    By default, the test includes every exercise in the order shown in
+                    the exercise bank.
+                  </CardDescription>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Badge variant="secondary">
+                      {state.useBlueprint
+                        ? "Using test structure"
+                        : "All exercises in order"}
+                    </Badge>
+                    <Button
+                      onClick={toggleBlueprintUsage}
+                      size="sm"
+                      variant={state.useBlueprint ? "secondary" : "ghost"}
+                    >
+                      {state.useBlueprint
+                        ? "Disable test structure"
+                        : "Enable test structure"}
+                    </Button>
+                  </div>
+
+                  {state.useBlueprint ? (
+                    <div className="grid gap-3">
+                      {state.blueprint.map((rule) => {
+                        const available = countMatchingExercises(
+                          state.exercises,
+                          rule.tag,
+                        );
+                        const isInvalid = available < rule.count;
+
+                        return (
+                          <div
+                            className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]"
+                            key={rule.id}
+                          >
+                            <Input
+                              onChange={(event) =>
+                                updateBlueprintRule(rule.id, {
+                                  tag: event.target.value,
+                                })
+                              }
+                              placeholder="Tag"
+                              value={rule.tag}
+                            />
+                            <Input
+                              min={1}
+                              onChange={(event) =>
+                                updateBlueprintRule(rule.id, {
+                                  count: Math.max(
+                                    1,
+                                    Number(event.target.value) || 1,
+                                  ),
+                                })
+                              }
+                              type="number"
+                              value={rule.count}
+                            />
+                            {isInvalid ? (
+                              <CardDescription className="sm:col-span-2 text-amber-700">
+                                Need {rule.count} exercises tagged "{rule.tag}", but
+                                only {available} {available === 1 ? "is" : "are"}{" "}
+                                available.
+                              </CardDescription>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                          onClick={addBlueprintRule}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          <Plus aria-hidden="true" className="h-4 w-4" />
+                          Add rule
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant="secondary">{state.exercises.length} items</Badge>
+          </div>
+
+          <Tabs
+            onValueChange={(value) =>
+              setState((currentState) => ({
+                ...currentState,
+                selectedLocale: value as Locale,
+              }))
+            }
+            value={state.selectedLocale}
+          >
+            <TabsList>
+              {supportedLocales.map((locale) => (
+                <TabsTrigger key={locale} value={locale}>
+                  <span className="text-base leading-none">
+                    {getLocaleFlag(locale)}
+                  </span>
+                  <span>{locale}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {supportedLocales.map((locale) => (
+              <TabsContent className="flex flex-col gap-4" key={locale} value={locale}>
+                <CardDescription>
+                  {state.useBlueprint
+                    ? "Structure rules are enabled in Advanced."
+                    : "Exercises will be used in this order."}
+                </CardDescription>
+
+                {state.exercises.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {state.exercises.map((exercise, index) => (
+                      <ExercisePromptCard
+                        canMoveDown={index < state.exercises.length - 1}
+                        canMoveUp={index > 0}
+                        collapsed={collapsedExerciseIds.includes(exercise.id)}
+                        exercise={exercise}
+                        key={exercise.id}
+                        locale={locale}
+                        onAddConstraint={(exerciseId, variableId, type, value) =>
+                          updateExercise(exerciseId, (currentExercise) =>
+                            addConstraintToVariable(
+                              currentExercise,
+                              variableId,
+                              type,
+                              value,
+                            ),
+                          )
+                        }
+                        onDelete={removeExercise}
+                        onMoveDown={(exerciseId) => moveExercise(exerciseId, 1)}
+                        onMoveUp={(exerciseId) => moveExercise(exerciseId, -1)}
+                        onCollapsedChange={setExerciseCollapsed}
+                        onPromptChange={(exerciseToUpdate, nextLocale, prompt) =>
+                          updateExercise(exerciseToUpdate.id, (currentExercise) =>
+                            syncExercisePrompt(currentExercise, nextLocale, prompt),
+                          )
+                        }
+                        onRemoveConstraint={(exerciseId, variableId, constraintId) =>
+                          updateExercise(exerciseId, (currentExercise) =>
+                            removeConstraintFromVariable(
+                              currentExercise,
+                              variableId,
+                              constraintId,
+                            ),
+                          )
+                        }
+                        onSolutionChange={(exerciseId, solution) =>
+                          updateExercise(exerciseId, (currentExercise) => ({
+                            ...currentExercise,
+                            solution,
+                          }))
+                        }
+                        onVariableRemove={(exerciseId, variableId) =>
+                          updateExercise(exerciseId, (currentExercise) =>
+                            removeVariableFromExercise(currentExercise, variableId),
+                          )
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 py-8 text-stone-500">
+                    <FlaskConical aria-hidden="true" className="h-5 w-5 shrink-0" />
+                    <CardDescription>
+                      Add the first exercise to start defining the test.
+                    </CardDescription>
+                  </div>
+                )}
+
+                <Button
+                  className="gap-2 self-start"
+                  onClick={addExercise}
+                  variant="primary"
+                >
+                  <Plus aria-hidden="true" className="h-4 w-4" />
+                  Add exercise
+                </Button>
+              </TabsContent>
+            ))}
+          </Tabs>
+        </div>
+      </div>
+    </div>
+  );
+}

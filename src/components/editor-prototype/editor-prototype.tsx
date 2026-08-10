@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 
 import { EditorPrototypeBlockCard } from "@/components/editor-prototype/block-card";
@@ -9,9 +9,9 @@ import {
   type EditorPrototypeBlockType,
 } from "@/components/editor-prototype/editor-prototype-types";
 import { Button } from "@/components/ui/button";
-import {
-  CardDescription,
-} from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/eyebrow";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const blockTypes: EditorPrototypeBlockType[] = [
   "heading",
@@ -29,9 +29,44 @@ const blockTypeLabels: Record<EditorPrototypeBlockType, string> = {
   video: "Video",
 };
 
-export function EditorPrototype() {
+export function EditorPrototype({
+  nodeType,
+  onSubtitleChange,
+  onTitleChange,
+  subtitle,
+  title,
+}: {
+  nodeType: string;
+  onSubtitleChange?: (subtitle: string) => void;
+  onTitleChange?: (title: string) => void;
+  subtitle?: string;
+  title?: string;
+}) {
   const [blocks, setBlocks] = useState<EditorPrototypeBlock[]>(initialPrototypeBlocks);
   const [autoFocusBlockId, setAutoFocusBlockId] = useState<string | null>(null);
+  const [isTitleEditing, setIsTitleEditing] = useState(false);
+  const subtitleRef = useRef<HTMLTextAreaElement | null>(null);
+  const titleRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!isTitleEditing) {
+      return;
+    }
+
+    titleRef.current?.focus();
+    titleRef.current?.select();
+  }, [isTitleEditing]);
+
+  useEffect(() => {
+    const textarea = subtitleRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [subtitle]);
 
   function insertBlock(type: EditorPrototypeBlockType, index: number) {
     const nextBlock = createPrototypeBlock(type);
@@ -72,10 +107,40 @@ export function EditorPrototype() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 border-b border-stone-200 pb-6">
-        <CardDescription className="max-w-3xl text-base text-stone-700">
-          Prototype a notebook-style course editor with document blocks,
-          immediate typing, and inline previews underneath the active source.
-        </CardDescription>
+        <Eyebrow>{nodeType}</Eyebrow>
+        {isTitleEditing ? (
+          <Input
+            className="h-auto border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-3xl"
+            onBlur={() => setIsTitleEditing(false)}
+            onChange={(event) => onTitleChange?.(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                setIsTitleEditing(false);
+              }
+            }}
+            placeholder="Untitled document"
+            ref={titleRef}
+            value={title ?? ""}
+          />
+        ) : (
+          <button
+            className="w-fit text-left"
+            onClick={() => setIsTitleEditing(true)}
+            type="button"
+          >
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-950 md:text-3xl">
+              {title?.trim() || "Untitled document"}
+            </h1>
+          </button>
+        )}
+        <Textarea
+          className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-base font-medium text-stone-600 shadow-none placeholder:text-stone-400 focus-visible:ring-0 md:text-base"
+          onChange={(event) => onSubtitleChange?.(event.target.value)}
+          placeholder="Add a short description"
+          ref={subtitleRef}
+          rows={1}
+          value={subtitle ?? ""}
+        />
       </div>
       <div className="flex flex-col">
         {blocks.map((block, index) => (
@@ -121,7 +186,7 @@ function InlineInsertMenu({
       <div className="flex flex-wrap items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover/insert:opacity-100">
         {blockTypes.map((type) => (
           <Button
-            className="h-7 gap-1 px-2.5 text-[11px]"
+            className="h-7 gap-1 px-2.5 text-xs"
             key={type}
             onClick={() => onInsert(type)}
             variant="secondary"

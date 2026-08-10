@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import type {
+  ContentRating,
   CourseTest,
   CourseTestStructureRule,
   CourseExerciseSolutionSpace,
@@ -20,13 +21,20 @@ import type {
   StoredSectionDefinition,
 } from "../src/lib/course-package";
 import type { Locale } from "../src/lib/i18n";
+import {
+  formatCourseVersion,
+  parseCourseVersion,
+  type CourseVersionInfo,
+} from "../src/lib/course-versioning";
 
 type CourseRecord = {
-  directoryPath: string;
+  courseRootPath: string;
   manifest: CourseManifest;
+  packageDirectoryPath: string;
 };
 
 type RawCourseManifest = Omit<CourseManifest, "status"> & {
+  contentRating?: ContentRating;
   status?: CourseStatus;
 };
 
@@ -84,6 +92,46 @@ function isCourseStatus(value: unknown): value is CourseStatus {
   return value === "draft" || value === "published";
 }
 
+function isContentRating(value: unknown): value is ContentRating {
+  return (
+    value === "all-ages" ||
+    value === "mature-themes" ||
+    value === "explicit"
+  );
+}
+
+function isCourseVersionReleaseType(
+  value: unknown,
+): value is CourseVersionInfo["releaseType"] {
+  return (
+    value === "initial" ||
+    value === "major" ||
+    value === "minor" ||
+    value === "patch"
+  );
+}
+
+function isCourseVersionInfo(value: unknown): value is CourseVersionInfo {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const versionInfo = value as Partial<CourseVersionInfo>;
+
+  return (
+    typeof versionInfo.major === "number" &&
+    Number.isInteger(versionInfo.major) &&
+    versionInfo.major >= 0 &&
+    typeof versionInfo.minor === "number" &&
+    Number.isInteger(versionInfo.minor) &&
+    versionInfo.minor >= 0 &&
+    typeof versionInfo.patch === "number" &&
+    Number.isInteger(versionInfo.patch) &&
+    versionInfo.patch >= 0 &&
+    isCourseVersionReleaseType(versionInfo.releaseType)
+  );
+}
+
 function isRawCourseManifest(value: unknown): value is RawCourseManifest {
   if (!value || typeof value !== "object") {
     return false;
@@ -94,7 +142,11 @@ function isRawCourseManifest(value: unknown): value is RawCourseManifest {
   return (
     typeof manifest.id === "string" &&
     typeof manifest.version === "string" &&
+    (typeof manifest.versionInfo === "undefined" ||
+      isCourseVersionInfo(manifest.versionInfo)) &&
     typeof manifest.builtin === "boolean" &&
+    (typeof manifest.contentRating === "undefined" ||
+      isContentRating(manifest.contentRating)) &&
     typeof manifest.slug === "string" &&
     (typeof manifest.status === "undefined" || isCourseStatus(manifest.status)) &&
     Boolean(manifest.locales) &&
@@ -342,9 +394,14 @@ async function readJsonFile<T>(
 }
 
 function normalizeCourseManifest(manifest: RawCourseManifest): CourseManifest {
+  const normalizedVersionInfo = manifest.versionInfo ?? parseCourseVersion(manifest.version);
+
   return {
     ...manifest,
+    contentRating: manifest.contentRating ?? "all-ages",
     status: manifest.status ?? "published",
+    version: formatCourseVersion(normalizedVersionInfo),
+    versionInfo: normalizedVersionInfo,
   };
 }
 
@@ -369,20 +426,30 @@ async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecor
     directoryEntries
       .filter((directoryEntry) => directoryEntry.isDirectory())
       .map(async (directoryEntry) => {
-        const directoryPath = path.join(rootDirectoryPath, directoryEntry.name);
-        const manifestPath = path.join(directoryPath, "course.json");
+        const courseRootPath = path.join(rootDirectoryPath, directoryEntry.name);
+        const packageDirectoryCandidates = [
+          path.join(courseRootPath, "draft"),
+          courseRootPath,
+        ];
 
-        try {
-          const rawManifest = await readJsonFile(manifestPath, isRawCourseManifest);
-          const manifest = normalizeCourseManifest(rawManifest);
+        for (const packageDirectoryPath of packageDirectoryCandidates) {
+          const manifestPath = path.join(packageDirectoryPath, "course.json");
 
-          return {
-            directoryPath,
-            manifest,
-          } satisfies CourseRecord;
-        } catch {
-          return null;
+          try {
+            const rawManifest = await readJsonFile(manifestPath, isRawCourseManifest);
+            const manifest = normalizeCourseManifest(rawManifest);
+
+            return {
+              courseRootPath,
+              manifest,
+              packageDirectoryPath,
+            } satisfies CourseRecord;
+          } catch {
+            continue;
+          }
         }
+
+        return null;
       }),
   );
 
@@ -419,7 +486,7 @@ function resolveSectionDirectoryPath(
   courseRecord: CourseRecord,
   sectionId: string,
 ): string {
-  return path.join(courseRecord.directoryPath, sectionId);
+  return path.join(courseRecord.packageDirectoryPath, sectionId);
 }
 
 function resolveSectionLocaleDirectoryPath(
@@ -627,9 +694,12 @@ async function resolveLessonIconUrl(
   }
 
   const normalizedIconPath = path.normalize(relativeIconPath);
-  const resolvedIconPath = path.resolve(courseRecord.directoryPath, normalizedIconPath);
+  const resolvedIconPath = path.resolve(
+    courseRecord.packageDirectoryPath,
+    normalizedIconPath,
+  );
   const relativeToCourseRoot = path.relative(
-    courseRecord.directoryPath,
+    courseRecord.packageDirectoryPath,
     resolvedIconPath,
   );
 
@@ -781,7 +851,7 @@ async function readSharedSectionDefinitions(
   let directoryEntries;
 
   try {
-    directoryEntries = await fs.readdir(courseRecord.directoryPath, {
+    directoryEntries = await fs.readdir(courseRecord.packageDirectoryPath, {
       withFileTypes: true,
     });
   } catch {
@@ -852,6 +922,7 @@ function toCourseSummary(
   previewItems: CoursePreviewItem[],
 ): CourseSummary {
   return {
+    contentRating: courseRecord.manifest.contentRating,
     defaultLocale: courseRecord.manifest.defaultLocale,
     description: localizedCourseMetadata.description,
     id: courseRecord.manifest.id,

@@ -6,6 +6,7 @@ import type {
   CreateCourseSectionResult,
   CourseDetails,
   CourseSummary,
+  UpdateCourseDraftMetadataInput,
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 import type { UserPreferences } from '../src/lib/preferences'
@@ -28,6 +29,9 @@ contextBridge.exposeInMainWorld('courses', {
   },
   createSection(input: CreateCourseSectionInput) {
     return ipcRenderer.invoke('courses:create-section', input) as Promise<CreateCourseSectionResult>
+  },
+  updateDraftMetadata(input: UpdateCourseDraftMetadataInput) {
+    return ipcRenderer.invoke('courses:update-draft-metadata', input) as Promise<void>
   },
   get(courseId: string, locale?: Locale) {
     return ipcRenderer.invoke('courses:get', courseId, locale) as Promise<CourseDetails | null>

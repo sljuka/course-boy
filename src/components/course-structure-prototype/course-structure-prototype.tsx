@@ -21,6 +21,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import {
   courseRootId,
@@ -255,9 +256,7 @@ export function CourseStructurePrototype({
       <section className="overflow-hidden rounded-sm border border-stone-200 bg-white shadow-[0_12px_30px_-24px_rgba(28,25,23,0.12)]">
         {showFrameHeader ? (
           <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-4 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-              Explorer
-            </p>
+            <Eyebrow>Explorer</Eyebrow>
           </div>
         ) : null}
 

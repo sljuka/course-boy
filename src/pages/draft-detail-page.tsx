@@ -1,8 +1,16 @@
-import { useEffect, useRef } from "react";
-import { Navigate, useOutletContext, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Navigate,
+  useLocation,
+  useOutletContext,
+  useParams,
+} from "react-router-dom";
 
 import { EditorPrototype } from "@/components/editor-prototype/editor-prototype";
+import { TestEditorPrototype } from "@/components/test-editor-prototype";
+import type { TestEditorState } from "@/components/test-editor-prototype-types";
 import { Badge } from "@/components/ui/badge";
+import { Eyebrow } from "@/components/ui/eyebrow";
 import {
   Combobox,
   ComboboxChip,
@@ -29,8 +37,10 @@ import type {
   ContentRating,
   CourseLayoutOutletContext,
 } from "@/components/course-layout";
+import type { CourseDetails, CourseSummary } from "@/lib/course-package";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
+import { queryClient } from "@/lib/query-client";
 import { useTranslation } from "react-i18next";
 
 function isLocale(value: string): value is Locale {
@@ -78,6 +88,7 @@ function getContentRatingLabel(contentRating: ContentRating) {
 
 export function DraftDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
+  const location = useLocation();
   const { t, i18n } = useTranslation();
   const supportedLocalesAnchor = useComboboxAnchor();
   const courseTitleRef = useRef<HTMLInputElement | null>(null);
@@ -86,22 +97,75 @@ export function DraftDetailPage() {
     contentRating,
     courseDescription,
     courseTitle,
+    initialDraftSnapshot,
+    initialDraftSnapshotLoaded,
     selectedNode,
     setContentRating,
     setCourseDescription,
     setCourseTitle,
+    setDraftSnapshot,
+    setEditorStatusAction,
+    setSelectedNode,
     setSupportedLocales,
     supportedLocales,
   } = useOutletContext<CourseLayoutOutletContext>();
+  const [documentDrafts, setDocumentDrafts] = useState<
+    Record<string, { subtitle: string; title: string }>
+  >({});
+  const [testDrafts, setTestDrafts] = useState<Record<string, TestEditorState>>({});
+  const [hasHydratedLocalDrafts, setHasHydratedLocalDrafts] = useState(false);
+  const shouldAutoFocusCourseTitle =
+    (location.state as { focusCourseTitle?: boolean } | null)?.focusCourseTitle ===
+    true;
+  const serializedDraftSnapshot = useMemo(
+    () =>
+      courseId && initialDraftSnapshotLoaded && hasHydratedLocalDrafts
+        ? JSON.stringify({
+            contentRating,
+            courseDescription,
+            courseId,
+            courseTitle,
+            documentDrafts,
+            supportedLocales,
+            testDrafts,
+            version: 1,
+          })
+        : null,
+    [
+      contentRating,
+      courseDescription,
+      courseId,
+      courseTitle,
+      documentDrafts,
+      hasHydratedLocalDrafts,
+      initialDraftSnapshotLoaded,
+      supportedLocales,
+      testDrafts,
+    ],
+  );
 
   useEffect(() => {
-    if (selectedNode.id !== courseRootId) {
+    setEditorStatusAction(null);
+  }, [setEditorStatusAction]);
+
+  useEffect(() => {
+    if (!initialDraftSnapshotLoaded || hasHydratedLocalDrafts) {
+      return;
+    }
+
+    setDocumentDrafts(initialDraftSnapshot?.documentDrafts ?? {});
+    setTestDrafts(initialDraftSnapshot?.testDrafts ?? {});
+    setHasHydratedLocalDrafts(true);
+  }, [hasHydratedLocalDrafts, initialDraftSnapshot, initialDraftSnapshotLoaded]);
+
+  useEffect(() => {
+    if (!shouldAutoFocusCourseTitle || selectedNode.id !== courseRootId) {
       return;
     }
 
     courseTitleRef.current?.focus();
     courseTitleRef.current?.select();
-  }, [selectedNode.id]);
+  }, [selectedNode.id, shouldAutoFocusCourseTitle]);
 
   useEffect(() => {
     const textarea = descriptionRef.current;
@@ -114,8 +178,87 @@ export function DraftDetailPage() {
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [courseDescription]);
 
+  useEffect(() => {
+    if (!serializedDraftSnapshot) {
+      return;
+    }
+
+    setDraftSnapshot(JSON.parse(serializedDraftSnapshot));
+  }, [serializedDraftSnapshot, setDraftSnapshot]);
+
+  useEffect(() => {
+    if (!courseId || !hasHydratedLocalDrafts) {
+      return;
+    }
+
+    queryClient.setQueriesData<CourseSummary[] | undefined>(
+      { queryKey: ["courses", "list"] },
+      (currentCourses) => {
+        if (!currentCourses) {
+          return currentCourses;
+        }
+
+        return currentCourses.map((course) =>
+          course.id === courseId
+            ? {
+                ...course,
+                contentRating,
+                description: courseDescription,
+                supportedLocales,
+                title: courseTitle || "Course",
+              }
+            : course,
+        );
+      },
+    );
+
+    queryClient.setQueriesData<CourseDetails | null | undefined>(
+      { queryKey: ["courses", "detail", courseId] },
+      (currentCourse) => {
+        if (!currentCourse) {
+          return currentCourse;
+        }
+
+        return {
+          ...currentCourse,
+          contentRating,
+          description: courseDescription,
+          supportedLocales,
+          title: courseTitle || "Course",
+        };
+      },
+    );
+  }, [
+    contentRating,
+    courseDescription,
+    courseId,
+    courseTitle,
+    hasHydratedLocalDrafts,
+    supportedLocales,
+  ]);
+
+  const handleTestStateChange = useCallback(
+    (state: TestEditorState) => {
+      setTestDrafts((currentDrafts) => {
+        if (currentDrafts[selectedNode.id] === state) {
+          return currentDrafts;
+        }
+
+        return {
+          ...currentDrafts,
+          [selectedNode.id]: state,
+        };
+      });
+    },
+    [selectedNode.id],
+  );
+
   if (!courseId) {
     return <Navigate replace to="/drafts" />;
+  }
+
+  if (!initialDraftSnapshotLoaded || !hasHydratedLocalDrafts) {
+    return <div className="h-full p-4 sm:p-5 lg:p-6" />;
   }
 
   if (selectedNode.id === courseRootId) {
@@ -124,8 +267,8 @@ export function DraftDetailPage() {
         <div className="mx-auto flex max-w-4xl flex-col gap-8">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
+              <Eyebrow>Course</Eyebrow>
               <Input
-                autoFocus
                 className="h-auto border-0 bg-transparent p-0 text-3xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-3xl"
                 onChange={(event) => setCourseTitle(event.target.value)}
                 placeholder="Course"
@@ -144,9 +287,7 @@ export function DraftDetailPage() {
 
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                  Supported locales
-                </p>
+                <Eyebrow>Supported locales</Eyebrow>
                 <Badge variant="secondary">{supportedLocales.length}</Badge>
               </div>
               <Combobox
@@ -194,9 +335,7 @@ export function DraftDetailPage() {
               </Combobox>
 
               <div className="flex flex-col gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                  Content rating
-                </p>
+                <Eyebrow>Content rating</Eyebrow>
                 <Select
                   onValueChange={(value) => setContentRating(value as ContentRating)}
                   value={contentRating}
@@ -222,17 +361,51 @@ export function DraftDetailPage() {
     );
   }
 
+  if (selectedNode.type === "test") {
+    return (
+      <TestEditorPrototype
+        initialState={testDrafts[selectedNode.id]}
+        initialTitle={selectedNode.title}
+        onStateChange={handleTestStateChange}
+        supportedLocales={supportedLocales}
+      />
+    );
+  }
+
+  const activeDocumentDraft = documentDrafts[selectedNode.id] ?? {
+    subtitle: "",
+    title: selectedNode.title,
+  };
+
   return (
     <div className="h-full p-4 sm:p-5 lg:p-6">
-      <div className="flex flex-col gap-3 pb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-          {selectedNode.type}
-        </p>
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-950">
-          {selectedNode.title}
-        </h1>
-      </div>
-      <EditorPrototype />
+      <EditorPrototype
+        nodeType={selectedNode.type}
+        onSubtitleChange={(subtitle) =>
+          setDocumentDrafts((currentDrafts) => ({
+            ...currentDrafts,
+            [selectedNode.id]: {
+              ...activeDocumentDraft,
+              subtitle,
+            },
+          }))
+        }
+        onTitleChange={(title) => {
+          setDocumentDrafts((currentDrafts) => ({
+            ...currentDrafts,
+            [selectedNode.id]: {
+              ...activeDocumentDraft,
+              title,
+            },
+          }));
+          setSelectedNode({
+            ...selectedNode,
+            title,
+          });
+        }}
+        subtitle={activeDocumentDraft.subtitle}
+        title={activeDocumentDraft.title}
+      />
     </div>
   );
 }

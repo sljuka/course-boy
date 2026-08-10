@@ -8,6 +8,8 @@ export const badgeVariants = cva(
         default: "border-stone-200 bg-white text-stone-700",
         draft: "border-amber-200 bg-amber-50 text-amber-800",
         secondary: "border-stone-200 bg-white text-stone-700",
+        success: "border-emerald-200 bg-emerald-50 text-emerald-800",
+        variable: "border-sky-200 bg-sky-50 text-sky-900",
       },
     },
     defaultVariants: {

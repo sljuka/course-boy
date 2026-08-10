@@ -17,7 +17,7 @@ export function PrintDocumentHeader({
 
   return (
     <header className="mb-5 hidden border-b border-stone-300 pb-3 print:block">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
         {label}
       </div>
       <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-stone-950">

@@ -8,10 +8,12 @@ import {
   createLocalCourseSection,
   ensureLocalCoursesRoot,
   removeLocalCourse,
+  updateLocalCourseDraftMetadata,
 } from './course-paths'
 import type {
   CreateCourseDraftInput,
   CreateCourseSectionInput,
+  UpdateCourseDraftMetadataInput,
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 
@@ -105,6 +107,13 @@ ipcMain.handle('courses:create-draft', (_event, input: CreateCourseDraftInput) =
 ipcMain.handle('courses:create-section', (_event, input: CreateCourseSectionInput) => {
   return createLocalCourseSection(input)
 })
+
+ipcMain.handle(
+  'courses:update-draft-metadata',
+  (_event, input: UpdateCourseDraftMetadataInput) => {
+    return updateLocalCourseDraftMetadata(input)
+  },
+)
 
 ipcMain.handle('courses:remove', (_event, courseId: string) => {
   return removeLocalCourse(courseId)

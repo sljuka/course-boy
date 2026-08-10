@@ -213,7 +213,11 @@ function CourseCreate() {
                   },
                 {
                   onSuccess: ({ courseId }) => {
-                    navigate(`/drafts/${courseId}`);
+                    navigate(`/drafts/${courseId}`, {
+                      state: {
+                        focusCourseTitle: true,
+                      },
+                    });
                   },
                 },
               );

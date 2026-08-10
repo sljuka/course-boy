@@ -30,6 +30,9 @@ interface Window {
     createSection: (
       input: import('../src/lib/course-package').CreateCourseSectionInput,
     ) => Promise<import('../src/lib/course-package').CreateCourseSectionResult>
+    updateDraftMetadata: (
+      input: import('../src/lib/course-package').UpdateCourseDraftMetadataInput,
+    ) => Promise<void>
     get: (
       courseId: string,
       locale?: import('../src/lib/i18n').Locale,

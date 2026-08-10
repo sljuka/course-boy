@@ -1,9 +1,12 @@
 import type { Locale } from "@/lib/i18n";
+import type { CourseVersionInfo } from "@/lib/course-versioning";
 
 export type CourseStatus = "draft" | "published";
+export type ContentRating = "all-ages" | "mature-themes" | "explicit";
 
 export type CourseManifest = {
   builtin: boolean;
+  contentRating: ContentRating;
   defaultLocale: Locale;
   id: string;
   locales: Record<Locale, LocalizedCourseMetadata>;
@@ -11,6 +14,7 @@ export type CourseManifest = {
   status: CourseStatus;
   supportedLocales: Locale[];
   version: string;
+  versionInfo?: CourseVersionInfo;
 };
 
 export type LocalizedCourseMetadata = {
@@ -91,6 +95,7 @@ export type StoredSectionDefinition = {
 };
 
 export type CourseSummary = {
+  contentRating: ContentRating;
   defaultLocale: Locale;
   description: string;
   id: string;
@@ -130,4 +135,12 @@ export type CreateCourseSectionInput = {
 
 export type CreateCourseSectionResult = {
   sectionId: string;
+};
+
+export type UpdateCourseDraftMetadataInput = {
+  contentRating: ContentRating;
+  courseId: string;
+  description: string;
+  supportedLocales: Locale[];
+  title: string;
 };

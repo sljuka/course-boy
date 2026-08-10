@@ -2,12 +2,18 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { app } from "electron";
 import type {
+  ContentRating,
   CreateCourseDraftInput,
   CreateCourseSectionInput,
   CourseStatus,
   CourseManifest,
+  UpdateCourseDraftMetadataInput,
 } from "../src/lib/course-package";
 import { locales, type Locale } from "../src/lib/i18n";
+import {
+  createInitialCourseVersion,
+  formatCourseVersion,
+} from "../src/lib/course-versioning";
 import { transliterateSerbianLatinToCyrillic } from "../src/lib/serbian-transliteration";
 
 const bundledSeedCourseIds = ["matko-getting-started"] as const;
@@ -16,6 +22,18 @@ const bundledSeedCourseIdSet = new Set<string>(bundledSeedCourseIds);
 type BundledSeedState = {
   removedCourseIds: string[];
 };
+
+function normalizeContentRating(value: unknown): ContentRating {
+  if (
+    value === "all-ages" ||
+    value === "mature-themes" ||
+    value === "explicit"
+  ) {
+    return value;
+  }
+
+  return "all-ages";
+}
 
 function getBundledCoursesRoot(): string {
   return path.join(process.env.APP_ROOT, "courses");
@@ -27,6 +45,10 @@ export function getLocalCoursesRoot(): string {
 
 function getBundledSeedStatePath(localCoursesRoot: string): string {
   return path.join(localCoursesRoot, ".bundled-seed-state.json");
+}
+
+function getDraftDirectoryPath(courseRootPath: string): string {
+  return path.join(courseRootPath, "draft");
 }
 
 async function readBundledSeedState(
@@ -103,16 +125,18 @@ export async function ensureLocalCoursesRoot(): Promise<string> {
     }
   }
 
+  await migrateNonBundledCoursesToDrafts(localCoursesRoot);
+
   return localCoursesRoot;
 }
 
 export async function removeLocalCourse(courseId: string): Promise<void> {
   const localCoursesRoot = await ensureLocalCoursesRoot();
-  const courseDirectoryPath = path.join(localCoursesRoot, courseId);
-  const resolvedCourseDirectoryPath = path.resolve(courseDirectoryPath);
+  const courseRootPath = path.join(localCoursesRoot, courseId);
+  const resolvedCourseRootPath = path.resolve(courseRootPath);
   const relativeToCoursesRoot = path.relative(
     localCoursesRoot,
-    resolvedCourseDirectoryPath,
+    resolvedCourseRootPath,
   );
 
   if (
@@ -122,7 +146,7 @@ export async function removeLocalCourse(courseId: string): Promise<void> {
     throw new Error(`Invalid course id "${courseId}"`);
   }
 
-  await fs.rm(resolvedCourseDirectoryPath, {
+  await fs.rm(resolvedCourseRootPath, {
     force: true,
     recursive: true,
   });
@@ -173,7 +197,7 @@ function resolveCourseDirectoryPath(
   localCoursesRoot: string,
   courseId: string,
 ): string {
-  const courseDirectoryPath = path.join(localCoursesRoot, courseId);
+  const courseDirectoryPath = getDraftDirectoryPath(path.join(localCoursesRoot, courseId));
   const resolvedCourseDirectoryPath = path.resolve(courseDirectoryPath);
   const relativeToCoursesRoot = path.relative(
     localCoursesRoot,
@@ -208,6 +232,67 @@ async function writeCourseManifest(
   await fs.writeFile(
     path.join(courseDirectoryPath, "course.json"),
     JSON.stringify(manifest, null, 2),
+  );
+}
+
+async function migrateNonBundledCoursesToDrafts(
+  localCoursesRoot: string,
+): Promise<void> {
+  const directoryEntries = await fs.readdir(localCoursesRoot, {
+    withFileTypes: true,
+  });
+
+  await Promise.all(
+    directoryEntries
+      .filter((entry) => entry.isDirectory())
+      .map(async (entry) => {
+        if (bundledSeedCourseIdSet.has(entry.name)) {
+          return;
+        }
+
+        const courseRootPath = path.join(localCoursesRoot, entry.name);
+        const draftDirectoryPath = getDraftDirectoryPath(courseRootPath);
+
+        try {
+          await fs.access(draftDirectoryPath);
+        } catch {
+          const courseRootEntries = await fs.readdir(courseRootPath, {
+            withFileTypes: true,
+          });
+
+          if (!courseRootEntries.some((childEntry) => childEntry.name === "course.json")) {
+            return;
+          }
+
+          await fs.mkdir(draftDirectoryPath, { recursive: true });
+
+          await Promise.all(
+            courseRootEntries
+              .filter((childEntry) => !childEntry.name.startsWith("."))
+              .map(async (childEntry) => {
+                const sourcePath = path.join(courseRootPath, childEntry.name);
+                const targetPath = path.join(draftDirectoryPath, childEntry.name);
+
+                await fs.rename(sourcePath, targetPath);
+              }),
+          );
+        }
+
+        try {
+          const manifest = await readCourseManifest(draftDirectoryPath);
+
+          if (manifest.status === "draft") {
+            return;
+          }
+
+          await writeCourseManifest(draftDirectoryPath, {
+            ...manifest,
+            status: "draft",
+          });
+        } catch {
+          return;
+        }
+      }),
   );
 }
 
@@ -306,8 +391,10 @@ export async function createLocalCourseDraft(
   const normalizedTitle = normalizedLocales[input.defaultLocale]?.title ?? "";
   const slugBase = slugify(normalizedTitle) || "untitled-course";
   const courseId = await resolveUniqueCourseId(localCoursesRoot, slugBase);
-  const courseDirectoryPath = path.join(localCoursesRoot, courseId);
+  const courseRootPath = path.join(localCoursesRoot, courseId);
+  const courseDirectoryPath = getDraftDirectoryPath(courseRootPath);
   const nowIso = new Date().toISOString();
+  const versionInfo = createInitialCourseVersion();
 
   await fs.mkdir(courseDirectoryPath, { recursive: true });
 
@@ -317,8 +404,10 @@ export async function createLocalCourseDraft(
       {
         courseSchemaVersion: "1",
         id: courseId,
-        version: "0.1.0",
+        version: formatCourseVersion(versionInfo),
+        versionInfo,
         defaultLocale: input.defaultLocale,
+        contentRating: "all-ages",
         supportedLocales,
         builtin: false,
         slug: courseId,
@@ -398,4 +487,52 @@ export async function createLocalCourseSection(
   });
 
   return { sectionId };
+}
+
+export async function updateLocalCourseDraftMetadata(
+  input: UpdateCourseDraftMetadataInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const supportedLocales = normalizeSupportedLocales(
+    manifest.defaultLocale,
+    input.supportedLocales,
+  );
+  const defaultLocaleMetadata = manifest.locales[manifest.defaultLocale] ?? {
+    description: "",
+    title: "",
+  };
+  const nextLocales = Object.fromEntries(
+    supportedLocales.map((locale) => [
+      locale,
+      locale === manifest.defaultLocale
+        ? {
+            description: input.description.trim(),
+            title: input.title.trim(),
+          }
+        : (manifest.locales[locale] ?? {
+            description: "",
+            title: locale === manifest.defaultLocale
+              ? input.title.trim()
+              : defaultLocaleMetadata.title,
+          }),
+    ]),
+  ) as CourseManifest["locales"];
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    contentRating: normalizeContentRating(input.contentRating),
+    locales: nextLocales,
+    supportedLocales,
+    updatedAt: new Date().toISOString(),
+  });
 }
