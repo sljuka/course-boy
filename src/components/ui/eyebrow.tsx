@@ -2,14 +2,20 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+type EyebrowProps = React.HTMLAttributes<HTMLParagraphElement> & {
+  size?: "default" | "small";
+};
+
 function Eyebrow({
   className,
+  size = "default",
   ...props
-}: React.HTMLAttributes<HTMLParagraphElement>) {
+}: EyebrowProps) {
   return (
     <p
       className={cn(
-        "text-xs font-semibold uppercase tracking-[0.18em] text-stone-500",
+        "font-semibold uppercase tracking-[0.18em] text-stone-600",
+        size === "small" ? "text-xs" : "text-sm",
         className,
       )}
       {...props}

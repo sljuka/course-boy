@@ -12,6 +12,13 @@ import {
 import { CardDescription } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
@@ -23,9 +30,11 @@ import {
   removeConstraintFromVariable,
   removeVariableFromExercise,
   syncExercisePrompt,
+  toggleExerciseTag,
 } from "@/components/test-editor-prototype-logic";
 import type {
   BlueprintRule,
+  CourseTagDefinition,
   TestEditorState,
   TestExercise,
 } from "@/components/test-editor-prototype-types";
@@ -33,6 +42,7 @@ import type { Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 
 type TestEditorPrototypeProps = {
+  descriptiveTags: CourseTagDefinition[];
   initialState?: TestEditorState;
   initialTitle: string;
   onStateChange?: (state: TestEditorState) => void;
@@ -40,6 +50,7 @@ type TestEditorPrototypeProps = {
 };
 
 export function TestEditorPrototype({
+  descriptiveTags,
   initialState,
   initialTitle,
   onStateChange,
@@ -142,6 +153,8 @@ export function TestEditorPrototype({
   }
 
   function addBlueprintRule() {
+    const fallbackTagId = descriptiveTags[0]?.id ?? "";
+
     setState((currentState) => ({
       ...currentState,
       blueprint: [
@@ -149,7 +162,7 @@ export function TestEditorPrototype({
         {
           count: 1,
           id: `rule_${Math.random().toString(36).slice(2, 8)}`,
-          tag: "new-tag",
+          tagId: fallbackTagId,
         },
       ],
     }));
@@ -298,7 +311,7 @@ export function TestEditorPrototype({
                       {state.blueprint.map((rule) => {
                         const available = countMatchingExercises(
                           state.exercises,
-                          rule.tag,
+                          rule.tagId,
                         );
                         const isInvalid = available < rule.count;
 
@@ -307,15 +320,25 @@ export function TestEditorPrototype({
                             className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9rem]"
                             key={rule.id}
                           >
-                            <Input
-                              onChange={(event) =>
+                            <Select
+                              onValueChange={(value) =>
                                 updateBlueprintRule(rule.id, {
-                                  tag: event.target.value,
+                                  tagId: value,
                                 })
                               }
-                              placeholder="Tag"
-                              value={rule.tag}
-                            />
+                              value={rule.tagId}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select tag" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {descriptiveTags.map((tag) => (
+                                  <SelectItem key={tag.id} value={tag.id}>
+                                    {tag.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <Input
                               min={1}
                               onChange={(event) =>
@@ -329,9 +352,12 @@ export function TestEditorPrototype({
                               type="number"
                               value={rule.count}
                             />
-                            {isInvalid ? (
+                            {rule.tagId && isInvalid ? (
                               <CardDescription className="sm:col-span-2 text-amber-700">
-                                Need {rule.count} exercises tagged "{rule.tag}", but
+                                Need {rule.count} exercises tagged "
+                                {descriptiveTags.find((tag) => tag.id === rule.tagId)?.label ??
+                                  rule.tagId}
+                                ", but
                                 only {available} {available === 1 ? "is" : "are"}{" "}
                                 available.
                               </CardDescription>
@@ -398,6 +424,7 @@ export function TestEditorPrototype({
                         canMoveDown={index < state.exercises.length - 1}
                         canMoveUp={index > 0}
                         collapsed={collapsedExerciseIds.includes(exercise.id)}
+                        descriptiveTags={descriptiveTags}
                         exercise={exercise}
                         key={exercise.id}
                         locale={locale}
@@ -434,6 +461,11 @@ export function TestEditorPrototype({
                             ...currentExercise,
                             solution,
                           }))
+                        }
+                        onToggleTag={(exerciseId, tagId) =>
+                          updateExercise(exerciseId, (currentExercise) =>
+                            toggleExerciseTag(currentExercise, tagId),
+                          )
                         }
                         onVariableRemove={(exerciseId, variableId) =>
                           updateExercise(exerciseId, (currentExercise) =>

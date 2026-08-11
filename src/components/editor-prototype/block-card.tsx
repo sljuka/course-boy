@@ -186,7 +186,7 @@ function HeadingBlockFields({
     <div className="flex items-start gap-3">
       <Input
         autoFocus={autoFocus}
-        className="h-auto flex-1 border-0 bg-transparent px-0 text-2xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-3xl"
+        className="h-auto flex-1 border-0 bg-transparent px-0 text-xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-2xl"
         onChange={(event) =>
           onChange({
             ...block,
@@ -229,7 +229,7 @@ function MarkdownBlockFields({
     <div className="space-y-2">
       <Textarea
         autoFocus={autoFocus}
-        className="min-h-[calc(theme(spacing.6)*2+theme(spacing.4))] resize-none overflow-hidden border-0 bg-stone-900 font-mono text-sm leading-6 text-stone-100 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
+        className="min-h-0 resize-none overflow-hidden border-0 bg-stone-900 font-mono text-sm leading-6 text-stone-100 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
         onChange={(event) =>
           onChange({
             ...block,
@@ -238,7 +238,7 @@ function MarkdownBlockFields({
         }
         placeholder="Start writing the lesson..."
         ref={textareaRef}
-        rows={2}
+        rows={1}
         value={block.source}
       />
     </div>
@@ -258,7 +258,7 @@ function DiagramBlockFields({
     <div className="space-y-2">
       <Textarea
         autoFocus={autoFocus}
-        className="min-h-40 border-0 bg-stone-900 font-mono text-sm leading-6 text-stone-100 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
+        className="min-h-0 border-0 bg-stone-900 font-mono text-sm leading-6 text-stone-100 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
         onChange={(event) =>
           onChange({
             ...block,
@@ -266,6 +266,7 @@ function DiagramBlockFields({
           })
         }
         placeholder="graph TD&#10;  A[Start] --> B[Finish]"
+        rows={1}
         value={block.source}
       />
     </div>
@@ -310,13 +311,14 @@ function ImageBlockFields({
       <div className="space-y-2">
         <div className="text-sm font-medium text-stone-700">Caption</div>
         <Textarea
-          className="min-h-28"
+          className="min-h-0"
           onChange={(event) =>
             onChange({
               ...block,
               caption: event.target.value,
             })
           }
+          rows={1}
           value={block.caption}
         />
       </div>
@@ -349,13 +351,14 @@ function VideoBlockFields({
       <div className="space-y-2">
         <div className="text-sm font-medium text-stone-700">Caption</div>
         <Textarea
-          className="min-h-28"
+          className="min-h-0"
           onChange={(event) =>
             onChange({
               ...block,
               caption: event.target.value,
             })
           }
+          rows={1}
           value={block.caption}
         />
       </div>

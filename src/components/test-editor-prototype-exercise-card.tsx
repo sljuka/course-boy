@@ -10,14 +10,24 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import {
+  AccordionCardContent,
+  AccordionCardHeader,
+  AccordionCardItem,
+} from "@/components/ui/accordion-card";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { CardDescription } from "@/components/ui/card";
 import {
   Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import {
   DropdownMenu,
@@ -34,8 +44,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tag } from "@/components/ui/tag";
 import { Textarea } from "@/components/ui/textarea";
 import type {
+  CourseTagDefinition,
   TestExercise,
   VariableConstraintType,
 } from "@/components/test-editor-prototype-types";
@@ -46,6 +58,7 @@ import {
   validateExerciseSolution,
 } from "@/components/test-editor-prototype-logic";
 import type { Locale } from "@/lib/i18n";
+import { useComboboxAnchor } from "@/components/ui/use-combobox-anchor";
 
 function getValidationLabel(status: "error" | "valid" | "warning") {
   switch (status) {
@@ -62,6 +75,7 @@ export function ExercisePromptCard({
   canMoveDown,
   canMoveUp,
   collapsed,
+  descriptiveTags,
   exercise,
   locale,
   onAddConstraint,
@@ -72,11 +86,13 @@ export function ExercisePromptCard({
   onCollapsedChange,
   onRemoveConstraint,
   onSolutionChange,
+  onToggleTag,
   onVariableRemove,
 }: {
   canMoveDown: boolean;
   canMoveUp: boolean;
   collapsed: boolean;
+  descriptiveTags: CourseTagDefinition[];
   exercise: TestExercise;
   locale: Locale;
   onAddConstraint: (
@@ -96,6 +112,7 @@ export function ExercisePromptCard({
     constraintId: string,
   ) => void;
   onSolutionChange: (exerciseId: string, solution: string) => void;
+  onToggleTag: (exerciseId: string, tagId: string) => void;
   onVariableRemove: (exerciseId: string, variableId: string) => void;
 }) {
   const [activeConstraintVariableId, setActiveConstraintVariableId] = useState<
@@ -104,6 +121,8 @@ export function ExercisePromptCard({
   const [constraintType, setConstraintType] =
     useState<VariableConstraintType>("min-value");
   const [constraintValue, setConstraintValue] = useState("5");
+  const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
+  const tagPickerAnchor = useComboboxAnchor();
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
   const solutionRef = useRef<HTMLTextAreaElement | null>(null);
   const prompt = exercise.locales[locale]?.prompt ?? "";
@@ -151,6 +170,22 @@ export function ExercisePromptCard({
 
     return `${normalizedPrompt.slice(0, 72)}...`;
   }, [prompt]);
+  const selectedTags = useMemo(
+    () =>
+      descriptiveTags.filter((tag) => exercise.tagIds.includes(tag.id)),
+    [descriptiveTags, exercise.tagIds],
+  );
+  const tagPickerItems = useMemo(
+    () => descriptiveTags.map((tag) => tag.id),
+    [descriptiveTags],
+  );
+  const descriptiveTagsById = useMemo(
+    () =>
+      new Map(
+        descriptiveTags.map((tag) => [tag.id, tag] as const),
+      ),
+    [descriptiveTags],
+  );
 
   function submitConstraint(variableId: string) {
     const nextValue =
@@ -164,8 +199,22 @@ export function ExercisePromptCard({
     setConstraintValue("5");
   }
 
+  function handleTagPickerValueChange(nextValue: string | string[] | null) {
+    if (!Array.isArray(nextValue)) {
+      return;
+    }
+
+    const toggledTagId =
+      nextValue.find((tagId) => !exercise.tagIds.includes(tagId)) ??
+      exercise.tagIds.find((tagId) => !nextValue.includes(tagId));
+
+    if (toggledTagId) {
+      onToggleTag(exercise.id, toggledTagId);
+    }
+  }
+
   return (
-    <Card className="p-0">
+    <div>
       <Accordion
         className="w-full"
         multiple
@@ -175,83 +224,160 @@ export function ExercisePromptCard({
         }}
         value={collapsed ? [] : [exercise.id]}
       >
-        <AccordionItem className="border-b-0" value={exercise.id}>
-          <div className="flex items-start justify-between gap-3 p-4">
-            <AccordionTrigger className="min-w-0 flex-1 justify-start py-0 hover:text-stone-700 focus-visible:ring-offset-stone-50 [&>svg]:hidden data-hidden:[&_svg.exercise-chevron]:-rotate-90 data-panel-open:[&_svg.exercise-chevron]:rotate-0">
-              <div className="flex min-w-0 flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center text-stone-400">
-                    <svg
-                      aria-hidden="true"
-                      className="exercise-chevron h-4 w-4 transition-transform"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </span>
-                  <Eyebrow>Exercise</Eyebrow>
+        <AccordionCardItem className="border-b-0" value={exercise.id}>
+          <AccordionCardHeader
+            aside={
+              <Combobox
+                filter={(tagId, query) => {
+                  const normalizedQuery = query.trim().toLocaleLowerCase();
+
+                  if (!normalizedQuery) {
+                    return true;
+                  }
+
+                  const tag = descriptiveTagsById.get(tagId);
+
+                  return (
+                    tag?.label.toLocaleLowerCase().includes(normalizedQuery) ??
+                    false
+                  );
+                }}
+                items={tagPickerItems}
+                multiple
+                onOpenChange={setIsTagPickerOpen}
+                onValueChange={handleTagPickerValueChange}
+                open={isTagPickerOpen}
+                value={exercise.tagIds}
+              >
+                <div
+                  className="flex flex-wrap items-center gap-2"
+                  ref={tagPickerAnchor}
+                >
+                  {selectedTags.map((tag) => (
+                    <Tag className="gap-1.5 pr-1" color={tag.color} key={tag.id}>
+                      <span>{tag.label}</span>
+                      <button
+                        aria-label={`Remove ${tag.label} tag`}
+                        className="inline-flex items-center"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onToggleTag(exercise.id, tag.id);
+                        }}
+                        type="button"
+                      >
+                        <X aria-hidden="true" className="h-3 w-3" />
+                      </button>
+                    </Tag>
+                  ))}
+                  <button
+                    className="inline-flex items-center gap-1 text-sm font-medium text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-900"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setIsTagPickerOpen(true);
+                    }}
+                    type="button"
+                  >
+                    <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                    Add tag
+                  </button>
+                  <button
+                    aria-label="Tags are configured in the course root"
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 text-[11px] font-semibold text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-900"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    title="Tags can be configured in the course root."
+                    type="button"
+                  >
+                    ?
+                  </button>
                 </div>
-                {collapsed && (
-                  <p className="truncate text-sm leading-6 text-stone-600">
-                    {promptPreview}
-                  </p>
-                )}
-              </div>
-            </AccordionTrigger>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  aria-label="Exercise actions"
-                  className="h-8 w-8"
-                  size="icon"
-                  variant="ghost"
-                >
-                  <Ellipsis aria-hidden="true" className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  className={canMoveUp ? undefined : "pointer-events-none text-stone-400"}
-                  onSelect={() => {
-                    if (canMoveUp) {
-                      onMoveUp(exercise.id);
-                    }
-                  }}
-                >
-                  <ArrowUp aria-hidden="true" className="h-4 w-4" />
-                  Move up
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className={canMoveDown ? undefined : "pointer-events-none text-stone-400"}
-                  onSelect={() => {
-                    if (canMoveDown) {
-                      onMoveDown(exercise.id);
-                    }
-                  }}
-                >
-                  <ArrowDown aria-hidden="true" className="h-4 w-4" />
-                  Move down
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                  onSelect={() => onDelete(exercise.id)}
-                >
-                  <Trash2 aria-hidden="true" className="h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <AccordionContent className="px-4 pb-4 pt-0">
+                <ComboboxContent anchor={tagPickerAnchor} className="w-72">
+                  <ComboboxInput placeholder="Find a tag" showTrigger={false} />
+                  <ComboboxEmpty>No descriptive tags defined yet.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(tagId) => {
+                      const tag = descriptiveTagsById.get(tagId);
+
+                      if (!tag) {
+                        return null;
+                      }
+
+                      return (
+                        <ComboboxItem key={tag.id} value={tag.id}>
+                          <Tag color={tag.color}>{tag.label}</Tag>
+                        </ComboboxItem>
+                      );
+                    }}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            }
+            actions={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    aria-label="Exercise actions"
+                    className="h-8 w-8"
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <Ellipsis aria-hidden="true" className="h-3.5 w-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem
+                    className={canMoveUp ? undefined : "pointer-events-none text-stone-400"}
+                    onSelect={() => {
+                      if (canMoveUp) {
+                        onMoveUp(exercise.id);
+                      }
+                    }}
+                  >
+                    <ArrowUp aria-hidden="true" className="h-4 w-4" />
+                    Move up
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className={canMoveDown ? undefined : "pointer-events-none text-stone-400"}
+                    onSelect={() => {
+                      if (canMoveDown) {
+                        onMoveDown(exercise.id);
+                      }
+                    }}
+                  >
+                    <ArrowDown aria-hidden="true" className="h-4 w-4" />
+                    Move down
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                    onSelect={() => onDelete(exercise.id)}
+                  >
+                    <Trash2 aria-hidden="true" className="h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            }
+            bodyClassName="flex min-w-0 flex-col gap-2"
+            value={exercise.id}
+          >
+            <Eyebrow size="small">Exercise</Eyebrow>
+          </AccordionCardHeader>
+          {collapsed && (
+            <div className="px-10 pb-4">
+              <p className="truncate text-sm leading-6 text-stone-600">
+                {promptPreview}
+              </p>
+            </div>
+          )}
+          <AccordionCardContent>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <Eyebrow>prompt</Eyebrow>
+                <Eyebrow size="small">prompt</Eyebrow>
                 <Textarea
                   className="min-h-0 resize-none overflow-hidden border-0 bg-transparent p-0 text-base font-medium text-stone-700 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
                   onChange={(event) => onPromptChange(exercise, locale, event.target.value)}
@@ -264,7 +390,7 @@ export function ExercisePromptCard({
 
               {exercise.variables.length > 0 && (
                 <div className="flex flex-col gap-2">
-                  <Eyebrow>Variables</Eyebrow>
+                  <Eyebrow size="small">Variables</Eyebrow>
                   {exercise.variables.map((variable) => {
                     const isUsed = usedVariableNames.has(variable.name);
 
@@ -375,7 +501,7 @@ export function ExercisePromptCard({
               )}
 
               <div className="flex flex-col gap-2">
-                <Eyebrow>Solution</Eyebrow>
+                <Eyebrow size="small">Solution</Eyebrow>
                 <Textarea
                   className="min-h-0 resize-none overflow-hidden border-0 bg-transparent p-0 text-base font-medium text-stone-700 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
                   onChange={(event) => onSolutionChange(exercise.id, event.target.value)}
@@ -405,9 +531,9 @@ export function ExercisePromptCard({
                 )}
               </div>
             </div>
-          </AccordionContent>
-        </AccordionItem>
+          </AccordionCardContent>
+        </AccordionCardItem>
       </Accordion>
-    </Card>
+    </div>
   );
 }

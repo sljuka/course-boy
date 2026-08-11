@@ -41,7 +41,7 @@ function AccordionTrigger({
         )}
         {...props}
       >
-        <span>{children}</span>
+        {children}
         <ChevronDown
           aria-hidden="true"
           className="h-4 w-4 shrink-0 text-stone-400 transition-transform"

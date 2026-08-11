@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import type { CourseTagDefinition } from "@/lib/course-tags";
 import type { CourseVersionInfo } from "@/lib/course-versioning";
 
 export type CourseStatus = "draft" | "published";
@@ -8,6 +9,7 @@ export type CourseManifest = {
   builtin: boolean;
   contentRating: ContentRating;
   defaultLocale: Locale;
+  descriptiveTags?: CourseTagDefinition[];
   id: string;
   locales: Record<Locale, LocalizedCourseMetadata>;
   slug: string;

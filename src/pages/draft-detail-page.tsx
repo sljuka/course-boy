@@ -8,8 +8,19 @@ import {
 
 import { EditorPrototype } from "@/components/editor-prototype/editor-prototype";
 import { TestEditorPrototype } from "@/components/test-editor-prototype";
+import { TestEditorTagManager } from "@/components/test-editor-tag-manager";
 import type { TestEditorState } from "@/components/test-editor-prototype-types";
+import { normalizeDraftTestData } from "@/components/test-editor-prototype-logic";
+import {
+  Accordion,
+} from "@/components/ui/accordion";
+import {
+  AccordionCardContent,
+  AccordionCardHeader,
+  AccordionCardItem,
+} from "@/components/ui/accordion-card";
 import { Badge } from "@/components/ui/badge";
+import { CardDescription } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import {
   Combobox,
@@ -38,6 +49,11 @@ import type {
   CourseLayoutOutletContext,
 } from "@/components/course-layout";
 import type { CourseDetails, CourseSummary } from "@/lib/course-package";
+import {
+  createCourseTagDefinition,
+  normalizeCourseTagLabel,
+  type CourseTagDefinition,
+} from "@/lib/course-tags";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { queryClient } from "@/lib/query-client";
@@ -86,6 +102,56 @@ function getContentRatingLabel(contentRating: ContentRating) {
   }
 }
 
+function buildPersistedDraftSnapshot({
+  contentRating,
+  courseDescription,
+  courseId,
+  courseTitle,
+  descriptiveTags,
+  documentDrafts,
+  supportedLocales,
+  testDrafts,
+}: {
+  contentRating: ContentRating;
+  courseDescription: string;
+  courseId: string;
+  courseTitle: string;
+  descriptiveTags: CourseTagDefinition[];
+  documentDrafts: Record<string, { subtitle: string; title: string }>;
+  supportedLocales: Locale[];
+  testDrafts: Record<string, TestEditorState>;
+}) {
+  const persistedDescriptiveTags = descriptiveTags.filter(
+    (tag) => normalizeCourseTagLabel(tag.label).length > 0,
+  );
+  const persistedTagIds = new Set(persistedDescriptiveTags.map((tag) => tag.id));
+  const persistedTestDrafts = Object.fromEntries(
+    Object.entries(testDrafts).map(([draftId, draftState]) => [
+      draftId,
+      {
+        ...draftState,
+        blueprint: draftState.blueprint.filter((rule) => persistedTagIds.has(rule.tagId)),
+        exercises: draftState.exercises.map((exercise) => ({
+          ...exercise,
+          tagIds: exercise.tagIds.filter((tagId) => persistedTagIds.has(tagId)),
+        })),
+      },
+    ]),
+  ) satisfies Record<string, TestEditorState>;
+
+  return {
+    contentRating,
+    courseDescription,
+    courseId,
+    courseTitle,
+    descriptiveTags: persistedDescriptiveTags,
+    documentDrafts,
+    supportedLocales,
+    testDrafts: persistedTestDrafts,
+    version: 1 as const,
+  };
+}
+
 export function DraftDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const location = useLocation();
@@ -112,6 +178,7 @@ export function DraftDetailPage() {
   const [documentDrafts, setDocumentDrafts] = useState<
     Record<string, { subtitle: string; title: string }>
   >({});
+  const [descriptiveTags, setDescriptiveTags] = useState<CourseTagDefinition[]>([]);
   const [testDrafts, setTestDrafts] = useState<Record<string, TestEditorState>>({});
   const [hasHydratedLocalDrafts, setHasHydratedLocalDrafts] = useState(false);
   const shouldAutoFocusCourseTitle =
@@ -120,21 +187,24 @@ export function DraftDetailPage() {
   const serializedDraftSnapshot = useMemo(
     () =>
       courseId && initialDraftSnapshotLoaded && hasHydratedLocalDrafts
-        ? JSON.stringify({
-            contentRating,
-            courseDescription,
-            courseId,
-            courseTitle,
-            documentDrafts,
-            supportedLocales,
-            testDrafts,
-            version: 1,
-          })
+        ? JSON.stringify(
+            buildPersistedDraftSnapshot({
+              contentRating,
+              courseDescription,
+              courseId,
+              courseTitle,
+              descriptiveTags,
+              documentDrafts,
+              supportedLocales,
+              testDrafts,
+            }),
+          )
         : null,
     [
       contentRating,
       courseDescription,
       courseId,
+      descriptiveTags,
       courseTitle,
       documentDrafts,
       hasHydratedLocalDrafts,
@@ -153,8 +223,14 @@ export function DraftDetailPage() {
       return;
     }
 
+    const normalizedDraftTests = normalizeDraftTestData(
+      initialDraftSnapshot?.testDrafts ?? {},
+      initialDraftSnapshot?.descriptiveTags,
+    );
+
+    setDescriptiveTags(normalizedDraftTests.descriptiveTags);
     setDocumentDrafts(initialDraftSnapshot?.documentDrafts ?? {});
-    setTestDrafts(initialDraftSnapshot?.testDrafts ?? {});
+    setTestDrafts(normalizedDraftTests.testDrafts);
     setHasHydratedLocalDrafts(true);
   }, [hasHydratedLocalDrafts, initialDraftSnapshot, initialDraftSnapshotLoaded]);
 
@@ -253,6 +329,62 @@ export function DraftDetailPage() {
     [selectedNode.id],
   );
 
+  function updateDescriptiveTag(tagId: string, patch: Partial<CourseTagDefinition>) {
+    setDescriptiveTags((currentTags) =>
+      currentTags.map((tag) => {
+        if (tag.id !== tagId) {
+          return tag;
+        }
+
+        return {
+          ...tag,
+          ...patch,
+          label:
+            typeof patch.label === "string"
+              ? normalizeCourseTagLabel(patch.label)
+              : tag.label,
+        };
+      }),
+    );
+  }
+
+  function createDescriptiveTag() {
+    let nextTagId = "";
+
+    setDescriptiveTags((currentTags) => {
+      const nextTag = createCourseTagDefinition("", "sky", currentTags);
+      nextTagId = nextTag.id;
+
+      return [...currentTags, nextTag];
+    });
+
+    return nextTagId;
+  }
+
+  function deleteDescriptiveTag(tagId: string) {
+    const remainingTags = descriptiveTags.filter((tag) => tag.id !== tagId);
+
+    setDescriptiveTags(remainingTags);
+    setTestDrafts((currentDrafts) =>
+      Object.fromEntries(
+        Object.entries(currentDrafts).map(([draftId, draftState]) => [
+          draftId,
+          {
+            ...draftState,
+            blueprint: draftState.blueprint.map((rule) => ({
+              ...rule,
+              tagId: rule.tagId === tagId ? (remainingTags[0]?.id ?? "") : rule.tagId,
+            })),
+            exercises: draftState.exercises.map((exercise) => ({
+              ...exercise,
+              tagIds: exercise.tagIds.filter((currentTagId) => currentTagId !== tagId),
+            })),
+          },
+        ]),
+      ),
+    );
+  }
+
   if (!courseId) {
     return <Navigate replace to="/drafts" />;
   }
@@ -287,7 +419,7 @@ export function DraftDetailPage() {
 
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <Eyebrow>Supported locales</Eyebrow>
+                <Eyebrow size="small">Supported locales</Eyebrow>
                 <Badge variant="secondary">{supportedLocales.length}</Badge>
               </div>
               <Combobox
@@ -335,7 +467,7 @@ export function DraftDetailPage() {
               </Combobox>
 
               <div className="flex flex-col gap-3">
-                <Eyebrow>Content rating</Eyebrow>
+                <Eyebrow size="small">Content rating</Eyebrow>
                 <Select
                   onValueChange={(value) => setContentRating(value as ContentRating)}
                   value={contentRating}
@@ -354,6 +486,33 @@ export function DraftDetailPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              <Accordion>
+                <AccordionCardItem value="descriptive-tags">
+                  <AccordionCardHeader
+                    bodyClassName="flex min-w-0 flex-col gap-2"
+                    value="descriptive-tags"
+                  >
+                    <div className="flex flex-col gap-2">
+                      <Eyebrow size="small">Descriptive tags</Eyebrow>
+                      <CardDescription>
+                        Define the course tag types once, then reuse them across
+                        exercises.
+                      </CardDescription>
+                    </div>
+                  </AccordionCardHeader>
+                  <AccordionCardContent>
+                    <TestEditorTagManager
+                      hideHeader
+                      onCreateTag={createDescriptiveTag}
+                      onDeleteTag={deleteDescriptiveTag}
+                      onUpdateTag={updateDescriptiveTag}
+                      tags={descriptiveTags}
+                      unstyled
+                    />
+                  </AccordionCardContent>
+                </AccordionCardItem>
+              </Accordion>
             </div>
           </div>
         </div>
@@ -364,6 +523,7 @@ export function DraftDetailPage() {
   if (selectedNode.type === "test") {
     return (
       <TestEditorPrototype
+        descriptiveTags={descriptiveTags}
         initialState={testDrafts[selectedNode.id]}
         initialTitle={selectedNode.title}
         onStateChange={handleTestStateChange}

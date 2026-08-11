@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
+import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
@@ -7,15 +8,32 @@ const Select = SelectPrimitive.Root;
 
 const SelectValue = SelectPrimitive.Value;
 
+const selectTriggerVariants = cva(
+  "flex w-full items-center justify-between gap-2 border border-stone-300 bg-white text-left font-medium text-stone-700 outline-none transition focus:ring-2 focus:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-stone-500",
+  {
+    variants: {
+      uiSize: {
+        default: "h-10 rounded-md px-3.5 text-sm",
+        sm: "h-8 rounded-md px-3 text-xs",
+      },
+    },
+    defaultVariants: {
+      uiSize: "default",
+    },
+  },
+);
+
 function SelectTrigger({
   className,
   children,
+  uiSize,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Trigger>) {
+}: React.ComponentProps<typeof SelectPrimitive.Trigger> &
+  VariantProps<typeof selectTriggerVariants>) {
   return (
     <SelectPrimitive.Trigger
       className={cn(
-        "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-stone-300 bg-white px-3.5 text-left text-sm font-medium text-stone-700 outline-none transition focus:ring-2 focus:ring-amber-500 disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-stone-500",
+        selectTriggerVariants({ uiSize }),
         className,
       )}
       {...props}

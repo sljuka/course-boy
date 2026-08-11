@@ -1,9 +1,10 @@
 import type { Locale } from "@/lib/i18n";
+import type { CourseTagDefinition } from "@/lib/course-tags";
 
 type BlueprintRule = {
   count: number;
   id: string;
-  tag: string;
+  tagId: string;
 };
 
 type ExerciseLocaleContent = {
@@ -33,6 +34,7 @@ type TestExercise = {
   id: string;
   locales: Record<string, ExerciseLocaleContent>;
   solution: string;
+  tagIds: string[];
   variables: PromptVariable[];
 };
 
@@ -58,6 +60,7 @@ type SolutionValidationResult =
 
 export type {
   BlueprintRule,
+  CourseTagDefinition,
   ExerciseLocaleContent,
   PromptVariable,
   SolutionValidationResult,
