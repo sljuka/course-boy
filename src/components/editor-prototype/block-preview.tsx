@@ -58,7 +58,7 @@ export function MarkdownBlockPreview({ block }: { block: MarkdownBlock }) {
   const lines = block.source.split("\n");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       {lines.map((line, index) => {
         const trimmedLine = line.trim();
 
@@ -91,7 +91,7 @@ export function MarkdownBlockPreview({ block }: { block: MarkdownBlock }) {
         }
 
         return (
-          <p className="text-base leading-7 text-stone-700" key={`${line}-${index}`}>
+          <p className="text-base leading-6 text-stone-700" key={`${line}-${index}`}>
             {renderInlinePrototypeMarkdown(trimmedLine)}
           </p>
         );

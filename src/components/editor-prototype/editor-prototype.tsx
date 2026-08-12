@@ -70,7 +70,9 @@ export function EditorPrototype({
 
   function insertBlock(type: EditorPrototypeBlockType, index: number) {
     const nextBlock = createPrototypeBlock(type);
-    setAutoFocusBlockId(type === "heading" ? nextBlock.id : null);
+    setAutoFocusBlockId(
+      type === "heading" || type === "markdown" ? nextBlock.id : null,
+    );
 
     setBlocks((currentBlocks) => {
       const nextBlocks = [...currentBlocks];
@@ -182,7 +184,7 @@ function InlineInsertMenu({
   onInsert: (type: EditorPrototypeBlockType) => void;
 }) {
   return (
-    <div className="group/insert flex justify-center">
+    <div className="group/insert flex min-h-8 items-center justify-center">
       <div className="flex flex-wrap items-center justify-center gap-1.5 opacity-0 transition-opacity group-hover/insert:opacity-100">
         {blockTypes.map((type) => (
           <Button
