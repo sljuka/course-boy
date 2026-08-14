@@ -14,7 +14,7 @@ import {
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CourseTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import {
   buildLessonPath,
@@ -84,7 +84,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
               className="rounded-full"
               onClick={() => setIsFavorite((currentValue) => !currentValue)}
               size="icon"
-              variant={isFavorite ? "primary" : "secondary"}
+              variant={isFavorite ? "default" : "secondary"}
             >
               <Star
                 aria-hidden="true"
@@ -100,7 +100,9 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         }
         title={
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <CourseTitle>{resolvedCourse.title}</CourseTitle>
+            <CardTitle className="text-2xl font-semibold tracking-tight text-foreground">
+              {resolvedCourse.title}
+            </CardTitle>
             <Badge className="font-normal" variant="secondary">
               {t("courseSearch.version", { version: resolvedCourse.version })}
             </Badge>

@@ -11,15 +11,13 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import {
-  AccordionCardContent,
-  AccordionCardHeader,
-  AccordionCardItem,
-} from "@/components/ui/accordion-card";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
-import {
-  Accordion,
-} from "@/components/ui/accordion";
 import {
   Combobox,
   ComboboxContent,
@@ -224,157 +222,156 @@ export function ExercisePromptCard({
         }}
         value={collapsed ? [] : [exercise.id]}
       >
-        <AccordionCardItem className="border-b-0" value={exercise.id}>
-          <AccordionCardHeader
-            aside={
-              <Combobox
-                filter={(tagId, query) => {
-                  const normalizedQuery = query.trim().toLocaleLowerCase();
+        <AccordionItem value={exercise.id}>
+          <div className="flex items-start gap-3 py-2">
+            <AccordionTrigger className="min-w-0 flex-1 py-0 hover:no-underline">
+              <div className="flex min-w-0 flex-col gap-2 text-left">
+                <Eyebrow size="small">Exercise</Eyebrow>
+              </div>
+            </AccordionTrigger>
+            <Combobox
+              filter={(tagId, query) => {
+                const normalizedQuery = query.trim().toLocaleLowerCase();
 
-                  if (!normalizedQuery) {
-                    return true;
-                  }
+                if (!normalizedQuery) {
+                  return true;
+                }
 
-                  const tag = descriptiveTagsById.get(tagId);
+                const tag = descriptiveTagsById.get(tagId);
 
-                  return (
-                    tag?.label.toLocaleLowerCase().includes(normalizedQuery) ??
-                    false
-                  );
-                }}
-                items={tagPickerItems}
-                multiple
-                onOpenChange={setIsTagPickerOpen}
-                onValueChange={handleTagPickerValueChange}
-                open={isTagPickerOpen}
-                value={exercise.tagIds}
+                return (
+                  tag?.label.toLocaleLowerCase().includes(normalizedQuery) ??
+                  false
+                );
+              }}
+              items={tagPickerItems}
+              multiple
+              onOpenChange={setIsTagPickerOpen}
+              onValueChange={handleTagPickerValueChange}
+              open={isTagPickerOpen}
+              value={exercise.tagIds}
+            >
+              <div
+                className="flex flex-wrap items-center gap-2"
+                ref={tagPickerAnchor}
               >
-                <div
-                  className="flex flex-wrap items-center gap-2"
-                  ref={tagPickerAnchor}
+                {selectedTags.map((tag) => (
+                  <Tag className="gap-1.5 pr-1" color={tag.color} key={tag.id}>
+                    <span>{tag.label}</span>
+                    <button
+                      aria-label={`Remove ${tag.label} tag`}
+                      className="inline-flex items-center"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onToggleTag(exercise.id, tag.id);
+                      }}
+                      type="button"
+                    >
+                      <X aria-hidden="true" className="h-3 w-3" />
+                    </button>
+                  </Tag>
+                ))}
+                <button
+                  className="inline-flex items-center gap-1 text-sm font-medium text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-900"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setIsTagPickerOpen(true);
+                  }}
+                  type="button"
                 >
-                  {selectedTags.map((tag) => (
-                    <Tag className="gap-1.5 pr-1" color={tag.color} key={tag.id}>
-                      <span>{tag.label}</span>
-                      <button
-                        aria-label={`Remove ${tag.label} tag`}
-                        className="inline-flex items-center"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          onToggleTag(exercise.id, tag.id);
-                        }}
-                        type="button"
-                      >
-                        <X aria-hidden="true" className="h-3 w-3" />
-                      </button>
-                    </Tag>
-                  ))}
-                  <button
-                    className="inline-flex items-center gap-1 text-sm font-medium text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-900"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      setIsTagPickerOpen(true);
-                    }}
-                    type="button"
-                  >
-                    <Plus aria-hidden="true" className="h-3.5 w-3.5" />
-                    Add tag
-                  </button>
-                  <button
-                    aria-label="Tags are configured in the course root"
-                    className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 text-[11px] font-semibold text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-900"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    title="Tags can be configured in the course root."
-                    type="button"
-                  >
-                    ?
-                  </button>
-                </div>
-                <ComboboxContent anchor={tagPickerAnchor} className="w-72">
-                  <ComboboxInput placeholder="Find a tag" showTrigger={false} />
-                  <ComboboxEmpty>No descriptive tags defined yet.</ComboboxEmpty>
-                  <ComboboxList>
-                    {(tagId) => {
-                      const tag = descriptiveTagsById.get(tagId);
+                  <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                  Add tag
+                </button>
+                <button
+                  aria-label="Tags are configured in the course root"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 text-[11px] font-semibold text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-900"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  title="Tags can be configured in the course root."
+                  type="button"
+                >
+                  ?
+                </button>
+              </div>
+              <ComboboxContent anchor={tagPickerAnchor} className="w-72">
+                <ComboboxInput placeholder="Find a tag" showTrigger={false} />
+                <ComboboxEmpty>No descriptive tags defined yet.</ComboboxEmpty>
+                <ComboboxList>
+                  {(tagId) => {
+                    const tag = descriptiveTagsById.get(tagId);
 
-                      if (!tag) {
-                        return null;
-                      }
+                    if (!tag) {
+                      return null;
+                    }
 
-                      return (
-                        <ComboboxItem key={tag.id} value={tag.id}>
-                          <Tag color={tag.color}>{tag.label}</Tag>
-                        </ComboboxItem>
-                      );
-                    }}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-            }
-            actions={
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+                    return (
+                      <ComboboxItem key={tag.id} value={tag.id}>
+                        <Tag color={tag.color}>{tag.label}</Tag>
+                      </ComboboxItem>
+                    );
+                  }}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
                   <Button
                     aria-label="Exercise actions"
                     className="h-8 w-8"
                     size="icon"
                     variant="ghost"
-                  >
-                    <Ellipsis aria-hidden="true" className="h-3.5 w-3.5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    className={canMoveUp ? undefined : "pointer-events-none text-stone-400"}
-                    onSelect={() => {
-                      if (canMoveUp) {
-                        onMoveUp(exercise.id);
-                      }
-                    }}
-                  >
-                    <ArrowUp aria-hidden="true" className="h-4 w-4" />
-                    Move up
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className={canMoveDown ? undefined : "pointer-events-none text-stone-400"}
-                    onSelect={() => {
-                      if (canMoveDown) {
-                        onMoveDown(exercise.id);
-                      }
-                    }}
-                  >
-                    <ArrowDown aria-hidden="true" className="h-4 w-4" />
-                    Move down
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                    onSelect={() => onDelete(exercise.id)}
-                  >
-                    <Trash2 aria-hidden="true" className="h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            }
-            bodyClassName="flex min-w-0 flex-col gap-2"
-            value={exercise.id}
-          >
-            <Eyebrow size="small">Exercise</Eyebrow>
-          </AccordionCardHeader>
+                  />
+                }
+              >
+                <Ellipsis aria-hidden="true" className="h-3.5 w-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  className={canMoveUp ? undefined : "pointer-events-none text-stone-400"}
+                  onSelect={() => {
+                    if (canMoveUp) {
+                      onMoveUp(exercise.id);
+                    }
+                  }}
+                >
+                  <ArrowUp aria-hidden="true" className="h-4 w-4" />
+                  Move up
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={canMoveDown ? undefined : "pointer-events-none text-stone-400"}
+                  onSelect={() => {
+                    if (canMoveDown) {
+                      onMoveDown(exercise.id);
+                    }
+                  }}
+                >
+                  <ArrowDown aria-hidden="true" className="h-4 w-4" />
+                  Move down
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onSelect={() => onDelete(exercise.id)}
+                >
+                  <Trash2 aria-hidden="true" className="h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           {collapsed && (
-            <div className="px-10 pb-4">
+            <div className="pb-4">
               <p className="truncate text-sm leading-6 text-stone-600">
                 {promptPreview}
               </p>
             </div>
           )}
-          <AccordionCardContent>
+          <AccordionContent>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
                 <Eyebrow size="small">prompt</Eyebrow>
@@ -397,7 +394,14 @@ export function ExercisePromptCard({
                     return (
                       <div className="flex flex-col gap-2" key={variable.id}>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={isUsed ? "variable" : "draft"}>
+                          <Badge
+                            className={
+                              isUsed
+                                ? "border-sky-300 bg-sky-50 text-sky-900"
+                                : "border-amber-300 bg-amber-50 text-amber-900"
+                            }
+                            variant="outline"
+                          >
                             <span>{variable.name}</span>
                             {!isUsed && (
                               <>
@@ -514,9 +518,12 @@ export function ExercisePromptCard({
                   <div className="flex flex-col gap-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge
-                        variant={
-                          solutionValidation.status === "valid" ? "success" : "draft"
+                        className={
+                          solutionValidation.status === "valid"
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                            : "border-amber-300 bg-amber-50 text-amber-900"
                         }
+                        variant="outline"
                       >
                         {getValidationLabel(solutionValidation.status)}
                       </Badge>
@@ -531,8 +538,8 @@ export function ExercisePromptCard({
                 )}
               </div>
             </div>
-          </AccordionCardContent>
-        </AccordionCardItem>
+          </AccordionContent>
+        </AccordionItem>
       </Accordion>
     </div>
   );

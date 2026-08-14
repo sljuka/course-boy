@@ -79,33 +79,19 @@ export function PrintOptionsMenu({
     value: CoursePrintAnswerStyle,
     label: string,
   ) {
-    return (
-      <DropdownMenuRadioItem
-        onSelect={() => updateOption("answerStyle", value)}
-        selected={printOptions.answerStyle === value}
-      >
-        {label}
-      </DropdownMenuRadioItem>
-    );
+    return <DropdownMenuRadioItem value={value}>{label}</DropdownMenuRadioItem>;
   }
 
   function renderExerciseHintOption(
     value: CoursePrintExerciseHintStyle,
     label: string,
   ) {
-    return (
-      <DropdownMenuRadioItem
-        onSelect={() => updateOption("exerciseHintStyle", value)}
-        selected={printOptions.exerciseHintStyle === value}
-      >
-        {label}
-      </DropdownMenuRadioItem>
-    );
+    return <DropdownMenuRadioItem value={value}>{label}</DropdownMenuRadioItem>;
   }
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+      <DropdownMenuTrigger render={children} />
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>{labels.title}</DropdownMenuLabel>
         <DropdownMenuCheckboxItem
@@ -128,7 +114,12 @@ export function PrintOptionsMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="pt-1">{labels.answerStyle.label}</DropdownMenuLabel>
-            <DropdownMenuRadioGroup>
+            <DropdownMenuRadioGroup
+              onValueChange={(value) =>
+                updateOption("answerStyle", value as CoursePrintAnswerStyle)
+              }
+              value={printOptions.answerStyle}
+            >
               {renderAnswerStyleOption("lines", labels.answerStyle.lines)}
               {renderAnswerStyleOption("box", labels.answerStyle.box)}
               {renderAnswerStyleOption("empty", labels.answerStyle.empty)}
@@ -142,7 +133,15 @@ export function PrintOptionsMenu({
             <DropdownMenuLabel className="pt-1">
               {labels.exerciseHints.label}
             </DropdownMenuLabel>
-            <DropdownMenuRadioGroup>
+            <DropdownMenuRadioGroup
+              onValueChange={(value) =>
+                updateOption(
+                  "exerciseHintStyle",
+                  value as CoursePrintExerciseHintStyle,
+                )
+              }
+              value={printOptions.exerciseHintStyle}
+            >
               {renderExerciseHintOption("hidden", labels.exerciseHints.hidden)}
               {renderExerciseHintOption("visible", labels.exerciseHints.visible)}
               {renderExerciseHintOption(

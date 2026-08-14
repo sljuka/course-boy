@@ -242,7 +242,7 @@ export function TestEditorPrototype({
 
   return (
     <div className="h-full p-4 sm:p-5 lg:p-6">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+      <div className="mx-auto flex max-w-4xl flex-col gap-6">
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -263,7 +263,7 @@ export function TestEditorPrototype({
               />
             </div>
             <PageActions>
-              <Button className="gap-2" onClick={addExercise} variant="primary">
+              <Button className="gap-2" onClick={addExercise}>
                 <Plus aria-hidden="true" className="h-4 w-4" />
                 Add exercise
               </Button>
@@ -323,10 +323,10 @@ export function TestEditorPrototype({
                             <Select
                               onValueChange={(value) =>
                                 updateBlueprintRule(rule.id, {
-                                  tagId: value,
+                                  tagId: value ?? "",
                                 })
                               }
-                              value={rule.tagId}
+                              value={rule.tagId ?? undefined}
                             >
                               <SelectTrigger>
                                 <SelectValue placeholder="Select tag" />
@@ -487,7 +487,7 @@ export function TestEditorPrototype({
                 <Button
                   className="gap-2 self-start"
                   onClick={addExercise}
-                  variant="primary"
+                  variant="default"
                 >
                   <Plus aria-hidden="true" className="h-4 w-4" />
                   Add exercise

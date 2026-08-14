@@ -19,12 +19,10 @@ export function PreviewTile({
   return (
     <div className="flex flex-col items-center gap-2">
       <Button
-        appearance="squareTileMd"
-        className={onSelect ? undefined : "cursor-default disabled:opacity-100"}
+        className="h-28 w-28 min-w-28 rounded-2xl border border-border bg-muted/40 p-3 text-center shadow-none"
         disabled={!onSelect}
         onClick={onSelect ? () => onSelect(item) : undefined}
-        size={null}
-        variant="secondary"
+        variant="outline"
       >
         {children}
       </Button>

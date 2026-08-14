@@ -8,7 +8,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { PageContent } from "@/components/page-content";
 import { PageActions } from "@/components/page-actions";
 import { PageHeader } from "@/components/page-header";
-import { CardDescription, CourseTitle } from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import { HomePageActions } from "@/pages/home-page";
 
 export function DraftsPage() {
@@ -29,7 +29,11 @@ export function DraftsPage() {
               {t("drafts.description")}
             </CardDescription>
           }
-          title={<CourseTitle>{t("drafts.title")}</CourseTitle>}
+          title={
+            <CardTitle className="text-2xl font-semibold tracking-tight text-foreground">
+              {t("drafts.title")}
+            </CardTitle>
+          }
         />
         <CourseSearchField
           onChange={setQuery}

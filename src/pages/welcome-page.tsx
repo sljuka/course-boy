@@ -4,8 +4,13 @@ import { useNavigate } from 'react-router-dom'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
 import { CardTitle } from '@/components/ui/card'
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { useAppState } from '@/lib/use-app-state'
 import { useTranslation } from 'react-i18next'
 
@@ -40,9 +45,9 @@ export const WelcomePage = () => {
           <LanguageSwitcher locale={locale} onLocaleChange={setLocale} />
         </div>
       </div>
-      <div className="flex flex-col gap-4">
-        <Label htmlFor="name">{t('nameLabel')}</Label>
-        <div className="flex flex-col gap-4 sm:flex-row">
+      <FieldGroup className="gap-4">
+        <Field>
+          <FieldLabel htmlFor="name">{t('nameLabel')}</FieldLabel>
           <Input
             autoComplete="nickname"
             className="sm:flex-1"
@@ -51,14 +56,14 @@ export const WelcomePage = () => {
             placeholder={t('namePlaceholder')}
             value={nickname}
           />
+          <FieldDescription>{t('nameHint')}</FieldDescription>
+        </Field>
+        <div className="flex flex-col gap-4 sm:flex-row">
           <Button className="sm:w-auto sm:px-6" disabled={!nickname.trim()} type="submit">
             {t('continue')}
           </Button>
         </div>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm leading-6 text-amber-950">
-          <p>{t('nameHint')}</p>
-        </div>
-      </div>
+      </FieldGroup>
     </form>
   )
 }

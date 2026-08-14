@@ -222,6 +222,8 @@
     "errorBody": "The draft course package could not be created right now.",
     "errorTitle": "Could not create course",
     "emptySupportedLocales": "No languages found.",
+    "folderNameConvention": "Folder name on disk will be: '{{folderName}}'.",
+    "folderNamePreviewLabel": "Course folder name",
     "fields": {
       "defaultLocaleHelp": "This is the language the user will see if their selected language is not included in the course languages.",
       "defaultLocale": "Default language",
@@ -242,7 +244,10 @@
     "selectLanguageFirst": "Select at least one supported language to start entering course details.",
     "previewUntitled": "Untitled course",
     "submit": "Create draft course",
-    "title": "Create New Course"
+    "title": "Create New Course",
+    "validationRequiredBody": "Add a course title for {{locale}} before creating the draft.",
+    "validationTitle": "Course form has errors",
+    "validationTooShortBody": "Course title for {{locale}} must have at least {{minimum}} characters before you can create the draft."
   },
   "draftDetails": {
     "actions": {
@@ -305,7 +310,7 @@
     "empty": "No draft courses match this search yet.",
     "error": "The drafts list could not be loaded.",
     "searchPlaceholder": "Search draft courses",
-    "title": "Draft Courses"
+    "title": "Drafts"
   },
   "sidebar": {
     "createCourse": "Create new course",

@@ -11,7 +11,7 @@ import { PrintDocumentHeader } from "@/components/course-player/print-document-h
 import { useCoursePlayer } from "@/components/course-player/use-course-player";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { CardDescription, LessonTitle } from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import { AlertInteractiveMode } from "@/components/test-player/alert-interactive-mode";
 import { TestPlayerPrintHint } from "@/components/test-player/test-player-print-hint";
 import { useTestPlayerState } from "@/components/test-player/use-test-player-state";
@@ -72,7 +72,11 @@ export function TestPlayer({
           title={readyPlayerState.activeLesson.title}
         />
         <PageHeader
-          title={<LessonTitle>{readyPlayerState.courseTitle}</LessonTitle>}
+          title={
+            <CardTitle className="text-xl font-semibold tracking-tight text-foreground">
+              {readyPlayerState.courseTitle}
+            </CardTitle>
+          }
           className="print:hidden"
           subtitle={
             <CardDescription className="text-base text-stone-600">

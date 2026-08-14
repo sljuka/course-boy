@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -44,7 +43,7 @@ export function RemoveCourseDialog({
             </DialogDescription>
           </div>
         </DialogHeader>
-        <DialogBody className="flex justify-end gap-3 px-6 pb-6 pt-0">
+        <div className="flex justify-end gap-3 px-6 pb-6 pt-0">
           <Button
             onClick={() => {
               onOpenChange(false);
@@ -68,7 +67,7 @@ export function RemoveCourseDialog({
               ? t("courseSearch.removingCourse")
               : t("courseSearch.confirmRemove")}
           </Button>
-        </DialogBody>
+        </div>
       </DialogContent>
     </Dialog>
   );

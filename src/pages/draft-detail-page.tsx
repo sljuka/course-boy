@@ -7,21 +7,29 @@ import {
 } from "react-router-dom";
 
 import { EditorPrototype } from "@/components/editor-prototype/editor-prototype";
+import { createInitialDocumentBlocks } from "@/components/editor-prototype/editor-prototype-types";
+import { LocalesTabs } from "@/components/locales-tabs";
+import { PageContent } from "@/components/page-content";
 import { TestEditorPrototype } from "@/components/test-editor-prototype";
 import { TestEditorTagManager } from "@/components/test-editor-tag-manager";
 import type { TestEditorState } from "@/components/test-editor-prototype-types";
 import { normalizeDraftTestData } from "@/components/test-editor-prototype-logic";
 import {
   Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  AccordionCardContent,
-  AccordionCardHeader,
-  AccordionCardItem,
-} from "@/components/ui/accordion-card";
 import { Badge } from "@/components/ui/badge";
-import { CardDescription } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
 import {
   Combobox,
   ComboboxChip,
@@ -48,7 +56,11 @@ import type {
   ContentRating,
   CourseLayoutOutletContext,
 } from "@/components/course-layout";
-import type { CourseDetails, CourseSummary } from "@/lib/course-package";
+import type {
+  CourseDetails,
+  CourseSummary,
+  LocalizedCourseMetadata,
+} from "@/lib/course-package";
 import {
   createCourseTagDefinition,
   normalizeCourseTagLabel,
@@ -59,11 +71,55 @@ import { getLocaleFlag } from "@/lib/locale-flags";
 import { queryClient } from "@/lib/query-client";
 import { useTranslation } from "react-i18next";
 
+type DocumentDraftLocaleValue = {
+  blocks: ReturnType<typeof createInitialDocumentBlocks>;
+};
+
+type SectionDraftLocaleValue = {
+  description: string;
+  title: string;
+};
+
+const minimumSectionTitleLength = 8;
+
+function getInitialSectionTitle(locale: Locale) {
+  switch (locale) {
+    case "sr":
+      return "Naslov poglavlja";
+    case "sr-Cyrl":
+      return "Наслов поглавља";
+    case "en":
+      return "Section title";
+  }
+}
+
+function isSectionTitleValid(title: string | undefined): boolean {
+  return (title?.trim().length ?? 0) >= minimumSectionTitleLength;
+}
+
+function getSectionTitleValidationMessage(
+  locale: Locale,
+  title: string | undefined,
+) {
+  if ((title?.trim().length ?? 0) === 0) {
+    return `Section title for ${locale} is required.`;
+  }
+
+  if (!isSectionTitleValid(title)) {
+    return `Section title for ${locale} must have at least ${minimumSectionTitleLength} characters.`;
+  }
+
+  return null;
+}
+
 function isLocale(value: string): value is Locale {
   return locales.includes(value as Locale);
 }
 
-function normalizeSupportedLocales(nextLocales: string[], fallback: Locale): Locale[] {
+function normalizeSupportedLocales(
+  nextLocales: string[],
+  fallback: Locale,
+): Locale[] {
   const localeSet = new Set<Locale>();
 
   for (const locale of nextLocales) {
@@ -104,33 +160,45 @@ function getContentRatingLabel(contentRating: ContentRating) {
 
 function buildPersistedDraftSnapshot({
   contentRating,
-  courseDescription,
   courseId,
-  courseTitle,
+  defaultLocale,
   descriptiveTags,
   documentDrafts,
+  localizedCourse,
+  sectionDrafts,
   supportedLocales,
   testDrafts,
 }: {
   contentRating: ContentRating;
-  courseDescription: string;
   courseId: string;
-  courseTitle: string;
+  defaultLocale: Locale;
   descriptiveTags: CourseTagDefinition[];
-  documentDrafts: Record<string, { subtitle: string; title: string }>;
+  documentDrafts: Record<
+    string,
+    { locales: Partial<Record<Locale, DocumentDraftLocaleValue>> }
+  >;
+  localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>;
+  sectionDrafts: Record<
+    string,
+    { locales: Partial<Record<Locale, SectionDraftLocaleValue>> }
+  >;
   supportedLocales: Locale[];
   testDrafts: Record<string, TestEditorState>;
 }) {
   const persistedDescriptiveTags = descriptiveTags.filter(
     (tag) => normalizeCourseTagLabel(tag.label).length > 0,
   );
-  const persistedTagIds = new Set(persistedDescriptiveTags.map((tag) => tag.id));
+  const persistedTagIds = new Set(
+    persistedDescriptiveTags.map((tag) => tag.id),
+  );
   const persistedTestDrafts = Object.fromEntries(
     Object.entries(testDrafts).map(([draftId, draftState]) => [
       draftId,
       {
         ...draftState,
-        blueprint: draftState.blueprint.filter((rule) => persistedTagIds.has(rule.tagId)),
+        blueprint: draftState.blueprint.filter((rule) =>
+          persistedTagIds.has(rule.tagId),
+        ),
         exercises: draftState.exercises.map((exercise) => ({
           ...exercise,
           tagIds: exercise.tagIds.filter((tagId) => persistedTagIds.has(tagId)),
@@ -138,17 +206,39 @@ function buildPersistedDraftSnapshot({
       },
     ]),
   ) satisfies Record<string, TestEditorState>;
+  const persistedSectionDrafts = Object.fromEntries(
+    Object.entries(sectionDrafts)
+      .map(([sectionId, sectionDraft]) => {
+        const persistedLocales = Object.fromEntries(
+          Object.entries(sectionDraft.locales).filter(([, localeDraft]) =>
+            isSectionTitleValid(localeDraft?.title),
+          ),
+        ) as Partial<Record<Locale, SectionDraftLocaleValue>>;
+
+        return [sectionId, { ...sectionDraft, locales: persistedLocales }] as const;
+      })
+      .filter(([, sectionDraft]) => Object.keys(sectionDraft.locales).length > 0),
+  ) as typeof sectionDrafts;
 
   return {
     contentRating,
-    courseDescription,
     courseId,
-    courseTitle,
+    defaultLocale,
     descriptiveTags: persistedDescriptiveTags,
     documentDrafts,
+    localizedCourse: Object.fromEntries(
+      supportedLocales.map((locale) => [
+        locale,
+        localizedCourse[locale] ?? {
+          description: "",
+          title: "",
+        },
+      ]),
+    ) as Partial<Record<Locale, LocalizedCourseMetadata>>,
+    sectionDrafts: persistedSectionDrafts,
     supportedLocales,
     testDrafts: persistedTestDrafts,
-    version: 1 as const,
+    version: 2 as const,
   };
 }
 
@@ -161,40 +251,62 @@ export function DraftDetailPage() {
   const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const {
     contentRating,
+    courseDescriptiveTags,
     courseDescription,
     courseTitle,
+    defaultLocale,
     initialDraftSnapshot,
     initialDraftSnapshotLoaded,
+    localizedCourse,
     selectedNode,
     setContentRating,
-    setCourseDescription,
-    setCourseTitle,
+    setLocalizedCourse,
     setDraftSnapshot,
     setEditorStatusAction,
     setSelectedNode,
     setSupportedLocales,
     supportedLocales,
   } = useOutletContext<CourseLayoutOutletContext>();
+  const [activeCourseLocale, setActiveCourseLocale] =
+    useState<Locale>(defaultLocale);
   const [documentDrafts, setDocumentDrafts] = useState<
-    Record<string, { subtitle: string; title: string }>
+    Record<
+      string,
+      {
+        locales: Partial<Record<Locale, DocumentDraftLocaleValue>>;
+      }
+    >
   >({});
-  const [descriptiveTags, setDescriptiveTags] = useState<CourseTagDefinition[]>([]);
-  const [testDrafts, setTestDrafts] = useState<Record<string, TestEditorState>>({});
+  const [sectionDrafts, setSectionDrafts] = useState<
+    Record<
+      string,
+      {
+        locales: Partial<Record<Locale, SectionDraftLocaleValue>>;
+      }
+    >
+  >({});
+  const [descriptiveTags, setDescriptiveTags] = useState<CourseTagDefinition[]>(
+    [],
+  );
+  const [testDrafts, setTestDrafts] = useState<Record<string, TestEditorState>>(
+    {},
+  );
   const [hasHydratedLocalDrafts, setHasHydratedLocalDrafts] = useState(false);
   const shouldAutoFocusCourseTitle =
-    (location.state as { focusCourseTitle?: boolean } | null)?.focusCourseTitle ===
-    true;
+    (location.state as { focusCourseTitle?: boolean } | null)
+      ?.focusCourseTitle === true;
   const serializedDraftSnapshot = useMemo(
     () =>
       courseId && initialDraftSnapshotLoaded && hasHydratedLocalDrafts
         ? JSON.stringify(
             buildPersistedDraftSnapshot({
               contentRating,
-              courseDescription,
               courseId,
-              courseTitle,
+              defaultLocale,
               descriptiveTags,
               documentDrafts,
+              localizedCourse,
+              sectionDrafts,
               supportedLocales,
               testDrafts,
             }),
@@ -202,13 +314,14 @@ export function DraftDetailPage() {
         : null,
     [
       contentRating,
-      courseDescription,
       courseId,
+      defaultLocale,
       descriptiveTags,
-      courseTitle,
       documentDrafts,
       hasHydratedLocalDrafts,
       initialDraftSnapshotLoaded,
+      localizedCourse,
+      sectionDrafts,
       supportedLocales,
       testDrafts,
     ],
@@ -225,14 +338,20 @@ export function DraftDetailPage() {
 
     const normalizedDraftTests = normalizeDraftTestData(
       initialDraftSnapshot?.testDrafts ?? {},
-      initialDraftSnapshot?.descriptiveTags,
+      initialDraftSnapshot?.descriptiveTags ?? courseDescriptiveTags,
     );
 
     setDescriptiveTags(normalizedDraftTests.descriptiveTags);
     setDocumentDrafts(initialDraftSnapshot?.documentDrafts ?? {});
+    setSectionDrafts(initialDraftSnapshot?.sectionDrafts ?? {});
     setTestDrafts(normalizedDraftTests.testDrafts);
     setHasHydratedLocalDrafts(true);
-  }, [hasHydratedLocalDrafts, initialDraftSnapshot, initialDraftSnapshotLoaded]);
+  }, [
+    courseDescriptiveTags,
+    hasHydratedLocalDrafts,
+    initialDraftSnapshot,
+    initialDraftSnapshotLoaded,
+  ]);
 
   useEffect(() => {
     if (!shouldAutoFocusCourseTitle || selectedNode.id !== courseRootId) {
@@ -244,6 +363,36 @@ export function DraftDetailPage() {
   }, [selectedNode.id, shouldAutoFocusCourseTitle]);
 
   useEffect(() => {
+    if (supportedLocales.includes(activeCourseLocale)) {
+      return;
+    }
+
+    setActiveCourseLocale(defaultLocale);
+  }, [activeCourseLocale, defaultLocale, supportedLocales]);
+
+  const [activeDocumentLocale, setActiveDocumentLocale] =
+    useState<Locale>(defaultLocale);
+
+  useEffect(() => {
+    if (supportedLocales.includes(activeDocumentLocale)) {
+      return;
+    }
+
+    setActiveDocumentLocale(defaultLocale);
+  }, [activeDocumentLocale, defaultLocale, supportedLocales]);
+
+  const [activeSectionLocale, setActiveSectionLocale] =
+    useState<Locale>(defaultLocale);
+
+  useEffect(() => {
+    if (supportedLocales.includes(activeSectionLocale)) {
+      return;
+    }
+
+    setActiveSectionLocale(defaultLocale);
+  }, [activeSectionLocale, defaultLocale, supportedLocales]);
+
+  useEffect(() => {
     const textarea = descriptionRef.current;
 
     if (!textarea) {
@@ -252,7 +401,7 @@ export function DraftDetailPage() {
 
     textarea.style.height = "0px";
     textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [courseDescription]);
+  }, [activeCourseLocale, localizedCourse]);
 
   useEffect(() => {
     if (!serializedDraftSnapshot) {
@@ -280,6 +429,7 @@ export function DraftDetailPage() {
                 ...course,
                 contentRating,
                 description: courseDescription,
+                defaultLocale,
                 supportedLocales,
                 title: courseTitle || "Course",
               }
@@ -299,6 +449,11 @@ export function DraftDetailPage() {
           ...currentCourse,
           contentRating,
           description: courseDescription,
+          defaultLocale,
+          locales: {
+            ...currentCourse.locales,
+            ...localizedCourse,
+          },
           supportedLocales,
           title: courseTitle || "Course",
         };
@@ -309,9 +464,26 @@ export function DraftDetailPage() {
     courseDescription,
     courseId,
     courseTitle,
+    defaultLocale,
     hasHydratedLocalDrafts,
+    localizedCourse,
     supportedLocales,
   ]);
+
+  function updateLocalizedCourseField(
+    locale: Locale,
+    field: keyof LocalizedCourseMetadata,
+    value: string,
+  ) {
+    setLocalizedCourse((currentLocalizedCourse) => ({
+      ...currentLocalizedCourse,
+      [locale]: {
+        description: currentLocalizedCourse[locale]?.description ?? "",
+        title: currentLocalizedCourse[locale]?.title ?? "",
+        [field]: value,
+      },
+    }));
+  }
 
   const handleTestStateChange = useCallback(
     (state: TestEditorState) => {
@@ -329,7 +501,10 @@ export function DraftDetailPage() {
     [selectedNode.id],
   );
 
-  function updateDescriptiveTag(tagId: string, patch: Partial<CourseTagDefinition>) {
+  function updateDescriptiveTag(
+    tagId: string,
+    patch: Partial<CourseTagDefinition>,
+  ) {
     setDescriptiveTags((currentTags) =>
       currentTags.map((tag) => {
         if (tag.id !== tagId) {
@@ -373,11 +548,16 @@ export function DraftDetailPage() {
             ...draftState,
             blueprint: draftState.blueprint.map((rule) => ({
               ...rule,
-              tagId: rule.tagId === tagId ? (remainingTags[0]?.id ?? "") : rule.tagId,
+              tagId:
+                rule.tagId === tagId
+                  ? (remainingTags[0]?.id ?? "")
+                  : rule.tagId,
             })),
             exercises: draftState.exercises.map((exercise) => ({
               ...exercise,
-              tagIds: exercise.tagIds.filter((currentTagId) => currentTagId !== tagId),
+              tagIds: exercise.tagIds.filter(
+                (currentTagId) => currentTagId !== tagId,
+              ),
             })),
           },
         ]),
@@ -390,89 +570,82 @@ export function DraftDetailPage() {
   }
 
   if (!initialDraftSnapshotLoaded || !hasHydratedLocalDrafts) {
-    return <div className="h-full p-4 sm:p-5 lg:p-6" />;
+    return <PageContent>{null}</PageContent>;
   }
 
   if (selectedNode.id === courseRootId) {
     return (
-      <div className="h-full p-4 sm:p-5 lg:p-6">
-        <div className="mx-auto flex max-w-4xl flex-col gap-8">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Eyebrow>Course</Eyebrow>
-              <Input
-                className="h-auto border-0 bg-transparent p-0 text-3xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-3xl"
-                onChange={(event) => setCourseTitle(event.target.value)}
-                placeholder="Course"
-                ref={courseTitleRef}
-                value={courseTitle}
-              />
-              <Textarea
-                className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-base font-medium text-stone-600 shadow-none placeholder:text-stone-400 focus-visible:ring-0 md:text-base"
-                onChange={(event) => setCourseDescription(event.target.value)}
-                placeholder="Add a short course description"
-                ref={descriptionRef}
-                rows={1}
-                value={courseDescription}
-              />
-            </div>
+      <PageContent>
+        <div className="flex flex-col gap-6">
+          <Eyebrow>Course</Eyebrow>
+          <FieldSet>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="draft-course-supported-locales">
+                  <span className="flex items-center gap-3">
+                    <span>Supported locales</span>
+                    <Badge variant="secondary">{supportedLocales.length}</Badge>
+                  </span>
+                </FieldLabel>
+                <Combobox
+                  items={locales}
+                  multiple
+                  onValueChange={(nextLocales) =>
+                    setSupportedLocales(
+                      normalizeSupportedLocales(
+                        nextLocales as string[],
+                        i18n.language as Locale,
+                      ),
+                    )
+                  }
+                  value={supportedLocales}
+                >
+                  <ComboboxChips
+                    id="draft-course-supported-locales"
+                    ref={supportedLocalesAnchor}
+                  >
+                    <ComboboxValue>
+                      {supportedLocales.map((locale) => (
+                        <ComboboxChip key={locale} showRemove>
+                          <span className="text-base leading-none">
+                            {getLocaleFlag(locale)}
+                          </span>
+                          <span>{getLocaleLabel(locale, t)}</span>
+                        </ComboboxChip>
+                      ))}
+                    </ComboboxValue>
+                    <ComboboxChipsInput placeholder="Add supported locales" />
+                  </ComboboxChips>
+                  <ComboboxContent anchor={supportedLocalesAnchor}>
+                    <ComboboxEmpty>No locales found.</ComboboxEmpty>
+                    <ComboboxList>
+                      {locales.map((locale) => (
+                        <ComboboxItem key={locale} value={locale}>
+                          <span className="text-base leading-none">
+                            {getLocaleFlag(locale)}
+                          </span>
+                          <span>{getLocaleLabel(locale, t)}</span>
+                        </ComboboxItem>
+                      ))}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
+              </Field>
 
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <Eyebrow size="small">Supported locales</Eyebrow>
-                <Badge variant="secondary">{supportedLocales.length}</Badge>
-              </div>
-              <Combobox
-                items={locales}
-                multiple
-                onValueChange={(nextLocales) =>
-                  setSupportedLocales(
-                    normalizeSupportedLocales(
-                      nextLocales as string[],
-                      i18n.language as Locale,
-                    ),
-                  )
-                }
-                value={supportedLocales}
-              >
-                <ComboboxChips ref={supportedLocalesAnchor}>
-                  <ComboboxValue>
-                    {supportedLocales.map((locale) => (
-                      <ComboboxChip key={locale} showRemove>
-                        <span className="text-base leading-none">
-                          {getLocaleFlag(locale)}
-                        </span>
-                        <span>{getLocaleLabel(locale, t)}</span>
-                      </ComboboxChip>
-                    ))}
-                  </ComboboxValue>
-                  <ComboboxChipsInput
-                    className="min-h-8"
-                    placeholder="Add supported locales"
-                  />
-                </ComboboxChips>
-                <ComboboxContent anchor={supportedLocalesAnchor}>
-                  <ComboboxEmpty>No locales found.</ComboboxEmpty>
-                  <ComboboxList>
-                    {locales.map((locale) => (
-                      <ComboboxItem key={locale} value={locale}>
-                        <span className="text-base leading-none">
-                          {getLocaleFlag(locale)}
-                        </span>
-                        <span>{getLocaleLabel(locale, t)}</span>
-                      </ComboboxItem>
-                    ))}
-                  </ComboboxList>
-                </ComboboxContent>
-              </Combobox>
-
-              <div className="flex flex-col gap-3">
-                <Eyebrow size="small">Content rating</Eyebrow>
+              <Field>
+                <FieldLabel htmlFor="draft-course-content-rating">
+                  Content rating
+                </FieldLabel>
                 <Select
-                  onValueChange={(value) => setContentRating(value as ContentRating)}
+                  onValueChange={(value) =>
+                    setContentRating(value as ContentRating)
+                  }
                   value={contentRating}
                 >
-                  <SelectTrigger className="w-full max-w-sm">
+                  <SelectTrigger
+                    className="w-full max-w-sm"
+                    id="draft-course-content-rating"
+                  >
                     <SelectValue>
                       {getContentRatingLabel(contentRating)}
                     </SelectValue>
@@ -485,23 +658,14 @@ export function DraftDetailPage() {
                     <SelectItem value="explicit">Explicit</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </Field>
 
               <Accordion>
-                <AccordionCardItem value="descriptive-tags">
-                  <AccordionCardHeader
-                    bodyClassName="flex min-w-0 flex-col gap-2"
-                    value="descriptive-tags"
-                  >
-                    <div className="flex flex-col gap-2">
-                      <Eyebrow size="small">Descriptive tags</Eyebrow>
-                      <CardDescription>
-                        Define the course tag types once, then reuse them across
-                        exercises.
-                      </CardDescription>
-                    </div>
-                  </AccordionCardHeader>
-                  <AccordionCardContent>
+                <AccordionItem value="descriptive-tags">
+                  <AccordionTrigger className="hover:no-underline">
+                    Manage tags
+                  </AccordionTrigger>
+                  <AccordionContent>
                     <TestEditorTagManager
                       hideHeader
                       onCreateTag={createDescriptiveTag}
@@ -510,13 +674,77 @@ export function DraftDetailPage() {
                       tags={descriptiveTags}
                       unstyled
                     />
-                  </AccordionCardContent>
-                </AccordionCardItem>
+                  </AccordionContent>
+                </AccordionItem>
               </Accordion>
-            </div>
-          </div>
+            </FieldGroup>
+          </FieldSet>
+          <LocalesTabs
+            activeLocale={activeCourseLocale}
+            getIsIncomplete={(locale) =>
+              (localizedCourse[locale]?.title ?? "").trim().length === 0
+            }
+            className="pt-1"
+            locales={supportedLocales}
+            onActiveLocaleChange={setActiveCourseLocale}
+            renderContent={(locale) => (
+              <FieldSet className="pt-2">
+                <FieldLegend className="sr-only">
+                  {getLocaleLabel(locale, t)}
+                </FieldLegend>
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel htmlFor={`draft-course-title-${locale}`}>
+                      Course title
+                    </FieldLabel>
+                    <Input
+                      className="h-9 text-base"
+                      id={`draft-course-title-${locale}`}
+                      onChange={(event) =>
+                        updateLocalizedCourseField(
+                          locale,
+                          "title",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Course"
+                      ref={
+                        locale === activeCourseLocale
+                          ? courseTitleRef
+                          : undefined
+                      }
+                      value={localizedCourse[locale]?.title ?? ""}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`draft-course-description-${locale}`}>
+                      Description
+                    </FieldLabel>
+                    <Textarea
+                      id={`draft-course-description-${locale}`}
+                      onChange={(event) =>
+                        updateLocalizedCourseField(
+                          locale,
+                          "description",
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Add a short course description"
+                      ref={
+                        locale === activeCourseLocale
+                          ? descriptionRef
+                          : undefined
+                      }
+                      rows={3}
+                      value={localizedCourse[locale]?.description ?? ""}
+                    />
+                  </Field>
+                </FieldGroup>
+              </FieldSet>
+            )}
+          />
         </div>
-      </div>
+      </PageContent>
     );
   }
 
@@ -532,39 +760,155 @@ export function DraftDetailPage() {
     );
   }
 
+  if (selectedNode.type === "section") {
+    const activeSectionDraft = sectionDrafts[selectedNode.id] ?? {
+      locales: {},
+    };
+
+    return (
+      <PageContent>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2 border-b border-stone-200 pb-6">
+            <Eyebrow>Section</Eyebrow>
+            <LocalesTabs
+              activeLocale={activeSectionLocale}
+              getIsIncomplete={(locale) =>
+                !isSectionTitleValid(activeSectionDraft.locales[locale]?.title)
+              }
+              locales={supportedLocales}
+              onActiveLocaleChange={setActiveSectionLocale}
+              renderContent={(locale) => (
+                <FieldSet className="pt-2">
+                  <FieldLegend className="sr-only">
+                    {getLocaleLabel(locale, t)}
+                  </FieldLegend>
+                  <FieldGroup>
+                    <Field>
+                      <FieldLabel htmlFor={`draft-section-title-${locale}`}>
+                        Section title
+                        <span aria-hidden="true" className="text-rose-600">
+                          *
+                        </span>
+                      </FieldLabel>
+                      <Input
+                        aria-invalid={
+                          !isSectionTitleValid(activeSectionDraft.locales[locale]?.title)
+                        }
+                        id={`draft-section-title-${locale}`}
+                        onChange={(event) => {
+                          const title = event.target.value;
+
+                          setSectionDrafts((currentDrafts) => ({
+                            ...currentDrafts,
+                            [selectedNode.id]: {
+                              ...activeSectionDraft,
+                              locales: {
+                                ...activeSectionDraft.locales,
+                                [locale]: {
+                                  description:
+                                    activeSectionDraft.locales[locale]
+                                      ?.description ?? "",
+                                  title,
+                                },
+                              },
+                            },
+                          }));
+
+                          if (locale === defaultLocale) {
+                            setSelectedNode({
+                              ...selectedNode,
+                              title,
+                            });
+                          }
+                        }}
+                        placeholder={getInitialSectionTitle(locale)}
+                        value={
+                          activeSectionDraft.locales[locale]?.title ?? ""
+                        }
+                      />
+                      {getSectionTitleValidationMessage(
+                        locale,
+                        activeSectionDraft.locales[locale]?.title,
+                      ) && (
+                        <FieldDescription className="text-rose-600">
+                          {getSectionTitleValidationMessage(
+                            locale,
+                            activeSectionDraft.locales[locale]?.title,
+                          )}
+                        </FieldDescription>
+                      )}
+                    </Field>
+                    <Field>
+                      <FieldLabel
+                        htmlFor={`draft-section-description-${locale}`}
+                      >
+                        Description
+                      </FieldLabel>
+                      <Textarea
+                        id={`draft-section-description-${locale}`}
+                        onChange={(event) =>
+                          setSectionDrafts((currentDrafts) => ({
+                            ...currentDrafts,
+                            [selectedNode.id]: {
+                              ...activeSectionDraft,
+                              locales: {
+                                ...activeSectionDraft.locales,
+                                [locale]: {
+                                  description: event.target.value,
+                                  title: activeSectionDraft.locales[locale]?.title ?? "",
+                                },
+                              },
+                            },
+                          }))
+                        }
+                        placeholder="Add a short section description"
+                        rows={3}
+                        value={
+                          activeSectionDraft.locales[locale]?.description ?? ""
+                        }
+                      />
+                    </Field>
+                  </FieldGroup>
+                </FieldSet>
+              )}
+            />
+          </div>
+        </div>
+      </PageContent>
+    );
+  }
+
   const activeDocumentDraft = documentDrafts[selectedNode.id] ?? {
-    subtitle: "",
-    title: selectedNode.title,
+    locales: {},
+  };
+  const activeLocalizedDocumentDraft = activeDocumentDraft.locales[
+    activeDocumentLocale
+  ] ?? {
+    blocks: createInitialDocumentBlocks(undefined, activeDocumentLocale),
   };
 
   return (
     <div className="h-full p-4 sm:p-5 lg:p-6">
       <EditorPrototype
+        activeLocale={activeDocumentLocale}
+        blocks={activeLocalizedDocumentDraft.blocks}
         nodeType={selectedNode.type}
-        onSubtitleChange={(subtitle) =>
+        onBlocksChange={(blocks) =>
           setDocumentDrafts((currentDrafts) => ({
             ...currentDrafts,
             [selectedNode.id]: {
               ...activeDocumentDraft,
-              subtitle,
+              locales: {
+                ...activeDocumentDraft.locales,
+                [activeDocumentLocale]: {
+                  blocks,
+                },
+              },
             },
           }))
         }
-        onTitleChange={(title) => {
-          setDocumentDrafts((currentDrafts) => ({
-            ...currentDrafts,
-            [selectedNode.id]: {
-              ...activeDocumentDraft,
-              title,
-            },
-          }));
-          setSelectedNode({
-            ...selectedNode,
-            title,
-          });
-        }}
-        subtitle={activeDocumentDraft.subtitle}
-        title={activeDocumentDraft.title}
+        onActiveLocaleChange={setActiveDocumentLocale}
+        supportedLocales={supportedLocales}
       />
     </div>
   );

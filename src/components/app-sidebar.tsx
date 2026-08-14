@@ -52,16 +52,14 @@ function AppSidebar() {
               {sidebarItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
-                    asChild
                     isActive={location.pathname === item.href}
+                    render={<Link to={item.href} />}
                   >
-                    <Link to={item.href}>
-                      <item.icon
-                        aria-hidden="true"
-                        className="h-4 w-4 shrink-0"
-                      />
-                      <span>{t(`sidebar.${item.id}`)}</span>
-                    </Link>
+                    <item.icon
+                      aria-hidden="true"
+                      className="h-4 w-4 shrink-0"
+                    />
+                    <span>{t(`sidebar.${item.id}`)}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

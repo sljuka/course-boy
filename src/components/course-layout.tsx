@@ -13,28 +13,39 @@ import { OnboardingGuard } from "@/components/onboarding-guard";
 import { Button } from "@/components/ui/button";
 import { EditorStatusBar } from "@/components/ui/editor-status-bar";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import type { CourseTagDefinition } from "@/lib/course-tags";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { useDraftEditorRecordQuery } from "@/lib/draft-editor-queries";
 import type {
   ContentRating,
   DraftEditorSnapshot,
 } from "@/lib/draft-editor-types";
+import type { LocalizedCourseMetadata } from "@/lib/course-package";
 import { useDraftEditorAutosave } from "@/lib/use-draft-editor-autosave";
 import { useAppState } from "@/lib/use-app-state";
 import type { Locale } from "@/lib/i18n";
 
 type CourseLayoutOutletContext = {
   contentRating: ContentRating;
+  courseDescriptiveTags: CourseTagDefinition[];
   courseDescription: string;
   courseTitle: string;
+  defaultLocale: Locale;
   initialDraftSnapshot: DraftEditorSnapshot | null;
   initialDraftSnapshotLoaded: boolean;
+  localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>;
   setDraftSnapshot: (snapshot: DraftEditorSnapshot) => void;
   setEditorStatusAction: (action: ReactNode | null) => void;
   selectedNode: StructureSelection;
   setContentRating: (contentRating: ContentRating) => void;
-  setCourseDescription: (description: string) => void;
-  setCourseTitle: (title: string) => void;
+  setDefaultLocale: (locale: Locale) => void;
+  setLocalizedCourse: (
+    value:
+      | Partial<Record<Locale, LocalizedCourseMetadata>>
+      | ((
+          currentLocalizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>,
+        ) => Partial<Record<Locale, LocalizedCourseMetadata>>),
+  ) => void;
   setSelectedNode: (selection: StructureSelection) => void;
   setSupportedLocales: (locales: Locale[]) => void;
   supportedLocales: Locale[];
@@ -42,26 +53,42 @@ type CourseLayoutOutletContext = {
 
 export type { ContentRating, CourseLayoutOutletContext };
 
-function resolveHydratedCourseTitle(
-  snapshotTitle: string,
-  courseTitle: string | undefined,
-) {
-  if (snapshotTitle === "Course" && courseTitle && courseTitle !== "Course") {
-    return courseTitle;
-  }
-
-  return snapshotTitle || courseTitle || "Course";
+function createEmptyLocalizedCourse(): LocalizedCourseMetadata {
+  return {
+    description: "",
+    title: "",
+  };
 }
 
-function resolveHydratedCourseDescription(
-  snapshotDescription: string,
-  courseDescription: string | undefined,
+function normalizeLocalizedCourse(
+  localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>,
+  supportedLocales: Locale[],
+  defaultLocale: Locale,
 ) {
-  if (!snapshotDescription && courseDescription) {
-    return courseDescription;
+  const nextLocalizedCourse = { ...localizedCourse };
+
+  for (const locale of supportedLocales) {
+    nextLocalizedCourse[locale] ??=
+      locale === defaultLocale
+        ? localizedCourse[defaultLocale] ?? createEmptyLocalizedCourse()
+        : createEmptyLocalizedCourse();
   }
 
-  return snapshotDescription || courseDescription || "";
+  return nextLocalizedCourse;
+}
+
+function getCourseTitle(
+  localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>,
+  defaultLocale: Locale,
+) {
+  return localizedCourse[defaultLocale]?.title || "Course";
+}
+
+function getCourseDescription(
+  localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>,
+  defaultLocale: Locale,
+) {
+  return localizedCourse[defaultLocale]?.description || "";
 }
 
 function resolveHydratedSupportedLocales(
@@ -91,8 +118,10 @@ export const CourseLayout = () => {
   const { courseId } = useParams<{ courseId: string }>();
   const { locale } = useAppState();
   const [contentRating, setContentRating] = useState<ContentRating>("all-ages");
-  const [courseTitle, setCourseTitle] = useState("Course");
-  const [courseDescription, setCourseDescription] = useState("");
+  const [defaultLocale, setDefaultLocale] = useState<Locale>(locale);
+  const [localizedCourse, setLocalizedCourseState] = useState<
+    Partial<Record<Locale, LocalizedCourseMetadata>>
+  >({});
   const [supportedLocales, setSupportedLocales] = useState<Locale[]>([locale]);
   const [isExplorerOpen, setIsExplorerOpen] = useState(false);
   const [draftSnapshot, setDraftSnapshotState] = useState<DraftEditorSnapshot | null>(
@@ -115,6 +144,30 @@ export const CourseLayout = () => {
     isReady: initialDraftSnapshotLoaded && draftSnapshot !== null,
     snapshot: draftSnapshot,
   });
+  const courseTitle = getCourseTitle(localizedCourse, defaultLocale);
+  const courseDescription = getCourseDescription(localizedCourse, defaultLocale);
+
+  const setLocalizedCourse = useCallback(
+    (
+      value:
+        | Partial<Record<Locale, LocalizedCourseMetadata>>
+        | ((
+            currentLocalizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>,
+          ) => Partial<Record<Locale, LocalizedCourseMetadata>>),
+    ) => {
+      setLocalizedCourseState((currentLocalizedCourse) => {
+        const nextLocalizedCourse =
+          typeof value === "function" ? value(currentLocalizedCourse) : value;
+
+        return normalizeLocalizedCourse(
+          nextLocalizedCourse,
+          supportedLocales,
+          defaultLocale,
+        );
+      });
+    },
+    [defaultLocale, supportedLocales],
+  );
 
   useEffect(() => {
     if (
@@ -125,14 +178,8 @@ export const CourseLayout = () => {
       return;
     }
 
-    const resolvedCourseTitle = resolveHydratedCourseTitle(
-      initialDraftSnapshot.courseTitle,
-      courseDetailsQuery.data?.title,
-    );
-    const resolvedCourseDescription = resolveHydratedCourseDescription(
-      initialDraftSnapshot.courseDescription,
-      courseDetailsQuery.data?.description,
-    );
+    const resolvedDefaultLocale =
+      initialDraftSnapshot.defaultLocale ?? courseDetailsQuery.data?.defaultLocale ?? locale;
     const resolvedSupportedLocales = resolveHydratedSupportedLocales(
       initialDraftSnapshot.supportedLocales,
       courseDetailsQuery.data?.supportedLocales,
@@ -141,10 +188,22 @@ export const CourseLayout = () => {
       initialDraftSnapshot.contentRating,
       courseDetailsQuery.data?.contentRating,
     );
+    const resolvedLocalizedCourse = normalizeLocalizedCourse(
+      {
+        ...(courseDetailsQuery.data?.locales ?? {}),
+        ...initialDraftSnapshot.localizedCourse,
+      },
+      resolvedSupportedLocales,
+      resolvedDefaultLocale,
+    );
+    const resolvedCourseTitle = getCourseTitle(
+      resolvedLocalizedCourse,
+      resolvedDefaultLocale,
+    );
 
     setContentRating(resolvedContentRating);
-    setCourseDescription(resolvedCourseDescription);
-    setCourseTitle(resolvedCourseTitle);
+    setDefaultLocale(resolvedDefaultLocale);
+    setLocalizedCourseState(resolvedLocalizedCourse);
     setSupportedLocales(resolvedSupportedLocales);
     setSelectedNode({
       id: courseRootId,
@@ -153,11 +212,13 @@ export const CourseLayout = () => {
     });
     hasHydratedInitialDraftRef.current = true;
   }, [
-    courseDetailsQuery.data?.description,
+    courseDetailsQuery.data?.contentRating,
+    courseDetailsQuery.data?.defaultLocale,
+    courseDetailsQuery.data?.locales,
     courseDetailsQuery.data?.supportedLocales,
-    courseDetailsQuery.data?.title,
     initialDraftSnapshot,
     initialDraftSnapshotLoaded,
+    locale,
   ]);
 
   useEffect(() => {
@@ -171,9 +232,15 @@ export const CourseLayout = () => {
       return;
     }
 
-    setCourseDescription(courseDetailsQuery.data.description);
     setContentRating(courseDetailsQuery.data.contentRating);
-    setCourseTitle(courseDetailsQuery.data.title);
+    setDefaultLocale(courseDetailsQuery.data.defaultLocale);
+    setLocalizedCourseState(
+      normalizeLocalizedCourse(
+        courseDetailsQuery.data.locales,
+        courseDetailsQuery.data.supportedLocales,
+        courseDetailsQuery.data.defaultLocale,
+      ),
+    );
     setSupportedLocales(courseDetailsQuery.data.supportedLocales);
     setSelectedNode({
       id: courseRootId,
@@ -187,6 +254,35 @@ export const CourseLayout = () => {
     initialDraftSnapshot,
     initialDraftSnapshotLoaded,
   ]);
+
+  useEffect(() => {
+    setLocalizedCourseState((currentLocalizedCourse) =>
+      normalizeLocalizedCourse(
+        currentLocalizedCourse,
+        supportedLocales,
+        defaultLocale,
+      ),
+    );
+  }, [defaultLocale, supportedLocales]);
+
+  useEffect(() => {
+    if (supportedLocales.includes(defaultLocale)) {
+      return;
+    }
+
+    setDefaultLocale(supportedLocales[0] ?? locale);
+  }, [defaultLocale, locale, supportedLocales]);
+
+  useEffect(() => {
+    setSelectedNode((currentSelection) =>
+      currentSelection.id === courseRootId
+        ? {
+            ...currentSelection,
+            title: courseTitle,
+          }
+        : currentSelection,
+    );
+  }, [courseTitle]);
 
   useEffect(() => {
     setEditorStatusAction(null);
@@ -264,14 +360,18 @@ export const CourseLayout = () => {
               context={
                 {
                   contentRating,
+                  courseDescriptiveTags:
+                    courseDetailsQuery.data?.descriptiveTags ?? [],
                   courseDescription,
                   courseTitle,
+                  defaultLocale,
                   initialDraftSnapshot,
                   initialDraftSnapshotLoaded,
+                  localizedCourse,
                   selectedNode,
                   setContentRating,
-                  setCourseDescription,
-                  setCourseTitle,
+                  setDefaultLocale,
+                  setLocalizedCourse,
                   setDraftSnapshot,
                   setEditorStatusAction,
                   setSelectedNode,

@@ -32,26 +32,20 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
   return (
     <Card className="min-w-0 overflow-hidden">
       <CardContent className="min-w-0">
-        <CardHeader
-          className="min-w-0"
-          subtitle={
-            <CardDescription className="text-base">
-              {course.description}
-            </CardDescription>
-          }
-          title={
-            <div className="flex items-start justify-between gap-3">
-              <CardTitle className="min-w-0 flex-1 text-2xl">
-                <Link
-                  className="flex min-w-0 items-center gap-1 transition-colors hover:text-stone-700"
-                  to={href}
-                >
-                  <span className="min-w-0 wrap-break-word">{course.title}</span>
-                  <ArrowRight aria-hidden="true" className="size-5 shrink-0" />
-                </Link>
-              </CardTitle>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+        <CardHeader className="min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <CardTitle className="min-w-0 flex-1 text-2xl">
+              <Link
+                className="flex min-w-0 items-center gap-1 transition-colors hover:text-stone-700"
+                to={href}
+              >
+                <span className="min-w-0 wrap-break-word">{course.title}</span>
+                <ArrowRight aria-hidden="true" className="size-5 shrink-0" />
+              </Link>
+            </CardTitle>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
                   <Button
                     aria-label={t("courseSearch.courseMenuLabel", {
                       title: course.title,
@@ -59,25 +53,27 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
                     className="shrink-0 border-transparent bg-transparent shadow-none hover:bg-stone-100"
                     size="icon"
                     variant="secondary"
-                  >
-                    <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    className="text-red-700 hover:bg-red-50 hover:text-red-800 focus-visible:ring-red-500"
-                    onSelect={() => {
-                      onRemove(course);
-                    }}
-                  >
-                    <Trash2 aria-hidden="true" className="h-4 w-4" />
-                    {t("courseSearch.removeCourse")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          }
-        >
+                  />
+                }
+              >
+                <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-red-700 hover:bg-red-50 hover:text-red-800 focus-visible:ring-red-500"
+                  onSelect={() => {
+                    onRemove(course);
+                  }}
+                >
+                  <Trash2 aria-hidden="true" className="h-4 w-4" />
+                  {t("courseSearch.removeCourse")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <CardDescription className="text-base">
+            {course.description}
+          </CardDescription>
           <div className="flex min-w-0 flex-wrap gap-2">
             <Badge className="max-w-full break-all">{course.id}</Badge>
             <Badge className="font-normal" variant="secondary">

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { CourseList } from "@/components/course-search/course-list";
 import { CourseSearchField } from "@/components/course-search/course-search-field";
 import { PageHeader } from "@/components/page-header";
-import { CardDescription, CourseTitle } from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 
 type HomeProps = {
   actions?: ReactNode;
@@ -24,7 +24,11 @@ export const Home = ({ actions }: HomeProps) => {
             {t("courseSearch.subtitle")}
           </CardDescription>
         }
-        title={<CourseTitle>{t("courseSearch.title")}</CourseTitle>}
+        title={
+          <CardTitle className="text-2xl font-semibold tracking-tight text-foreground">
+            {t("courseSearch.title")}
+          </CardTitle>
+        }
       />
       <CourseSearchField
         onChange={setQuery}

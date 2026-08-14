@@ -1,5 +1,4 @@
-import { Fragment } from "react";
-
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 import { CardDescription } from "@/components/ui/card";
 import type {
   DiagramBlock,
@@ -7,44 +6,6 @@ import type {
   MarkdownBlock,
   VideoBlock,
 } from "@/components/editor-prototype/editor-prototype-types";
-
-function renderInlinePrototypeMarkdown(source: string) {
-  const parts = source.split(/(\$\$.*?\$\$|\$.*?\$|\*\*.*?\*\*)/g).filter(Boolean);
-
-  return parts.map((part, index) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <strong key={`${part}-${index}`} className="font-semibold text-stone-950">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-
-    if (part.startsWith("$$") && part.endsWith("$$")) {
-      return (
-        <code
-          key={`${part}-${index}`}
-          className="rounded-md bg-amber-50 px-2 py-1 font-mono text-amber-950"
-        >
-          {part.slice(2, -2)}
-        </code>
-      );
-    }
-
-    if (part.startsWith("$") && part.endsWith("$")) {
-      return (
-        <code
-          key={`${part}-${index}`}
-          className="rounded-sm bg-stone-100 px-1.5 py-0.5 font-mono text-stone-900"
-        >
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-
-    return <Fragment key={`${part}-${index}`}>{part}</Fragment>;
-  });
-}
 
 export function MarkdownBlockPreview({ block }: { block: MarkdownBlock }) {
   if (!block.source.trim()) {
@@ -55,48 +16,8 @@ export function MarkdownBlockPreview({ block }: { block: MarkdownBlock }) {
     );
   }
 
-  const lines = block.source.split("\n");
-
   return (
-    <div className="space-y-2.5">
-      {lines.map((line, index) => {
-        const trimmedLine = line.trim();
-
-        if (!trimmedLine) {
-          return <div className="h-2" key={`${line}-${index}`} />;
-        }
-
-        if (trimmedLine.startsWith("### ")) {
-          return (
-            <h3 className="text-xl font-semibold text-stone-950" key={`${line}-${index}`}>
-              {renderInlinePrototypeMarkdown(trimmedLine.slice(4))}
-            </h3>
-          );
-        }
-
-        if (trimmedLine.startsWith("## ")) {
-          return (
-            <h2 className="text-2xl font-semibold text-stone-950" key={`${line}-${index}`}>
-              {renderInlinePrototypeMarkdown(trimmedLine.slice(3))}
-            </h2>
-          );
-        }
-
-        if (trimmedLine.startsWith("# ")) {
-          return (
-            <h1 className="text-3xl font-semibold text-stone-950" key={`${line}-${index}`}>
-              {renderInlinePrototypeMarkdown(trimmedLine.slice(2))}
-            </h1>
-          );
-        }
-
-        return (
-          <p className="text-base leading-6 text-stone-700" key={`${line}-${index}`}>
-            {renderInlinePrototypeMarkdown(trimmedLine)}
-          </p>
-        );
-      })}
-    </div>
+    <MarkdownRenderer source={block.source} />
   );
 }
 

@@ -320,21 +320,6 @@ function MarkdownBlockFields({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
-    if (!isEditing) {
-      return;
-    }
-
-    const textarea = textareaRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [block.source, isEditing]);
-
-  useEffect(() => {
     if (!isEditing || !autoFocus) {
       return;
     }

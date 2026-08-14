@@ -55,17 +55,26 @@ function ensureUniqueCourseTagId(
   return nextId;
 }
 
+function createCourseTagIdSuffix() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID().slice(0, 8);
+  }
+
+  return Math.random().toString(36).slice(2, 10);
+}
+
 function createCourseTagDefinition(
   label: string,
   color: CourseTagColor,
   existingTags: CourseTagDefinition[],
 ) {
   const normalizedLabel = normalizeCourseTagLabel(label);
+  const baseId = slugifyCourseTagLabel(normalizedLabel) || "tag";
 
   return {
     color,
     id: ensureUniqueCourseTagId(
-      slugifyCourseTagLabel(normalizedLabel),
+      `${baseId}-${createCourseTagIdSuffix()}`,
       existingTags,
     ),
     label: normalizedLabel,

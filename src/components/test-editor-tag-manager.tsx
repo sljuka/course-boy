@@ -136,8 +136,7 @@ export function TestEditorTagManager({
                 <Tag color={tag.color}>{tag.label}</Tag>
               </span>
               <Input
-                align="center"
-                uiSize="sm"
+                className="h-7 text-center text-xs"
                 onChange={(event) =>
                   setDraftLabels((currentDraftLabels) => ({
                     ...currentDraftLabels,
@@ -161,7 +160,7 @@ export function TestEditorTagManager({
                 }
                 value={tag.color}
               >
-                <SelectTrigger uiSize="sm">
+                <SelectTrigger size="sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

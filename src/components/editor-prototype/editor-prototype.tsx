@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 
 import { EditorPrototypeBlockCard } from "@/components/editor-prototype/block-card";
+import { LocalesTabs } from "@/components/locales-tabs";
 import {
+  createInitialDocumentBlocks,
   createPrototypeBlock,
   initialPrototypeBlocks,
   type EditorPrototypeBlock,
@@ -12,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { Locale } from "@/lib/i18n";
 
 const blockTypes: EditorPrototypeBlockType[] = [
   "heading",
@@ -30,19 +33,31 @@ const blockTypeLabels: Record<EditorPrototypeBlockType, string> = {
 };
 
 export function EditorPrototype({
+  activeLocale,
+  blocks,
   nodeType,
+  onActiveLocaleChange,
+  onBlocksChange,
   onSubtitleChange,
   onTitleChange,
+  supportedLocales,
   subtitle,
   title,
 }: {
+  activeLocale?: Locale;
+  blocks?: EditorPrototypeBlock[];
   nodeType: string;
+  onActiveLocaleChange?: (locale: Locale) => void;
+  onBlocksChange?: (blocks: EditorPrototypeBlock[]) => void;
   onSubtitleChange?: (subtitle: string) => void;
   onTitleChange?: (title: string) => void;
+  supportedLocales?: Locale[];
   subtitle?: string;
   title?: string;
 }) {
-  const [blocks, setBlocks] = useState<EditorPrototypeBlock[]>(initialPrototypeBlocks);
+  const [internalBlocks, setInternalBlocks] = useState<EditorPrototypeBlock[]>(
+    nodeType === "document" ? createInitialDocumentBlocks() : initialPrototypeBlocks,
+  );
   const [autoFocusBlockId, setAutoFocusBlockId] = useState<string | null>(null);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const subtitleRef = useRef<HTMLTextAreaElement | null>(null);
@@ -68,13 +83,33 @@ export function EditorPrototype({
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [subtitle]);
 
+  const resolvedBlocks = blocks ?? internalBlocks;
+
+  function updateBlocks(
+    nextBlocksOrUpdater:
+      | EditorPrototypeBlock[]
+      | ((currentBlocks: EditorPrototypeBlock[]) => EditorPrototypeBlock[]),
+  ) {
+    const nextBlocks =
+      typeof nextBlocksOrUpdater === "function"
+        ? nextBlocksOrUpdater(resolvedBlocks)
+        : nextBlocksOrUpdater;
+
+    if (onBlocksChange) {
+      onBlocksChange(nextBlocks);
+      return;
+    }
+
+    setInternalBlocks(nextBlocks);
+  }
+
   function insertBlock(type: EditorPrototypeBlockType, index: number) {
     const nextBlock = createPrototypeBlock(type);
     setAutoFocusBlockId(
       type === "heading" || type === "markdown" ? nextBlock.id : null,
     );
 
-    setBlocks((currentBlocks) => {
+    updateBlocks((currentBlocks) => {
       const nextBlocks = [...currentBlocks];
       nextBlocks.splice(index, 0, nextBlock);
       return nextBlocks;
@@ -82,13 +117,13 @@ export function EditorPrototype({
   }
 
   function updateBlock(nextBlock: EditorPrototypeBlock) {
-    setBlocks((currentBlocks) =>
+    updateBlocks((currentBlocks) =>
       currentBlocks.map((block) => (block.id === nextBlock.id ? nextBlock : block)),
     );
   }
 
   function moveBlock(index: number, direction: -1 | 1) {
-    setBlocks((currentBlocks) => {
+    updateBlocks((currentBlocks) => {
       const nextIndex = index + direction;
 
       if (nextIndex < 0 || nextIndex >= currentBlocks.length) {
@@ -103,49 +138,65 @@ export function EditorPrototype({
   }
 
   function removeBlock(id: string) {
-    setBlocks((currentBlocks) => currentBlocks.filter((block) => block.id !== id));
+    updateBlocks((currentBlocks) => currentBlocks.filter((block) => block.id !== id));
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-3 border-b border-stone-200 pb-6">
-        <Eyebrow>{nodeType}</Eyebrow>
-        {isTitleEditing ? (
-          <Input
-            className="h-auto border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-3xl"
-            onBlur={() => setIsTitleEditing(false)}
-            onChange={(event) => onTitleChange?.(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                setIsTitleEditing(false);
-              }
-            }}
-            placeholder="Untitled document"
-            ref={titleRef}
-            value={title ?? ""}
+    <div className="flex flex-col">
+      {nodeType === "document" ? (
+        <div className="flex flex-col">
+          {supportedLocales &&
+          activeLocale &&
+          onActiveLocaleChange &&
+          supportedLocales.length > 1 ? (
+            <LocalesTabs
+              activeLocale={activeLocale}
+              locales={supportedLocales}
+              onActiveLocaleChange={onActiveLocaleChange}
+              renderContent={() => null}
+            />
+          ) : null}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3 border-b border-stone-200 pb-6">
+          <Eyebrow>{nodeType}</Eyebrow>
+          {isTitleEditing ? (
+            <Input
+              className="h-auto border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-3xl"
+              onBlur={() => setIsTitleEditing(false)}
+              onChange={(event) => onTitleChange?.(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  setIsTitleEditing(false);
+                }
+              }}
+              placeholder="Untitled document"
+              ref={titleRef}
+              value={title ?? ""}
+            />
+          ) : (
+            <button
+              className="w-fit text-left"
+              onClick={() => setIsTitleEditing(true)}
+              type="button"
+            >
+              <h1 className="text-2xl font-semibold tracking-tight text-stone-950 md:text-3xl">
+                {title?.trim() || "Untitled document"}
+              </h1>
+            </button>
+          )}
+          <Textarea
+            className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-base font-medium text-stone-600 shadow-none placeholder:text-stone-400 focus-visible:ring-0 md:text-base"
+            onChange={(event) => onSubtitleChange?.(event.target.value)}
+            placeholder="Add a short description"
+            ref={subtitleRef}
+            rows={1}
+            value={subtitle ?? ""}
           />
-        ) : (
-          <button
-            className="w-fit text-left"
-            onClick={() => setIsTitleEditing(true)}
-            type="button"
-          >
-            <h1 className="text-2xl font-semibold tracking-tight text-stone-950 md:text-3xl">
-              {title?.trim() || "Untitled document"}
-            </h1>
-          </button>
-        )}
-        <Textarea
-          className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-base font-medium text-stone-600 shadow-none placeholder:text-stone-400 focus-visible:ring-0 md:text-base"
-          onChange={(event) => onSubtitleChange?.(event.target.value)}
-          placeholder="Add a short description"
-          ref={subtitleRef}
-          rows={1}
-          value={subtitle ?? ""}
-        />
-      </div>
+        </div>
+      )}
       <div className="flex flex-col">
-        {blocks.map((block, index) => (
+        {resolvedBlocks.map((block, index) => (
           <div className="flex flex-col" key={block.id}>
             <InlineInsertMenu
               blockTypes={blockTypes}
@@ -155,7 +206,7 @@ export function EditorPrototype({
             <EditorPrototypeBlockCard
               autoFocusEditor={autoFocusBlockId === block.id}
               block={block}
-              canMoveDown={index < blocks.length - 1}
+              canMoveDown={index < resolvedBlocks.length - 1}
               canMoveUp={index > 0}
               onChange={updateBlock}
               onMoveDown={() => moveBlock(index, 1)}
@@ -167,7 +218,7 @@ export function EditorPrototype({
         <InlineInsertMenu
           blockTypes={blockTypes}
           labels={blockTypeLabels}
-          onInsert={(type) => insertBlock(type, blocks.length)}
+          onInsert={(type) => insertBlock(type, resolvedBlocks.length)}
         />
       </div>
     </div>

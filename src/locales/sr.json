@@ -222,6 +222,8 @@
     "errorBody": "Nacrt paketa kursa trenutno ne može da se napravi.",
     "errorTitle": "Kurs ne može da se napravi",
     "emptySupportedLocales": "Nijedan jezik nije pronađen.",
+    "folderNameConvention": "Ime foldera na disku biće: '{{folderName}}'.",
+    "folderNamePreviewLabel": "Ime foldera kursa",
     "fields": {
       "defaultLocaleHelp": "Ovo je jezik koji će korisnik videti ako njegov izabrani jezik nije među jezicima kursa.",
       "defaultLocale": "Podrazumevani jezik",
@@ -242,7 +244,10 @@
     "selectLanguageFirst": "Izaberi bar jedan podržani jezik da bi počeo da unosiš podatke o kursu.",
     "previewUntitled": "Kurs bez naziva",
     "submit": "Napravi nacrt kursa",
-    "title": "Napravi Novi Kurs"
+    "title": "Napravi Novi Kurs",
+    "validationRequiredBody": "Dodaj naziv kursa za {{locale}} pre nego što napraviš nacrt.",
+    "validationTitle": "Forma kursa ima greške",
+    "validationTooShortBody": "Naziv kursa za {{locale}} mora da ima najmanje {{minimum}} karaktera pre nego što napraviš nacrt."
   },
   "draftDetails": {
     "actions": {
@@ -305,7 +310,7 @@
     "empty": "Nijedan nacrt kursa još ne odgovara ovoj pretrazi.",
     "error": "Lista nacrta ne može da se učita.",
     "searchPlaceholder": "Pretraži nacrte kurseva",
-    "title": "Nacrti Kurseva"
+    "title": "Nacrti"
   },
   "sidebar": {
     "createCourse": "Napravi novi kurs",

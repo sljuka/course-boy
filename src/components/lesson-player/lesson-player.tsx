@@ -11,7 +11,7 @@ import { PrintDocumentHeader } from "@/components/course-player/print-document-h
 import { useCoursePlayer } from "@/components/course-player/use-course-player";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { CardDescription, LessonTitle } from "@/components/ui/card";
+import { CardDescription, CardTitle } from "@/components/ui/card";
 import { defaultLessonPrintOptions } from "@/lib/print-options";
 import { buildLessonTestPath } from "@/lib/course-utils";
 
@@ -43,7 +43,11 @@ export function LessonPlayer({
         />
         <div className="print:hidden">
           <PageHeader
-            title={<LessonTitle>{playerState.courseTitle}</LessonTitle>}
+            title={
+              <CardTitle className="text-xl font-semibold tracking-tight text-foreground">
+                {playerState.courseTitle}
+              </CardTitle>
+            }
             subtitle={
               <CardDescription className="text-base text-stone-600">
                 {playerState.sectionTitle}

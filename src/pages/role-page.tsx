@@ -44,7 +44,7 @@ export const RolePage = () => {
             key={roleOption}
             onClick={() => handleSelect(roleOption)}
             type="button"
-            variant={role === roleOption ? 'primary' : 'secondary'}
+            variant={role === roleOption ? 'default' : 'secondary'}
           >
             {t(`roles.${roleOption}`)}
           </Button>

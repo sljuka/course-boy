@@ -924,6 +924,7 @@ function toCourseSummary(
   return {
     contentRating: courseRecord.manifest.contentRating,
     defaultLocale: courseRecord.manifest.defaultLocale,
+    descriptiveTags: courseRecord.manifest.descriptiveTags ?? [],
     description: localizedCourseMetadata.description,
     id: courseRecord.manifest.id,
     lessonPreviews,
@@ -1008,6 +1009,7 @@ export async function getCourseDetails(
     builtin: courseRecord.manifest.builtin,
     entrySectionId: sectionIds[0] ?? null,
     lessonIds,
+    locales: courseRecord.manifest.locales,
     sections,
     sectionIds,
     slug: courseRecord.manifest.slug,

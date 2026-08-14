@@ -14,6 +14,7 @@ import {
   createInitialCourseVersion,
   formatCourseVersion,
 } from "../src/lib/course-versioning";
+import { slugifyCourseName } from "../src/lib/course-slug";
 import { transliterateSerbianLatinToCyrillic } from "../src/lib/serbian-transliteration";
 
 const bundledSeedCourseIds = ["matko-getting-started"] as const;
@@ -162,16 +163,6 @@ export async function removeLocalCourse(courseId: string): Promise<void> {
   }
 }
 
-function slugify(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-");
-}
-
 async function resolveUniqueCourseId(
   localCoursesRoot: string,
   baseId: string,
@@ -307,7 +298,7 @@ async function resolveNextSectionId(courseDirectoryPath: string, title: string) 
     .map((match) => Number.parseInt(match[1], 10))
     .sort((left, right) => left - right);
   const nextIndex = (sectionIndexes.at(-1) ?? 0) + 1;
-  const slug = slugify(title) || "untitled-section";
+  const slug = slugifyCourseName(title) || "untitled-section";
 
   return `section-${String(nextIndex).padStart(2, "0")}-${slug}`;
 }
@@ -389,7 +380,7 @@ export async function createLocalCourseDraft(
     }),
   ) as CreateCourseDraftInput["locales"];
   const normalizedTitle = normalizedLocales[input.defaultLocale]?.title ?? "";
-  const slugBase = slugify(normalizedTitle) || "untitled-course";
+  const slugBase = slugifyCourseName(normalizedTitle) || "untitled-course";
   const courseId = await resolveUniqueCourseId(localCoursesRoot, slugBase);
   const courseRootPath = path.join(localCoursesRoot, courseId);
   const courseDirectoryPath = getDraftDirectoryPath(courseRootPath);
@@ -416,7 +407,7 @@ export async function createLocalCourseDraft(
         createdAt: nowIso,
         updatedAt: nowIso,
         publisher: {
-          id: slugify(app.getName()) || "matko",
+          id: slugifyCourseName(app.getName()) || "matko",
           displayName: app.getName(),
         },
         distribution: "local",
@@ -504,33 +495,34 @@ export async function updateLocalCourseDraftMetadata(
   }
 
   const supportedLocales = normalizeSupportedLocales(
-    manifest.defaultLocale,
+    input.defaultLocale,
     input.supportedLocales,
   );
-  const defaultLocaleMetadata = manifest.locales[manifest.defaultLocale] ?? {
+  const fallbackDefaultLocaleMetadata = manifest.locales[input.defaultLocale] ?? {
     description: "",
     title: "",
   };
   const nextLocales = Object.fromEntries(
     supportedLocales.map((locale) => [
       locale,
-      locale === manifest.defaultLocale
-        ? {
-            description: input.description.trim(),
-            title: input.title.trim(),
-          }
-        : (manifest.locales[locale] ?? {
-            description: "",
-            title: locale === manifest.defaultLocale
-              ? input.title.trim()
-              : defaultLocaleMetadata.title,
-          }),
+      {
+        description:
+          input.locales[locale]?.description.trim() ??
+          manifest.locales[locale]?.description ??
+          "",
+        title:
+          input.locales[locale]?.title.trim() ??
+          manifest.locales[locale]?.title ??
+          (locale === input.defaultLocale ? fallbackDefaultLocaleMetadata.title : ""),
+      },
     ]),
   ) as CourseManifest["locales"];
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,
     contentRating: normalizeContentRating(input.contentRating),
+    defaultLocale: input.defaultLocale,
+    descriptiveTags: input.descriptiveTags,
     locales: nextLocales,
     supportedLocales,
     updatedAt: new Date().toISOString(),

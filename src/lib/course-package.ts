@@ -99,6 +99,7 @@ export type StoredSectionDefinition = {
 export type CourseSummary = {
   contentRating: ContentRating;
   defaultLocale: Locale;
+  descriptiveTags: CourseTagDefinition[];
   description: string;
   id: string;
   lessonPreviews: LessonPreview[];
@@ -113,6 +114,7 @@ export type CourseDetails = CourseSummary & {
   builtin: boolean;
   entrySectionId: string | null;
   lessonIds: string[];
+  locales: Record<Locale, LocalizedCourseMetadata>;
   sections: CourseSectionPreview[];
   sectionIds: string[];
   slug: string;
@@ -142,7 +144,8 @@ export type CreateCourseSectionResult = {
 export type UpdateCourseDraftMetadataInput = {
   contentRating: ContentRating;
   courseId: string;
-  description: string;
+  defaultLocale: Locale;
+  descriptiveTags: CourseTagDefinition[];
+  locales: Partial<Record<Locale, LocalizedCourseMetadata>>;
   supportedLocales: Locale[];
-  title: string;
 };
