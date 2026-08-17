@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
+    "check": "npm run typecheck && npm run lint && npm run test && npm run check:i18n && npm run check:styles",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check:styles": "node scripts/check-ui-styling.mjs",
     "preview": "vite preview",
     "test": "vitest run"
   },

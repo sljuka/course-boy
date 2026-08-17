@@ -1,0 +1,94 @@
+# CLAUDE.md
+
+Matko is a **course sharing app** — an Electron desktop app for authoring, taking and
+sharing courses — not just a local course player. Courses live on disk today; the
+architecture is being taken peer-to-peer. Written to be maintained by outside
+contributors after open sourcing, so favour clarity and explicitness over cleverness.
+
+Stack: Electron 30 + Vite 5 + React 19 + TypeScript, Tailwind 4 with shadcn/base-ui
+primitives, TanStack Query, i18next, `electron-store` for preferences, course packages as
+files on disk.
+
+## Commands
+
+```sh
+npm run dev          # Vite + Electron in development
+npm run check        # typecheck + lint + test + i18n parity + styling ratchet — the gate
+npm run typecheck    # tsc --noEmit
+npm run lint         # eslint, --max-warnings 0
+npm test             # vitest run
+npm run check:i18n   # locale key parity against en.json
+npm run check:styles # visual styling outside src/components/ui must not grow
+npm run build        # tsc + vite build + electron-builder
+```
+
+`npm run check` is the definition of done for a change. It passes on a clean tree — if it
+fails, that is your change.
+
+## Read before editing
+
+- [docs/contracts.md](docs/contracts.md:1) — **read this before touching `electron/`,
+  `src/lib/i18n.ts`, `src/locales/`, or the course package format.** Cross-file invariants
+  where editing one side breaks the other silently. Most important: adding an IPC method
+  is a four-file change, and `npm run typecheck` cannot catch getting it wrong.
+- [docs/working-conventions.md](docs/working-conventions.md:1) — UI and component
+  conventions. Design system first, composition over monoliths.
+- [docs/persistence-notes.md](docs/persistence-notes.md:1) — read when making decisions
+  about draft storage, publishing, local state, or sharing architecture.
+- [docs/pear-integration-notes.md](docs/pear-integration-notes.md:1) — the planned
+  peer-to-peer work. Research notes only; no Pear code exists in the repo yet.
+
+## Architecture rules
+
+- **Process boundaries.** The renderer owns UI only — no filesystem, no network, no node
+  built-ins. `electron/main.ts` owns files, course packages and preferences. When the Bare
+  worker lands it will own everything peer-to-peer; the renderer must never reach past its
+  bridge.
+- **Filesystem is canonical for course content; the local database is canonical for
+  user/app state.** Do not create a second representation of a course. See
+  persistence-notes.
+- **Course packages are portable.** Avoid coupling core course behaviour to device-local
+  assumptions — the package format is the future sharing unit.
+- **Writes must be safe:** write to a temp file, validate, replace atomically. Never
+  partially overwrite a draft in place.
+- **Design-system tiers.** `src/components/ui` is the bottom layer and may not import
+  feature components or pages (enforced by eslint). Visual styling — backgrounds, borders,
+  shadows, radius, typography — belongs there, expressed as `cva` variants. Outside `ui`,
+  styling should be layout-only (`flex`, `grid`, `gap`, sizing, spacing).
+- **No user-facing strings in components.** All copy goes through i18next with a key in
+  `src/locales/en.json`, mirrored into every other locale.
+
+## Boundaries
+
+You are assisting the maintainer, not substituting for them. When a task seems to require
+an exception to something here, stop and surface the conflict rather than working around
+it.
+
+- ✅ **Always** run `npm run check` before reporting a change complete.
+- ✅ **Always** update these docs when a change makes a descriptive statement in them
+  false, and say so in your summary. Never rewrite a rule to legalise your own change.
+- ⚠️ **Ask first:** new dependencies; Electron or build-tool changes; anything touching
+  the course package format on disk (users already have course directories in the current
+  layout); changes to the IPC surface.
+- 🚫 **Never** run deployment or publishing commands — `pear stage`, `pear provision`,
+  `pear multisig`, `pear seed`, `pear touch`, `electron-builder` releases, or pushing
+  tags — unless explicitly asked for exactly that in this session.
+- 🚫 **Never** enable `asar` once the Bare worker exists (it breaks worker spawning), and
+  never commit keys or secrets.
+
+## Known rough edges
+
+Not blockers, but do not mistake them for patterns to copy:
+
+- `src/components/ui/badge-variants.ts` is dead code with a hardcoded stone/amber palette
+  that contradicts the semantic tokens in `badge.tsx`. Left over from before the shadcn
+  restyle.
+- `electron/main.ts` redeclares `Category` / `UserRole` / `UserPreferences` locally instead
+  of importing from `src/lib/preferences.ts`.
+- `src/components/ui/sidebar.tsx` (~720 LOC) and `combobox.tsx` are far past the ~150 LOC
+  guideline in working-conventions. They are vendored primitives; leave them unless the
+  task is specifically to split them.
+- The styling ratchet baseline is 437 visual utilities outside `ui`. That number should
+  only ever go down.
+- The `*-prototype` components (`editor-prototype`, `course-structure-prototype`,
+  `test-editor-prototype`) are exploratory and hold most of the styling violations.

@@ -418,61 +418,72 @@ export function TestEditorPrototype({
                 </CardDescription>
 
                 {state.exercises.length > 0 ? (
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col">
                     {state.exercises.map((exercise, index) => (
-                      <ExercisePromptCard
-                        canMoveDown={index < state.exercises.length - 1}
-                        canMoveUp={index > 0}
-                        collapsed={collapsedExerciseIds.includes(exercise.id)}
-                        descriptiveTags={descriptiveTags}
-                        exercise={exercise}
+                      <div
+                        className={index === 0 ? "" : "border-t border-stone-200 pt-4"}
                         key={exercise.id}
-                        locale={locale}
-                        onAddConstraint={(exerciseId, variableId, type, value) =>
-                          updateExercise(exerciseId, (currentExercise) =>
-                            addConstraintToVariable(
-                              currentExercise,
-                              variableId,
-                              type,
-                              value,
-                            ),
-                          )
-                        }
-                        onDelete={removeExercise}
-                        onMoveDown={(exerciseId) => moveExercise(exerciseId, 1)}
-                        onMoveUp={(exerciseId) => moveExercise(exerciseId, -1)}
-                        onCollapsedChange={setExerciseCollapsed}
-                        onPromptChange={(exerciseToUpdate, nextLocale, prompt) =>
-                          updateExercise(exerciseToUpdate.id, (currentExercise) =>
-                            syncExercisePrompt(currentExercise, nextLocale, prompt),
-                          )
-                        }
-                        onRemoveConstraint={(exerciseId, variableId, constraintId) =>
-                          updateExercise(exerciseId, (currentExercise) =>
-                            removeConstraintFromVariable(
-                              currentExercise,
-                              variableId,
-                              constraintId,
-                            ),
-                          )
-                        }
-                        onSolutionChange={(exerciseId, solution) =>
-                          updateExercise(exerciseId, (currentExercise) => ({
-                            ...currentExercise,
-                            solution,
-                          }))
-                        }
-                        onToggleTag={(exerciseId, tagId) =>
-                          updateExercise(exerciseId, (currentExercise) =>
-                            toggleExerciseTag(currentExercise, tagId),
-                          )
-                        }
-                        onVariableRemove={(exerciseId, variableId) =>
-                          updateExercise(exerciseId, (currentExercise) =>
-                            removeVariableFromExercise(currentExercise, variableId),
-                          )
-                        }
-                      />
+                      >
+                        <ExercisePromptCard
+                          canMoveDown={index < state.exercises.length - 1}
+                          canMoveUp={index > 0}
+                          collapsed={collapsedExerciseIds.includes(exercise.id)}
+                          descriptiveTags={descriptiveTags}
+                          exercise={exercise}
+                          locale={locale}
+                          onAddConstraint={(exerciseId, variableId, type, value) =>
+                            updateExercise(exerciseId, (currentExercise) =>
+                              addConstraintToVariable(
+                                currentExercise,
+                                variableId,
+                                type,
+                                value,
+                              ),
+                            )
+                          }
+                          onDelete={removeExercise}
+                          onMoveDown={(exerciseId) => moveExercise(exerciseId, 1)}
+                          onMoveUp={(exerciseId) => moveExercise(exerciseId, -1)}
+                          onCollapsedChange={setExerciseCollapsed}
+                          onPromptChange={(exerciseToUpdate, nextLocale, prompt) =>
+                            updateExercise(exerciseToUpdate.id, (currentExercise) =>
+                              syncExercisePrompt(currentExercise, nextLocale, prompt),
+                            )
+                          }
+                          onRemoveConstraint={(
+                            exerciseId,
+                            variableId,
+                            constraintId,
+                          ) =>
+                            updateExercise(exerciseId, (currentExercise) =>
+                              removeConstraintFromVariable(
+                                currentExercise,
+                                variableId,
+                                constraintId,
+                              ),
+                            )
+                          }
+                          onSolutionChange={(exerciseId, solution) =>
+                            updateExercise(exerciseId, (currentExercise) => ({
+                              ...currentExercise,
+                              solution,
+                            }))
+                          }
+                          onToggleTag={(exerciseId, tagId) =>
+                            updateExercise(exerciseId, (currentExercise) =>
+                              toggleExerciseTag(currentExercise, tagId),
+                            )
+                          }
+                          onVariableRemove={(exerciseId, variableId) =>
+                            updateExercise(exerciseId, (currentExercise) =>
+                              removeVariableFromExercise(
+                                currentExercise,
+                                variableId,
+                              ),
+                            )
+                          }
+                        />
+                      </div>
                     ))}
                   </div>
                 ) : (

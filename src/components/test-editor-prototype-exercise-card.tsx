@@ -26,7 +26,6 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/components/ui/combobox";
-import { Eyebrow } from "@/components/ui/eyebrow";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -113,6 +113,7 @@ export function ExercisePromptCard({
   onToggleTag: (exerciseId: string, tagId: string) => void;
   onVariableRemove: (exerciseId: string, variableId: string) => void;
 }) {
+  const collapsedPromptPreviewMaxLength = 50;
   const [activeConstraintVariableId, setActiveConstraintVariableId] = useState<
     string | null
   >(null);
@@ -162,12 +163,12 @@ export function ExercisePromptCard({
       return "No prompt yet";
     }
 
-    if (normalizedPrompt.length <= 72) {
+    if (normalizedPrompt.length <= collapsedPromptPreviewMaxLength) {
       return normalizedPrompt;
     }
 
-    return `${normalizedPrompt.slice(0, 72)}...`;
-  }, [prompt]);
+    return `${normalizedPrompt.slice(0, collapsedPromptPreviewMaxLength)}...`;
+  }, [collapsedPromptPreviewMaxLength, prompt]);
   const selectedTags = useMemo(
     () =>
       descriptiveTags.filter((tag) => exercise.tagIds.includes(tag.id)),
@@ -223,10 +224,17 @@ export function ExercisePromptCard({
         value={collapsed ? [] : [exercise.id]}
       >
         <AccordionItem value={exercise.id}>
-          <div className="flex items-start gap-3 py-2">
-            <AccordionTrigger className="min-w-0 flex-1 py-0 hover:no-underline">
-              <div className="flex min-w-0 flex-col gap-2 text-left">
-                <Eyebrow size="small">Exercise</Eyebrow>
+          <div className="flex items-center gap-3 py-2">
+            <AccordionTrigger className="min-w-0 flex-1 justify-start gap-2 py-0 hover:no-underline [&_[data-slot=accordion-trigger-icon]]:order-first [&_[data-slot=accordion-trigger-icon]]:ml-0">
+              <div className="flex min-w-0 items-center gap-2 text-left">
+                <span className="text-sm font-medium text-stone-950">
+                  Exercise
+                </span>
+                {collapsed ? (
+                  <span className="truncate text-sm text-stone-600">
+                    {promptPreview}
+                  </span>
+                ) : null}
               </div>
             </AccordionTrigger>
             <Combobox
@@ -251,52 +259,6 @@ export function ExercisePromptCard({
               open={isTagPickerOpen}
               value={exercise.tagIds}
             >
-              <div
-                className="flex flex-wrap items-center gap-2"
-                ref={tagPickerAnchor}
-              >
-                {selectedTags.map((tag) => (
-                  <Tag className="gap-1.5 pr-1" color={tag.color} key={tag.id}>
-                    <span>{tag.label}</span>
-                    <button
-                      aria-label={`Remove ${tag.label} tag`}
-                      className="inline-flex items-center"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        onToggleTag(exercise.id, tag.id);
-                      }}
-                      type="button"
-                    >
-                      <X aria-hidden="true" className="h-3 w-3" />
-                    </button>
-                  </Tag>
-                ))}
-                <button
-                  className="inline-flex items-center gap-1 text-sm font-medium text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-900"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setIsTagPickerOpen(true);
-                  }}
-                  type="button"
-                >
-                  <Plus aria-hidden="true" className="h-3.5 w-3.5" />
-                  Add tag
-                </button>
-                <button
-                  aria-label="Tags are configured in the course root"
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 text-[11px] font-semibold text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-900"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  title="Tags can be configured in the course root."
-                  type="button"
-                >
-                  ?
-                </button>
-              </div>
               <ComboboxContent anchor={tagPickerAnchor} className="w-72">
                 <ComboboxInput placeholder="Find a tag" showTrigger={false} />
                 <ComboboxEmpty>No descriptive tags defined yet.</ComboboxEmpty>
@@ -317,7 +279,8 @@ export function ExercisePromptCard({
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
-            <DropdownMenu>
+            <div className="ml-auto">
+              <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <Button
@@ -362,32 +325,29 @@ export function ExercisePromptCard({
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          {collapsed && (
-            <div className="pb-4">
-              <p className="truncate text-sm leading-6 text-stone-600">
-                {promptPreview}
-              </p>
+              </DropdownMenu>
             </div>
-          )}
+          </div>
           <AccordionContent>
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Eyebrow size="small">prompt</Eyebrow>
+              <Field>
+                <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>
+                  Prompt
+                </FieldLabel>
                 <Textarea
-                  className="min-h-0 resize-none overflow-hidden border-0 bg-transparent p-0 text-base font-medium text-stone-700 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
+                  className="min-h-0 resize-none overflow-hidden"
+                  id={`exercise-prompt-${exercise.id}-${locale}`}
                   onChange={(event) => onPromptChange(exercise, locale, event.target.value)}
                   placeholder="Mary had {{ apple_number }} apples..."
                   ref={promptRef}
                   rows={2}
                   value={prompt}
                 />
-              </div>
+              </Field>
 
               {exercise.variables.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <Eyebrow size="small">Variables</Eyebrow>
+                <Field>
+                  <FieldLabel>Variables</FieldLabel>
                   {exercise.variables.map((variable) => {
                     const isUsed = usedVariableNames.has(variable.name);
 
@@ -501,13 +461,16 @@ export function ExercisePromptCard({
                       </div>
                     );
                   })}
-                </div>
+                </Field>
               )}
 
-              <div className="flex flex-col gap-2">
-                <Eyebrow size="small">Solution</Eyebrow>
+              <Field>
+                <FieldLabel htmlFor={`exercise-solution-${exercise.id}`}>
+                  Solution
+                </FieldLabel>
                 <Textarea
-                  className="min-h-0 resize-none overflow-hidden border-0 bg-transparent p-0 text-base font-medium text-stone-700 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
+                  className="min-h-0 resize-none overflow-hidden"
+                  id={`exercise-solution-${exercise.id}`}
                   onChange={(event) => onSolutionChange(exercise.id, event.target.value)}
                   placeholder="apple_number + 42"
                   ref={solutionRef}
@@ -536,6 +499,53 @@ export function ExercisePromptCard({
                     )}
                   </div>
                 )}
+              </Field>
+
+              <div
+                className="flex flex-wrap items-center gap-3 pt-1"
+                ref={tagPickerAnchor}
+              >
+                {selectedTags.map((tag) => (
+                  <Tag className="gap-1.5 pr-1" color={tag.color} key={tag.id}>
+                    <span>{tag.label}</span>
+                    <button
+                      aria-label={`Remove ${tag.label} tag`}
+                      className="inline-flex items-center"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onToggleTag(exercise.id, tag.id);
+                      }}
+                      type="button"
+                    >
+                      <X aria-hidden="true" className="h-3 w-3" />
+                    </button>
+                  </Tag>
+                ))}
+                <button
+                  className="inline-flex items-center gap-1 text-sm font-medium text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-900"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setIsTagPickerOpen(true);
+                  }}
+                  type="button"
+                >
+                  <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                  Add tag
+                </button>
+                <button
+                  aria-label="Tags are configured in the course root"
+                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 text-[11px] font-semibold text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-900"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  title="Tags can be configured in the course root."
+                  type="button"
+                >
+                  ?
+                </button>
               </div>
             </div>
           </AccordionContent>
