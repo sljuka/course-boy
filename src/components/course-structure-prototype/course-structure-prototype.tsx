@@ -193,7 +193,7 @@ export function CourseStructurePrototype({
           <h1 className="text-4xl font-semibold tracking-tight text-stone-950">
             Prototype 2
           </h1>
-          <CardDescription className="max-w-3xl text-base text-stone-700">
+          <CardDescription className="max-w-3xl">
             Explore a course structure as a compact file tree with root
             sections and documents.
           </CardDescription>
@@ -201,11 +201,11 @@ export function CourseStructurePrototype({
       )}
 
       <section className="overflow-hidden rounded-sm border border-stone-200 bg-white shadow-[0_12px_30px_-24px_rgba(28,25,23,0.12)]">
-        {showFrameHeader ? (
+        {showFrameHeader && (
           <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-4 py-2">
             <Eyebrow>Explorer</Eyebrow>
           </div>
-        ) : null}
+        )}
 
         <div className={compact ? "p-1.5" : "p-2"}>
           <div className="space-y-0.5">
@@ -230,7 +230,7 @@ export function CourseStructurePrototype({
               onToggle={() => setIsCourseRootExpanded((current) => !current)}
               title={courseTitle}
             />
-            {isCourseRootExpanded ? (
+            {isCourseRootExpanded && (
               <div className="ml-3 border-l border-stone-200 pl-3">
                 {sectionNodes.length === 0 && !pendingCreate ? (
                   <div className="rounded-sm px-3 py-3 text-sm text-stone-500">
@@ -259,7 +259,7 @@ export function CourseStructurePrototype({
                     />
                   ))
                 )}
-                {pendingCreate?.type === "section" ? (
+                {pendingCreate?.type === "section" && (
                   <PendingRow
                     error={pendingError}
                     icon={Folder}
@@ -269,9 +269,9 @@ export function CourseStructurePrototype({
                     onCommit={commitPendingCreate}
                     title={pendingTitle}
                   />
-                ) : null}
+                )}
               </div>
-            ) : null}
+            )}
           </div>
         </div>
       </section>
@@ -324,7 +324,7 @@ function SectionRow({
         title={node.title}
       />
 
-      {sectionIsExpanded ? (
+      {sectionIsExpanded && (
         <div className="ml-3 border-l border-stone-200 pl-3">
           {node.children.map((child) => (
             <div key={child.id}>
@@ -348,7 +348,7 @@ function SectionRow({
                 }
                 title={child.title}
               />
-              {child.hasTest ? (
+              {child.hasTest && (
                 <div className="ml-3 pl-3">
                   <ExplorerRow
                     canMoveDown={false}
@@ -363,10 +363,10 @@ function SectionRow({
                     title="Test"
                   />
                 </div>
-              ) : null}
+              )}
             </div>
           ))}
-          {pendingDocument ? (
+          {pendingDocument && (
             <PendingRow
               error={pendingDocument.error}
               icon={FileText}
@@ -376,9 +376,9 @@ function SectionRow({
               onCommit={onPendingDocumentCommit}
               title={pendingDocument.title}
             />
-          ) : null}
+          )}
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -421,7 +421,7 @@ function PendingRow({
         onMoveUp={() => {}}
         title={title}
       />
-      {error ? <p className="px-2 pb-1 text-xs text-rose-600">{error}</p> : null}
+      {error && <p className="px-2 pb-1 text-xs text-rose-600">{error}</p>}
     </div>
   );
 }
@@ -542,46 +542,46 @@ function ExplorerRow({
       </ContextMenuTrigger>
 
       <ContextMenuContent className="w-44">
-        {onInsertDocument ? (
+        {onInsertDocument && (
           <ContextMenuItem onClick={onInsertDocument}>
             <FileText aria-hidden="true" />
             <span>Add document</span>
           </ContextMenuItem>
-        ) : null}
-        {onInsertTest ? (
+        )}
+        {onInsertTest && (
           <ContextMenuItem onClick={onInsertTest}>
             <FlaskConical aria-hidden="true" />
             <span>Add test</span>
           </ContextMenuItem>
-        ) : null}
-        {onInsertSection ? (
+        )}
+        {onInsertSection && (
           <ContextMenuItem onClick={onInsertSection}>
             <Folder aria-hidden="true" />
             <span>Add section</span>
           </ContextMenuItem>
-        ) : null}
-        {onInsertDocument || onInsertTest || onInsertSection ? (
+        )}
+        {(onInsertDocument || onInsertTest || onInsertSection) && (
           <ContextMenuSeparator />
-        ) : null}
-        {onOpen ? (
+        )}
+        {onOpen && (
           <ContextMenuItem onClick={onOpen}>
             <PanelRightOpen aria-hidden="true" />
             <span>Open</span>
           </ContextMenuItem>
-        ) : null}
-        {onOpen ? <ContextMenuSeparator /> : null}
-        {!isFixed ? (
+        )}
+        {onOpen && <ContextMenuSeparator />}
+        {!isFixed && (
           <ContextMenuItem disabled={!canMoveUp} onClick={onMoveUp}>
             <ArrowUp aria-hidden="true" />
             <span>Move up</span>
           </ContextMenuItem>
-        ) : null}
-        {!isFixed ? (
+        )}
+        {!isFixed && (
           <ContextMenuItem disabled={!canMoveDown} onClick={onMoveDown}>
             <ArrowDown aria-hidden="true" />
             <span>Move down</span>
           </ContextMenuItem>
-        ) : null}
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );

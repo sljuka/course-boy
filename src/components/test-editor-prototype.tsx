@@ -306,7 +306,7 @@ export function TestEditorPrototype({
                     </Button>
                   </div>
 
-                  {state.useBlueprint ? (
+                  {state.useBlueprint && (
                     <div className="grid gap-3">
                       {state.blueprint.map((rule) => {
                         const available = countMatchingExercises(
@@ -352,7 +352,7 @@ export function TestEditorPrototype({
                               type="number"
                               value={rule.count}
                             />
-                            {rule.tagId && isInvalid ? (
+                            {rule.tagId && isInvalid && (
                               <CardDescription className="sm:col-span-2 text-amber-700">
                                 Need {rule.count} exercises tagged "
                                 {descriptiveTags.find((tag) => tag.id === rule.tagId)?.label ??
@@ -361,7 +361,7 @@ export function TestEditorPrototype({
                                 only {available} {available === 1 ? "is" : "are"}{" "}
                                 available.
                               </CardDescription>
-                            ) : null}
+                            )}
                           </div>
                         );
                       })}
@@ -377,7 +377,7 @@ export function TestEditorPrototype({
                         </Button>
                       </div>
                     </div>
-                  ) : null}
+                  )}
                 </div>
               </AccordionContent>
             </AccordionItem>

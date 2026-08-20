@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -33,16 +34,17 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
     <Card className="min-w-0 overflow-hidden">
       <CardContent className="min-w-0">
         <CardHeader className="min-w-0">
-          <div className="flex items-start justify-between gap-3">
-            <CardTitle className="min-w-0 flex-1 text-2xl">
-              <Link
-                className="flex min-w-0 items-center gap-1 transition-colors hover:text-stone-700"
-                to={href}
-              >
-                <span className="min-w-0 wrap-break-word">{course.title}</span>
-                <ArrowRight aria-hidden="true" className="size-5 shrink-0" />
-              </Link>
-            </CardTitle>
+          <CardTitle className="min-w-0">
+            <Link
+              className="flex min-w-0 items-center gap-1 transition-colors hover:text-stone-700"
+              to={href}
+            >
+              <span className="min-w-0 wrap-break-word">{course.title}</span>
+              <ArrowRight aria-hidden="true" className="size-4 shrink-0" />
+            </Link>
+          </CardTitle>
+          <CardDescription>{course.description}</CardDescription>
+          <CardAction>
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -51,12 +53,12 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
                       title: course.title,
                     })}
                     className="shrink-0 border-transparent bg-transparent shadow-none hover:bg-stone-100"
-                    size="icon"
+                    size="icon-sm"
                     variant="secondary"
                   />
                 }
               >
-                <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
+                <MoreHorizontal aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
@@ -70,10 +72,7 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
-          <CardDescription className="text-base">
-            {course.description}
-          </CardDescription>
+          </CardAction>
           <div className="flex min-w-0 flex-wrap gap-2">
             <Badge className="max-w-full break-all">{course.id}</Badge>
             <Badge className="font-normal" variant="secondary">

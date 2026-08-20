@@ -25,15 +25,11 @@ export function DraftsPage() {
             </PageActions>
           }
           subtitle={
-            <CardDescription className="max-w-3xl text-base text-stone-700">
+            <CardDescription className="max-w-3xl">
               {t("drafts.description")}
             </CardDescription>
           }
-          title={
-            <CardTitle className="text-2xl font-semibold tracking-tight text-foreground">
-              {t("drafts.title")}
-            </CardTitle>
-          }
+          title={<CardTitle size="lg">{t("drafts.title")}</CardTitle>}
         />
         <CourseSearchField
           onChange={setQuery}

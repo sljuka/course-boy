@@ -94,15 +94,13 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
           </>
         }
         subtitle={
-          <CardDescription className="max-w-3xl text-base text-stone-700">
+          <CardDescription className="max-w-3xl">
             {resolvedCourse.description}
           </CardDescription>
         }
         title={
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <CardTitle className="text-2xl font-semibold tracking-tight text-foreground">
-              {resolvedCourse.title}
-            </CardTitle>
+            <CardTitle size="lg">{resolvedCourse.title}</CardTitle>
             <Badge className="font-normal" variant="secondary">
               {t("courseSearch.version", { version: resolvedCourse.version })}
             </Badge>

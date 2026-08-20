@@ -20,12 +20,12 @@ export const Home = ({ actions }: HomeProps) => {
       <PageHeader
         right={actions}
         subtitle={
-          <CardDescription className="max-w-3xl text-base text-stone-700">
+          <CardDescription className="max-w-3xl">
             {t("courseSearch.subtitle")}
           </CardDescription>
         }
         title={
-          <CardTitle className="text-2xl font-semibold tracking-tight text-foreground">
+          <CardTitle size="lg">
             {t("courseSearch.title")}
           </CardTitle>
         }

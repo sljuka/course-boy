@@ -46,11 +46,11 @@ export function EditorStatusBar({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {status === "error" && onRetry ? (
+          {status === "error" && onRetry && (
             <Button onClick={onRetry} size="sm" variant="secondary">
               Retry save
             </Button>
-          ) : null}
+          )}
           {action}
         </div>
       </div>

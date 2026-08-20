@@ -377,11 +377,11 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
               <EditorStatusBar
                 action={
                   <>
-                    {autosave.status === "dirty" && !autosave.willAutosave ? (
+                    {autosave.status === "dirty" && !autosave.willAutosave && (
                       <Button onClick={autosave.saveNow} size="sm">
                         Save
                       </Button>
-                    ) : null}
+                    )}
                     {editorStatusAction}
                   </>
                 }

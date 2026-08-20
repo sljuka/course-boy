@@ -23,6 +23,15 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector:
+          'JSXExpressionContainer > ConditionalExpression:matches([consequent.type="JSXElement"], [consequent.type="JSXFragment"])[alternate.type="Literal"][alternate.value=null]',
+        message:
+          'Prefer `condition && <jsx />` over `condition ? <jsx /> : null` — simpler, and the ternary form invites drift when only one branch ever changes.',
+      },
+    ],
   },
   overrides: [
     {

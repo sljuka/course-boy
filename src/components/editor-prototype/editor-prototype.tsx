@@ -137,16 +137,16 @@ export function EditorPrototype({
       {nodeType === "document" ? (
         <div className="flex flex-col">
           {supportedLocales &&
-          activeLocale &&
-          onActiveLocaleChange &&
-          supportedLocales.length > 1 ? (
-            <LocalesTabs
-              activeLocale={activeLocale}
-              locales={supportedLocales}
-              onActiveLocaleChange={onActiveLocaleChange}
-              renderContent={() => null}
-            />
-          ) : null}
+            activeLocale &&
+            onActiveLocaleChange &&
+            supportedLocales.length > 1 && (
+              <LocalesTabs
+                activeLocale={activeLocale}
+                locales={supportedLocales}
+                onActiveLocaleChange={onActiveLocaleChange}
+                renderContent={() => null}
+              />
+            )}
         </div>
       ) : (
         <div className="flex flex-col gap-3 border-b border-stone-200 pb-6">

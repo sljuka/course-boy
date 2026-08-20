@@ -230,11 +230,11 @@ export function ExercisePromptCard({
                 <span className="text-sm font-medium text-stone-950">
                   Exercise
                 </span>
-                {collapsed ? (
+                {collapsed && (
                   <span className="truncate text-sm text-stone-600">
                     {promptPreview}
                   </span>
-                ) : null}
+                )}
               </div>
             </AccordionTrigger>
             <Combobox
