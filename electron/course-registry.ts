@@ -421,6 +421,10 @@ function normalizeCourseManifest(manifest: RawCourseManifest): CourseManifest {
   };
 }
 
+export function resolvePackageDirectoryCandidates(courseRootPath: string): string[] {
+  return [path.join(courseRootPath, "draft"), courseRootPath];
+}
+
 async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecord[]> {
   let directoryEntries;
 
@@ -443,10 +447,7 @@ async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecor
       .filter((directoryEntry) => directoryEntry.isDirectory())
       .map(async (directoryEntry) => {
         const courseRootPath = path.join(rootDirectoryPath, directoryEntry.name);
-        const packageDirectoryCandidates = [
-          path.join(courseRootPath, "draft"),
-          courseRootPath,
-        ];
+        const packageDirectoryCandidates = resolvePackageDirectoryCandidates(courseRootPath);
 
         for (const packageDirectoryPath of packageDirectoryCandidates) {
           const manifestPath = path.join(packageDirectoryPath, "course.json");

@@ -928,6 +928,7 @@ export function DraftDetailPage() {
       <EditorPrototype
         activeLocale={activeDocumentLocale}
         blocks={activeLocalizedDocumentDraft.blocks}
+        courseId={courseId}
         nodeType={selectedNode.type}
         onBlocksChange={(blocks) =>
           setDocumentDrafts((currentDrafts) => ({

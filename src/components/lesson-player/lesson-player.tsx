@@ -86,6 +86,7 @@ export function LessonPlayer({
         </div>
         <CourseLessonContent
           activeLesson={playerState.activeLesson}
+          courseId={courseId}
           onContinueFromLesson={(lesson) => {
             if (!lesson.test || lesson.test.exercises.length === 0) {
               playerState.moveToNextLesson();

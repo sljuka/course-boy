@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { app } from "electron";
+import { app, dialog } from "electron";
 import type {
   ContentRating,
   CreateCourseDraftInput,
@@ -13,7 +13,14 @@ import type {
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
   UpdateLessonContentInput,
+  UploadCourseAssetInput,
+  UploadCourseAssetResult,
 } from "../src/lib/course-package";
+import {
+  assetExtensionsByKind,
+  assetMimeTypesByExtension,
+  createAssetFilename,
+} from "../src/lib/course-asset-id";
 import { isSharedTestDefinition } from "./course-registry";
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import { locales, type Locale } from "../src/lib/i18n";
@@ -216,6 +223,13 @@ async function writeFileAtomic(targetPath: string, contents: string): Promise<vo
   const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}`;
 
   await fs.writeFile(tmpPath, contents);
+  await fs.rename(tmpPath, targetPath);
+}
+
+async function copyFileAtomic(sourcePath: string, targetPath: string): Promise<void> {
+  const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}`;
+
+  await fs.copyFile(sourcePath, tmpPath);
   await fs.rename(tmpPath, targetPath);
 }
 
@@ -873,4 +887,61 @@ export async function updateLocalCourseDraftMetadata(
     supportedLocales,
     updatedAt: new Date().toISOString(),
   });
+}
+
+export async function uploadLocalCourseAsset(
+  input: UploadCourseAssetInput,
+): Promise<UploadCourseAssetResult> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const allowedExtensions = assetExtensionsByKind[input.kind];
+  const dialogResult = await dialog.showOpenDialog({
+    filters: [
+      {
+        extensions: [...allowedExtensions].map((extension) =>
+          extension.replace(/^\./, ""),
+        ),
+        name: input.kind,
+      },
+    ],
+    properties: ["openFile"],
+  });
+
+  if (dialogResult.canceled || dialogResult.filePaths.length === 0) {
+    return null;
+  }
+
+  const sourcePath = dialogResult.filePaths[0];
+  const extension = path.extname(sourcePath).toLowerCase();
+  const mimeType = allowedExtensions.has(extension)
+    ? assetMimeTypesByExtension[extension]
+    : undefined;
+
+  if (!mimeType) {
+    throw new Error(`Unsupported file type "${extension}"`);
+  }
+
+  const assetsDirectoryPath = path.join(courseDirectoryPath, "assets");
+
+  await fs.mkdir(assetsDirectoryPath, { recursive: true });
+
+  const filename = createAssetFilename(path.basename(sourcePath));
+
+  await copyFileAtomic(sourcePath, path.join(assetsDirectoryPath, filename));
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+
+  return { mimeType, path: filename };
 }

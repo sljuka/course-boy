@@ -1,3 +1,4 @@
+import type { CourseAssetKind } from "@/lib/course-asset-id";
 import type { Locale } from "@/lib/i18n";
 
 export type HeadingBlock = {
@@ -12,7 +13,34 @@ export type MarkdownBlock = {
   type: "markdown";
 };
 
-export type EditorPrototypeBlock = HeadingBlock | MarkdownBlock;
+export type ImageBlock = {
+  alt: string;
+  caption: string;
+  id: string;
+  path: string;
+  type: "image";
+};
+
+export type VideoBlock = {
+  caption: string;
+  id: string;
+  path: string;
+  type: "video";
+};
+
+export type AudioBlock = {
+  caption: string;
+  id: string;
+  path: string;
+  type: "audio";
+};
+
+export type EditorPrototypeBlock =
+  | HeadingBlock
+  | MarkdownBlock
+  | ImageBlock
+  | VideoBlock
+  | AudioBlock;
 
 export type EditorPrototypeBlockType = EditorPrototypeBlock["type"];
 
@@ -34,6 +62,27 @@ export function createPrototypeBlock(
         source: "",
         type,
       };
+    case "image":
+    case "video":
+    case "audio":
+      throw new Error(
+        `"${type}" blocks require an uploaded file and cannot be created empty`,
+      );
+  }
+}
+
+export function createUploadedPrototypeBlock(
+  kind: CourseAssetKind,
+  path: string,
+): EditorPrototypeBlock {
+  const id = crypto.randomUUID();
+
+  switch (kind) {
+    case "image":
+      return { alt: "", caption: "", id, path, type: kind };
+    case "video":
+    case "audio":
+      return { caption: "", id, path, type: kind };
   }
 }
 

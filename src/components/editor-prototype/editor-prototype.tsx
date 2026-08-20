@@ -6,6 +6,7 @@ import { LocalesTabs } from "@/components/locales-tabs";
 import {
   createInitialDocumentBlocks,
   createPrototypeBlock,
+  createUploadedPrototypeBlock,
   initialPrototypeBlocks,
   type EditorPrototypeBlock,
   type EditorPrototypeBlockType,
@@ -14,18 +15,34 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { CourseAssetKind } from "@/lib/course-asset-id";
+import { useUploadCourseAssetMutation } from "@/lib/course-queries";
 import type { Locale } from "@/lib/i18n";
 
-const blockTypes: EditorPrototypeBlockType[] = ["heading", "markdown"];
+const blockTypes: EditorPrototypeBlockType[] = [
+  "heading",
+  "markdown",
+  "image",
+  "video",
+  "audio",
+];
 
 const blockTypeLabels: Record<EditorPrototypeBlockType, string> = {
+  audio: "Audio",
   heading: "Heading",
+  image: "Image",
   markdown: "Markdown",
+  video: "Video",
 };
+
+function isUploadedBlockType(type: EditorPrototypeBlockType): type is CourseAssetKind {
+  return type === "image" || type === "video" || type === "audio";
+}
 
 export function EditorPrototype({
   activeLocale,
   blocks,
+  courseId,
   nodeType,
   onActiveLocaleChange,
   onBlocksChange,
@@ -37,6 +54,7 @@ export function EditorPrototype({
 }: {
   activeLocale?: Locale;
   blocks?: EditorPrototypeBlock[];
+  courseId?: string;
   nodeType: string;
   onActiveLocaleChange?: (locale: Locale) => void;
   onBlocksChange?: (blocks: EditorPrototypeBlock[]) => void;
@@ -53,6 +71,7 @@ export function EditorPrototype({
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const subtitleRef = useRef<HTMLTextAreaElement | null>(null);
   const titleRef = useRef<HTMLInputElement | null>(null);
+  const uploadAssetMutation = useUploadCourseAssetMutation();
 
   useEffect(() => {
     if (!isTitleEditing) {
@@ -105,6 +124,35 @@ export function EditorPrototype({
       nextBlocks.splice(index, 0, nextBlock);
       return nextBlocks;
     });
+  }
+
+  async function insertUploadedBlock(kind: CourseAssetKind, index: number) {
+    if (!courseId) {
+      return;
+    }
+
+    const result = await uploadAssetMutation.mutateAsync({ courseId, kind });
+
+    if (!result) {
+      return;
+    }
+
+    const nextBlock = createUploadedPrototypeBlock(kind, result.path);
+
+    updateBlocks((currentBlocks) => {
+      const nextBlocks = [...currentBlocks];
+      nextBlocks.splice(index, 0, nextBlock);
+      return nextBlocks;
+    });
+  }
+
+  function handleInsert(type: EditorPrototypeBlockType, index: number) {
+    if (isUploadedBlockType(type)) {
+      void insertUploadedBlock(type, index);
+      return;
+    }
+
+    insertBlock(type, index);
   }
 
   function updateBlock(nextBlock: EditorPrototypeBlock) {
@@ -192,13 +240,14 @@ export function EditorPrototype({
             <InlineInsertMenu
               blockTypes={blockTypes}
               labels={blockTypeLabels}
-              onInsert={(type) => insertBlock(type, index)}
+              onInsert={(type) => handleInsert(type, index)}
             />
             <EditorPrototypeBlockCard
               autoFocusEditor={autoFocusBlockId === block.id}
               block={block}
               canMoveDown={index < resolvedBlocks.length - 1}
               canMoveUp={index > 0}
+              courseId={courseId}
               onChange={updateBlock}
               onMoveDown={() => moveBlock(index, 1)}
               onMoveUp={() => moveBlock(index, -1)}
@@ -209,7 +258,7 @@ export function EditorPrototype({
         <InlineInsertMenu
           blockTypes={blockTypes}
           labels={blockTypeLabels}
-          onInsert={(type) => insertBlock(type, resolvedBlocks.length)}
+          onInsert={(type) => handleInsert(type, resolvedBlocks.length)}
         />
       </div>
     </div>

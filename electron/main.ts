@@ -1,8 +1,8 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
-import { fileURLToPath } from 'node:url'
+import { app, BrowserWindow, ipcMain, net, protocol } from 'electron'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 import Store from 'electron-store'
-import { getCourseDetails, listCourses } from './course-registry'
+import { getCourseDetails, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
   createLocalCourseDraft,
   createLocalCourseLesson,
@@ -13,7 +13,9 @@ import {
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
   updateLocalCourseLessonTest,
+  uploadLocalCourseAsset,
 } from './course-paths'
+import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
 import type {
   CreateCourseDraftInput,
   CreateCourseLessonInput,
@@ -22,8 +24,21 @@ import type {
   SaveLessonTestInput,
   UpdateCourseDraftMetadataInput,
   UpdateLessonContentInput,
+  UploadCourseAssetInput,
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
+
+protocol.registerSchemesAsPrivileged([
+  {
+    privileges: {
+      corsEnabled: true,
+      secure: true,
+      standard: true,
+      supportFetchAPI: true,
+    },
+    scheme: 'matko-asset',
+  },
+])
 
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
 type UserRole = 'student' | 'teacher'
@@ -143,6 +158,70 @@ ipcMain.handle('courses:remove', (_event, courseId: string) => {
   return removeLocalCourse(courseId)
 })
 
+ipcMain.handle('courses:upload-asset', (_event, input: UploadCourseAssetInput) => {
+  return uploadLocalCourseAsset(input)
+})
+
+async function handleCourseAssetRequest(request: Request): Promise<Response> {
+  try {
+    const requestUrl = new URL(request.url)
+    const courseId = requestUrl.hostname
+    const filename = resolveAssetFilename(
+      decodeURIComponent(requestUrl.pathname.replace(/^\//, '')),
+    )
+
+    if (!courseId || !filename) {
+      return new Response(null, { status: 404 })
+    }
+
+    const localCoursesRoot = await ensureLocalCoursesRoot()
+    const courseRootPath = path.resolve(localCoursesRoot, courseId)
+    const relativeToCoursesRoot = path.relative(localCoursesRoot, courseRootPath)
+
+    if (relativeToCoursesRoot.startsWith('..') || path.isAbsolute(relativeToCoursesRoot)) {
+      return new Response(null, { status: 404 })
+    }
+
+    for (const packageDirectoryPath of resolvePackageDirectoryCandidates(courseRootPath)) {
+      const assetsDirectoryPath = path.join(packageDirectoryPath, 'assets')
+      const resolvedAssetPath = path.resolve(assetsDirectoryPath, filename)
+      const relativeToAssetsDirectory = path.relative(assetsDirectoryPath, resolvedAssetPath)
+
+      if (
+        relativeToAssetsDirectory.startsWith('..') ||
+        path.isAbsolute(relativeToAssetsDirectory)
+      ) {
+        continue
+      }
+
+      const mimeType =
+        assetMimeTypesByExtension[path.extname(resolvedAssetPath).toLowerCase()]
+
+      if (!mimeType) {
+        continue
+      }
+
+      const fileResponse = await net.fetch(pathToFileURL(resolvedAssetPath).toString())
+
+      if (!fileResponse.ok) {
+        continue
+      }
+
+      const responseHeaders = new Headers(fileResponse.headers)
+      responseHeaders.set('Content-Type', mimeType)
+
+      return new Response(fileResponse.body, {
+        headers: responseHeaders,
+        status: fileResponse.status,
+      })
+    }
+
+    return new Response(null, { status: 404 })
+  } catch {
+    return new Response(null, { status: 404 })
+  }
+}
+
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
@@ -177,4 +256,7 @@ app.on('activate', () => {
   }
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  protocol.handle('matko-asset', handleCourseAssetRequest)
+  createWindow()
+})

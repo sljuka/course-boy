@@ -13,6 +13,8 @@ import type {
   SaveLessonTestInput,
   SharedTestDefinition,
   UpdateLessonContentInput,
+  UploadCourseAssetInput,
+  UploadCourseAssetResult,
 } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { queryClient } from "@/lib/query-client";
@@ -118,5 +120,11 @@ export function useLessonTestDraftQuery(input: GetLessonTestDraftInput | null) {
     enabled: input !== null,
     queryKey: ["courses", "lesson-test-draft", input?.courseId, input?.lessonId],
     queryFn: () => window.courses.getLessonTestDraft(input!),
+  });
+}
+
+export function useUploadCourseAssetMutation() {
+  return useMutation<UploadCourseAssetResult, Error, UploadCourseAssetInput>({
+    mutationFn: (input) => window.courses.uploadAsset(input),
   });
 }

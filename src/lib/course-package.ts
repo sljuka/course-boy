@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import type { CourseAssetKind } from "@/lib/course-asset-id";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import type { CourseVersionInfo } from "@/lib/course-versioning";
 
@@ -204,3 +205,13 @@ export type UpdateCourseDraftMetadataInput = {
   locales: Partial<Record<Locale, LocalizedCourseMetadata>>;
   supportedLocales: Locale[];
 };
+
+export type UploadCourseAssetInput = {
+  courseId: string;
+  kind: CourseAssetKind;
+};
+
+export type UploadCourseAssetResult = {
+  mimeType: string;
+  path: string;
+} | null;

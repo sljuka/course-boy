@@ -13,6 +13,8 @@ import type {
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
   UpdateLessonContentInput,
+  UploadCourseAssetInput,
+  UploadCourseAssetResult,
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 import type { UserPreferences } from '../src/lib/preferences'
@@ -59,5 +61,8 @@ contextBridge.exposeInMainWorld('courses', {
   },
   remove(courseId: string) {
     return ipcRenderer.invoke('courses:remove', courseId) as Promise<void>
+  },
+  uploadAsset(input: UploadCourseAssetInput) {
+    return ipcRenderer.invoke('courses:upload-asset', input) as Promise<UploadCourseAssetResult>
   },
 })

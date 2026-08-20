@@ -61,7 +61,30 @@ Enforced by `npm run check:i18n`. Adding a locale is therefore a five-place chan
 JSON file, `locales` array, `resources` map, `detectLocale()` branch, and
 `src/lib/locale-flags.ts`.
 
-## 4. Course packages on disk are a format, not an implementation detail
+## 4. Lesson block markers are a hand-maintained allowlist, not a type
+
+[src/lib/lesson-content-markdown.ts](../src/lib/lesson-content-markdown.ts:1) serializes
+each `EditorPrototypeBlock` as a `[matko-block]: <> (type)` CommonMark link-reference
+line followed by the block's body, and `markdownToBlocks` parses a lesson's stored
+markdown back into blocks by matching that marker against `blockMarkerPattern`:
+
+```ts
+const blockMarkerPattern = /^\[matko-block\]: <> \((heading|markdown|image|video|audio)\)$/;
+```
+
+`createPrototypeBlock`'s switch over `EditorPrototypeBlockType` has no `default` case, so
+TypeScript forces every block type to be handled there — but `blockMarkerPattern` is a
+plain regex string, and [editor-prototype.tsx](../src/components/editor-prototype/editor-prototype.tsx:1)'s
+`blockTypes` array (which drives the insert menu) is a plain array literal. Neither is
+checked against the `EditorPrototypeBlockType` union. Add a new block type, forget to add
+its name to `blockMarkerPattern`'s alternation, and there is no compile error: the marker
+line for that block simply never matches, `markdownToBlocks` falls through to its
+"no markers found" fallback, and the entire lesson body — every block, not just the new
+one — collapses into a single opaque markdown block. `npm run typecheck` and `npm run
+lint` both pass; only `src/lib/lesson-content-markdown.test.ts`'s round-trip tests catch
+it, so extend those tests in the same commit that adds a block type.
+
+## 5. Course packages on disk are a format, not an implementation detail
 
 The layout under `courses/<course-id>/` is a contract between the reader
 ([electron/course-registry.ts](../electron/course-registry.ts:1)), the writer
@@ -79,9 +102,23 @@ courses/<course-id>/<section>/section.json
 courses/<course-id>/<section>/<lesson>.json
 courses/<course-id>/<section>/<test>.json                    # optional, one per lesson
 courses/<course-id>/<section>/locales/<locale>/<lesson>.md
+courses/<course-id>/assets/<filename>                         # course-level, referenced by filename only
 courses/<course-id>/draft/course.json                        # draft manifest
 courses/<course-id>/draft/<section>/...
+courses/<course-id>/draft/assets/<filename>
 ```
+
+`assets/` holds uploaded images/video/audio at the course level (not per-lesson/section) —
+`uploadLocalCourseAsset` in `course-paths.ts` only ever writes under `draft/assets/`, since
+writers require `status === "draft"`. Reads have to go through
+`resolvePackageDirectoryCandidates()` (the same draft-then-published fallback used for
+manifests) because the *player* can be viewing a published course while the *editor* only
+ever needs the draft. Blocks store the filename only — no `assets/` prefix — and the
+renderer never touches the filesystem directly; the `matko-asset://<courseId>/<filename>`
+protocol registered in `electron/main.ts` resolves and streams the file, rejecting any
+filename containing `/`, `\`, or `..` via `resolveAssetFilename()` in
+[src/lib/course-asset-id.ts](../src/lib/course-asset-id.ts:1) before it ever reaches the
+filesystem.
 
 A test file is a sibling of the lesson it belongs to, in the same section directory, with
 its filename fully derived from the lesson's: `lesson-01-foo.json` pairs with
@@ -106,7 +143,7 @@ The generated manifest carries `publisher: { id: "matko", displayName: "matko" }
 fill with a real publisher key — see
 [pear-integration-notes.md](pear-integration-notes.md:1).
 
-## 5. Design-system tier direction
+## 6. Design-system tier direction
 
 `src/components/ui` is the bottom layer. It may import `@/lib/*`, `@/hooks/*`, and other
 `@/components/ui/*` — never feature components or pages. Enforced by
@@ -118,7 +155,7 @@ is a type alias of it. This is the correct direction — the domain type narrows
 design-system primitive supports, not the reverse — so it's not a tier violation despite
 `lib` importing from `ui`; the restriction only runs the other way.
 
-## 6. Build output paths
+## 7. Build output paths
 
 - `package.json#main` is `dist-electron/main.js`.
 - `vite.config.ts` decides that path via `vite-plugin-electron` entries

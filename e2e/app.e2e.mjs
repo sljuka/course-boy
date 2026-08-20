@@ -62,6 +62,7 @@ describe('launch', () => {
       'saveLessonTest',
       'updateDraftMetadata',
       'updateLessonContent',
+      'uploadAsset',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
   })
@@ -163,6 +164,75 @@ describe('courses over IPC', () => {
     await clickText(harness.page, 'Drafts')
     await sleep(1500)
     expect(await bodyText(harness.page)).toContain('E2E Probe Course')
+  })
+})
+
+describe('course assets', () => {
+  const courseId = 'e2e-probe-course'
+  const assetFilename = 'e2e-test-image.png'
+  // 1x1 transparent PNG, base64-encoded.
+  const pngBase64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+
+  it('serves an uploaded image through the matko-asset:// protocol', async () => {
+    const section = await harness.page.evaluate(
+      (id) => window.courses.createSection({ courseId: id, title: 'E2E Section' }),
+      courseId,
+    )
+    const lesson = await harness.page.evaluate(
+      ({ id, sectionId }) =>
+        window.courses.createLesson({ courseId: id, sectionId, title: 'E2E Lesson' }),
+      { id: courseId, sectionId: section.sectionId },
+    )
+
+    // Write the asset directly rather than driving the OS file picker behind
+    // window.courses.uploadAsset — Playwright cannot automate native dialogs.
+    const assetsDir = path.join(USER_DATA, 'courses', courseId, 'draft', 'assets')
+    fs.mkdirSync(assetsDir, { recursive: true })
+    fs.writeFileSync(path.join(assetsDir, assetFilename), Buffer.from(pngBase64, 'base64'))
+
+    const body = `[matko-block]: <> (image)\n![Alt text](${assetFilename} "Caption")`
+
+    await harness.page.evaluate(
+      ({ id, sectionId, lessonId, body }) =>
+        window.courses.updateLessonContent({
+          courseId: id,
+          lessonId,
+          locales: { en: { body } },
+          sectionId,
+        }),
+      { id: courseId, sectionId: section.sectionId, lessonId: lesson.lessonId, body },
+    )
+
+    // Assert the image actually loaded over the protocol, not just that an
+    // <img> tag exists — a broken src would satisfy a DOM-presence check too.
+    const result = await harness.page.evaluate(
+      ({ id, filename }) =>
+        new Promise((resolve) => {
+          const img = new Image()
+          img.onload = () => resolve({ ok: true, width: img.naturalWidth })
+          img.onerror = () => resolve({ ok: false, width: 0 })
+          img.src = `matko-asset://${id}/${encodeURIComponent(filename)}`
+        }),
+      { id: courseId, filename: assetFilename },
+    )
+
+    expect(result).toEqual({ ok: true, width: 1 })
+  })
+
+  it('returns a 404 response for a missing asset', async () => {
+    const status = await harness.page.evaluate(
+      (id) =>
+        fetch(`matko-asset://${id}/does-not-exist.png`).then((response) => response.status),
+      courseId,
+    )
+    expect(status).toBe(404)
+
+    // Chromium logs the failed fetch as a console error; it's the behavior under
+    // test, not a bug, so it shouldn't trip the "no uncaught errors" check below.
+    harness.errors = harness.errors.filter(
+      (message) => !message.includes('404 (Not Found)'),
+    )
   })
 })
 

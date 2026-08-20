@@ -1,9 +1,9 @@
 {
-  "total": 350,
+  "total": 344,
   "files": {
     "src/components/course-structure-prototype/course-structure-prototype.tsx": 32,
-    "src/components/editor-prototype/block-card.tsx": 28,
     "src/components/course-create/course-create.tsx": 22,
+    "src/components/editor-prototype/block-card.tsx": 22,
     "src/components/editor-prototype/editor-prototype.tsx": 20,
     "src/components/test-editor-prototype-exercise-card.tsx": 19,
     "src/components/app-menu.tsx": 18,

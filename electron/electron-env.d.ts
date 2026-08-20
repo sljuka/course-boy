@@ -53,6 +53,9 @@ interface Window {
       locale?: import('../src/lib/i18n').Locale,
     ) => Promise<import('../src/lib/course-package').CourseSummary[]>
     remove: (courseId: string) => Promise<void>
+    uploadAsset: (
+      input: import('../src/lib/course-package').UploadCourseAssetInput,
+    ) => Promise<import('../src/lib/course-package').UploadCourseAssetResult>
   }
   preferences: {
     get: () => Promise<import('../src/lib/preferences').UserPreferences>

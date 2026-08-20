@@ -1,21 +1,96 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Trash2, type LucideIcon } from "lucide-react";
 
 import { MarkdownBlockPreview } from "@/components/editor-prototype/block-preview";
 import type {
+  AudioBlock,
   EditorPrototypeBlock,
   HeadingBlock,
+  ImageBlock,
   MarkdownBlock,
+  VideoBlock,
 } from "@/components/editor-prototype/editor-prototype-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { matkoAssetUrl } from "@/lib/course-assets";
+
+function HeaderIconButton({
+  disabled,
+  icon: Icon,
+  label,
+  onClick,
+  tone = "default",
+}: {
+  disabled?: boolean;
+  icon: LucideIcon;
+  label: string;
+  onClick: () => void;
+  tone?: "danger" | "default";
+}) {
+  return (
+    <Button
+      aria-label={label}
+      className={
+        tone === "danger"
+          ? "h-7 w-7 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+          : "h-7 w-7 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+      }
+      disabled={disabled}
+      onClick={onClick}
+      size="icon"
+      variant="ghost"
+    >
+      <Icon aria-hidden="true" className="h-3.5 w-3.5" />
+    </Button>
+  );
+}
+
+function HeaderMoveAndDeleteButtons({
+  blockLabel,
+  canMoveDown,
+  canMoveUp,
+  onMoveDown,
+  onMoveUp,
+  onRemove,
+}: {
+  blockLabel: string;
+  canMoveDown: boolean;
+  canMoveUp: boolean;
+  onMoveDown: () => void;
+  onMoveUp: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <>
+      <HeaderIconButton
+        disabled={!canMoveUp}
+        icon={ArrowUp}
+        label={`Move ${blockLabel} block up`}
+        onClick={onMoveUp}
+      />
+      <HeaderIconButton
+        disabled={!canMoveDown}
+        icon={ArrowDown}
+        label={`Move ${blockLabel} block down`}
+        onClick={onMoveDown}
+      />
+      <HeaderIconButton
+        icon={Trash2}
+        label={`Delete ${blockLabel} block`}
+        onClick={onRemove}
+        tone="danger"
+      />
+    </>
+  );
+}
 
 export function EditorPrototypeBlockCard({
   autoFocusEditor,
   block,
   canMoveDown,
   canMoveUp,
+  courseId,
   onChange,
   onMoveDown,
   onMoveUp,
@@ -25,6 +100,7 @@ export function EditorPrototypeBlockCard({
   block: EditorPrototypeBlock;
   canMoveDown: boolean;
   canMoveUp: boolean;
+  courseId: string | undefined;
   onChange: (block: EditorPrototypeBlock) => void;
   onMoveDown: () => void;
   onMoveUp: () => void;
@@ -41,89 +117,51 @@ export function EditorPrototypeBlockCard({
 
   const markdownHeaderActions = (
     <div className="flex items-center gap-1">
-      <Button
-        aria-label="Edit markdown"
-        className="h-7 w-7 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+      <HeaderIconButton
+        icon={Pencil}
+        label="Edit markdown"
         onClick={() => setIsMarkdownEditing(true)}
-        size="icon"
-        variant="ghost"
-      >
-        <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        aria-label="Move markdown block up"
-        className="h-7 w-7 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
-        disabled={!canMoveUp}
-        onClick={onMoveUp}
-        size="icon"
-        variant="ghost"
-      >
-        <ArrowUp aria-hidden="true" className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        aria-label="Move markdown block down"
-        className="h-7 w-7 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
-        disabled={!canMoveDown}
-        onClick={onMoveDown}
-        size="icon"
-        variant="ghost"
-      >
-        <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        aria-label="Delete markdown block"
-        className="h-7 w-7 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-        onClick={onRemove}
-        size="icon"
-        variant="ghost"
-      >
-        <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-      </Button>
+      />
+      <HeaderMoveAndDeleteButtons
+        blockLabel="markdown"
+        canMoveDown={canMoveDown}
+        canMoveUp={canMoveUp}
+        onMoveDown={onMoveDown}
+        onMoveUp={onMoveUp}
+        onRemove={onRemove}
+      />
     </div>
   );
   const headingHeaderActions = (
     <div className="flex items-center gap-1">
-      <Button
-        aria-label="Edit heading"
-        className="h-7 w-7 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
+      <HeaderIconButton
+        icon={Pencil}
+        label="Edit heading"
         onClick={() => {
           headingInputRef.current?.focus();
           headingInputRef.current?.select();
         }}
-        size="icon"
-        variant="ghost"
-      >
-        <Pencil aria-hidden="true" className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        aria-label="Move heading block up"
-        className="h-7 w-7 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
-        disabled={!canMoveUp}
-        onClick={onMoveUp}
-        size="icon"
-        variant="ghost"
-      >
-        <ArrowUp aria-hidden="true" className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        aria-label="Move heading block down"
-        className="h-7 w-7 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
-        disabled={!canMoveDown}
-        onClick={onMoveDown}
-        size="icon"
-        variant="ghost"
-      >
-        <ArrowDown aria-hidden="true" className="h-3.5 w-3.5" />
-      </Button>
-      <Button
-        aria-label="Delete heading block"
-        className="h-7 w-7 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-        onClick={onRemove}
-        size="icon"
-        variant="ghost"
-      >
-        <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
-      </Button>
+      />
+      <HeaderMoveAndDeleteButtons
+        blockLabel="heading"
+        canMoveDown={canMoveDown}
+        canMoveUp={canMoveUp}
+        onMoveDown={onMoveDown}
+        onMoveUp={onMoveUp}
+        onRemove={onRemove}
+      />
+    </div>
+  );
+  const mediaHeaderActions = (
+    <div className="flex items-center gap-1">
+      <HeaderMoveAndDeleteButtons
+        blockLabel="media"
+        canMoveDown={canMoveDown}
+        canMoveUp={canMoveUp}
+        onMoveDown={onMoveDown}
+        onMoveUp={onMoveUp}
+        onRemove={onRemove}
+      />
     </div>
   );
 
@@ -131,7 +169,11 @@ export function EditorPrototypeBlockCard({
     <section className="group relative flex flex-col gap-2 border-l-2 border-l-transparent pl-3 transition-colors hover:border-l-indigo-200">
       <div className="pointer-events-none absolute top-0 right-0 left-0 z-10 flex -translate-y-full items-center justify-end gap-3 opacity-0 transition-opacity group-hover:opacity-100">
         <div className="pointer-events-auto">
-          {block.type === "heading" ? headingHeaderActions : markdownHeaderActions}
+          {block.type === "heading"
+            ? headingHeaderActions
+            : block.type === "markdown"
+              ? markdownHeaderActions
+              : mediaHeaderActions}
         </div>
       </div>
       <div className="space-y-3">
@@ -142,7 +184,7 @@ export function EditorPrototypeBlockCard({
             onChange={(nextBlock) => onChange(nextBlock)}
             ref={headingInputRef}
           />
-        ) : (
+        ) : block.type === "markdown" ? (
           <MarkdownBlockFields
             autoFocus={autoFocusEditor}
             block={block}
@@ -150,6 +192,12 @@ export function EditorPrototypeBlockCard({
             onChange={(nextBlock) => onChange(nextBlock)}
             onEditingChange={setIsMarkdownEditing}
           />
+        ) : block.type === "image" ? (
+          <ImageBlockFields block={block} courseId={courseId} onChange={onChange} />
+        ) : block.type === "video" ? (
+          <VideoBlockFields block={block} courseId={courseId} onChange={onChange} />
+        ) : (
+          <AudioBlockFields block={block} courseId={courseId} onChange={onChange} />
         )}
       </div>
     </section>
@@ -234,6 +282,84 @@ function MarkdownBlockFields({
       <div className="border-t border-stone-200 pt-3">
         <MarkdownBlockPreview block={block} />
       </div>
+    </div>
+  );
+}
+
+function ImageBlockFields({
+  block,
+  courseId,
+  onChange,
+}: {
+  block: ImageBlock;
+  courseId: string | undefined;
+  onChange: (block: ImageBlock) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {courseId && (
+        <img
+          alt={block.alt}
+          className="max-h-96 w-full object-contain"
+          src={matkoAssetUrl(courseId, block.path)}
+        />
+      )}
+      <Input
+        onChange={(event) => onChange({ ...block, alt: event.target.value })}
+        placeholder="Alt text"
+        value={block.alt}
+      />
+      <Input
+        onChange={(event) => onChange({ ...block, caption: event.target.value })}
+        placeholder="Caption (optional)"
+        value={block.caption}
+      />
+    </div>
+  );
+}
+
+function VideoBlockFields({
+  block,
+  courseId,
+  onChange,
+}: {
+  block: VideoBlock;
+  courseId: string | undefined;
+  onChange: (block: VideoBlock) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {courseId && (
+        <video className="w-full" controls src={matkoAssetUrl(courseId, block.path)} />
+      )}
+      <Input
+        onChange={(event) => onChange({ ...block, caption: event.target.value })}
+        placeholder="Caption (optional)"
+        value={block.caption}
+      />
+    </div>
+  );
+}
+
+function AudioBlockFields({
+  block,
+  courseId,
+  onChange,
+}: {
+  block: AudioBlock;
+  courseId: string | undefined;
+  onChange: (block: AudioBlock) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {courseId && (
+        <audio className="w-full" controls src={matkoAssetUrl(courseId, block.path)} />
+      )}
+      <Input
+        onChange={(event) => onChange({ ...block, caption: event.target.value })}
+        placeholder="Caption (optional)"
+        value={block.caption}
+      />
     </div>
   );
 }

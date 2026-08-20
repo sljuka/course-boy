@@ -3,7 +3,9 @@ import type {
   EditorPrototypeBlockType,
 } from "@/components/editor-prototype/editor-prototype-types";
 
-const blockMarkerPattern = /^\[matko-block\]: <> \((heading|markdown)\)$/;
+const blockMarkerPattern = /^\[matko-block\]: <> \((heading|markdown|image|video|audio)\)$/;
+const imageBlockContentPattern = /^!\[([^\]]*)\]\(([^\s)]+)(?:\s+"([^"]*)")?\)$/;
+const linkBlockContentPattern = /^\[([^\]]*)\]\(([^\s)]+)\)$/;
 
 function serializeBlock(block: EditorPrototypeBlock): string {
   const marker = `[matko-block]: <> (${block.type})`;
@@ -13,6 +15,14 @@ function serializeBlock(block: EditorPrototypeBlock): string {
       return `${marker}\n## ${block.text}`;
     case "markdown":
       return `${marker}\n${block.source}`;
+    case "image": {
+      const captionSuffix = block.caption ? ` "${block.caption}"` : "";
+
+      return `${marker}\n![${block.alt}](${block.path}${captionSuffix})`;
+    }
+    case "video":
+    case "audio":
+      return `${marker}\n[${block.caption}](${block.path})`;
   }
 }
 
@@ -32,6 +42,28 @@ function parseBlockContent(
       return { id, text: trimmedContent.replace(/^#+\s*/, ""), type };
     case "markdown":
       return { id, source: trimmedContent, type };
+    case "image": {
+      const match = trimmedContent.match(imageBlockContentPattern);
+
+      return {
+        alt: match?.[1] ?? "",
+        caption: match?.[3] ?? "",
+        id,
+        path: match?.[2] ?? "",
+        type,
+      };
+    }
+    case "video":
+    case "audio": {
+      const match = trimmedContent.match(linkBlockContentPattern);
+
+      return {
+        caption: match?.[1] ?? "",
+        id,
+        path: match?.[2] ?? "",
+        type,
+      };
+    }
   }
 }
 
