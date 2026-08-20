@@ -1,10 +1,6 @@
-export type CourseTagColor =
-  | "amber"
-  | "emerald"
-  | "rose"
-  | "sky"
-  | "stone"
-  | "teal";
+import type { TagColor } from "@/components/ui/tag";
+
+export type CourseTagColor = TagColor;
 
 export type CourseTagDefinition = {
   color: CourseTagColor;

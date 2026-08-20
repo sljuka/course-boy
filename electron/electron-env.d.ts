@@ -30,9 +30,21 @@ interface Window {
     createSection: (
       input: import('../src/lib/course-package').CreateCourseSectionInput,
     ) => Promise<import('../src/lib/course-package').CreateCourseSectionResult>
+    createLesson: (
+      input: import('../src/lib/course-package').CreateCourseLessonInput,
+    ) => Promise<import('../src/lib/course-package').CreateCourseLessonResult>
     updateDraftMetadata: (
       input: import('../src/lib/course-package').UpdateCourseDraftMetadataInput,
     ) => Promise<void>
+    updateLessonContent: (
+      input: import('../src/lib/course-package').UpdateLessonContentInput,
+    ) => Promise<void>
+    saveLessonTest: (
+      input: import('../src/lib/course-package').SaveLessonTestInput,
+    ) => Promise<void>
+    getLessonTestDraft: (
+      input: import('../src/lib/course-package').GetLessonTestDraftInput,
+    ) => Promise<import('../src/lib/course-package').SharedTestDefinition | null>
     get: (
       courseId: string,
       locale?: import('../src/lib/i18n').Locale,

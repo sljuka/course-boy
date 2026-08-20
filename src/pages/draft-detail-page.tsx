@@ -14,6 +14,7 @@ import { TestEditorPrototype } from "@/components/test-editor-prototype";
 import { TestEditorTagManager } from "@/components/test-editor-tag-manager";
 import type { TestEditorState } from "@/components/test-editor-prototype-types";
 import { normalizeDraftTestData } from "@/components/test-editor-prototype-logic";
+import { fromSharedTestDefinition } from "@/components/test-editor-prototype-persistence";
 import {
   Accordion,
   AccordionContent,
@@ -69,6 +70,8 @@ import {
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { queryClient } from "@/lib/query-client";
+import { useLessonTestDraftQuery } from "@/lib/course-queries";
+import { resolveLessonIdForTest } from "@/lib/course-test-id";
 import { useTranslation } from "react-i18next";
 
 type DocumentDraftLocaleValue = {
@@ -79,8 +82,6 @@ type SectionDraftLocaleValue = {
   description: string;
   title: string;
 };
-
-const minimumSectionTitleLength = 8;
 
 function getInitialSectionTitle(locale: Locale) {
   switch (locale) {
@@ -94,19 +95,15 @@ function getInitialSectionTitle(locale: Locale) {
 }
 
 function isSectionTitleValid(title: string | undefined): boolean {
-  return (title?.trim().length ?? 0) >= minimumSectionTitleLength;
+  return (title?.trim().length ?? 0) > 0;
 }
 
 function getSectionTitleValidationMessage(
   locale: Locale,
   title: string | undefined,
 ) {
-  if ((title?.trim().length ?? 0) === 0) {
-    return `Section title for ${locale} is required.`;
-  }
-
   if (!isSectionTitleValid(title)) {
-    return `Section title for ${locale} must have at least ${minimumSectionTitleLength} characters.`;
+    return `Section title for ${locale} is required.`;
   }
 
   return null;
@@ -253,6 +250,7 @@ export function DraftDetailPage() {
     contentRating,
     courseDescriptiveTags,
     courseDescription,
+    courseSections,
     courseTitle,
     defaultLocale,
     initialDraftSnapshot,
@@ -392,6 +390,19 @@ export function DraftDetailPage() {
     setActiveSectionLocale(defaultLocale);
   }, [activeSectionLocale, defaultLocale, supportedLocales]);
 
+  const selectedTestLessonId =
+    selectedNode.type === "test" ? resolveLessonIdForTest(selectedNode.id) : null;
+  const selectedTestSectionId = selectedTestLessonId
+    ? (courseSections.find((section) =>
+        section.lessons.some((lesson) => lesson.id === selectedTestLessonId),
+      )?.id ?? null)
+    : null;
+  const lessonTestDraftQuery = useLessonTestDraftQuery(
+    courseId && selectedTestLessonId && selectedTestSectionId
+      ? { courseId, lessonId: selectedTestLessonId, sectionId: selectedTestSectionId }
+      : null,
+  );
+
   useEffect(() => {
     const textarea = descriptionRef.current;
 
@@ -487,14 +498,16 @@ export function DraftDetailPage() {
 
   const handleTestStateChange = useCallback(
     (state: TestEditorState) => {
+      const lessonId = resolveLessonIdForTest(selectedNode.id);
+
       setTestDrafts((currentDrafts) => {
-        if (currentDrafts[selectedNode.id] === state) {
+        if (currentDrafts[lessonId] === state) {
           return currentDrafts;
         }
 
         return {
           ...currentDrafts,
-          [selectedNode.id]: state,
+          [lessonId]: state,
         };
       });
     },
@@ -749,11 +762,23 @@ export function DraftDetailPage() {
   }
 
   if (selectedNode.type === "test") {
+    const lessonId = resolveLessonIdForTest(selectedNode.id);
+    const existingDraft = testDrafts[lessonId];
+
+    if (!existingDraft && lessonTestDraftQuery.isLoading) {
+      return <PageContent>{null}</PageContent>;
+    }
+
+    const hydratedState =
+      !existingDraft && lessonTestDraftQuery.data
+        ? fromSharedTestDefinition(lessonTestDraftQuery.data, supportedLocales)
+        : undefined;
+
     return (
       <TestEditorPrototype
         descriptiveTags={descriptiveTags}
-        initialState={testDrafts[selectedNode.id]}
-        initialTitle={selectedNode.title}
+        initialState={existingDraft ?? hydratedState}
+        initialTitle="Test"
         onStateChange={handleTestStateChange}
         supportedLocales={supportedLocales}
       />
@@ -761,8 +786,19 @@ export function DraftDetailPage() {
   }
 
   if (selectedNode.type === "section") {
+    const realSection = courseSections.find(
+      (section) => section.id === selectedNode.id,
+    );
+    const fallbackSectionLocales = realSection
+      ? (Object.fromEntries(
+          Object.entries(realSection.locales).map(([locale, metadata]) => [
+            locale,
+            { description: metadata.description ?? "", title: metadata.title },
+          ]),
+        ) as Partial<Record<Locale, SectionDraftLocaleValue>>)
+      : {};
     const activeSectionDraft = sectionDrafts[selectedNode.id] ?? {
-      locales: {},
+      locales: fallbackSectionLocales,
     };
 
     return (

@@ -5,8 +5,14 @@ import type {
   CourseSummary,
   CreateCourseDraftInput,
   CreateCourseDraftResult,
+  CreateCourseLessonInput,
+  CreateCourseLessonResult,
   CreateCourseSectionInput,
   CreateCourseSectionResult,
+  GetLessonTestDraftInput,
+  SaveLessonTestInput,
+  SharedTestDefinition,
+  UpdateLessonContentInput,
 } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { queryClient } from "@/lib/query-client";
@@ -71,5 +77,46 @@ export function useCreateCourseSectionMutation() {
         queryKey: ["courses", "detail", input.courseId],
       });
     },
+  });
+}
+
+export function useCreateCourseLessonMutation() {
+  return useMutation<CreateCourseLessonResult, Error, CreateCourseLessonInput>({
+    mutationFn: (input) => window.courses.createLesson(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
+export function useUpdateLessonContentMutation() {
+  return useMutation<void, Error, UpdateLessonContentInput>({
+    mutationFn: (input) => window.courses.updateLessonContent(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
+export function useSaveLessonTestMutation() {
+  return useMutation<void, Error, SaveLessonTestInput>({
+    mutationFn: (input) => window.courses.saveLessonTest(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
+export function useLessonTestDraftQuery(input: GetLessonTestDraftInput | null) {
+  return useQuery<SharedTestDefinition | null>({
+    enabled: input !== null,
+    queryKey: ["courses", "lesson-test-draft", input?.courseId, input?.lessonId],
+    queryFn: () => window.courses.getLessonTestDraft(input!),
   });
 }

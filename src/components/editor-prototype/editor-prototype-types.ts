@@ -12,33 +12,7 @@ export type MarkdownBlock = {
   type: "markdown";
 };
 
-export type DiagramBlock = {
-  id: string;
-  source: string;
-  type: "diagram";
-};
-
-export type ImageBlock = {
-  alt: string;
-  caption: string;
-  id: string;
-  src: string;
-  type: "image";
-};
-
-export type VideoBlock = {
-  caption: string;
-  id: string;
-  src: string;
-  type: "video";
-};
-
-export type EditorPrototypeBlock =
-  | HeadingBlock
-  | MarkdownBlock
-  | DiagramBlock
-  | ImageBlock
-  | VideoBlock;
+export type EditorPrototypeBlock = HeadingBlock | MarkdownBlock;
 
 export type EditorPrototypeBlockType = EditorPrototypeBlock["type"];
 
@@ -58,27 +32,6 @@ export function createPrototypeBlock(
       return {
         id,
         source: "",
-        type,
-      };
-    case "diagram":
-      return {
-        id,
-        source: "graph TD\n  A[Start] --> B{Question}\n  B -->|Yes| C[Next step]",
-        type,
-      };
-    case "image":
-      return {
-        alt: "",
-        caption: "",
-        id,
-        src: "",
-        type,
-      };
-    case "video":
-      return {
-        caption: "",
-        id,
-        src: "",
         type,
       };
   }

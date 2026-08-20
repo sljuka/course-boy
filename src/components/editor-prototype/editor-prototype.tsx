@@ -16,20 +16,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Locale } from "@/lib/i18n";
 
-const blockTypes: EditorPrototypeBlockType[] = [
-  "heading",
-  "markdown",
-  "diagram",
-  "image",
-  "video",
-];
+const blockTypes: EditorPrototypeBlockType[] = ["heading", "markdown"];
 
 const blockTypeLabels: Record<EditorPrototypeBlockType, string> = {
-  diagram: "Diagram",
   heading: "Heading",
-  image: "Image",
   markdown: "Markdown",
-  video: "Video",
 };
 
 export function EditorPrototype({

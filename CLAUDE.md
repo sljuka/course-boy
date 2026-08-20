@@ -19,11 +19,29 @@ npm run lint         # eslint, --max-warnings 0
 npm test             # vitest run
 npm run check:i18n   # locale key parity against en.json
 npm run check:styles # visual styling outside src/components/ui must not grow
+npm run check:e2e    # vite build + real Electron app driven by Playwright (~15s)
 npm run build        # tsc + vite build + electron-builder
 ```
 
 `npm run check` is the definition of done for a change. It passes on a clean tree — if it
 fails, that is your change.
+
+`check:e2e` is deliberately **not** part of `check` (it needs a build and launches a real
+app). Run it when you touch `electron/`, the preload bridge, onboarding, or i18n wiring.
+
+## Verifying in the real app
+
+`npm run check` cannot verify the IPC contract — see contract 1 in
+[docs/contracts.md](docs/contracts.md:1). Two ways to exercise the running app:
+
+- **Interactive:** the `run-desktop` skill
+  ([.claude/skills/run-desktop/SKILL.md](.claude/skills/run-desktop/SKILL.md:1)) — a REPL
+  that launches Electron and gives you `ui` / `hit` / `fill` / `ipc` / `ss` against an
+  isolated userData directory.
+- **Automated:** `e2e/app.e2e.mjs` via `npm run check:e2e`.
+
+Both share `e2e/launch.mjs`, so the REPL and the assertions behave identically. Prefer
+adding a case to the e2e suite over one-off manual checking.
 
 ## Read before editing
 
@@ -88,7 +106,16 @@ Not blockers, but do not mistake them for patterns to copy:
 - `src/components/ui/sidebar.tsx` (~720 LOC) and `combobox.tsx` are far past the ~150 LOC
   guideline in working-conventions. They are vendored primitives; leave them unless the
   task is specifically to split them.
-- The styling ratchet baseline is 437 visual utilities outside `ui`. That number should
+- The styling ratchet baseline is 384 visual utilities outside `ui`. That number should
   only ever go down.
+- **"Toggle Sidebar" is a hardcoded English literal** and stays untranslated in every
+  locale. `check:i18n` cannot catch this class of bug (it compares key parity between
+  locale files, not literals in components); it is pinned by an `it.fails` case in
+  `e2e/app.e2e.mjs`, which will start failing once the literal becomes a key. Adding an
+  `i18next/no-literal-string` eslint rule would catch the whole class.
+- No Content-Security-Policy is set, so Electron logs a warning on every launch. Exposure
+  is currently low — `react-markdown` runs without `rehype-raw` and nothing uses
+  `dangerouslySetInnerHTML` — but this needs hardening before importing course content
+  from peers.
 - The `*-prototype` components (`editor-prototype`, `course-structure-prototype`,
   `test-editor-prototype`) are exploratory and hold most of the styling violations.

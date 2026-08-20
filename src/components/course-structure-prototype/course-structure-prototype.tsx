@@ -4,12 +4,10 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronRight,
-  FilePenLine,
   FileText,
   FlaskConical,
   Folder,
   PanelRightOpen,
-  Trash2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,210 +25,161 @@ import {
   courseRootId,
   type StructureSelection,
 } from "@/components/course-structure-prototype/course-structure-prototype-types";
+import type { CourseSectionPreview } from "@/lib/course-package";
+import { resolveTestIdForLesson } from "@/lib/course-test-id";
+import {
+  useCreateCourseLessonMutation,
+  useCreateCourseSectionMutation,
+} from "@/lib/course-queries";
 
 type DocumentNode = {
+  hasTest: boolean;
   id: string;
   title: string;
   type: "document";
 };
 
-type TestNode = {
-  id: string;
-  title: string;
-  type: "test";
-};
-
-type SectionChildNode = DocumentNode | TestNode;
-
 type SectionNode = {
-  children: SectionChildNode[];
+  children: DocumentNode[];
   id: string;
   title: string;
   type: "section";
 };
 
-type RootNode = DocumentNode | TestNode | SectionNode;
-type RootNodeType = RootNode["type"];
-type SectionChildNodeType = SectionChildNode["type"];
-const nodeTypeLabels = {
-  document: "Document",
-  section: "Section",
-  test: "Test",
-} as const;
-
-const nodeTypeIcons = {
-  document: FileText,
-  section: Folder,
-  test: FlaskConical,
-} as const;
-
-const initialNodes: RootNode[] = [
-  createRootNode("document", "README"),
-  createRootNode("section", "Section 1", [
-    createSectionChildNode("document", "Placeholder document A"),
-    createSectionChildNode("document", "Placeholder document B"),
-    createSectionChildNode("test", "Section 1 test"),
-  ]),
-  createRootNode("section", "Section 2", [
-    createSectionChildNode("document", "Placeholder document C"),
-    createSectionChildNode("test", "Section 2 test"),
-  ]),
-];
+type PendingCreate =
+  | { type: "section" }
+  | { sectionId: string; type: "document" };
 
 const courseRootTitle = "Course";
 
 export function CourseStructurePrototype({
-  courseTitle = courseRootTitle,
   compact = false,
+  courseId,
+  courseTitle = courseRootTitle,
   onSelectionChange,
+  sections,
   selectedNodeId = courseRootId,
   showFrameHeader = true,
 }: {
-  courseTitle?: string;
   compact?: boolean;
+  courseId: string;
+  courseTitle?: string;
   onSelectionChange?: (selection: StructureSelection) => void;
+  sections: CourseSectionPreview[];
   selectedNodeId?: string;
   showFrameHeader?: boolean;
 }) {
-  const [nodes, setNodes] = useState<RootNode[]>(initialNodes);
-  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [isCourseRootExpanded, setIsCourseRootExpanded] = useState(true);
-  const [expandedSectionIds, setExpandedSectionIds] = useState<string[]>(
-    initialNodes
-      .filter((node): node is SectionNode => node.type === "section")
-      .map((node) => node.id),
-  );
+  const [collapsedSectionIds, setCollapsedSectionIds] = useState<string[]>([]);
+  const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null);
+  const [pendingTitle, setPendingTitle] = useState("");
+  const [pendingError, setPendingError] = useState<string | null>(null);
 
-  function updateRootNode(id: string, title: string) {
-    setNodes((currentNodes) =>
-      currentNodes.map((node) => (node.id === id ? { ...node, title } : node)),
-    );
-  }
+  const createSectionMutation = useCreateCourseSectionMutation();
+  const createLessonMutation = useCreateCourseLessonMutation();
 
-  function updateSectionChild(sectionId: string, childId: string, title: string) {
-    setNodes((currentNodes) =>
-      currentNodes.map((node) => {
-        if (node.type !== "section" || node.id !== sectionId) {
-          return node;
-        }
-
-        return {
-          ...node,
-          children: node.children.map((child) =>
-            child.id === childId ? { ...child, title } : child,
-          ),
-        };
+  const sectionNodes: SectionNode[] = sections.map((section) => ({
+    children: section.lessons.map(
+      (lesson): DocumentNode => ({
+        hasTest: lesson.test !== null,
+        id: lesson.id,
+        title: lesson.title,
+        type: "document",
       }),
-    );
+    ),
+    id: section.id,
+    title: section.title,
+    type: "section",
+  }));
+
+  function selectTest(lessonId: string) {
+    onSelectionChange?.({
+      id: resolveTestIdForLesson(lessonId),
+      title: "Test",
+      type: "test",
+    });
   }
 
-  function insertRootNode(type: RootNodeType, index = nodes.length) {
-    const nextNode = createRootNode(type);
-    setEditingNodeId(nextNode.id);
-    setNodes((currentNodes) => {
-      const nextNodes = [...currentNodes];
-      nextNodes.splice(index, 0, nextNode);
-      return nextNodes;
-    });
+  function startAddSection() {
+    setPendingCreate({ type: "section" });
+    setPendingTitle(`Section ${sections.length + 1}`);
+    setPendingError(null);
+    setIsCourseRootExpanded(true);
+  }
 
-    if (type === "section") {
-      setExpandedSectionIds((currentIds) => [...currentIds, nextNode.id]);
+  function startAddDocument(sectionId: string) {
+    const section = sections.find((candidate) => candidate.id === sectionId);
+
+    setPendingCreate({ sectionId, type: "document" });
+    setPendingTitle(`Document ${(section?.lessons.length ?? 0) + 1}`);
+    setPendingError(null);
+    setCollapsedSectionIds((currentIds) => currentIds.filter((id) => id !== sectionId));
+  }
+
+  function cancelPendingCreate() {
+    setPendingCreate(null);
+    setPendingTitle("");
+    setPendingError(null);
+  }
+
+  async function commitPendingCreate() {
+    if (!pendingCreate) {
+      return;
+    }
+
+    const title = pendingTitle.trim();
+
+    if (!title) {
+      cancelPendingCreate();
+      return;
+    }
+
+    const normalizedTitle = title.toLowerCase();
+
+    if (pendingCreate.type === "section") {
+      const isDuplicate = sections.some(
+        (section) => section.title.trim().toLowerCase() === normalizedTitle,
+      );
+
+      if (isDuplicate) {
+        setPendingError(`A section titled "${title}" already exists`);
+        return;
+      }
+    } else {
+      const targetSection = sections.find(
+        (section) => section.id === pendingCreate.sectionId,
+      );
+      const isDuplicate = targetSection?.lessons.some(
+        (lesson) => lesson.title.trim().toLowerCase() === normalizedTitle,
+      );
+
+      if (isDuplicate) {
+        setPendingError(`A document titled "${title}" already exists in this section`);
+        return;
+      }
+    }
+
+    try {
+      if (pendingCreate.type === "section") {
+        const result = await createSectionMutation.mutateAsync({ courseId, title });
+        onSelectionChange?.({ id: result.sectionId, title, type: "section" });
+      } else {
+        const result = await createLessonMutation.mutateAsync({
+          courseId,
+          sectionId: pendingCreate.sectionId,
+          title,
+        });
+        onSelectionChange?.({ id: result.lessonId, title, type: "document" });
+      }
+
+      cancelPendingCreate();
+    } catch (error) {
+      setPendingError(error instanceof Error ? error.message : "Could not save");
     }
   }
 
-  function insertSectionChild(
-    sectionId: string,
-    type: SectionChildNodeType,
-    index: number,
-  ) {
-    const nextChild = createSectionChildNode(type);
-    setEditingNodeId(nextChild.id);
-    setNodes((currentNodes) =>
-      currentNodes.map((node) => {
-        if (node.type !== "section" || node.id !== sectionId) {
-          return node;
-        }
-
-        const nextChildren = [...node.children];
-        nextChildren.splice(index, 0, nextChild);
-
-        return {
-          ...node,
-          children: nextChildren,
-        };
-      }),
-    );
-    setExpandedSectionIds((currentIds) =>
-      currentIds.includes(sectionId) ? currentIds : [...currentIds, sectionId],
-    );
-  }
-
-  function removeRootNode(id: string) {
-    setNodes((currentNodes) => currentNodes.filter((node) => node.id !== id));
-    setExpandedSectionIds((currentIds) =>
-      currentIds.filter((sectionId) => sectionId !== id),
-    );
-    setEditingNodeId((currentId) => (currentId === id ? null : currentId));
-  }
-
-  function removeSectionChild(sectionId: string, childId: string) {
-    setNodes((currentNodes) =>
-      currentNodes.map((node) => {
-        if (node.type !== "section" || node.id !== sectionId) {
-          return node;
-        }
-
-        return {
-          ...node,
-          children: node.children.filter((child) => child.id !== childId),
-        };
-      }),
-    );
-    setEditingNodeId((currentId) => (currentId === childId ? null : currentId));
-  }
-
-  function moveRootNode(index: number, direction: -1 | 1) {
-    setNodes((currentNodes) => {
-      const nextIndex = index + direction;
-
-      if (nextIndex < 0 || nextIndex >= currentNodes.length) {
-        return currentNodes;
-      }
-
-      const nextNodes = [...currentNodes];
-      const [movedNode] = nextNodes.splice(index, 1);
-      nextNodes.splice(nextIndex, 0, movedNode);
-      return nextNodes;
-    });
-  }
-
-  function moveSectionChild(sectionId: string, index: number, direction: -1 | 1) {
-    setNodes((currentNodes) =>
-      currentNodes.map((node) => {
-        if (node.type !== "section" || node.id !== sectionId) {
-          return node;
-        }
-
-        const nextIndex = index + direction;
-
-        if (nextIndex < 0 || nextIndex >= node.children.length) {
-          return node;
-        }
-
-        const nextChildren = [...node.children];
-        const [movedNode] = nextChildren.splice(index, 1);
-        nextChildren.splice(nextIndex, 0, movedNode);
-
-        return {
-          ...node,
-          children: nextChildren,
-        };
-      }),
-    );
-  }
-
   function toggleSection(sectionId: string) {
-    setExpandedSectionIds((currentIds) =>
+    setCollapsedSectionIds((currentIds) =>
       currentIds.includes(sectionId)
         ? currentIds.filter((id) => id !== sectionId)
         : [...currentIds, sectionId],
@@ -246,9 +195,7 @@ export function CourseStructurePrototype({
           </h1>
           <CardDescription className="max-w-3xl text-base text-stone-700">
             Explore a course structure as a compact file tree with root
-            documents, sections, and tests. Sections behave like folders, with
-            context-menu actions for opening, renaming, ordering, and deleting
-            nodes.
+            sections and documents.
           </CardDescription>
         </div>
       )}
@@ -277,9 +224,7 @@ export function CourseStructurePrototype({
                   type: "course",
                 })
               }
-              onInsertDocument={() => insertRootNode("document")}
-              onInsertSection={() => insertRootNode("section")}
-              onInsertTest={() => insertRootNode("test")}
+              onInsertSection={startAddSection}
               onMoveDown={() => {}}
               onMoveUp={() => {}}
               onToggle={() => setIsCourseRootExpanded((current) => !current)}
@@ -287,35 +232,44 @@ export function CourseStructurePrototype({
             />
             {isCourseRootExpanded ? (
               <div className="ml-3 border-l border-stone-200 pl-3">
-                {nodes.length === 0 ? (
+                {sectionNodes.length === 0 && !pendingCreate ? (
                   <div className="rounded-sm px-3 py-3 text-sm text-stone-500">
-                    No course items yet. Right-click the root folder to add a
-                    document, section, or test.
+                    No sections yet. Right-click the root folder to add one.
                   </div>
                 ) : (
-                  nodes.map((node, index) => (
-                    <TreeNodeRow
-                      editingNodeId={editingNodeId}
-                      index={index}
+                  sectionNodes.map((node) => (
+                    <SectionRow
                       key={node.id}
                       node={node}
-                      onEditStart={setEditingNodeId}
-                      onRootNodeChange={updateRootNode}
-                      onRootNodeDelete={removeRootNode}
-                      onRootNodeMove={moveRootNode}
+                      onAddDocument={() => startAddDocument(node.id)}
                       onSelectionChange={onSelectionChange}
-                      onSectionChildChange={updateSectionChild}
-                      onSectionChildDelete={removeSectionChild}
-                      onSectionChildInsert={insertSectionChild}
-                      onSectionChildMove={moveSectionChild}
-                      onSectionToggle={toggleSection}
+                      onSelectTest={selectTest}
+                      pendingDocument={
+                        pendingCreate?.type === "document" &&
+                        pendingCreate.sectionId === node.id
+                          ? { error: pendingError, title: pendingTitle }
+                          : null
+                      }
+                      onPendingDocumentCancel={cancelPendingCreate}
+                      onPendingDocumentChange={setPendingTitle}
+                      onPendingDocumentCommit={commitPendingCreate}
+                      onToggle={() => toggleSection(node.id)}
+                      sectionIsExpanded={!collapsedSectionIds.includes(node.id)}
                       selectedNodeId={selectedNodeId}
-                      sectionIsExpanded={expandedSectionIds.includes(node.id)}
-                      setEditingNodeId={setEditingNodeId}
-                      totalRootNodes={nodes.length}
                     />
                   ))
                 )}
+                {pendingCreate?.type === "section" ? (
+                  <PendingRow
+                    error={pendingError}
+                    icon={Folder}
+                    label="Section"
+                    onCancel={cancelPendingCreate}
+                    onChange={setPendingTitle}
+                    onCommit={commitPendingCreate}
+                    title={pendingTitle}
+                  />
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -325,120 +279,149 @@ export function CourseStructurePrototype({
   );
 }
 
-function TreeNodeRow({
-  editingNodeId,
-  index,
+function SectionRow({
   node,
-  onEditStart,
-  onRootNodeChange,
-  onRootNodeDelete,
-  onRootNodeMove,
+  onAddDocument,
+  onPendingDocumentCancel,
+  onPendingDocumentChange,
+  onPendingDocumentCommit,
   onSelectionChange,
-  onSectionChildChange,
-  onSectionChildDelete,
-  onSectionChildInsert,
-  onSectionChildMove,
-  onSectionToggle,
-  selectedNodeId,
+  onSelectTest,
+  onToggle,
+  pendingDocument,
   sectionIsExpanded,
-  setEditingNodeId,
-  totalRootNodes,
+  selectedNodeId,
 }: {
-  editingNodeId: string | null;
-  index: number;
-  node: RootNode;
-  onEditStart: (id: string | null) => void;
-  onRootNodeChange: (id: string, title: string) => void;
-  onRootNodeDelete: (id: string) => void;
-  onRootNodeMove: (index: number, direction: -1 | 1) => void;
+  node: SectionNode;
+  onAddDocument: () => void;
+  onPendingDocumentCancel: () => void;
+  onPendingDocumentChange: (title: string) => void;
+  onPendingDocumentCommit: () => void;
   onSelectionChange?: (selection: StructureSelection) => void;
-  onSectionChildChange: (sectionId: string, childId: string, title: string) => void;
-  onSectionChildDelete: (sectionId: string, childId: string) => void;
-  onSectionChildInsert: (
-    sectionId: string,
-    type: SectionChildNodeType,
-    index: number,
-  ) => void;
-  onSectionChildMove: (sectionId: string, index: number, direction: -1 | 1) => void;
-  onSectionToggle: (sectionId: string) => void;
-  selectedNodeId: string;
+  onSelectTest: (lessonId: string) => void;
+  onToggle: () => void;
+  pendingDocument: { error: string | null; title: string } | null;
   sectionIsExpanded: boolean;
-  setEditingNodeId: (id: string | null) => void;
-  totalRootNodes: number;
+  selectedNodeId: string;
 }) {
-  const isSection = node.type === "section";
-
   return (
     <div>
       <ExplorerRow
-        autoFocus={editingNodeId === node.id}
-        canMoveDown={index < totalRootNodes - 1}
-        canMoveUp={index > 0}
-        icon={nodeTypeIcons[node.type]}
-        isEditing={editingNodeId === node.id}
-        isExpanded={isSection ? sectionIsExpanded : undefined}
+        canMoveDown={false}
+        canMoveUp={false}
+        icon={Folder}
+        isExpanded={sectionIsExpanded}
+        isFixed
         isSelected={selectedNodeId === node.id}
-        label={nodeTypeLabels[node.type]}
-        onChange={(title) => onRootNodeChange(node.id, title)}
-        onDelete={() => onRootNodeDelete(node.id)}
-        onEditDone={() => setEditingNodeId(null)}
-        onEditStart={() => onEditStart(node.id)}
-        onInsertDocument={
-          isSection
-            ? () => onSectionChildInsert(node.id, "document", node.children.length)
-            : undefined
-        }
-        onInsertTest={
-          isSection
-            ? () => onSectionChildInsert(node.id, "test", node.children.length)
-            : undefined
-        }
-        onMoveDown={() => onRootNodeMove(index, 1)}
-        onMoveUp={() => onRootNodeMove(index, -1)}
-        onOpen={node.type === "section" ? undefined : () => {}}
+        label="Section"
+        onInsertDocument={onAddDocument}
+        onMoveDown={() => {}}
+        onMoveUp={() => {}}
         onSelect={() =>
-          onSelectionChange?.({
-            id: node.id,
-            title: node.title,
-            type: node.type,
-          })
+          onSelectionChange?.({ id: node.id, title: node.title, type: node.type })
         }
-        onToggle={isSection ? () => onSectionToggle(node.id) : undefined}
+        onToggle={onToggle}
         title={node.title}
       />
 
-      {isSection && sectionIsExpanded ? (
+      {sectionIsExpanded ? (
         <div className="ml-3 border-l border-stone-200 pl-3">
-          {node.children.map((child, childIndex) => (
-            <ExplorerRow
-              autoFocus={editingNodeId === child.id}
-              canMoveDown={childIndex < node.children.length - 1}
-              canMoveUp={childIndex > 0}
-              icon={nodeTypeIcons[child.type]}
-              isEditing={editingNodeId === child.id}
-              isSelected={selectedNodeId === child.id}
-              key={child.id}
-              label={nodeTypeLabels[child.type]}
-              onChange={(title) => onSectionChildChange(node.id, child.id, title)}
-              onDelete={() => onSectionChildDelete(node.id, child.id)}
-              onEditDone={() => setEditingNodeId(null)}
-              onEditStart={() => onEditStart(child.id)}
-              onMoveDown={() => onSectionChildMove(node.id, childIndex, 1)}
-              onMoveUp={() => onSectionChildMove(node.id, childIndex, -1)}
-              onOpen={() => {}}
-              onSelect={() =>
-                onSelectionChange?.({
-                  id: child.id,
-                  title: child.title,
-                  type: child.type,
-                })
-              }
-              title={child.title}
-            />
+          {node.children.map((child) => (
+            <div key={child.id}>
+              <ExplorerRow
+                canMoveDown={false}
+                canMoveUp={false}
+                icon={FileText}
+                isFixed
+                isSelected={selectedNodeId === child.id}
+                label="Document"
+                onInsertTest={child.hasTest ? undefined : () => onSelectTest(child.id)}
+                onMoveDown={() => {}}
+                onMoveUp={() => {}}
+                onOpen={() => {}}
+                onSelect={() =>
+                  onSelectionChange?.({
+                    id: child.id,
+                    title: child.title,
+                    type: child.type,
+                  })
+                }
+                title={child.title}
+              />
+              {child.hasTest ? (
+                <div className="ml-3 pl-3">
+                  <ExplorerRow
+                    canMoveDown={false}
+                    canMoveUp={false}
+                    icon={FlaskConical}
+                    isFixed
+                    isSelected={selectedNodeId === resolveTestIdForLesson(child.id)}
+                    label="Test"
+                    onMoveDown={() => {}}
+                    onMoveUp={() => {}}
+                    onSelect={() => onSelectTest(child.id)}
+                    title="Test"
+                  />
+                </div>
+              ) : null}
+            </div>
           ))}
-
+          {pendingDocument ? (
+            <PendingRow
+              error={pendingDocument.error}
+              icon={FileText}
+              label="Document"
+              onCancel={onPendingDocumentCancel}
+              onChange={onPendingDocumentChange}
+              onCommit={onPendingDocumentCommit}
+              title={pendingDocument.title}
+            />
+          ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function PendingRow({
+  error,
+  icon,
+  label,
+  onCancel,
+  onChange,
+  onCommit,
+  title,
+}: {
+  error: string | null;
+  icon: LucideIcon;
+  label: string;
+  onCancel: () => void;
+  onChange: (title: string) => void;
+  onCommit: () => void;
+  title: string;
+}) {
+  return (
+    <div>
+      <ExplorerRow
+        autoFocus
+        canMoveDown={false}
+        canMoveUp={false}
+        icon={icon}
+        isEditing
+        isFixed
+        label={label}
+        onChange={onChange}
+        onEditDone={onCommit}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            onCancel();
+          }
+        }}
+        onMoveDown={() => {}}
+        onMoveUp={() => {}}
+        title={title}
+      />
+      {error ? <p className="px-2 pb-1 text-xs text-rose-600">{error}</p> : null}
     </div>
   );
 }
@@ -454,12 +437,11 @@ function ExplorerRow({
   isSelected = false,
   label,
   onChange,
-  onDelete,
   onEditDone,
-  onEditStart,
   onInsertDocument,
   onInsertSection,
   onInsertTest,
+  onKeyDown,
   onMoveDown,
   onMoveUp,
   onOpen,
@@ -477,12 +459,11 @@ function ExplorerRow({
   isSelected?: boolean;
   label: string;
   onChange?: (title: string) => void;
-  onDelete?: () => void;
   onEditDone?: () => void;
-  onEditStart?: () => void;
   onInsertDocument?: () => void;
   onInsertSection?: () => void;
   onInsertTest?: () => void;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   onMoveDown: () => void;
   onMoveUp: () => void;
   onOpen?: () => void;
@@ -544,24 +525,19 @@ function ExplorerRow({
                   if (event.key === "Enter") {
                     event.currentTarget.blur();
                   }
+
+                  onKeyDown?.(event);
                 }}
                 placeholder={`Untitled ${label.toLowerCase()}`}
                 ref={inputRef}
                 value={title}
               />
             ) : (
-              isFixed ? (
-                <div className="block w-full truncate rounded-sm px-1 py-1 text-left text-sm text-stone-800">
-                  {title || `Untitled ${label.toLowerCase()}`}
-                </div>
-              ) : (
-                <div className="block w-full truncate rounded-sm px-1 py-1 text-left text-sm text-stone-800">
-                  {title || `Untitled ${label.toLowerCase()}`}
-                </div>
-              )
+              <div className="block w-full truncate rounded-sm px-1 py-1 text-left text-sm text-stone-800">
+                {title || `Untitled ${label.toLowerCase()}`}
+              </div>
             )}
           </div>
-
         </div>
       </ContextMenuTrigger>
 
@@ -594,12 +570,6 @@ function ExplorerRow({
           </ContextMenuItem>
         ) : null}
         {onOpen ? <ContextMenuSeparator /> : null}
-        {!isFixed && onEditStart ? (
-          <ContextMenuItem onClick={onEditStart}>
-            <FilePenLine aria-hidden="true" />
-            <span>Rename</span>
-          </ContextMenuItem>
-        ) : null}
         {!isFixed ? (
           <ContextMenuItem disabled={!canMoveUp} onClick={onMoveUp}>
             <ArrowUp aria-hidden="true" />
@@ -612,59 +582,7 @@ function ExplorerRow({
             <span>Move down</span>
           </ContextMenuItem>
         ) : null}
-        {!isFixed && onDelete ? <ContextMenuSeparator /> : null}
-        {!isFixed && onDelete ? (
-          <ContextMenuItem onClick={onDelete} variant="destructive">
-            <Trash2 aria-hidden="true" />
-            <span>Delete</span>
-          </ContextMenuItem>
-        ) : null}
       </ContextMenuContent>
     </ContextMenu>
   );
-}
-
-function createRootNode(
-  type: RootNodeType,
-  title = defaultNodeTitle(type),
-  children: SectionChildNode[] = [],
-): RootNode {
-  const id = crypto.randomUUID();
-
-  if (type === "section") {
-    return {
-      children,
-      id,
-      title,
-      type,
-    };
-  }
-
-  return {
-    id,
-    title,
-    type,
-  };
-}
-
-function createSectionChildNode(
-  type: SectionChildNodeType,
-  title = defaultNodeTitle(type),
-): SectionChildNode {
-  return {
-    id: crypto.randomUUID(),
-    title,
-    type,
-  };
-}
-
-function defaultNodeTitle(type: RootNodeType | SectionChildNodeType) {
-  switch (type) {
-    case "document":
-      return "Untitled document";
-    case "section":
-      return "Untitled section";
-    case "test":
-      return "Untitled test";
-  }
 }

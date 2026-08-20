@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { queryClient } from "@/lib/query-client";
 import type { DraftEditorRecord, DraftEditorSnapshot } from "@/lib/draft-editor-types";
+import type { CourseSectionPreview } from "@/lib/course-package";
 import {
   loadDraftEditorRecord,
   saveDraftEditorRecord,
@@ -19,9 +20,15 @@ export function useDraftEditorRecordQuery(courseId: string | undefined) {
   });
 }
 
+type SaveDraftEditorRecordVariables = {
+  courseSections: CourseSectionPreview[];
+  snapshot: DraftEditorSnapshot;
+};
+
 export function useSaveDraftEditorRecordMutation(courseId: string | undefined) {
-  return useMutation<DraftEditorRecord, Error, DraftEditorSnapshot>({
-    mutationFn: (snapshot) => saveDraftEditorRecord(snapshot),
+  return useMutation<DraftEditorRecord, Error, SaveDraftEditorRecordVariables>({
+    mutationFn: ({ courseSections, snapshot }) =>
+      saveDraftEditorRecord(snapshot, { courseSections }),
     onSuccess: (record) => {
       if (!courseId) {
         return;

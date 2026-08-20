@@ -68,17 +68,43 @@ The layout under `courses/<course-id>/` is a contract between the reader
 ([electron/course-paths.ts](../electron/course-paths.ts:1)), and the types in
 `src/lib/course-package.ts`:
 
+Courses live at `app.getPath('userData')/courses` at runtime — **not** in the repo's
+`courses/` directory, which is the bundled seed copied in on first run
+(`bundledSeedCourseIds` in `course-paths.ts`, tracked by
+`courses/.bundled-seed-state.json`).
+
 ```
-courses/<course-id>/course.json
+courses/<course-id>/course.json                              # published manifest
 courses/<course-id>/<section>/section.json
 courses/<course-id>/<section>/<lesson>.json
+courses/<course-id>/<section>/<test>.json                    # optional, one per lesson
 courses/<course-id>/<section>/locales/<locale>/<lesson>.md
+courses/<course-id>/draft/course.json                        # draft manifest
+courses/<course-id>/draft/<section>/...
 ```
 
+A test file is a sibling of the lesson it belongs to, in the same section directory, with
+its filename fully derived from the lesson's: `lesson-01-foo.json` pairs with
+`test-01-foo.json`. This derivation (`resolveTestIdForLesson` /
+`resolveLessonIdForTest` in [src/lib/course-test-id.ts](../src/lib/course-test-id.ts:1)) is
+the only thing that ties a test to its lesson — there is no `testId` field stored
+anywhere, and a test has no independent identity or title. A lesson without a test simply
+has no `test-XX-*.json` file; `CourseLesson.test` is `null` in that case.
+
+Drafts live in a `draft/` subdirectory of the course root, so one course id can hold both
+a published version and an in-progress draft. Writers resolve it via
+`getDraftDirectoryPath()`; the draft manifest carries `status: "draft"` and every mutation
+rejects if the manifest says otherwise.
+
 Per [docs/persistence-notes.md](persistence-notes.md:1) this format is also the future
-sharing/publishing unit, so it is the same on-disk shape for drafts and published
-courses. Changing it is a migration, not a refactor: existing course directories on
-users' disks already use the current layout.
+sharing/publishing unit, so drafts and published courses use the same package shape.
+Changing it is a migration, not a refactor: existing course directories in users'
+`userData` already use the current layout.
+
+The generated manifest carries `publisher: { id: "matko", displayName: "matko" }` and
+`distribution: "local"` as placeholders. Those are the fields the peer-to-peer work has to
+fill with a real publisher key — see
+[pear-integration-notes.md](pear-integration-notes.md:1).
 
 ## 5. Design-system tier direction
 
@@ -86,9 +112,11 @@ users' disks already use the current layout.
 `@/components/ui/*` — never feature components or pages. Enforced by
 `no-restricted-imports` in [.eslintrc.cjs](../.eslintrc.cjs:1).
 
-Known leak: `src/components/ui/tag.tsx` imports `CourseTagColor` from
-`@/lib/course-tags`, putting a domain concept inside the design system. Type-only, so
-harmless today, but it is the direction that erodes the boundary.
+`src/components/ui/tag.tsx` owns the canonical tag color palette as its `cva` variant
+keys (`TagColor`, derived via `VariantProps`); `src/lib/course-tags.ts`'s `CourseTagColor`
+is a type alias of it. This is the correct direction — the domain type narrows to what the
+design-system primitive supports, not the reverse — so it's not a tier violation despite
+`lib` importing from `ui`; the restriction only runs the other way.
 
 ## 6. Build output paths
 

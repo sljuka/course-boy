@@ -2,11 +2,17 @@ import { ipcRenderer, contextBridge } from 'electron'
 import type {
   CreateCourseDraftInput,
   CreateCourseDraftResult,
+  CreateCourseLessonInput,
+  CreateCourseLessonResult,
   CreateCourseSectionInput,
   CreateCourseSectionResult,
   CourseDetails,
   CourseSummary,
+  GetLessonTestDraftInput,
+  SaveLessonTestInput,
+  SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
+  UpdateLessonContentInput,
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 import type { UserPreferences } from '../src/lib/preferences'
@@ -30,8 +36,20 @@ contextBridge.exposeInMainWorld('courses', {
   createSection(input: CreateCourseSectionInput) {
     return ipcRenderer.invoke('courses:create-section', input) as Promise<CreateCourseSectionResult>
   },
+  createLesson(input: CreateCourseLessonInput) {
+    return ipcRenderer.invoke('courses:create-lesson', input) as Promise<CreateCourseLessonResult>
+  },
   updateDraftMetadata(input: UpdateCourseDraftMetadataInput) {
     return ipcRenderer.invoke('courses:update-draft-metadata', input) as Promise<void>
+  },
+  updateLessonContent(input: UpdateLessonContentInput) {
+    return ipcRenderer.invoke('courses:update-lesson-content', input) as Promise<void>
+  },
+  saveLessonTest(input: SaveLessonTestInput) {
+    return ipcRenderer.invoke('courses:save-lesson-test', input) as Promise<void>
+  },
+  getLessonTestDraft(input: GetLessonTestDraftInput) {
+    return ipcRenderer.invoke('courses:get-lesson-test-draft', input) as Promise<SharedTestDefinition | null>
   },
   get(courseId: string, locale?: Locale) {
     return ipcRenderer.invoke('courses:get', courseId, locale) as Promise<CourseDetails | null>

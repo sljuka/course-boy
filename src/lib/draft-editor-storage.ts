@@ -6,8 +6,11 @@ import type {
   DraftSectionDraft,
 } from "@/lib/draft-editor-types";
 import { createInitialDocumentBlocks } from "@/components/editor-prototype/editor-prototype-types";
-import type { LocalizedCourseMetadata } from "@/lib/course-package";
+import { toSharedTestDefinition } from "@/components/test-editor-prototype-persistence";
+import type { TestEditorState } from "@/components/test-editor-prototype-types";
+import type { CourseSectionPreview, LocalizedCourseMetadata } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
+import { blocksToMarkdown } from "@/lib/lesson-content-markdown";
 import { normalizeCourseTagLabel } from "@/lib/course-tags";
 
 type LegacyDraftEditorSnapshot = {
@@ -188,7 +191,41 @@ export async function loadDraftEditorRecord(courseId: string) {
   };
 }
 
-export async function saveDraftEditorRecord(snapshot: DraftEditorSnapshot) {
+function buildSectionIdByLessonId(courseSections: CourseSectionPreview[]) {
+  const sectionIdByLessonId = new Map<string, string>();
+
+  for (const section of courseSections) {
+    for (const lesson of section.lessons) {
+      sectionIdByLessonId.set(lesson.id, section.id);
+    }
+  }
+
+  return sectionIdByLessonId;
+}
+
+function diffAndDispatch<T>(
+  previous: Record<string, T>,
+  next: Record<string, T>,
+  dispatch: (key: string, value: T) => Promise<void> | void,
+): Promise<void>[] {
+  return Object.entries(next)
+    .filter(([key, value]) => JSON.stringify(previous[key]) !== JSON.stringify(value))
+    .map(([key, value]) => (async () => dispatch(key, value))());
+}
+
+function toMarkdownLocales(documentDraft: DraftDocumentDraft) {
+  return Object.fromEntries(
+    Object.entries(documentDraft.locales).map(([locale, localeDraft]) => [
+      locale,
+      { body: blocksToMarkdown(localeDraft!.blocks) },
+    ]),
+  );
+}
+
+export async function saveDraftEditorRecord(
+  snapshot: DraftEditorSnapshot,
+  context: { courseSections: CourseSectionPreview[] },
+) {
   const previousRecord = await loadDraftEditorRecord(snapshot.courseId);
   const persistedDescriptiveTags = snapshot.descriptiveTags.filter(
     (tag) => normalizeCourseTagLabel(tag.label).length > 0,
@@ -208,6 +245,49 @@ export async function saveDraftEditorRecord(snapshot: DraftEditorSnapshot) {
       supportedLocales: snapshot.supportedLocales,
     });
   }
+
+  const sectionIdByLessonId = buildSectionIdByLessonId(context.courseSections);
+  const previousDocumentDrafts = previousRecord?.snapshot.documentDrafts ?? {};
+  const previousTestDrafts = previousRecord?.snapshot.testDrafts ?? {};
+
+  await Promise.all([
+    ...diffAndDispatch<DraftDocumentDraft>(
+      previousDocumentDrafts,
+      snapshot.documentDrafts,
+      (lessonId, documentDraft) => {
+        const sectionId = sectionIdByLessonId.get(lessonId);
+
+        if (!sectionId) {
+          return;
+        }
+
+        return window.courses.updateLessonContent({
+          courseId: snapshot.courseId,
+          lessonId,
+          locales: toMarkdownLocales(documentDraft),
+          sectionId,
+        });
+      },
+    ),
+    ...diffAndDispatch<TestEditorState>(
+      previousTestDrafts,
+      snapshot.testDrafts,
+      (lessonId, testState) => {
+        const sectionId = sectionIdByLessonId.get(lessonId);
+
+        if (!sectionId) {
+          return;
+        }
+
+        return window.courses.saveLessonTest({
+          courseId: snapshot.courseId,
+          lessonId,
+          sectionId,
+          test: toSharedTestDefinition(testState),
+        });
+      },
+    ),
+  ]);
 
   const nextRecord: DraftEditorRecord = {
     savedAt: new Date().toISOString(),

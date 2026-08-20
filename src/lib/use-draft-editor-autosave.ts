@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSaveDraftEditorRecordMutation } from "@/lib/draft-editor-queries";
 import type { DraftEditorRecord, DraftEditorSnapshot } from "@/lib/draft-editor-types";
+import type { CourseSectionPreview } from "@/lib/course-package";
 
 type DraftAutosaveStatus = "error" | "idle" | "dirty" | "saved" | "saving";
 const AUTOSAVE_DEBOUNCE_MS = 3000;
@@ -10,23 +11,50 @@ function serializeSnapshot(snapshot: DraftEditorSnapshot | null) {
   return snapshot ? JSON.stringify(snapshot) : null;
 }
 
+function serializeWithoutDocumentDrafts(snapshot: DraftEditorSnapshot) {
+  const { documentDrafts: _documentDrafts, ...rest } = snapshot;
+
+  return JSON.stringify(rest);
+}
+
+function isDocumentOnlyChange(
+  previous: DraftEditorSnapshot | null,
+  next: DraftEditorSnapshot,
+) {
+  if (!previous) {
+    return false;
+  }
+
+  return (
+    serializeWithoutDocumentDrafts(previous) === serializeWithoutDocumentDrafts(next)
+  );
+}
+
 export function useDraftEditorAutosave({
   courseId,
+  courseSections,
   initialRecord,
   isReady,
   snapshot,
 }: {
   courseId: string | undefined;
+  courseSections: CourseSectionPreview[];
   initialRecord: DraftEditorRecord | null | undefined;
   isReady: boolean;
   snapshot: DraftEditorSnapshot | null;
 }) {
   const saveMutation = useSaveDraftEditorRecordMutation(courseId);
+  const courseSectionsRef = useRef(courseSections);
+
+  useEffect(() => {
+    courseSectionsRef.current = courseSections;
+  }, [courseSections]);
   const [status, setStatus] = useState<DraftAutosaveStatus>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [willAutosave, setWillAutosave] = useState(false);
   const latestSnapshotRef = useRef<DraftEditorSnapshot | null>(snapshot);
-  const lastSavedSerializedRef = useRef<string | null>(null);
+  const lastSavedSnapshotRef = useRef<DraftEditorSnapshot | null>(null);
   const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -34,10 +62,11 @@ export function useDraftEditorAutosave({
   }, [snapshot]);
 
   useEffect(() => {
-    lastSavedSerializedRef.current = serializeSnapshot(initialRecord?.snapshot ?? null);
+    lastSavedSnapshotRef.current = initialRecord?.snapshot ?? null;
     setLastSavedAt(initialRecord?.savedAt ?? null);
     setErrorMessage(null);
     setStatus(initialRecord ? "saved" : "idle");
+    setWillAutosave(false);
   }, [courseId, initialRecord]);
 
   const clearScheduledSave = useCallback(() => {
@@ -45,19 +74,23 @@ export function useDraftEditorAutosave({
       window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
+    setWillAutosave(false);
   }, []);
 
   const persistSnapshot = useCallback((nextSnapshot: DraftEditorSnapshot) => {
     setStatus("saving");
     setErrorMessage(null);
 
-    saveMutation.mutate(nextSnapshot, {
+    saveMutation.mutate({
+      courseSections: courseSectionsRef.current,
+      snapshot: nextSnapshot,
+    }, {
       onError: (error) => {
         setErrorMessage(error.message);
         setStatus("error");
       },
       onSuccess: (record) => {
-        lastSavedSerializedRef.current = serializeSnapshot(record.snapshot);
+        lastSavedSnapshotRef.current = record.snapshot;
         setLastSavedAt(record.savedAt);
 
         if (
@@ -80,10 +113,11 @@ export function useDraftEditorAutosave({
       return;
     }
 
-    const nextSerialized = serializeSnapshot(latestSnapshotRef.current);
-
-    if (nextSerialized === lastSavedSerializedRef.current) {
-      setStatus(lastSavedSerializedRef.current ? "saved" : "idle");
+    if (
+      serializeSnapshot(latestSnapshotRef.current) ===
+      serializeSnapshot(lastSavedSnapshotRef.current)
+    ) {
+      setStatus(lastSavedSnapshotRef.current ? "saved" : "idle");
       return;
     }
 
@@ -95,16 +129,21 @@ export function useDraftEditorAutosave({
       return;
     }
 
-    const nextSerialized = serializeSnapshot(snapshot);
-
-    if (nextSerialized === lastSavedSerializedRef.current) {
-      setStatus(lastSavedSerializedRef.current ? "saved" : "idle");
+    if (serializeSnapshot(snapshot) === serializeSnapshot(lastSavedSnapshotRef.current)) {
+      setStatus(lastSavedSnapshotRef.current ? "saved" : "idle");
+      clearScheduledSave();
       return;
     }
 
     setStatus("dirty");
     setErrorMessage(null);
     clearScheduledSave();
+
+    if (!isDocumentOnlyChange(lastSavedSnapshotRef.current, snapshot)) {
+      return;
+    }
+
+    setWillAutosave(true);
     saveTimerRef.current = window.setTimeout(() => {
       persistSnapshot(snapshot);
     }, AUTOSAVE_DEBOUNCE_MS);
@@ -121,7 +160,8 @@ export function useDraftEditorAutosave({
       lastSavedAt,
       saveNow,
       status,
+      willAutosave,
     }),
-    [errorMessage, isSaving, lastSavedAt, saveNow, status],
+    [errorMessage, isSaving, lastSavedAt, saveNow, status, willAutosave],
   );
 }

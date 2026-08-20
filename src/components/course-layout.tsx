@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link, Outlet } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
@@ -13,6 +13,15 @@ import { OnboardingGuard } from "@/components/onboarding-guard";
 import { Button } from "@/components/ui/button";
 import { EditorStatusBar } from "@/components/ui/editor-status-bar";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { useDraftEditorRecordQuery } from "@/lib/draft-editor-queries";
@@ -20,7 +29,10 @@ import type {
   ContentRating,
   DraftEditorSnapshot,
 } from "@/lib/draft-editor-types";
-import type { LocalizedCourseMetadata } from "@/lib/course-package";
+import type {
+  CourseSectionPreview,
+  LocalizedCourseMetadata,
+} from "@/lib/course-package";
 import { useDraftEditorAutosave } from "@/lib/use-draft-editor-autosave";
 import { useAppState } from "@/lib/use-app-state";
 import type { Locale } from "@/lib/i18n";
@@ -29,6 +41,7 @@ type CourseLayoutOutletContext = {
   contentRating: ContentRating;
   courseDescriptiveTags: CourseTagDefinition[];
   courseDescription: string;
+  courseSections: CourseSectionPreview[];
   courseTitle: string;
   defaultLocale: Locale;
   initialDraftSnapshot: DraftEditorSnapshot | null;
@@ -116,6 +129,11 @@ function resolveHydratedContentRating(
 
 export const CourseLayout = () => {
   const { courseId } = useParams<{ courseId: string }>();
+
+  return <CourseLayoutForCourse courseId={courseId} key={courseId ?? "none"} />;
+};
+
+const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) => {
   const { locale } = useAppState();
   const [contentRating, setContentRating] = useState<ContentRating>("all-ages");
   const [defaultLocale, setDefaultLocale] = useState<Locale>(locale);
@@ -123,7 +141,6 @@ export const CourseLayout = () => {
     Partial<Record<Locale, LocalizedCourseMetadata>>
   >({});
   const [supportedLocales, setSupportedLocales] = useState<Locale[]>([locale]);
-  const [isExplorerOpen, setIsExplorerOpen] = useState(false);
   const [draftSnapshot, setDraftSnapshotState] = useState<DraftEditorSnapshot | null>(
     null,
   );
@@ -140,6 +157,7 @@ export const CourseLayout = () => {
   const initialDraftSnapshotLoaded = draftEditorRecordQuery.isSuccess;
   const autosave = useDraftEditorAutosave({
     courseId,
+    courseSections: courseDetailsQuery.data?.sections ?? [],
     initialRecord: draftEditorRecordQuery.data,
     isReady: initialDraftSnapshotLoaded && draftSnapshot !== null,
     snapshot: draftSnapshot,
@@ -288,6 +306,18 @@ export const CourseLayout = () => {
     setEditorStatusAction(null);
   }, [selectedNode.id]);
 
+  const saveNowRef = useRef(autosave.saveNow);
+
+  useEffect(() => {
+    saveNowRef.current = autosave.saveNow;
+  }, [autosave.saveNow]);
+
+  useEffect(() => {
+    return () => {
+      saveNowRef.current();
+    };
+  }, []);
+
   const setDraftSnapshot = useCallback((snapshot: DraftEditorSnapshot) => {
     setDraftSnapshotState((currentSnapshot) => {
       if (JSON.stringify(currentSnapshot) === JSON.stringify(snapshot)) {
@@ -298,62 +328,22 @@ export const CourseLayout = () => {
     });
   }, []);
 
-  function handleSelectionChange(selection: StructureSelection) {
-    setSelectedNode(selection);
-    setIsExplorerOpen(false);
-  }
-
   return (
     <OnboardingGuard>
-      <div className="page-fade-in flex min-h-screen flex-1 bg-white">
-        {isExplorerOpen ? (
-          <button
-            aria-label="Close explorer overlay"
-            className="fixed inset-0 z-40 bg-stone-950/25 backdrop-blur-sm lg:hidden"
-            onClick={() => setIsExplorerOpen(false)}
-            type="button"
-          />
-        ) : null}
-        <aside
-          className={[
-            "fixed left-0 top-0 z-50 h-dvh w-[22rem] max-w-[calc(100vw-3rem)] flex-col border-r border-stone-200 bg-stone-100 transition-transform duration-200 ease-out lg:static lg:z-auto lg:flex lg:h-auto lg:w-full lg:max-w-[22rem] lg:shrink-0 lg:translate-x-0",
-            isExplorerOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-          ].join(" ")}
-        >
-          <div className="border-b border-stone-200 bg-white px-4 py-4">
-            <Link
-              className="inline-flex items-center gap-2 text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
-              to="/drafts"
-            >
-              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-              <span>Back to drafts</span>
-            </Link>
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto p-3">
-            <Eyebrow className="px-1 pb-3">Explorer</Eyebrow>
-            <CourseStructurePrototype
-              compact
-              courseTitle={courseTitle || "Course"}
-              onSelectionChange={handleSelectionChange}
-              selectedNodeId={selectedNode.id}
-              showFrameHeader={false}
-            />
-          </div>
-        </aside>
-        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-white">
-          <div className="sticky left-0 top-0 z-30 flex items-center justify-start border-b border-stone-200/80 bg-white px-4 py-2 lg:hidden">
-            <Button
-              className="gap-2 border-stone-200 bg-white text-stone-700 shadow-[0_16px_40px_-28px_rgba(28,25,23,0.35)] hover:bg-stone-100 hover:text-stone-900"
-              onClick={() => setIsExplorerOpen((current) => !current)}
-              variant="secondary"
-            >
-              {isExplorerOpen ? (
-                <PanelLeftClose aria-hidden="true" className="h-4 w-4" />
-              ) : (
-                <PanelLeftOpen aria-hidden="true" className="h-4 w-4" />
-              )}
-              <span>Explorer</span>
-            </Button>
+      <SidebarProvider
+        className="page-fade-in bg-white"
+        style={{ "--sidebar-width": "22rem" } as React.CSSProperties}
+      >
+        <ExplorerSidebar
+          courseId={courseId ?? ""}
+          courseTitle={courseTitle}
+          onSelectionChange={setSelectedNode}
+          sections={courseDetailsQuery.data?.sections ?? []}
+          selectedNodeId={selectedNode.id}
+        />
+        <SidebarInset>
+          <div className="sticky left-0 top-0 z-30 flex items-center justify-start border-b border-stone-200/80 bg-white px-4 py-2 md:hidden">
+            <SidebarTrigger className="h-10 w-10 rounded-full border-stone-200 bg-white shadow-[0_12px_30px_-20px_rgba(41,37,36,0.35)]" />
           </div>
           <div className="min-h-0 flex-1 overflow-auto pb-20">
             <Outlet
@@ -363,6 +353,7 @@ export const CourseLayout = () => {
                   courseDescriptiveTags:
                     courseDetailsQuery.data?.descriptiveTags ?? [],
                   courseDescription,
+                  courseSections: courseDetailsQuery.data?.sections ?? [],
                   courseTitle,
                   defaultLocale,
                   initialDraftSnapshot,
@@ -382,14 +373,25 @@ export const CourseLayout = () => {
             />
           </div>
           <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20">
-            <div className="pointer-events-auto lg:pl-[22rem]">
+            <div className="pointer-events-auto md:pl-(--sidebar-width)">
               <EditorStatusBar
-                action={editorStatusAction}
+                action={
+                  <>
+                    {autosave.status === "dirty" && !autosave.willAutosave ? (
+                      <Button onClick={autosave.saveNow} size="sm">
+                        Save
+                      </Button>
+                    ) : null}
+                    {editorStatusAction}
+                  </>
+                }
                 message={
                   draftEditorRecordQuery.isLoading
                     ? "Loading draft…"
                     : autosave.status === "dirty"
-                      ? "Updates detected"
+                      ? autosave.willAutosave
+                        ? "Saving soon…"
+                        : "Unsaved changes"
                     : autosave.status === "saving"
                       ? "Saving…"
                       : autosave.status === "error"
@@ -409,8 +411,55 @@ export const CourseLayout = () => {
               />
             </div>
           </div>
-        </main>
-      </div>
+        </SidebarInset>
+      </SidebarProvider>
     </OnboardingGuard>
   );
 };
+
+function ExplorerSidebar({
+  courseId,
+  courseTitle,
+  onSelectionChange,
+  sections,
+  selectedNodeId,
+}: {
+  courseId: string;
+  courseTitle: string;
+  onSelectionChange: (selection: StructureSelection) => void;
+  sections: CourseSectionPreview[];
+  selectedNodeId: string;
+}) {
+  const { setOpenMobile } = useSidebar();
+
+  function handleSelectionChange(selection: StructureSelection) {
+    onSelectionChange(selection);
+    setOpenMobile(false);
+  }
+
+  return (
+    <Sidebar collapsible="offcanvas">
+      <SidebarHeader className="border-b border-stone-200 bg-white px-4 py-4">
+        <Link
+          className="inline-flex items-center gap-2 text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
+          to="/drafts"
+        >
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          <span>Back to drafts</span>
+        </Link>
+      </SidebarHeader>
+      <SidebarContent className="bg-stone-100 p-3">
+        <Eyebrow className="px-1 pb-3">Explorer</Eyebrow>
+        <CourseStructurePrototype
+          compact
+          courseId={courseId}
+          courseTitle={courseTitle || "Course"}
+          onSelectionChange={handleSelectionChange}
+          sections={sections}
+          selectedNodeId={selectedNodeId}
+          showFrameHeader={false}
+        />
+      </SidebarContent>
+    </Sidebar>
+  );
+}

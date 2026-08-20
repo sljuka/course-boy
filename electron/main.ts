@@ -5,15 +5,23 @@ import Store from 'electron-store'
 import { getCourseDetails, listCourses } from './course-registry'
 import {
   createLocalCourseDraft,
+  createLocalCourseLesson,
   createLocalCourseSection,
   ensureLocalCoursesRoot,
+  getLocalCourseLessonTestDraft,
   removeLocalCourse,
   updateLocalCourseDraftMetadata,
+  updateLocalCourseLessonContent,
+  updateLocalCourseLessonTest,
 } from './course-paths'
 import type {
   CreateCourseDraftInput,
+  CreateCourseLessonInput,
   CreateCourseSectionInput,
+  GetLessonTestDraftInput,
+  SaveLessonTestInput,
   UpdateCourseDraftMetadataInput,
+  UpdateLessonContentInput,
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 
@@ -106,6 +114,22 @@ ipcMain.handle('courses:create-draft', (_event, input: CreateCourseDraftInput) =
 
 ipcMain.handle('courses:create-section', (_event, input: CreateCourseSectionInput) => {
   return createLocalCourseSection(input)
+})
+
+ipcMain.handle('courses:create-lesson', (_event, input: CreateCourseLessonInput) => {
+  return createLocalCourseLesson(input)
+})
+
+ipcMain.handle('courses:update-lesson-content', (_event, input: UpdateLessonContentInput) => {
+  return updateLocalCourseLessonContent(input)
+})
+
+ipcMain.handle('courses:save-lesson-test', (_event, input: SaveLessonTestInput) => {
+  return updateLocalCourseLessonTest(input)
+})
+
+ipcMain.handle('courses:get-lesson-test-draft', (_event, input: GetLessonTestDraftInput) => {
+  return getLocalCourseLessonTestDraft(input)
 })
 
 ipcMain.handle(

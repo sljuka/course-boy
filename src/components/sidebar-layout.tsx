@@ -18,7 +18,7 @@ export const SidebarLayout = () => {
                 <Route element={<HomePageActions />} path="/" />
               </Routes>
             </AppHeader>
-            <main className="min-h-screen flex justify-center flex-1 border-l border-stone-200 bg-white">
+            <main className="min-h-screen flex justify-center flex-1 bg-white">
               <div className="w-full lg:max-w-3xl">
                 <Outlet />
               </div>

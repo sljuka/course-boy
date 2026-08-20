@@ -392,7 +392,13 @@ function collectFormulaVariables(node: FormulaAstNode): string[] {
   }
 }
 
-function resolveSampleValue(variable: PromptVariable): number {
+type VariableBounds = {
+  max: number;
+  min: number;
+  parity?: "even" | "odd";
+};
+
+function resolveVariableBounds(variable: PromptVariable): VariableBounds {
   const minValueConstraints = variable.constraints.filter(
     (constraint) => constraint.type === "min-value" && constraint.value !== null,
   );
@@ -428,12 +434,23 @@ function resolveSampleValue(variable: PromptVariable): number {
     );
   }
 
-  for (let candidate = resolvedMin; candidate <= resolvedMax; candidate += 1) {
-    if (hasEvenConstraint && candidate % 2 !== 0) {
+  return {
+    max: resolvedMax,
+    min: resolvedMin,
+    ...(hasEvenConstraint ? { parity: "even" as const } : {}),
+    ...(hasOddConstraint ? { parity: "odd" as const } : {}),
+  };
+}
+
+function resolveSampleValue(variable: PromptVariable): number {
+  const { max, min, parity } = resolveVariableBounds(variable);
+
+  for (let candidate = min; candidate <= max; candidate += 1) {
+    if (parity === "even" && candidate % 2 !== 0) {
       continue;
     }
 
-    if (hasOddConstraint && candidate % 2 === 0) {
+    if (parity === "odd" && candidate % 2 === 0) {
       continue;
     }
 
@@ -530,6 +547,7 @@ export {
   normalizeDraftTestData,
   removeConstraintFromVariable,
   removeVariableFromExercise,
+  resolveVariableBounds,
   syncExercisePrompt,
   toggleExerciseTag,
   validateExerciseSolution,

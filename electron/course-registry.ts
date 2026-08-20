@@ -4,7 +4,6 @@ import path from "node:path";
 import type {
   ContentRating,
   CourseTest,
-  CourseTestStructureRule,
   CourseExerciseSolutionSpace,
   CourseExerciseVariable,
   CourseLesson,
@@ -18,8 +17,10 @@ import type {
   LocalizedCourseMetadata,
   LocalizedLessonMetadata,
   LocalizedSectionMetadata,
+  SharedTestDefinition,
   StoredSectionDefinition,
 } from "../src/lib/course-package";
+import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import type { Locale } from "../src/lib/i18n";
 import {
   formatCourseVersion,
@@ -51,23 +52,6 @@ type SharedSectionDefinition = {
   locales: Record<Locale, LocalizedSectionMetadata>;
   lessonIds: string[];
   slug: string;
-};
-
-type SharedTestExerciseDefinition = {
-  locales: Record<Locale, { hint?: string; prompt: string }>;
-  solution: {
-    formula: string;
-    precision: number;
-    space?: CourseExerciseSolutionSpace;
-  };
-  tags: string[];
-  variables: Record<string, CourseExerciseVariable>;
-};
-
-type SharedTestDefinition = {
-  exercises: SharedTestExerciseDefinition[];
-  structure?: CourseTestStructureRule[];
-  template: string;
 };
 
 const allowedIconExtensions = new Set([".png", ".jpg", ".jpeg", ".webp", ".svg"]);
@@ -250,7 +234,27 @@ function isStoredSectionDefinition(
   );
 }
 
-function isSharedTestDefinition(
+function isVariableRangeSatisfiable(
+  min: number,
+  max: number,
+  parity: "even" | "odd" | undefined,
+): boolean {
+  if (!parity) {
+    return true;
+  }
+
+  const wantsEven = parity === "even";
+
+  for (let value = min; value <= max; value += 1) {
+    if (value % 2 === 0 === wantsEven) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function isSharedTestDefinition(
   value: unknown,
 ): value is SharedTestDefinition {
   if (!value || typeof value !== "object") {
@@ -326,10 +330,22 @@ function isSharedTestDefinition(
 
         const typedVariable = variable as Partial<CourseExerciseVariable>;
 
-        return (
-          typedVariable.type === "integer" &&
-          typeof typedVariable.min === "number" &&
-          typeof typedVariable.max === "number"
+        if (
+          typedVariable.type !== "integer" ||
+          typeof typedVariable.min !== "number" ||
+          typeof typedVariable.max !== "number" ||
+          typedVariable.min > typedVariable.max ||
+          (typeof typedVariable.parity !== "undefined" &&
+            typedVariable.parity !== "even" &&
+            typedVariable.parity !== "odd")
+        ) {
+          return false;
+        }
+
+        return isVariableRangeSatisfiable(
+          typedVariable.min,
+          typedVariable.max,
+          typedVariable.parity,
         );
       })
     ) {
@@ -661,10 +677,6 @@ async function readLessonTest(
   };
 }
 
-function resolveTestIdForLesson(lessonId: string): string {
-  return lessonId.replace(/^lesson-/, "test-");
-}
-
 async function readCourseLesson(
   courseRecord: CourseRecord,
   sectionId: string,
@@ -833,6 +845,7 @@ async function readCourseSections(
             readCourseLesson(courseRecord, section.id, lessonId, preferredLocale),
           ),
         ),
+        locales: section.locales,
         title: localizedSectionMetadata?.title ?? formatSectionTitle(section.slug),
       };
     }),

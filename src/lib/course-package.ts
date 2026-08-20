@@ -37,6 +37,7 @@ export type LocalizedSectionMetadata = {
 export type CourseExerciseVariable = {
   max: number;
   min: number;
+  parity?: "even" | "odd";
   type: "integer";
 };
 
@@ -64,6 +65,28 @@ export type CourseTest = {
   structure?: CourseTestStructureRule[];
 };
 
+/**
+ * On-disk shape of a `test-XX-slug.json` file — the canonical, all-locales
+ * form. `readLessonTest` collapses this to a single-locale `CourseTest` for
+ * the player; the draft editor needs this richer shape directly.
+ */
+export type SharedTestExerciseDefinition = {
+  locales: Partial<Record<Locale, { hint?: string; prompt: string }>>;
+  solution: {
+    formula: string;
+    precision: number;
+    space?: CourseExerciseSolutionSpace;
+  };
+  tags: string[];
+  variables: Record<string, CourseExerciseVariable>;
+};
+
+export type SharedTestDefinition = {
+  exercises: SharedTestExerciseDefinition[];
+  structure?: CourseTestStructureRule[];
+  template: string;
+};
+
 export type LessonPreview = {
   description: string;
   id: string;
@@ -87,6 +110,7 @@ export type CourseSectionPreview = {
   description?: string;
   id: string;
   lessons: CourseLesson[];
+  locales: Record<Locale, LocalizedSectionMetadata>;
   title: string;
 };
 
@@ -138,6 +162,37 @@ export type CreateCourseSectionInput = {
 };
 
 export type CreateCourseSectionResult = {
+  sectionId: string;
+};
+
+export type CreateCourseLessonInput = {
+  courseId: string;
+  description?: string;
+  sectionId: string;
+  title: string;
+};
+
+export type CreateCourseLessonResult = {
+  lessonId: string;
+};
+
+export type UpdateLessonContentInput = {
+  courseId: string;
+  lessonId: string;
+  locales: Partial<Record<Locale, { body: string }>>;
+  sectionId: string;
+};
+
+export type SaveLessonTestInput = {
+  courseId: string;
+  lessonId: string;
+  sectionId: string;
+  test: SharedTestDefinition;
+};
+
+export type GetLessonTestDraftInput = {
+  courseId: string;
+  lessonId: string;
   sectionId: string;
 };
 

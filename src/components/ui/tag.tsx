@@ -1,8 +1,7 @@
 import * as React from "react";
-import { cva } from "class-variance-authority";
+import { cva, type VariantProps } from "class-variance-authority";
 
 import { Badge } from "@/components/ui/badge";
-import type { CourseTagColor } from "@/lib/course-tags";
 import { cn } from "@/lib/utils";
 
 const tagVariants = cva("", {
@@ -59,13 +58,15 @@ const tagVariants = cva("", {
   },
 });
 
+type TagColor = NonNullable<VariantProps<typeof tagVariants>["color"]>;
+
 function Tag({
   className,
   color,
   selected,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
-  color: CourseTagColor;
+  color: TagColor;
   selected?: boolean;
 }) {
   return (
@@ -77,3 +78,4 @@ function Tag({
 }
 
 export { Tag };
+export type { TagColor };

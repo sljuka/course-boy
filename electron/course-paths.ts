@@ -4,11 +4,18 @@ import { app } from "electron";
 import type {
   ContentRating,
   CreateCourseDraftInput,
+  CreateCourseLessonInput,
   CreateCourseSectionInput,
   CourseStatus,
   CourseManifest,
+  GetLessonTestDraftInput,
+  SaveLessonTestInput,
+  SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
+  UpdateLessonContentInput,
 } from "../src/lib/course-package";
+import { isSharedTestDefinition } from "./course-registry";
+import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import { locales, type Locale } from "../src/lib/i18n";
 import {
   createInitialCourseVersion,
@@ -205,6 +212,34 @@ function resolveCourseDirectoryPath(
   return resolvedCourseDirectoryPath;
 }
 
+async function writeFileAtomic(targetPath: string, contents: string): Promise<void> {
+  const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}`;
+
+  await fs.writeFile(tmpPath, contents);
+  await fs.rename(tmpPath, targetPath);
+}
+
+function resolveSectionDirectoryPath(
+  courseDirectoryPath: string,
+  sectionId: string,
+): string {
+  const sectionDirectoryPath = path.join(courseDirectoryPath, sectionId);
+  const resolvedSectionDirectoryPath = path.resolve(sectionDirectoryPath);
+  const relativeToCourseDirectory = path.relative(
+    courseDirectoryPath,
+    resolvedSectionDirectoryPath,
+  );
+
+  if (
+    relativeToCourseDirectory.startsWith("..") ||
+    path.isAbsolute(relativeToCourseDirectory)
+  ) {
+    throw new Error(`Invalid section id "${sectionId}"`);
+  }
+
+  return resolvedSectionDirectoryPath;
+}
+
 async function readCourseManifest(
   courseDirectoryPath: string,
 ): Promise<CourseManifest> {
@@ -301,6 +336,92 @@ async function resolveNextSectionId(courseDirectoryPath: string, title: string) 
   const slug = slugifyCourseName(title) || "untitled-section";
 
   return `section-${String(nextIndex).padStart(2, "0")}-${slug}`;
+}
+
+async function readStoredLocalizedTitle(
+  filePath: string,
+  locale: Locale,
+): Promise<string | null> {
+  try {
+    const fileContents = await fs.readFile(filePath, "utf8");
+    const parsed = JSON.parse(fileContents) as {
+      locales?: Record<string, { title?: string }>;
+    };
+
+    return parsed.locales?.[locale]?.title ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeTitleForComparison(title: string): string {
+  return title.trim().toLowerCase();
+}
+
+async function hasSiblingSectionWithTitle(
+  courseDirectoryPath: string,
+  defaultLocale: Locale,
+  title: string,
+): Promise<boolean> {
+  const directoryEntries = await fs.readdir(courseDirectoryPath, {
+    withFileTypes: true,
+  });
+  const sectionJsonPaths = directoryEntries
+    .filter(
+      (entry) => entry.isDirectory() && /^section-\d{2}-[a-z0-9-]+$/.test(entry.name),
+    )
+    .map((entry) => path.join(courseDirectoryPath, entry.name, "section.json"));
+  const titles = await Promise.all(
+    sectionJsonPaths.map((filePath) => readStoredLocalizedTitle(filePath, defaultLocale)),
+  );
+  const normalizedTarget = normalizeTitleForComparison(title);
+
+  return titles.some(
+    (existingTitle) =>
+      existingTitle !== null &&
+      normalizeTitleForComparison(existingTitle) === normalizedTarget,
+  );
+}
+
+async function hasSiblingLessonWithTitle(
+  sectionDirectoryPath: string,
+  defaultLocale: Locale,
+  title: string,
+): Promise<boolean> {
+  const directoryEntries = await fs.readdir(sectionDirectoryPath, {
+    withFileTypes: true,
+  });
+  const lessonJsonPaths = directoryEntries
+    .filter(
+      (entry) => entry.isFile() && /^lesson-\d{2}-[a-z0-9-]+\.json$/.test(entry.name),
+    )
+    .map((entry) => path.join(sectionDirectoryPath, entry.name));
+  const titles = await Promise.all(
+    lessonJsonPaths.map((filePath) => readStoredLocalizedTitle(filePath, defaultLocale)),
+  );
+  const normalizedTarget = normalizeTitleForComparison(title);
+
+  return titles.some(
+    (existingTitle) =>
+      existingTitle !== null &&
+      normalizeTitleForComparison(existingTitle) === normalizedTarget,
+  );
+}
+
+async function resolveNextLessonId(sectionDirectoryPath: string, title: string) {
+  const directoryEntries = await fs.readdir(sectionDirectoryPath, {
+    withFileTypes: true,
+  });
+  const lessonIndexes = directoryEntries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name.match(/^lesson-(\d{2})-[a-z0-9-]+\.json$/))
+    .filter((match): match is RegExpMatchArray => Boolean(match))
+    .map((match) => Number.parseInt(match[1], 10))
+    .sort((left, right) => left - right);
+  const nextIndex = (lessonIndexes.at(-1) ?? 0) + 1;
+  const slug = slugifyCourseName(title) || "untitled-lesson";
+
+  return `lesson-${String(nextIndex).padStart(2, "0")}-${slug}`;
 }
 
 function normalizeSupportedLocales(
@@ -443,6 +564,16 @@ export async function createLocalCourseSection(
     throw new Error("Section title is required");
   }
 
+  if (
+    await hasSiblingSectionWithTitle(
+      courseDirectoryPath,
+      manifest.defaultLocale,
+      normalizedTitle,
+    )
+  ) {
+    throw new Error(`A section titled "${normalizedTitle}" already exists`);
+  }
+
   const sectionId = await resolveNextSectionId(courseDirectoryPath, normalizedTitle);
   const sectionDirectoryPath = path.join(courseDirectoryPath, sectionId);
   const defaultLocale = manifest.defaultLocale;
@@ -478,6 +609,221 @@ export async function createLocalCourseSection(
   });
 
   return { sectionId };
+}
+
+export async function createLocalCourseLesson(
+  input: CreateCourseLessonInput,
+): Promise<{ lessonId: string }> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+
+  try {
+    await fs.access(path.join(sectionDirectoryPath, "section.json"));
+  } catch {
+    throw new Error(`Section "${input.sectionId}" does not exist`);
+  }
+
+  const normalizedTitle = input.title.trim();
+  const normalizedDescription = input.description?.trim() ?? "";
+
+  if (!normalizedTitle) {
+    throw new Error("Lesson title is required");
+  }
+
+  if (
+    await hasSiblingLessonWithTitle(
+      sectionDirectoryPath,
+      manifest.defaultLocale,
+      normalizedTitle,
+    )
+  ) {
+    throw new Error(
+      `A document titled "${normalizedTitle}" already exists in this section`,
+    );
+  }
+
+  const lessonId = await resolveNextLessonId(sectionDirectoryPath, normalizedTitle);
+  const defaultLocale = manifest.defaultLocale;
+  const localizedLessonMetadata = Object.fromEntries(
+    manifest.supportedLocales.map((locale) => [
+      locale,
+      {
+        title: normalizedTitle,
+        description:
+          locale === defaultLocale ? normalizedDescription : "",
+      },
+    ]),
+  );
+  const nowIso = new Date().toISOString();
+
+  await writeFileAtomic(
+    path.join(sectionDirectoryPath, `${lessonId}.json`),
+    JSON.stringify(
+      {
+        id: lessonId,
+        slug: lessonId.replace(/^lesson-\d{2}-/, ""),
+        locales: localizedLessonMetadata,
+      },
+      null,
+      2,
+    ),
+  );
+
+  await Promise.all(
+    manifest.supportedLocales.map(async (locale) => {
+      const localeDirectoryPath = path.join(sectionDirectoryPath, "locales", locale);
+
+      await fs.mkdir(localeDirectoryPath, { recursive: true });
+      await writeFileAtomic(path.join(localeDirectoryPath, `${lessonId}.md`), "");
+    }),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: nowIso,
+  });
+
+  return { lessonId };
+}
+
+export async function updateLocalCourseLessonContent(
+  input: UpdateLessonContentInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+  const lessonDefinitionPath = path.join(sectionDirectoryPath, `${input.lessonId}.json`);
+
+  try {
+    await fs.access(lessonDefinitionPath);
+  } catch {
+    throw new Error(`Lesson "${input.lessonId}" does not exist`);
+  }
+
+  const localeEntries = Object.entries(input.locales) as [
+    Locale,
+    { body: string } | undefined,
+  ][];
+
+  await Promise.all(
+    localeEntries.map(async ([locale, localeContent]) => {
+      if (!localeContent) {
+        return;
+      }
+
+      const localeDirectoryPath = path.join(sectionDirectoryPath, "locales", locale);
+
+      await fs.mkdir(localeDirectoryPath, { recursive: true });
+      await writeFileAtomic(
+        path.join(localeDirectoryPath, `${input.lessonId}.md`),
+        localeContent.body,
+      );
+    }),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function updateLocalCourseLessonTest(
+  input: SaveLessonTestInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+
+  try {
+    await fs.access(path.join(sectionDirectoryPath, `${input.lessonId}.json`));
+  } catch {
+    throw new Error(`Lesson "${input.lessonId}" does not exist`);
+  }
+
+  if (!isSharedTestDefinition(input.test)) {
+    throw new Error("Test data is invalid");
+  }
+
+  const testId = resolveTestIdForLesson(input.lessonId);
+
+  await writeFileAtomic(
+    path.join(sectionDirectoryPath, `${testId}.json`),
+    JSON.stringify(input.test, null, 2),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function getLocalCourseLessonTestDraft(
+  input: GetLessonTestDraftInput,
+): Promise<SharedTestDefinition | null> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+  const testId = resolveTestIdForLesson(input.lessonId);
+  const testDefinitionPath = path.join(sectionDirectoryPath, `${testId}.json`);
+
+  let fileContents: string;
+
+  try {
+    fileContents = await fs.readFile(testDefinitionPath, "utf8");
+  } catch {
+    return null;
+  }
+
+  const parsedValue = JSON.parse(fileContents) as unknown;
+
+  if (!isSharedTestDefinition(parsedValue)) {
+    throw new Error(`Invalid JSON structure in ${testDefinitionPath}`);
+  }
+
+  return parsedValue;
 }
 
 export async function updateLocalCourseDraftMetadata(
