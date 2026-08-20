@@ -33,7 +33,8 @@
     "subtitle": "Pretraži instalirane kurseve po nazivu, opisu ili identifikatoru.",
     "testTile": "Test {{index}}",
     "title": "Pretraga kurseva",
-    "version": "Verzija {{version}}"
+    "version": "{{version}}",
+    "versionTooltip": "Verzija kursa"
   },
   "courseDescriptions": {
     "preSchoolDescription": "Rano učenje kroz igru, jezik, brojanje i kreativne aktivnosti.",
@@ -199,7 +200,9 @@
   "language": {
     "english": "English",
     "serbian": "Srpski",
-    "serbianCyrillic": "Српски"
+    "serbianCyrillic": "Српски",
+    "switchToCyrillic": "Prebaci na ćirilicu",
+    "switchToLatin": "Prebaci na latinicu"
   },
   "menu": {
     "about": "O aplikaciji",
@@ -312,17 +315,22 @@
     "searchPlaceholder": "Pretraži nacrte kurseva",
     "title": "Nacrti"
   },
+  "myCourses": {
+    "description": "Pregledaj objavljene kurseve dostupne na ovom uređaju.",
+    "empty": "Nijedan objavljeni kurs još ne odgovara ovoj pretrazi.",
+    "error": "Lista kurseva ne može da se učita.",
+    "searchPlaceholder": "Pretraži moje kurseve",
+    "title": "Moji kursevi"
+  },
   "sidebar": {
+    "appName": "Course boy",
     "createCourse": "Napravi novi kurs",
     "createCourseDescription": "Pokreni novi radni prostor za kurs i napravi njegovu strukturu, lekcije, testove i metapodatke.",
     "drafts": "Nacrti",
     "draftsDescription": "Pregledaj i nastavi uređivanje nacrta kurseva koji još nisu spremni za objavu.",
     "myCourses": "Moji kursevi",
-    "myCoursesDescription": "Pregledaj kurseve koje održavaš, ažuriraš ili objavljuješ sa ovog uređaja.",
-    "navigation": "Radni prostor",
+    "myWork": "Moj rad",
     "home": "Početna",
-    "prototype": "Prototip",
-    "prototype2": "Prototip 2",
     "title": "Nastavnički radni prostor"
   },
   "welcomeSubtitle": "Matko je otvorena mreža za kreiranje tutorijala, testova kao i rešavanje kreiranih testova na platformi ili papiru (testovi su pogodnog formata za štampanje). Nadamo se da će te naučiti nešto novo",

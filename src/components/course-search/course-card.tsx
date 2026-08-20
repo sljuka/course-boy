@@ -18,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CourseSummary } from "@/lib/course-package";
 import { getLocaleFlag } from "@/lib/locale-flags";
 
@@ -75,14 +76,18 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
           </CardAction>
           <div className="flex min-w-0 flex-wrap gap-2">
             <Badge className="max-w-full break-all">{course.id}</Badge>
-            <Badge className="font-normal" variant="secondary">
-              {t("courseSearch.version", { version: course.version })}
-            </Badge>
-            <Badge className="max-w-full">
-              <span
-                aria-label={t("courseSearch.localesLabel")}
-                className="text-lg leading-none"
-              >
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Badge className="font-normal" variant="secondary">
+                    {t("courseSearch.version", { version: course.version })}
+                  </Badge>
+                }
+              />
+              <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
+            </Tooltip>
+            <Badge className="max-w-full" variant="secondary">
+              <span aria-label={t("courseSearch.localesLabel")}>
                 {[
                   ...new Set(
                     course.supportedLocales.map(

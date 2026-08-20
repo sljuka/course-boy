@@ -15,6 +15,7 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import {
   buildLessonPath,
@@ -101,9 +102,16 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         title={
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <CardTitle size="lg">{resolvedCourse.title}</CardTitle>
-            <Badge className="font-normal" variant="secondary">
-              {t("courseSearch.version", { version: resolvedCourse.version })}
-            </Badge>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Badge className="font-normal" variant="secondary">
+                    {t("courseSearch.version", { version: resolvedCourse.version })}
+                  </Badge>
+                }
+              />
+              <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
+            </Tooltip>
           </div>
         }
         top={

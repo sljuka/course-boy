@@ -9,7 +9,7 @@ import { OnboardingGuard } from "./onboarding-guard";
 export const SidebarLayout = () => {
   return (
     <OnboardingGuard>
-      <SidebarProvider>
+      <SidebarProvider style={{ "--sidebar-width": "14rem" } as React.CSSProperties}>
         <div className="flex flex-1 min-h-screen bg-white">
           <AppSidebar />
           <div className="flex flex-1 flex-col">

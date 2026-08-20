@@ -33,7 +33,8 @@
     "subtitle": "Search installed courses by title, description, or id.",
     "testTile": "Test {{index}}",
     "title": "Search courses",
-    "version": "Version {{version}}"
+    "version": "{{version}}",
+    "versionTooltip": "Course version"
   },
   "courseDescriptions": {
     "preSchoolDescription": "Early learning through play, language, counting, and creative activities.",
@@ -199,7 +200,9 @@
   "language": {
     "english": "English",
     "serbian": "Srpski",
-    "serbianCyrillic": "Српски"
+    "serbianCyrillic": "Српски",
+    "switchToCyrillic": "Switch to Cyrillic script",
+    "switchToLatin": "Switch to Latin script"
   },
   "menu": {
     "about": "About",
@@ -312,17 +315,22 @@
     "searchPlaceholder": "Search draft courses",
     "title": "Drafts"
   },
+  "myCourses": {
+    "description": "Browse the published courses available on this device.",
+    "empty": "No published courses match this search yet.",
+    "error": "The courses list could not be loaded.",
+    "searchPlaceholder": "Search my courses",
+    "title": "My courses"
+  },
   "sidebar": {
+    "appName": "Course boy",
     "createCourse": "Create new course",
     "createCourseDescription": "Start a new course workspace and build its package structure, lessons, tests, and metadata.",
     "drafts": "Drafts",
     "draftsDescription": "Review and continue editing course drafts that are not ready to publish yet.",
     "myCourses": "My courses",
-    "myCoursesDescription": "Browse the courses you maintain, update, or publish from this device.",
-    "navigation": "Workspace",
+    "myWork": "My work",
     "home": "Home",
-    "prototype": "Prototype",
-    "prototype2": "Prototype 2",
     "title": "Teacher workspace"
   },
   "welcomeSubtitle": "Matko is an open platform for creating tutorials and tests, and for solving those tests either on the platform or on paper. The format is print-friendly, with a focus on making new tests easy to create, easy to complete, and enjoyable to learn from 😊",

@@ -106,7 +106,7 @@ Not blockers, but do not mistake them for patterns to copy:
 - `src/components/ui/sidebar.tsx` (~720 LOC) and `combobox.tsx` are far past the ~150 LOC
   guideline in working-conventions. They are vendored primitives; leave them unless the
   task is specifically to split them.
-- The styling ratchet baseline is 365 visual utilities outside `ui`. That number should
+- The styling ratchet baseline is 350 visual utilities outside `ui`. That number should
   only ever go down.
 - **"Toggle Sidebar" is a hardcoded English literal** and stays untranslated in every
   locale. `check:i18n` cannot catch this class of bug (it compares key parity between

@@ -15,15 +15,13 @@ import { DraftDetailPage } from "@/pages/draft-detail-page";
 import { DraftsPage } from "@/pages/drafts-page";
 import { EditorPrototypePage } from "@/pages/editor-prototype-page";
 import { HomePage } from "@/pages/home-page";
-import { PlaceholderPage } from "@/pages/placeholder-page";
+import { MyCoursesPage } from "@/pages/my-courses-page";
 import { RolePage } from "@/pages/role-page";
 import { WelcomePage } from "@/pages/welcome-page";
 import { useAppState } from "@/lib/use-app-state";
-import { useTranslation } from "react-i18next";
 
 const AppRoutes = () => {
   const { isLoaded } = useAppState();
-  const { t } = useTranslation();
 
   if (!isLoaded) {
     return null;
@@ -33,15 +31,7 @@ const AppRoutes = () => {
     <Routes>
       <Route element={<SidebarLayout />}>
         <Route element={<HomePage />} path="/" />
-        <Route
-          element={
-            <PlaceholderPage
-              description={t("sidebar.myCoursesDescription")}
-              title={t("sidebar.myCourses")}
-            />
-          }
-          path="/my-courses"
-        />
+        <Route element={<MyCoursesPage />} path="/my-courses" />
         <Route element={<DraftsPage />} path="/drafts" />
         <Route element={<CourseCreatePage />} path="/courses/new" />
         <Route element={<EditorPrototypePage />} path="/courses/prototype" />

@@ -1,3 +1,4 @@
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
@@ -56,13 +57,20 @@ function LanguageSwitcher({
         </Select>
       </div>
       {isSerbian && (
-        <button
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-white text-xs font-semibold text-stone-700 transition-colors hover:bg-stone-50"
+        <Button
+          aria-label={
+            locale === 'sr-Cyrl'
+              ? t('language.switchToLatin')
+              : t('language.switchToCyrillic')
+          }
+          className="rounded-full text-xs font-semibold"
           onClick={handleScriptToggle}
+          size="icon"
           type="button"
+          variant="outline"
         >
           {scriptLabel}
-        </button>
+        </Button>
       )}
     </div>
   )
