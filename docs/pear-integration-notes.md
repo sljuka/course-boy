@@ -4,9 +4,10 @@
 > code in this repo** (`electron/bare-worker.ts`, `workers/main.cjs`) — local identity,
 > single-course publish, real peer discovery/import over Hyperswarm, and gated
 > (invite-only) sharing, not a product feature. Phase 4's live cross-process redemption
-> is not yet confirmed working end to end — see the roadmap entry below before building
-> anything on top of it. Everything else here is verified fact about the upstream stack
-> we intend to adopt, recorded so the research is not repeated, not yet a contract about
+> is confirmed working end to end as of 2026-08-23 — see the roadmap entry below for the
+> real guest-side replication bug that live testing caught (not a flaky-network issue,
+> as first suspected). Everything else here is verified fact about the upstream stack we
+> intend to adopt, recorded so the research is not repeated, not yet a contract about
 > Matko.
 >
 > Verified 2026-08-17, re-verified 2026-08-21 (upstream commit `5b419fff`), against
@@ -275,10 +276,10 @@ only publishers ever touch, not an onboarding step every user sees.
    that can fail for NAT/firewall reasons rather than code reasons — the
    `natType: "Random"` / symmetric-NAT note above applies from here on.
 
-5. **Phase 4 — gated sharing. Mechanism built and code-verified 2026-08-23; live
-   cross-process redemption unresolved, see below.** Resolves the decision checkpoint
-   above as a **hybrid**, not an either/or: each course independently chooses public-link
-   sharing (Phase 2/3, unchanged) or gated-to-specific-peers sharing, the latter using
+5. **Phase 4 — gated sharing. Done, verified live end to end, 2026-08-23.** Resolves the
+   decision checkpoint above as a **hybrid**, not an either/or: each course independently
+   chooses public-link sharing (Phase 2/3, unchanged) or gated-to-specific-peers
+   sharing, the latter using
    `blind-pairing` invites with an app-enforced expiry/use-limit.
 
    **Two real findings that reshaped the design, both verified from source before
@@ -326,21 +327,37 @@ only publishers ever touch, not an onboarding step every user sees.
    (`"Active candidate already exist"`, reproduced live). Fixed by wrapping the pairing
    await in `try { ... } finally { await candidate.close() }`.
 
-   **Open issue, not yet root-caused: live cross-process redemption hangs.** A standalone
-   script exercising the exact same pairing logic as `workers/main.cjs` (two Corestores,
-   two stable-keypair Hyperswarms, `blind-pairing`, `request.open(invite.publicKey)`) —
-   but with host and guest in **one Node process** — pairs successfully in ~5s. The same
-   logic run live, as two separate Bare workers spawned by two separate Electron
-   instances (the `run-desktop` driver's two-real-instance pattern, the same one that
-   confirmed Phase 3's plain import over the real public DHT), hung indefinitely across
-   multiple clean attempts on 2026-08-23 — including one left running for a full 10
-   minutes, well past any invite's expiry, with the host never logging a received
-   pairing request at all. Phase 3's plain `swarm.join()` + `store.replicate()` is
-   confirmed working cross-process on this same machine, so the one untested variable is
-   `blind-pairing` specifically across two real processes rather than one. **Do not build
-   the Share/Import UI (phase 6) on this until a live cross-process redemption has
-   actually succeeded** — the mechanism is verified correct in isolation and by code
-   review, not yet end-to-end.
+   **A second real bug, found only by live cross-process testing, that the mechanism
+   above was designed around but didn't actually cover:** the two-Corestore fix (above)
+   upgrades the **host's** side of a connection from `store.replicate()` to
+   `gatedStore.replicate()` inside `onGatedRequest`, once that peer is vetted. Nothing
+   did the equivalent on the **guest's** side. The generic `swarm.on('connection', ...)`
+   handler runs identically on both host and guest — including on the guest, for the
+   very connection blind-pairing uses — and it always replicates the guest's own
+   (public, usually empty) `store` for a peer it hasn't vetted, since that handler fires
+   before pairing resolves and the guest has no allowlist concept for outbound pairing.
+   Result: pairing itself completed correctly (confirmed via `blind-pairing`'s host-side
+   `confirm()` and the guest's `candidate.pairing` promise resolving with the right key),
+   but the guest's replication stream on that connection stayed bound to its own empty
+   `store`, which has no knowledge of the gated core — so `drive.update()` afterward
+   always reported `core.length: 0` and the mirror step had nothing to copy. Live testing
+   first misread this as a network-level hang (redemption calls sat pending indefinitely
+   with no visible signal either way), because neither the connection handler nor
+   `onGatedRequest` had any logging — a debug pass added temporary instrumentation
+   surfaced through a `globalThis` buffer (the driver's `main <expr>` channel, not
+   terminal piping — Playwright does not forward Electron main-process stdout/stderr to
+   the launching terminal in real time, only in a batched dump at certain lifecycle
+   events, which is what looked like "no logs ever appeared" in earlier attempts) and
+   showed pairing succeeding every time, just with a silently-empty resulting drive.
+   Isolating Bare-vs-Node, the `bare-runtime/spawn` mechanism, and macOS App Nap (tested
+   directly with `caffeinate -i`) all ruled those out first — the actual bug was a real
+   gap in the design, not environmental. Fixed in `redeemInvite`: after obtaining the
+   granted key, replicate `gatedStore` onto the guest's own currently-open connection(s)
+   the same way the host does, before joining the drive's discoveryKey. Verified live,
+   end to end, immediately after the fix: `PeerA` published a gated course and created an
+   invite; `PeerB` redeemed it, paired, fetched the real core
+   (`core.length` went from `0` to `3`), and the course appeared in `PeerB`'s own course
+   list with correct content.
 
 6. **Onboarding UX, once phases 0–3 exist:** two flows, no "peer" or "swarm" language
    surfaced to users.

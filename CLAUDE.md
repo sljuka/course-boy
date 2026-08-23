@@ -62,11 +62,8 @@ adding a case to the e2e suite over one-off manual checking.
   Hyperswarm (`importCourse` — every import also keeps seeding for as long as the
   worker runs), and can gate a course to only vetted peers via a second Corestore plus
   `blind-pairing` invites (`publishGatedCourse` / `createInvite` / `redeemInvite`,
-  expiry and use-limits enforced by our own code, not the library). **Phase 4's live
-  cross-process redemption is not yet confirmed working end to end** — verified correct
-  in an isolated single-process test and by code review, but repeated live two-instance
-  attempts hung with no resolution; do not build Share/Import UI on this until that's
-  resolved (see the doc's Phase 4 entry). No renderer/onboarding UI yet
+  expiry and use-limits enforced by our own code, not the library), verified live
+  end-to-end across two real instances. No renderer/onboarding UI yet
   (`__matkoBareWorker` on `globalThis` is the driver-only verification hook), no
   `pear-runtime`, no OTA updates.
 

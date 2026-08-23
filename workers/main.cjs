@@ -179,6 +179,16 @@ async function start() {
     const drive = new Hyperdrive(gatedStore, result.key)
     await drive.ready()
 
+    // The generic swarm connection handler above always replicates the public `store`
+    // for a peer it hasn't vetted — including the connection this very pairing just
+    // happened over, since that handler ran before pairing resolved. Mirror the host's
+    // own "upgrade this connection" step (see onGatedRequest) on our side too, or our
+    // replication stream stays bound to the public store and can never actually fetch
+    // a gatedStore-owned core, no matter what the host does on its end.
+    for (const conn of connectionsByPeerKey.values()) {
+      gatedStore.replicate(conn)
+    }
+
     // Client-only: never announce/reseed gated content publicly, unlike a public
     // import — otherwise the first redeemer would make it universally discoverable
     // again, defeating the whole point of gating.
