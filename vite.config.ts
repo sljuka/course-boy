@@ -13,6 +13,17 @@ export default defineConfig({
       main: {
         // Shortcut of `build.lib.entry`.
         entry: 'electron/main.ts',
+        vite: {
+          build: {
+            rollupOptions: {
+              // bare-runtime resolves its per-platform prebuild package via a
+              // computed `require()` at runtime, which Rollup can't statically
+              // bundle — leave it (and framed-stream, which it pulls in) as a
+              // real `require()` in the output instead.
+              external: ['bare-runtime', 'bare-runtime/spawn', 'framed-stream'],
+            },
+          },
+        },
       },
       preload: {
         // Shortcut of `build.rollupOptions.input`.

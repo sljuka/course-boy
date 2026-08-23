@@ -54,7 +54,10 @@ adding a case to the e2e suite over one-off manual checking.
 - [docs/persistence-notes.md](docs/persistence-notes.md:1) — read when making decisions
   about draft storage, publishing, local state, or sharing architecture.
 - [docs/pear-integration-notes.md](docs/pear-integration-notes.md:1) — the planned
-  peer-to-peer work. Research notes only; no Pear code exists in the repo yet.
+  peer-to-peer work. Phase 0 (`electron/bare-worker.ts`, `workers/ping-pong.cjs`) is the
+  only Pear/Bare code in the repo so far — a spike proving Electron and a Bare child
+  process can exchange bytes, not a product feature. No `pear-runtime`, corestore, or
+  hyperswarm yet.
 
 ## Architecture rules
 

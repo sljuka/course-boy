@@ -1,10 +1,12 @@
 # Pear integration notes
 
-> Research notes for the planned peer-to-peer work. **No Pear code exists in this repo
-> yet** — nothing here is a contract about Matko, it is verified fact about the upstream
-> stack we intend to adopt, recorded so the research is not repeated.
+> Research notes for the planned peer-to-peer work. **Phase 0 is the only Pear/Bare code
+> in this repo** (`electron/bare-worker.ts`, `workers/ping-pong.cjs`) — a spike proving
+> the process boundary works, not a product feature. Everything else here is verified
+> fact about the upstream stack we intend to adopt, recorded so the research is not
+> repeated, not yet a contract about Matko.
 >
-> Verified 2026-08-17 against
+> Verified 2026-08-17, re-verified 2026-08-21 (upstream commit `5b419fff`), against
 > [holepunchto/hello-pear-electron](https://github.com/holepunchto/hello-pear-electron)
 > (`package.json`, `forge.config.js`, `electron/main.js`, `AGENTS.md`,
 > `agent_docs/architecture.md`). Upstream moves — re-verify before relying on it.
@@ -47,6 +49,44 @@ problem: `sodium-native` and `udx-native` are native addons, and an addon built 
 Node's ABI will not load in Electron (nor in a forked child — see
 [electron#8727](https://github.com/electron/electron/issues/8727)). Bare ships its own
 prebuilds, so the addons stay inside Bare and only bytes cross the boundary.
+
+**Exact dependencies (upstream `package.json`), and what each does:**
+
+- `pear-runtime` — the thing that actually spawns and owns the Bare worker.
+  `electron/main.js` never touches `child_process` directly; it calls
+  `PearRuntime.run(workerPath, [...sixArgs])`, which returns a worker handle, then wraps
+  it: `new FramedStream(worker)`. There is no separate "raw Bare binary" spawn path in
+  this template — `pear-runtime` *is* the spawn mechanism.
+- `framed-stream` — the pipe framing implementation on both ends (Electron main and the
+  worker).
+- `hello-pear-worker` — the reference worker body (`corestore` + `hyperswarm` +
+  updater). Per `agent_docs/architecture.md`: it's shipped as a shared module for
+  cross-platform reuse (desktop + mobile/BareKit), and **the intended pattern for a
+  single-platform project is to copy `hello-pear-worker/index.js` into an in-project
+  `workers/main.js`** and develop it from there, not consume it from `node_modules`.
+  Once it's in-project it resolves against *this app's* `package.json`, which is exactly
+  why Node builtins it uses need a `package.json#imports` entry — the shared package
+  ships its own map, an in-project copy does not inherit it.
+- `which-runtime`, `paparam` — platform detection and argv parsing (already covered
+  above under "Failure modes").
+
+**Worker spawn contract — six positional args, cross-package with the worker body:**
+`getWorker()` in `electron/main.js` calls `PearRuntime.run()` with, in order: `updates`,
+`version`, `upgrade`, `productName + platformExtension`, `storageDir`, `installedAppPath`.
+The worker reads these positionally (at a different offset on desktop vs.
+mobile/BareKit, since the package is shared). A wrong-but-parseable order fails
+**silently** — same failure shape as every other contract in this file.
+
+**New finding, this pass — a real blocker for a minimal spike:** `pear-runtime`'s worker
+parses `package.json#upgrade` (a `pear://<key>` link) in its constructor **on every
+spawn**, regardless of the `--no-updates` flag — `--no-updates` only stops update
+*downloads*, it doesn't skip link parsing. The committed upstream value is a literal
+placeholder, and upstream's own `AGENTS.md` confirms the consequence: with the
+placeholder in place, `npm start` opens the window fine but the worker dies at boot on
+the invalid link. A working key only comes from `pear touch`. **`pear touch` is on this
+repo's own "never run" list in CLAUDE.md** — so adopting `pear-runtime` as-is for even a
+no-op ping/pong spike would require running a command this repo explicitly forbids
+without asking first. See the roadmap below for how Phase 0 sidesteps this.
 
 ## Migration cost for this repo
 
@@ -119,12 +159,30 @@ Sequenced so the highest-risk unknown — the Electron↔Bare process boundary �
 validated before any product feature depends on it, and so "identity" stays something
 only publishers ever touch, not an onboarding step every user sees.
 
-1. **Phase 0 — validate the process boundary in isolation.** Get `electron/main.ts`
-   spawning the Bare sidecar and exchanging a trivial ping/pong over the fd-3
-   `FramedStream` pipe from "Target architecture." No corestore, no hyperswarm, no
-   renderer changes. This is the step most likely to surface the packaged-build-only
-   failures above (`package.json#imports` Bare-builtin mapping, `paparam` argv
-   strictness) — cheaper to hit here than after a feature is built on top of it.
+1. **Phase 0 — validate the process boundary in isolation. Done, 2026-08-23.**
+   `electron/bare-worker.ts` spawns a Bare worker (`bare-runtime` — `pear-runtime` was
+   deliberately skipped, see above) and exchanges a trivial ping/pong with
+   `workers/ping-pong.cjs` over a `bare-pipe` fd-3 `framed-stream` pipe. No corestore, no
+   hyperswarm, no renderer/IPC surface — verified via `globalThis.__bareWorkerPhase0Status`
+   through the `run-desktop` driver's `main <expr>` command.
+
+   Two real findings from actually wiring this up, not just reading upstream:
+   - **`bare-runtime`'s per-platform prebuild resolution uses a computed `require()`**
+     (`` require(`bare-runtime-${platform}-${arch}`) ``), which Vite/Rollup's commonjs
+     plugin cannot statically bundle — it fails at runtime with "Could not dynamically
+     require...". Fix: mark `bare-runtime`, `bare-runtime/spawn`, and `framed-stream` as
+     `build.rollupOptions.external` in the `main` entry's Vite config
+     (`vite.config.ts`), so they stay real `require()`/`import` calls in
+     `dist-electron/main.js` instead of being inlined.
+   - **A worker script's file extension matters under `"type": "module"`.** Bare's module
+     loader mirrors Node's own ESM/CJS file-type resolution — a plain `.js` file under a
+     package.json with `"type": "module"` (Matko's is) gets loaded as ESM, where
+     `require` isn't defined, even though the script itself is written as CommonJS. Fails
+     as `Uncaught ReferenceError: require is not defined` inside Bare, not at spawn time.
+     Fix: `.cjs` extension, same convention this repo already uses for `.eslintrc.cjs`.
+     **This directly affects Phase 1's `workers/main.js` plan below — that file will hit
+     the identical failure and needs to be `workers/main.cjs` (or a `workers/package.json`
+     with `{"type": "commonjs"}`) once it's built, whichever this repo settles on then.**
 
 2. **Phase 1 — local identity, no networking.** Generate and persist a Corestore-backed
    keypair locally (this becomes "your creator key"). Nothing is shared yet. **Only

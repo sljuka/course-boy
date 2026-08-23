@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, net, protocol } from 'electron'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 import Store from 'electron-store'
+import { spawnBareWorker } from './bare-worker'
 import { getCourseDetails, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
   createLocalCourseDraft,
@@ -259,4 +260,5 @@ app.on('activate', () => {
 app.whenReady().then(() => {
   protocol.handle('matko-asset', handleCourseAssetRequest)
   createWindow()
+  spawnBareWorker()
 })
