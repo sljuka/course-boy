@@ -1,10 +1,13 @@
 # Pear integration notes
 
-> Research notes for the planned peer-to-peer work. **Phases 0–3 are the only Pear/Bare
+> Research notes for the planned peer-to-peer work. **Phases 0–4 are the only Pear/Bare
 > code in this repo** (`electron/bare-worker.ts`, `workers/main.cjs`) — local identity,
-> single-course publish, and real peer discovery/import over Hyperswarm, not a product
-> feature. Everything else here is verified fact about the upstream stack we intend to
-> adopt, recorded so the research is not repeated, not yet a contract about Matko.
+> single-course publish, real peer discovery/import over Hyperswarm, and gated
+> (invite-only) sharing, not a product feature. Phase 4's live cross-process redemption
+> is not yet confirmed working end to end — see the roadmap entry below before building
+> anything on top of it. Everything else here is verified fact about the upstream stack
+> we intend to adopt, recorded so the research is not repeated, not yet a contract about
+> Matko.
 >
 > Verified 2026-08-17, re-verified 2026-08-21 (upstream commit `5b419fff`), against
 > [holepunchto/hello-pear-electron](https://github.com/holepunchto/hello-pear-electron)
@@ -272,10 +275,72 @@ only publishers ever touch, not an onboarding step every user sees.
    that can fail for NAT/firewall reasons rather than code reasons — the
    `natType: "Random"` / symmetric-NAT note above applies from here on.
 
-5. **Decision checkpoint before any Share UI ships:** resolve the open question above
-   (permanent link vs. revocable `blind-pairing` invite). Sequenced after publish/import
-   works but before discovery is user-facing, so the decision is made against a working
-   transport, not in the abstract.
+5. **Phase 4 — gated sharing. Mechanism built and code-verified 2026-08-23; live
+   cross-process redemption unresolved, see below.** Resolves the decision checkpoint
+   above as a **hybrid**, not an either/or: each course independently chooses public-link
+   sharing (Phase 2/3, unchanged) or gated-to-specific-peers sharing, the latter using
+   `blind-pairing` invites with an app-enforced expiry/use-limit.
+
+   **Two real findings that reshaped the design, both verified from source before
+   writing any code:**
+   - **A Corestore's `.replicate(conn)` serves every `.namespace()` sharing that root's
+     `cores`/`storage` tracker** — namespacing (already used to give each course its own
+     key) isolates *keys*, not *what a connection can be served*. And **Protomux — the
+     multiplexer under every Hypercore connection — has exactly one slot for the generic
+     "unknown discovery key" handler per connection**; calling `.replicate()` from a
+     second Corestore on the same connection silently overwrites the first's ability to
+     serve new/lazy discovery keys, last call wins. So "one shared store, smarter
+     per-core filtering" isn't available. Fix: **two separate `Corestore` instances**
+     (`store`, unchanged, public; `gatedStore`, new) — trust tiers are separated by which
+     store a connection gets handed to, not by filtering within one store.
+   - **`blind-pairing` does not implement expiry or use-limits itself** — verified by
+     reading its full source, no `Date.now()` comparison or use counter exists anywhere
+     in it. It hands the host `expires` on the invite it creates and reserved protocol
+     status codes (`INVITE_EXPIRED`, `INVITE_USED`) to `.deny()` with; checking the
+     timestamp/counter and calling `.deny()` at the right moment is 100% host application
+     code (`workers/main.cjs`'s `onGatedRequest`).
+
+   **Three more findings surfaced only by wiring this up and testing live, not by
+   reading source:**
+   - **Hyperswarm's peer identity is ephemeral by default** (a fresh random keypair every
+     process start) — gating requires recognizing the *same* peer again after they're
+     vetted, so the worker now derives a **stable** swarm keypair from the Corestore
+     identity (`store.createKeyPair('swarm')`) instead of letting Hyperswarm generate
+     one.
+   - **Hyperswarm reuses one connection per peer across every topic they jointly join** —
+     it does not open a fresh connection per topic. A routing decision made at initial
+     `'connection'` time (public store vs. gated store) has to be explicitly "upgraded"
+     later, once that same peer becomes vetted mid-session — tracked via a
+     peer-key→connection `Map` so `onGatedRequest`'s `confirm()` path can call
+     `gatedStore.replicate()` on the *existing* connection rather than waiting for one
+     that will never come.
+   - **`blind-pairing` denial does not reject the candidate's `pairing` promise** — it
+     surfaces via a `'rejected'` event on `candidate.request` instead, confirmed
+     empirically (the promise's own rejection handler never fired; the event did).
+     `redeemInvite` races both.
+
+   **A real bug this surfaced, now fixed:** `candidate.close()` was only reachable on the
+   success path in the first implementation. `blind-pairing` tracks one "active
+   candidate" per discoveryKey internally — a rejected/expired redemption that's never
+   closed permanently blocks every future redemption attempt against the same course
+   (`"Active candidate already exist"`, reproduced live). Fixed by wrapping the pairing
+   await in `try { ... } finally { await candidate.close() }`.
+
+   **Open issue, not yet root-caused: live cross-process redemption hangs.** A standalone
+   script exercising the exact same pairing logic as `workers/main.cjs` (two Corestores,
+   two stable-keypair Hyperswarms, `blind-pairing`, `request.open(invite.publicKey)`) —
+   but with host and guest in **one Node process** — pairs successfully in ~5s. The same
+   logic run live, as two separate Bare workers spawned by two separate Electron
+   instances (the `run-desktop` driver's two-real-instance pattern, the same one that
+   confirmed Phase 3's plain import over the real public DHT), hung indefinitely across
+   multiple clean attempts on 2026-08-23 — including one left running for a full 10
+   minutes, well past any invite's expiry, with the host never logging a received
+   pairing request at all. Phase 3's plain `swarm.join()` + `store.replicate()` is
+   confirmed working cross-process on this same machine, so the one untested variable is
+   `blind-pairing` specifically across two real processes rather than one. **Do not build
+   the Share/Import UI (phase 6) on this until a live cross-process redemption has
+   actually succeeded** — the mechanism is verified correct in isolation and by code
+   review, not yet end-to-end.
 
 6. **Onboarding UX, once phases 0–3 exist:** two flows, no "peer" or "swarm" language
    surfaced to users.

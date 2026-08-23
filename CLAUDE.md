@@ -54,14 +54,21 @@ adding a case to the e2e suite over one-off manual checking.
 - [docs/persistence-notes.md](docs/persistence-notes.md:1) — read when making decisions
   about draft storage, publishing, local state, or sharing architecture.
 - [docs/pear-integration-notes.md](docs/pear-integration-notes.md:1) — the planned
-  peer-to-peer work. Phases 0–3 are built: `electron/bare-worker.ts` +
+  peer-to-peer work. Phases 0–4 are built: `electron/bare-worker.ts` +
   `workers/main.cjs` spawn a Bare worker, derive and persist a Corestore-backed local
   identity keypair over `bare-rpc`, mirror a course's package directory into a
   Hyperdrive (`publishCourse`, each course namespaced to its own key derived from the
-  same root seed), and can find a real peer and replicate a published course over
+  same root seed), can find a real peer and replicate a published course over
   Hyperswarm (`importCourse` — every import also keeps seeding for as long as the
-  worker runs). No renderer/onboarding UI yet (`__matkoBareWorker` on `globalThis` is
-  the driver-only verification hook), no `pear-runtime`, no OTA updates.
+  worker runs), and can gate a course to only vetted peers via a second Corestore plus
+  `blind-pairing` invites (`publishGatedCourse` / `createInvite` / `redeemInvite`,
+  expiry and use-limits enforced by our own code, not the library). **Phase 4's live
+  cross-process redemption is not yet confirmed working end to end** — verified correct
+  in an isolated single-process test and by code review, but repeated live two-instance
+  attempts hung with no resolution; do not build Share/Import UI on this until that's
+  resolved (see the doc's Phase 4 entry). No renderer/onboarding UI yet
+  (`__matkoBareWorker` on `globalThis` is the driver-only verification hook), no
+  `pear-runtime`, no OTA updates.
 
 ## Architecture rules
 
