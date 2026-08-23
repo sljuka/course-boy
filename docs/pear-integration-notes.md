@@ -1,10 +1,10 @@
 # Pear integration notes
 
-> Research notes for the planned peer-to-peer work. **Phases 0–1 are the only Pear/Bare
+> Research notes for the planned peer-to-peer work. **Phases 0–2 are the only Pear/Bare
 > code in this repo** (`electron/bare-worker.ts`, `workers/main.cjs`) — a local identity
-> keypair over a validated process boundary, not a product feature. Everything else here
-> is verified fact about the upstream stack we intend to adopt, recorded so the research
-> is not repeated, not yet a contract about Matko.
+> keypair and single-course publish, over a validated process boundary, not a product
+> feature. Everything else here is verified fact about the upstream stack we intend to
+> adopt, recorded so the research is not repeated, not yet a contract about Matko.
 >
 > Verified 2026-08-17, re-verified 2026-08-21 (upstream commit `5b419fff`), against
 > [holepunchto/hello-pear-electron](https://github.com/holepunchto/hello-pear-electron)
@@ -207,11 +207,36 @@ only publishers ever touch, not an onboarding step every user sees.
      (comfortably below this repo's `bare-runtime@^1.31.0`) — no conflict hit, but two
      native addons now resolve prebuilds inside the worker, not one.
 
-3. **Phase 2 — single-course publish/import, verified locally before any real network.**
-   Implement Publish and Import per "Content sharing design" above. Verify the round trip
-   between two local Bare instances, or against a local `hyperdht/testnet` — per
-   "Debugging: a stall is usually the network," this is where network-vs-bug ambiguity
-   starts, so build the local-testnet habit here, before discovery is added.
+3. **Phase 2 — single-course publish/import, verified locally. Publish done, 2026-08-23;
+   Import built and proven, not yet wired into the app.**
+   `workers/main.cjs`'s `publishCourse` mirrors a course's package directory
+   (`localdrive`) into a Hyperdrive namespaced per course
+   (`store.namespace('course-'+courseId)`, a distinct key derived from the same root
+   seed as the Phase 1 identity key — not the identity key itself, since reusing one
+   Ed25519 key across two independent append-only logs is unconventional in this
+   ecosystem) — `electron/bare-worker.ts` exposes it as `publishCourse(courseId)`, no
+   renderer/IPC surface yet (verified via `globalThis.__matkoBareWorker` through the
+   `run-desktop` driver, same as Phase 1). Import was proven the same way Publish was —
+   a standalone script, no Electron involved — but is **not** RPC-wired into the running
+   app: it needs an actual stream to a peer, which needs Hyperswarm (Phase 3); wiring it
+   in now would be untestable-in-context dead code.
+
+   **The "verified locally" question this phase had to settle**: does proving real
+   replication (not just a filesystem copy) need `hyperdht/testnet`, as this doc
+   originally assumed? No — verified from `hypercore`/`corestore` source directly:
+   `store.replicate(isInitiator)` builds the actual production wire protocol (Noise
+   handshake via `@hyperswarm/secret-stream`, Merkle-proof-verified blocks via
+   `protomux`) over **any** duplex stream, with zero dependency on Hyperswarm, the DHT,
+   or even a real OS socket. Two local Corestore instances piped directly together
+   (`s1 = storeA.replicate(true); s2 = storeB.replicate(false); s1.pipe(s2).pipe(s1)`)
+   genuinely exercise real replication. `hyperdht/testnet` is a *discovery*-layer tool
+   (local DHT bootstrap nodes for exercising `swarm.join()`/peer lookup) — orthogonal to
+   replication itself, and only becomes relevant once Phase 3 tests discovery.
+
+   Also: Phase 1's Corestore storage directory (`identity`) was renamed to **`p2p`**
+   before this phase landed — a namespaced course Hyperdrive shares that same underlying
+   storage (namespacing is a key-derivation view, not a separate store), so "identity"
+   was no longer an accurate name for what's now the general Corestore data root.
 
 4. **Phase 3 — Hyperswarm discovery.** Join a topic, connect to a real peer, replicate
    over the actual network. This is the first phase that can fail for NAT/firewall

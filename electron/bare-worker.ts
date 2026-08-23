@@ -1,13 +1,17 @@
-// Phase 1 of the planned peer-to-peer work (see docs/pear-integration-notes.md):
-// generates and persists a Corestore-backed keypair inside the Bare worker — the
-// user's "creator key." Still no networking, no renderer/IPC surface: identity is
-// created lazily the first time someone presses "Share" (Phase 6), so this phase only
-// builds and verifies the mechanism, the same low-level way Phase 0 did.
+// Peer-to-peer work (see docs/pear-integration-notes.md), phases 1–2:
+// Phase 1 generates and persists a Corestore-backed identity keypair inside the Bare
+// worker — the user's "creator key." Phase 2 adds mirroring a course's package
+// directory into a Hyperdrive under that same Corestore (namespaced per course, so
+// each course gets its own key derived from the same root seed rather than reusing the
+// identity key as a Hypercore signing key). Still no networking, no renderer/IPC
+// surface: identity/publish are real capabilities with no UI in front of them yet
+// (that's Phase 6's "Share" trigger), so this phase only builds and verifies the
+// mechanism, the same low-level way Phase 0 did.
 //
-// Supersedes Phase 0's raw ping/pong: a real request (`getCreatorKey`) needs a real
-// request/response protocol, so the pipe now carries `bare-rpc` instead of
-// `framed-stream` — bare-rpc does its own framing and must sit directly on the raw
-// duplex, not stacked under another framing layer.
+// Phase 0's raw ping/pong was superseded in Phase 1: a real request needs a real
+// request/response protocol, so the pipe carries `bare-rpc` — bare-rpc does its own
+// framing and must sit directly on the raw duplex, not stacked under another framing
+// layer.
 import path from 'node:path'
 import spawnBare from 'bare-runtime/spawn'
 import RPC from 'bare-rpc'
@@ -15,32 +19,66 @@ import { app } from 'electron'
 
 // Must match workers/main.cjs.
 const CMD_GET_CREATOR_KEY = 1
+const CMD_PUBLISH_COURSE = 2
 
 declare global {
   // eslint-disable-next-line no-var
   var __creatorPublicKeyPhase1: string
+  // eslint-disable-next-line no-var
+  var __matkoBareWorker: {
+    getCreatorKey: typeof getCreatorKey
+    publishCourse: typeof publishCourse
+  }
 }
 
 let rpc: RPC | null = null
 
-export async function getCreatorKey(): Promise<string> {
+function requireRpc(): RPC {
   if (!rpc) {
     throw new Error('Bare worker is not running')
   }
 
-  const request = rpc.request(CMD_GET_CREATOR_KEY)
+  return rpc
+}
+
+export async function getCreatorKey(): Promise<string> {
+  const request = requireRpc().request(CMD_GET_CREATOR_KEY)
   request.send()
 
   const reply = await request.reply('utf-8')
   return reply ? reply.toString() : ''
 }
 
+export async function publishCourse(courseId: string): Promise<string> {
+  const coursePath = path.join(app.getPath('userData'), 'courses', courseId, 'draft')
+
+  const request = requireRpc().request(CMD_PUBLISH_COURSE)
+  request.send(JSON.stringify({ courseId, coursePath }))
+
+  const reply = await request.reply('utf-8')
+  const result = JSON.parse(reply ? reply.toString() : '{}') as {
+    driveKey?: string
+    error?: string
+  }
+
+  if (result.error) {
+    throw new Error(result.error)
+  }
+
+  return result.driveKey ?? ''
+}
+
+// No renderer/IPC surface yet (Phase 6's "Share" trigger) — this is the verification
+// hook the `run-desktop` driver's `main <expr>` command calls directly, same idea as
+// Phase 0/1's `globalThis.__*Phase*Status` values.
+globalThis.__matkoBareWorker = { getCreatorKey, publishCourse }
+
 export function spawnBareWorker(): void {
   globalThis.__creatorPublicKeyPhase1 = 'spawning'
 
   try {
     const workerPath = path.join(process.env.APP_ROOT, 'workers/main.cjs')
-    const storagePath = path.join(app.getPath('userData'), 'identity')
+    const storagePath = path.join(app.getPath('userData'), 'p2p')
 
     const worker = spawnBare('bare', {
       args: [workerPath, storagePath],
@@ -71,7 +109,7 @@ export function spawnBareWorker(): void {
     // (duck-typed) runtime usage. Double-cast through `unknown` for that boundary.
     const controlPipe = worker.stdio[3] as unknown as ConstructorParameters<typeof RPC>[0]
     rpc = new RPC(controlPipe, () => {
-      // The worker never sends main a request in Phase 1.
+      // The worker never sends main a request in Phases 1-2.
     })
 
     getCreatorKey()
