@@ -54,10 +54,10 @@ adding a case to the e2e suite over one-off manual checking.
 - [docs/persistence-notes.md](docs/persistence-notes.md:1) — read when making decisions
   about draft storage, publishing, local state, or sharing architecture.
 - [docs/pear-integration-notes.md](docs/pear-integration-notes.md:1) — the planned
-  peer-to-peer work. Phase 0 (`electron/bare-worker.ts`, `workers/ping-pong.cjs`) is the
-  only Pear/Bare code in the repo so far — a spike proving Electron and a Bare child
-  process can exchange bytes, not a product feature. No `pear-runtime`, corestore, or
-  hyperswarm yet.
+  peer-to-peer work. Phases 0–1 are built: `electron/bare-worker.ts` +
+  `workers/main.cjs` spawn a Bare worker and, over `bare-rpc`, derive and persist a
+  Corestore-backed local identity keypair. No renderer/onboarding UI yet, no
+  `pear-runtime`, and no hyperswarm/networking — still local-only.
 
 ## Architecture rules
 

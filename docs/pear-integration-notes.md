@@ -1,10 +1,10 @@
 # Pear integration notes
 
-> Research notes for the planned peer-to-peer work. **Phase 0 is the only Pear/Bare code
-> in this repo** (`electron/bare-worker.ts`, `workers/ping-pong.cjs`) — a spike proving
-> the process boundary works, not a product feature. Everything else here is verified
-> fact about the upstream stack we intend to adopt, recorded so the research is not
-> repeated, not yet a contract about Matko.
+> Research notes for the planned peer-to-peer work. **Phases 0–1 are the only Pear/Bare
+> code in this repo** (`electron/bare-worker.ts`, `workers/main.cjs`) — a local identity
+> keypair over a validated process boundary, not a product feature. Everything else here
+> is verified fact about the upstream stack we intend to adopt, recorded so the research
+> is not repeated, not yet a contract about Matko.
 >
 > Verified 2026-08-17, re-verified 2026-08-21 (upstream commit `5b419fff`), against
 > [holepunchto/hello-pear-electron](https://github.com/holepunchto/hello-pear-electron)
@@ -184,11 +184,28 @@ only publishers ever touch, not an onboarding step every user sees.
      the identical failure and needs to be `workers/main.cjs` (or a `workers/package.json`
      with `{"type": "commonjs"}`) once it's built, whichever this repo settles on then.**
 
-2. **Phase 1 — local identity, no networking.** Generate and persist a Corestore-backed
-   keypair locally (this becomes "your creator key"). Nothing is shared yet. **Only
-   publishers need this** — a user who only ever imports courses never generates or sees
-   a key. Identity is created lazily, the first time someone presses "Share," not during
-   onboarding for everyone.
+2. **Phase 1 — local identity, no networking. Done, 2026-08-23.**
+   `workers/main.cjs` derives and persists a Corestore-backed keypair (`this becomes
+   "your creator key"`) via `store.createKeyPair('creator')` — a deterministic
+   derivation from a locally-persisted seed, not a fresh random key each run, and
+   without creating an actual Hypercore log (unnecessary until there's content to attach
+   the key to). `electron/bare-worker.ts` requests it over `bare-rpc`, which replaced
+   Phase 0's raw `framed-stream` ping/pong — `bare-rpc` does its own framing and must
+   sit directly on the raw pipe, not stacked under another framing layer. Nothing is
+   shared yet. **Only publishers need this** — a user who only ever imports courses
+   never generates or sees a key. Identity is created lazily, the first time someone
+   presses "Share" (Phase 6) — this phase only built and verified the mechanism itself,
+   the same low-level way (a `globalThis` hook read through the `run-desktop` driver)
+   Phase 0 was, confirming the same key persists across separate app launches.
+
+   Two real findings, same "verify by actually wiring it up" discipline as Phase 0:
+   - **`Bare.argv` is `[bareBinaryPath, scriptPath, ...ourArgs]`** — a worker's own
+     spawn arguments start at index 2, not 0 (mirrors Node's `process.argv` convention,
+     but easy to get wrong once, as this session did before empirically checking it).
+   - **Corestore's storage layer (`hypercore-storage` → `rocksdb-native`) is a second
+     native addon** beyond `sodium-native`, both declaring a `bare >= 1.16.0` floor
+     (comfortably below this repo's `bare-runtime@^1.31.0`) — no conflict hit, but two
+     native addons now resolve prebuilds inside the worker, not one.
 
 3. **Phase 2 — single-course publish/import, verified locally before any real network.**
    Implement Publish and Import per "Content sharing design" above. Verify the round trip
@@ -215,3 +232,20 @@ only publishers ever touch, not an onboarding step every user sees.
      mirrors it into `courses/` like any other course.
    - A local "creator profile page" (background image + course collection), if built
      later, is the natural page a resolved key points to — not scoped here.
+   - **Open, not yet designed: a key-acknowledgment moment.** The first time Phase 1's
+     `createKeyPair('creator')` actually backs a real "Share" action, losing that key
+     has the same permanence problem already flagged elsewhere in this doc
+     (`pear.json#multisig`: losing keys strands every installed copy) — so generating it
+     should be an explicit, brief onboarding step ("this is permanent, here's what it
+     means," maybe an export/backup option), not a silent background action. This is
+     *not* "let the user choose a storage location" — Corestore's storage lives under
+     the app's own data directory the same way `courses/` and preferences already do,
+     with no user-facing choice needed there.
+   - **Open, not yet designed: search/discovery.** Hyperswarm/Corestore is a
+     discovery-by-known-key model (join a swarm on a topic key someone gave you), not a
+     searchable-index model — there is no built-in way to "find publishers/courses I
+     don't already have a link to." A real search feature would need something acting as
+     a directory or index, which either means a centralized (or gossip-based) index
+     service, or accepting that discovery only ever happens through the Share/Import
+     links above. Worth a deliberate decision before a "channel"/publisher-profile page
+     implies more discoverability than the transport actually offers.
