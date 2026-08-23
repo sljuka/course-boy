@@ -54,13 +54,14 @@ adding a case to the e2e suite over one-off manual checking.
 - [docs/persistence-notes.md](docs/persistence-notes.md:1) — read when making decisions
   about draft storage, publishing, local state, or sharing architecture.
 - [docs/pear-integration-notes.md](docs/pear-integration-notes.md:1) — the planned
-  peer-to-peer work. Phases 0–2 are built: `electron/bare-worker.ts` +
+  peer-to-peer work. Phases 0–3 are built: `electron/bare-worker.ts` +
   `workers/main.cjs` spawn a Bare worker, derive and persist a Corestore-backed local
-  identity keypair over `bare-rpc`, and can mirror a course's package directory into a
-  Hyperdrive (`publishCourse`), each course namespaced to its own key derived from the
-  same root seed. No renderer/onboarding UI yet (`__matkoBareWorker` on `globalThis` is
-  the driver-only verification hook), no `pear-runtime`, and no hyperswarm/networking —
-  importing a published course needs a peer connection that doesn't exist until Phase 3.
+  identity keypair over `bare-rpc`, mirror a course's package directory into a
+  Hyperdrive (`publishCourse`, each course namespaced to its own key derived from the
+  same root seed), and can find a real peer and replicate a published course over
+  Hyperswarm (`importCourse` — every import also keeps seeding for as long as the
+  worker runs). No renderer/onboarding UI yet (`__matkoBareWorker` on `globalThis` is
+  the driver-only verification hook), no `pear-runtime`, no OTA updates.
 
 ## Architecture rules
 

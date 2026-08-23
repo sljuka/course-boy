@@ -1,8 +1,8 @@
 # Pear integration notes
 
-> Research notes for the planned peer-to-peer work. **Phases 0–2 are the only Pear/Bare
-> code in this repo** (`electron/bare-worker.ts`, `workers/main.cjs`) — a local identity
-> keypair and single-course publish, over a validated process boundary, not a product
+> Research notes for the planned peer-to-peer work. **Phases 0–3 are the only Pear/Bare
+> code in this repo** (`electron/bare-worker.ts`, `workers/main.cjs`) — local identity,
+> single-course publish, and real peer discovery/import over Hyperswarm, not a product
 > feature. Everything else here is verified fact about the upstream stack we intend to
 > adopt, recorded so the research is not repeated, not yet a contract about Matko.
 >
@@ -238,10 +238,39 @@ only publishers ever touch, not an onboarding step every user sees.
    storage (namespacing is a key-derivation view, not a separate store), so "identity"
    was no longer an accurate name for what's now the general Corestore data root.
 
-4. **Phase 3 — Hyperswarm discovery.** Join a topic, connect to a real peer, replicate
-   over the actual network. This is the first phase that can fail for NAT/firewall
-   reasons rather than code reasons — the `natType: "Random"` / symmetric-NAT note above
-   applies here.
+4. **Phase 3 — Hyperswarm discovery. Done, 2026-08-23.** `workers/main.cjs`'s
+   `importCourse` finally got wired up — the thing Phase 2 built and proved correct but
+   left unconnected, since there was no way to find a peer. One `Hyperswarm` instance
+   per worker process, created once at startup, with a single `swarm.on('connection',
+   c => store.replicate(c))` — the official Corestore pattern (no auto-join helper
+   exists; `corestore-swarm-networking` is a real but abandoned package). The topic is
+   the drive's own `discoveryKey` (`hyperdrive.discoveryKey`, proxying to the underlying
+   Hypercore's — a one-way hash of the drive's public key, safe to broadcast), not a
+   shared/generic topic — only peers who already know a specific drive's key converge on
+   its swarm topic, which is exactly why there's no "browse everything" discovery (see
+   the search/discovery open question above). `publishCourse` now seeds automatically
+   right after mirroring (`{ server: true, client: false }`); **every `importCourse`
+   also keeps seeding afterward** (the library default, both true, deliberately not
+   overridden) — once import finishes the local Corestore holds a real replica, so
+   re-announcing it is free and is exactly the "leech becomes a seed" convention that
+   keeps a swarm resilient instead of every course depending on the original publisher
+   staying online forever. Both only last while the worker process is alive — no
+   background daemon, a real limitation of every app like this, not a bug. Hyperswarm's
+   own peer identity stays ephemeral (fresh random keypair every process start,
+   confirmed as the actual behavior of the reference `hello-pear-worker` app too, not
+   just an assumption) — no documented convention exists for deriving it from the
+   Corestore identity key, and nothing yet needs a stable peer identity across restarts.
+
+   **Corrects an assumption this doc made before it could be verified**:
+   `hyperdht/testnet` is real and does exactly what was assumed — `require('hyperdht/
+   testnet')` exports `createTestnet(size, opts)`, spinning up `size` local DHT
+   bootstrap nodes on `127.0.0.1`, returning `{ bootstrap: [...] }` to pass straight into
+   `new Hyperswarm({ bootstrap })`. This is how the phase was verified locally (two
+   Corestores, two Hyperswarm instances, real discovery + replication, byte-for-byte
+   diff against the source) before the live app was checked against the actual public
+   DHT, where `publishCourse` successfully announced for real. This is the first phase
+   that can fail for NAT/firewall reasons rather than code reasons — the
+   `natType: "Random"` / symmetric-NAT note above applies from here on.
 
 5. **Decision checkpoint before any Share UI ships:** resolve the open question above
    (permanent link vs. revocable `blind-pairing` invite). Sequenced after publish/import

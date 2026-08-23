@@ -1,12 +1,14 @@
-// Peer-to-peer work (see docs/pear-integration-notes.md), phases 1–2:
+// Peer-to-peer work (see docs/pear-integration-notes.md), phases 1–3:
 // Phase 1 generates and persists a Corestore-backed identity keypair inside the Bare
 // worker — the user's "creator key." Phase 2 adds mirroring a course's package
 // directory into a Hyperdrive under that same Corestore (namespaced per course, so
 // each course gets its own key derived from the same root seed rather than reusing the
-// identity key as a Hypercore signing key). Still no networking, no renderer/IPC
-// surface: identity/publish are real capabilities with no UI in front of them yet
-// (that's Phase 6's "Share" trigger), so this phase only builds and verifies the
-// mechanism, the same low-level way Phase 0 did.
+// identity key as a Hypercore signing key). Phase 3 adds real Hyperswarm discovery, so
+// an import can finally find a peer to replicate from — the thing Phase 2 built and
+// proved correct but left unwired, since there was nothing to connect it to yet.
+// Identity/publish/import are all real capabilities with no UI in front of them yet
+// (that's Phase 6's "Share"/"Import" triggers), so these phases only build and verify
+// the mechanism, the same low-level way Phase 0 did.
 //
 // Phase 0's raw ping/pong was superseded in Phase 1: a real request needs a real
 // request/response protocol, so the pipe carries `bare-rpc` — bare-rpc does its own
@@ -20,6 +22,7 @@ import { app } from 'electron'
 // Must match workers/main.cjs.
 const CMD_GET_CREATOR_KEY = 1
 const CMD_PUBLISH_COURSE = 2
+const CMD_IMPORT_COURSE = 3
 
 declare global {
   // eslint-disable-next-line no-var
@@ -28,6 +31,7 @@ declare global {
   var __matkoBareWorker: {
     getCreatorKey: typeof getCreatorKey
     publishCourse: typeof publishCourse
+    importCourse: typeof importCourse
   }
 }
 
@@ -68,10 +72,24 @@ export async function publishCourse(courseId: string): Promise<string> {
   return result.driveKey ?? ''
 }
 
-// No renderer/IPC surface yet (Phase 6's "Share" trigger) — this is the verification
-// hook the `run-desktop` driver's `main <expr>` command calls directly, same idea as
-// Phase 0/1's `globalThis.__*Phase*Status` values.
-globalThis.__matkoBareWorker = { getCreatorKey, publishCourse }
+export async function importCourse(driveKey: string, courseId: string): Promise<void> {
+  const destPath = path.join(app.getPath('userData'), 'courses', courseId, 'draft')
+
+  const request = requireRpc().request(CMD_IMPORT_COURSE)
+  request.send(JSON.stringify({ destPath, driveKey }))
+
+  const reply = await request.reply('utf-8')
+  const result = JSON.parse(reply ? reply.toString() : '{}') as { error?: string }
+
+  if (result.error) {
+    throw new Error(result.error)
+  }
+}
+
+// No renderer/IPC surface yet (Phase 6's "Share"/"Import" triggers) — this is the
+// verification hook the `run-desktop` driver's `main <expr>` command calls directly,
+// same idea as Phase 0/1's `globalThis.__*Phase*Status` values.
+globalThis.__matkoBareWorker = { getCreatorKey, importCourse, publishCourse }
 
 export function spawnBareWorker(): void {
   globalThis.__creatorPublicKeyPhase1 = 'spawning'
@@ -109,7 +127,7 @@ export function spawnBareWorker(): void {
     // (duck-typed) runtime usage. Double-cast through `unknown` for that boundary.
     const controlPipe = worker.stdio[3] as unknown as ConstructorParameters<typeof RPC>[0]
     rpc = new RPC(controlPipe, () => {
-      // The worker never sends main a request in Phases 1-2.
+      // The worker never sends main a request in Phases 1-3.
     })
 
     getCreatorKey()
