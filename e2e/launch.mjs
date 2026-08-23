@@ -165,3 +165,27 @@ export async function findIndex(page, predicate) {
 }
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * Poll a DOM condition until it's true instead of guessing a fixed delay —
+ * a fixed sleep is either too short (flaky) or too long (slow) for whatever
+ * async work it's meant to cover. `predicate` runs in the page and receives
+ * `arg` (must be JSON-serializable) if given.
+ */
+export function waitFor(page, predicate, { arg, timeout = 10_000 } = {}) {
+  return page.waitForFunction(predicate, arg, { timeout })
+}
+
+/** Wait until the visible page text contains `text`. */
+export function waitForText(page, text, { timeout } = {}) {
+  return waitFor(page, (t) => document.body.innerText.includes(t), { arg: text, timeout })
+}
+
+/** Wait until `location.hash` does (or, with shouldContain: false, does not) contain `substring`. */
+export function waitForUrl(page, substring, { shouldContain = true, timeout } = {}) {
+  return waitFor(
+    page,
+    ({ substring, shouldContain }) => location.hash.includes(substring) === shouldContain,
+    { arg: { substring, shouldContain }, timeout },
+  )
+}

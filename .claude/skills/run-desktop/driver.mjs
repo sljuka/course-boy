@@ -17,6 +17,7 @@ import {
   clickText,
   bodyText,
   sleep,
+  waitFor,
 } from '../../../e2e/launch.mjs'
 
 const USER_DATA = process.env.MATKO_USER_DATA || '/tmp/matko-driver-userdata'
@@ -130,8 +131,8 @@ const COMMANDS = {
 
   async reload() {
     if (!need()) return
-    await harness.page.evaluate(() => location.reload())
-    await sleep(4000)
+    await harness.page.reload()
+    await waitFor(harness.page, () => (document.getElementById('root')?.childElementCount ?? 0) > 0)
     console.log('reloaded:', harness.page.url())
   },
 

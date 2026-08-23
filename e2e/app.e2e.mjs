@@ -17,7 +17,8 @@ import {
   clickText,
   bodyText,
   findIndex,
-  sleep,
+  waitForText,
+  waitForUrl,
 } from './launch.mjs'
 
 const USER_DATA = '/tmp/matko-e2e-vitest'
@@ -90,13 +91,13 @@ describe('onboarding', () => {
   it('advances through the role step into the app', async () => {
     const continueIdx = await findIndex(harness.page, (e) => e.text === 'Continue')
     await clickIndex(harness.page, continueIdx)
-    await sleep(1000)
+    await waitForUrl(harness.page, '#/onboarding/role')
     expect(harness.page.url()).toContain('#/onboarding/role')
 
     const teacherIdx = await findIndex(harness.page, (e) => e.text === 'Teacher')
     expect(teacherIdx).toBeGreaterThanOrEqual(0)
     await clickIndex(harness.page, teacherIdx)
-    await sleep(1500)
+    await waitForUrl(harness.page, '#/onboarding', { shouldContain: false })
 
     expect(harness.page.url()).not.toContain('#/onboarding')
     const text = await bodyText(harness.page)
@@ -121,6 +122,7 @@ describe('courses over IPC', () => {
   })
 
   it('renders that course in the UI, not just over IPC', async () => {
+    await waitForText(harness.page, 'Getting Started with Matko')
     const text = await bodyText(harness.page)
     expect(text).toContain('Getting Started with Matko')
   })
@@ -159,10 +161,10 @@ describe('courses over IPC', () => {
   })
 
   it('shows the new draft in the UI after a refetch', async () => {
-    await harness.page.evaluate(() => location.reload())
-    await sleep(4000)
+    await harness.page.reload()
+    await waitForText(harness.page, 'Drafts')
     await clickText(harness.page, 'Drafts')
-    await sleep(1500)
+    await waitForText(harness.page, 'E2E Probe Course')
     expect(await bodyText(harness.page)).toContain('E2E Probe Course')
   })
 })
@@ -236,17 +238,117 @@ describe('course assets', () => {
   })
 })
 
+describe('learner flow: attend a course and complete its test', () => {
+  const courseId = 'e2e-attend-probe-course'
+  let sectionId
+  let lessonId
+
+  it('authors a course with a section, a lesson, and a test', async () => {
+    const draft = await harness.page.evaluate(() =>
+      window.courses.createDraft({
+        defaultLocale: 'en',
+        supportedLocales: ['en'],
+        locales: {
+          en: { title: 'E2E Attend Probe Course', description: '' },
+        },
+      }),
+    )
+    expect(draft.courseId).toBe(courseId)
+
+    const section = await harness.page.evaluate(
+      (id) => window.courses.createSection({ courseId: id, title: 'E2E Attend Section' }),
+      courseId,
+    )
+    sectionId = section.sectionId
+
+    const lesson = await harness.page.evaluate(
+      ({ id, sectionId }) =>
+        window.courses.createLesson({ courseId: id, sectionId, title: 'E2E Attend Lesson' }),
+      { id: courseId, sectionId },
+    )
+    lessonId = lesson.lessonId
+
+    // A single exercise with min === max variables: the "random" roll is
+    // deterministic, so the expected answer (7) can be hardcoded below rather
+    // than parsed back out of the rendered prompt.
+    await harness.page.evaluate(
+      ({ id, sectionId, lessonId }) =>
+        window.courses.saveLessonTest({
+          courseId: id,
+          lessonId,
+          sectionId,
+          test: {
+            exercises: [
+              {
+                locales: { en: { prompt: 'What is {{a}} plus {{b}}?' } },
+                solution: { formula: 'a + b', precision: 0 },
+                tags: ['practice'],
+                variables: {
+                  a: { max: 4, min: 4, type: 'integer' },
+                  b: { max: 3, min: 3, type: 'integer' },
+                },
+              },
+            ],
+            template: '',
+          },
+        }),
+      { id: courseId, sectionId, lessonId },
+    )
+
+    const testPath = path.join(
+      USER_DATA,
+      'courses',
+      courseId,
+      'draft',
+      sectionId,
+      `${lessonId.replace(/^lesson-/, 'test-')}.json`,
+    )
+    expect(fs.existsSync(testPath)).toBe(true)
+  })
+
+  it('lets a learner open the lesson, pass its test, and complete the course', async () => {
+    await harness.page.evaluate(
+      ({ id, lessonId }) => {
+        location.hash = `#/courses/${id}/lessons/${lessonId}`
+      },
+      { id: courseId, lessonId },
+    )
+    await waitForText(harness.page, 'Continue')
+
+    expect(await clickText(harness.page, 'Continue')).toContain('OK')
+    await waitForText(harness.page, 'Check answer')
+
+    const answerIdx = await findIndex(
+      harness.page,
+      (e) => e.tag === 'input' && e.placeholder === 'Type the result',
+    )
+    expect(answerIdx).toBeGreaterThanOrEqual(0)
+    expect(await fillIndex(harness.page, answerIdx, '7')).toBe('OK')
+
+    expect(await clickText(harness.page, 'Check answer')).toContain('OK')
+    await waitForText(harness.page, 'Correct. You can continue to the next lesson.')
+
+    expect(await clickText(harness.page, 'Continue')).toContain('OK')
+    await waitForText(harness.page, 'Course complete')
+
+    // Leave the player's BlankLayout (no locale picker/sidebar chrome) so
+    // later describe blocks land back on normal app chrome.
+    expect(await clickText(harness.page, 'Close course')).toContain('OK')
+    await waitForText(harness.page, 'English')
+  })
+})
+
 describe('i18n', () => {
   it('translates the app when the locale is switched and persists the choice', async () => {
     const pickerIdx = await findIndex(harness.page, (e) => e.text.includes('English'))
     expect(pickerIdx).toBeGreaterThanOrEqual(0)
     await clickIndex(harness.page, pickerIdx)
-    await sleep(800)
+    await waitForText(harness.page, 'Srpski')
 
     const serbianIdx = await findIndex(harness.page, (e) => e.text.includes('Srpski'))
     expect(serbianIdx).toBeGreaterThanOrEqual(0)
     await clickIndex(harness.page, serbianIdx)
-    await sleep(1500)
+    await waitForText(harness.page, 'Početna')
 
     const text = await bodyText(harness.page)
     expect(text).toContain('Početna')
