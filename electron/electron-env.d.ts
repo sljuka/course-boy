@@ -56,6 +56,18 @@ interface Window {
     uploadAsset: (
       input: import('../src/lib/course-package').UploadCourseAssetInput,
     ) => Promise<import('../src/lib/course-package').UploadCourseAssetResult>
+    getVersionHistory: (
+      courseId: string,
+    ) => Promise<import('../src/lib/course-package').CourseVersionHistory | null>
+    cutVersion: (
+      input: import('../src/lib/course-package').CutCourseVersionInput,
+    ) => Promise<import('../src/lib/course-package').CutCourseVersionResult>
+    revertToVersion: (
+      input: import('../src/lib/course-package').RevertCourseDraftInput,
+    ) => Promise<void>
+    publishVersion: (
+      input: import('../src/lib/course-package').PublishCourseVersionInput,
+    ) => Promise<void>
   }
   preferences: {
     get: () => Promise<import('../src/lib/preferences').UserPreferences>

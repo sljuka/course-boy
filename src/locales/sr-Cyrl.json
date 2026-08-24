@@ -82,6 +82,26 @@
     "missing": "Овај курс није пронађен.",
     "testLabel": "Тест"
   },
+  "courseVersions": {
+    "actionErrorTitle": "Нешто није у реду",
+    "activeBadge": "Активна",
+    "cutButton": "Исеци нову верзију",
+    "cutting": "Сечење верзије...",
+    "currentDraftVersion": "Нацрт је тренутно на верзији {{version}}",
+    "emptyState": "Још ниједна верзија није исечена.",
+    "notPublishedBadge": "Није објављена",
+    "openButton": "Историја верзија",
+    "publishButton": "Објави ову верзију",
+    "publishedBadge": "Објављена",
+    "publishing": "Објављивање...",
+    "releaseTypeLabel": "Тип измене",
+    "releaseTypeMajor": "Велика",
+    "releaseTypeMinor": "Мања",
+    "releaseTypePatch": "Закрпа",
+    "revertButton": "Врати се на ову верзију",
+    "reverting": "Враћање...",
+    "title": "Историја верзија"
+  },
   "courseItems": {
     "additionAndSubtraction": {
       "description": "Вежбај сабирање и одузимање кроз једноставне задатке за први разред.",

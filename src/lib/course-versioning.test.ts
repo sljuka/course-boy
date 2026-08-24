@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   bumpCourseVersion,
+  compareCourseVersions,
   createInitialCourseVersion,
   formatCourseVersion,
   parseCourseVersion,
@@ -41,5 +42,12 @@ describe("course versioning", () => {
     expect(formatCourseVersion(bumpCourseVersion(baseVersion, "major"))).toBe(
       "2.0.0",
     );
+  });
+
+  it("compares versions numerically, not lexicographically", () => {
+    expect(compareCourseVersions(parseCourseVersion("1.2.3"), parseCourseVersion("1.2.3"))).toBe(0);
+    expect(compareCourseVersions(parseCourseVersion("1.9.0"), parseCourseVersion("1.10.0"))).toBeLessThan(0);
+    expect(compareCourseVersions(parseCourseVersion("2.0.0"), parseCourseVersion("1.99.99"))).toBeGreaterThan(0);
+    expect(compareCourseVersions(parseCourseVersion("1.2.9"), parseCourseVersion("1.2.10"))).toBeLessThan(0);
   });
 });

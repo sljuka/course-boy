@@ -82,6 +82,26 @@
     "missing": "Ovaj kurs nije pronađen.",
     "testLabel": "Test"
   },
+  "courseVersions": {
+    "actionErrorTitle": "Nešto nije u redu",
+    "activeBadge": "Aktivna",
+    "cutButton": "Iseci novu verziju",
+    "cutting": "Sečenje verzije...",
+    "currentDraftVersion": "Nacrt je trenutno na verziji {{version}}",
+    "emptyState": "Još nijedna verzija nije isečena.",
+    "notPublishedBadge": "Nije objavljena",
+    "openButton": "Istorija verzija",
+    "publishButton": "Objavi ovu verziju",
+    "publishedBadge": "Objavljena",
+    "publishing": "Objavljivanje...",
+    "releaseTypeLabel": "Tip izmene",
+    "releaseTypeMajor": "Velika",
+    "releaseTypeMinor": "Manja",
+    "releaseTypePatch": "Zakrpa",
+    "revertButton": "Vrati se na ovu verziju",
+    "reverting": "Vraćanje...",
+    "title": "Istorija verzija"
+  },
   "courseItems": {
     "additionAndSubtraction": {
       "description": "Vežbaj sabiranje i oduzimanje kroz jednostavne zadatke za prvi razred.",

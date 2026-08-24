@@ -1,7 +1,10 @@
 import type { Locale } from "@/lib/i18n";
 import type { CourseAssetKind } from "@/lib/course-asset-id";
 import type { CourseTagDefinition } from "@/lib/course-tags";
-import type { CourseVersionInfo } from "@/lib/course-versioning";
+import type {
+  CourseVersionInfo,
+  CourseVersionReleaseType,
+} from "@/lib/course-versioning";
 
 export type CourseStatus = "draft" | "published";
 export type ContentRating = "all-ages" | "mature-themes" | "explicit";
@@ -215,3 +218,36 @@ export type UploadCourseAssetResult = {
   mimeType: string;
   path: string;
 } | null;
+
+export type CutCourseVersionInput = {
+  courseId: string;
+  releaseType: Exclude<CourseVersionReleaseType, "initial">;
+};
+
+export type CutCourseVersionResult = {
+  version: string;
+};
+
+export type RevertCourseDraftInput = {
+  courseId: string;
+  version: string;
+};
+
+export type PublishCourseVersionInput = {
+  courseId: string;
+  version: string;
+};
+
+export type CourseVersionHistoryEntry = {
+  cutAt: string;
+  isCurrentlyPublished: boolean;
+  isEverPublished: boolean;
+  releaseType: CourseVersionReleaseType;
+  version: string;
+};
+
+export type CourseVersionHistory = {
+  currentDraftVersion: string;
+  publishedVersion: string | null;
+  versions: CourseVersionHistoryEntry[];
+};

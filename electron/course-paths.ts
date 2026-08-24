@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { app, dialog } from "electron";
@@ -8,7 +9,11 @@ import type {
   CreateCourseSectionInput,
   CourseStatus,
   CourseManifest,
+  CutCourseVersionInput,
+  CutCourseVersionResult,
   GetLessonTestDraftInput,
+  PublishCourseVersionInput,
+  RevertCourseDraftInput,
   SaveLessonTestInput,
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
@@ -21,12 +26,16 @@ import {
   assetMimeTypesByExtension,
   createAssetFilename,
 } from "../src/lib/course-asset-id";
-import { isSharedTestDefinition } from "./course-registry";
+import { assertCoursePackageIsPublishable, isSharedTestDefinition } from "./course-registry";
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import { locales, type Locale } from "../src/lib/i18n";
 import {
+  bumpCourseVersion,
+  compareCourseVersions,
   createInitialCourseVersion,
   formatCourseVersion,
+  parseCourseVersion,
+  type CourseVersionReleaseType,
 } from "../src/lib/course-versioning";
 import { slugifyCourseName } from "../src/lib/course-slug";
 import { transliterateSerbianLatinToCyrillic } from "../src/lib/serbian-transliteration";
@@ -141,6 +150,7 @@ export async function ensureLocalCoursesRoot(): Promise<string> {
   }
 
   await migrateNonBundledCoursesToDrafts(localCoursesRoot);
+  await recoverInterruptedDraftReplacements(localCoursesRoot);
 
   return localCoursesRoot;
 }
@@ -219,6 +229,21 @@ function resolveCourseDirectoryPath(
   return resolvedCourseDirectoryPath;
 }
 
+function resolveCourseRootPath(localCoursesRoot: string, courseId: string): string {
+  const courseRootPath = path.join(localCoursesRoot, courseId);
+  const resolvedCourseRootPath = path.resolve(courseRootPath);
+  const relativeToCoursesRoot = path.relative(localCoursesRoot, resolvedCourseRootPath);
+
+  if (
+    relativeToCoursesRoot.startsWith("..") ||
+    path.isAbsolute(relativeToCoursesRoot)
+  ) {
+    throw new Error(`Invalid course id "${courseId}"`);
+  }
+
+  return resolvedCourseRootPath;
+}
+
 async function writeFileAtomic(targetPath: string, contents: string): Promise<void> {
   const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}`;
 
@@ -231,6 +256,291 @@ async function copyFileAtomic(sourcePath: string, targetPath: string): Promise<v
 
   await fs.copyFile(sourcePath, tmpPath);
   await fs.rename(tmpPath, targetPath);
+}
+
+async function pathExists(targetPath: string): Promise<boolean> {
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function listFilesRecursively(rootPath: string): Promise<string[]> {
+  const directoryEntries = await fs.readdir(rootPath, { withFileTypes: true });
+
+  const nestedFilePaths = await Promise.all(
+    directoryEntries.map(async (entry) => {
+      const entryPath = path.join(rootPath, entry.name);
+
+      if (entry.isDirectory()) {
+        return listFilesRecursively(entryPath);
+      }
+
+      return [entryPath];
+    }),
+  );
+
+  return nestedFilePaths.flat();
+}
+
+async function hashFileContents(filePath: string): Promise<string> {
+  const contents = await fs.readFile(filePath);
+
+  return crypto.createHash("sha256").update(contents).digest("hex");
+}
+
+/**
+ * Populates a fresh `targetDirectoryPath` with the contents of
+ * `sourceDirectoryPath`. When `previousSnapshot` is given and a file's
+ * content hash matches the hash stored for the same relative path in that
+ * snapshot, the file is hardlinked from the snapshot instead of copied — safe
+ * here specifically because every write in this codebase goes through
+ * temp-file-then-rename rather than in-place mutation, so two directories can
+ * share an inode without one edit ever corrupting the other. Falls back to a
+ * real copy for new/changed files, and whenever `fs.link` fails (e.g.
+ * `EXDEV` — source and target on different filesystems).
+ *
+ * Does not create or rename `targetDirectoryPath` itself beyond `mkdir` —
+ * atomicity is the caller's responsibility (stage into a temp-named
+ * directory, then a single `fs.rename` into place), since callers need to
+ * add further files (an updated manifest, version metadata) before
+ * committing.
+ */
+export async function copyDirectoryWithDedup(
+  sourceDirectoryPath: string,
+  targetDirectoryPath: string,
+  previousSnapshot: { directoryPath: string; fileHashes: Record<string, string> } | null,
+): Promise<Record<string, string>> {
+  await fs.mkdir(targetDirectoryPath, { recursive: true });
+
+  const sourceFilePaths = await listFilesRecursively(sourceDirectoryPath);
+  const nextFileHashes: Record<string, string> = {};
+
+  await Promise.all(
+    sourceFilePaths.map(async (sourceFilePath) => {
+      const relativeFilePath = path.relative(sourceDirectoryPath, sourceFilePath);
+      const targetFilePath = path.join(targetDirectoryPath, relativeFilePath);
+      const contentHash = await hashFileContents(sourceFilePath);
+
+      nextFileHashes[relativeFilePath] = contentHash;
+
+      await fs.mkdir(path.dirname(targetFilePath), { recursive: true });
+
+      const previousHash = previousSnapshot?.fileHashes[relativeFilePath];
+
+      if (previousSnapshot && previousHash === contentHash) {
+        try {
+          await fs.link(
+            path.join(previousSnapshot.directoryPath, relativeFilePath),
+            targetFilePath,
+          );
+          return;
+        } catch (error) {
+          const nodeError = error as NodeJS.ErrnoException;
+
+          if (nodeError.code !== "EXDEV" && nodeError.code !== "ENOENT") {
+            throw error;
+          }
+          // Fall through to a real copy below.
+        }
+      }
+
+      await fs.copyFile(sourceFilePath, targetFilePath);
+    }),
+  );
+
+  return nextFileHashes;
+}
+
+type CourseReleaseState = {
+  everPublishedVersions: string[];
+  publishedAt: string | null;
+  publishedVersion: string | null;
+};
+
+function getReleaseStatePath(courseRootPath: string): string {
+  return path.join(courseRootPath, "release.json");
+}
+
+async function readCourseReleaseState(courseRootPath: string): Promise<CourseReleaseState> {
+  try {
+    const rawState = await fs.readFile(getReleaseStatePath(courseRootPath), "utf8");
+    const parsedState = JSON.parse(rawState) as Partial<CourseReleaseState>;
+
+    return {
+      everPublishedVersions: Array.isArray(parsedState.everPublishedVersions)
+        ? parsedState.everPublishedVersions.filter(
+            (version): version is string => typeof version === "string",
+          )
+        : [],
+      publishedAt: typeof parsedState.publishedAt === "string" ? parsedState.publishedAt : null,
+      publishedVersion:
+        typeof parsedState.publishedVersion === "string" ? parsedState.publishedVersion : null,
+    };
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+
+    if (nodeError.code === "ENOENT") {
+      return { everPublishedVersions: [], publishedAt: null, publishedVersion: null };
+    }
+
+    throw error;
+  }
+}
+
+async function writeCourseReleaseState(
+  courseRootPath: string,
+  state: CourseReleaseState,
+): Promise<void> {
+  await writeFileAtomic(getReleaseStatePath(courseRootPath), JSON.stringify(state, null, 2));
+}
+
+type CourseVersionMeta = {
+  cutAt: string;
+  fileHashes: Record<string, string>;
+  releaseType: CourseVersionReleaseType;
+};
+
+function isCourseVersionReleaseTypeValue(value: unknown): value is CourseVersionReleaseType {
+  return value === "initial" || value === "major" || value === "minor" || value === "patch";
+}
+
+function getVersionMetaPath(versionDirectoryPath: string): string {
+  return path.join(versionDirectoryPath, "version-meta.json");
+}
+
+async function readCourseVersionMeta(
+  versionDirectoryPath: string,
+): Promise<CourseVersionMeta | null> {
+  try {
+    const rawMeta = await fs.readFile(getVersionMetaPath(versionDirectoryPath), "utf8");
+    const parsedMeta = JSON.parse(rawMeta) as Partial<CourseVersionMeta>;
+
+    return {
+      cutAt: typeof parsedMeta.cutAt === "string" ? parsedMeta.cutAt : "",
+      fileHashes:
+        parsedMeta.fileHashes && typeof parsedMeta.fileHashes === "object"
+          ? (parsedMeta.fileHashes as Record<string, string>)
+          : {},
+      releaseType: isCourseVersionReleaseTypeValue(parsedMeta.releaseType)
+        ? parsedMeta.releaseType
+        : "patch",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function findMostRecentSnapshot(
+  versionsDirectoryPath: string,
+): Promise<{ directoryPath: string; fileHashes: Record<string, string> } | null> {
+  let versionDirectoryNames: string[];
+
+  try {
+    const directoryEntries = await fs.readdir(versionsDirectoryPath, { withFileTypes: true });
+    versionDirectoryNames = directoryEntries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  } catch {
+    return null;
+  }
+
+  if (versionDirectoryNames.length === 0) {
+    return null;
+  }
+
+  const sortedVersionNames = versionDirectoryNames
+    .map((name) => ({ name, versionInfo: parseCourseVersion(name) }))
+    .sort((left, right) => compareCourseVersions(right.versionInfo, left.versionInfo));
+  const mostRecentDirectoryPath = path.join(versionsDirectoryPath, sortedVersionNames[0].name);
+  const meta = await readCourseVersionMeta(mostRecentDirectoryPath);
+
+  return { directoryPath: mostRecentDirectoryPath, fileHashes: meta?.fileHashes ?? {} };
+}
+
+/**
+ * Self-heals a `draft/` directory left in an inconsistent state by a process
+ * that died mid-`revertLocalCourseDraftToVersion` — same "best-effort repair
+ * on load" idiom as `migrateNonBundledCoursesToDrafts`. Called from
+ * `ensureLocalCoursesRoot()` on every launch.
+ */
+async function recoverInterruptedDraftReplacements(localCoursesRoot: string): Promise<void> {
+  const directoryEntries = await fs.readdir(localCoursesRoot, { withFileTypes: true });
+
+  await Promise.all(
+    directoryEntries
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+      .map(async (entry) => {
+        const courseRootPath = path.join(localCoursesRoot, entry.name);
+        let courseRootEntries;
+
+        try {
+          courseRootEntries = await fs.readdir(courseRootPath, { withFileTypes: true });
+        } catch {
+          return;
+        }
+
+        const draftExists = courseRootEntries.some(
+          (childEntry) => childEntry.isDirectory() && childEntry.name === "draft",
+        );
+        const stagingDirectories = courseRootEntries.filter(
+          (childEntry) => childEntry.isDirectory() && childEntry.name.startsWith(".draft-staging-"),
+        );
+        const garbageDirectories = courseRootEntries.filter(
+          (childEntry) =>
+            childEntry.isDirectory() &&
+            (childEntry.name.startsWith(".draft-retired-") || childEntry.name.includes(".tmp-")),
+        );
+
+        if (!draftExists && stagingDirectories.length > 0) {
+          await fs.rename(
+            path.join(courseRootPath, stagingDirectories[0].name),
+            path.join(courseRootPath, "draft"),
+          );
+        } else if (draftExists && stagingDirectories.length > 0) {
+          await Promise.all(
+            stagingDirectories.map((stagingEntry) =>
+              fs.rm(path.join(courseRootPath, stagingEntry.name), {
+                force: true,
+                recursive: true,
+              }),
+            ),
+          );
+        }
+
+        await Promise.all(
+          garbageDirectories.map((garbageEntry) =>
+            fs.rm(path.join(courseRootPath, garbageEntry.name), {
+              force: true,
+              recursive: true,
+            }),
+          ),
+        );
+
+        const versionsDirectoryPath = path.join(courseRootPath, "versions");
+
+        try {
+          const versionEntries = await fs.readdir(versionsDirectoryPath, {
+            withFileTypes: true,
+          });
+
+          await Promise.all(
+            versionEntries
+              .filter((versionEntry) => versionEntry.isDirectory() && versionEntry.name.includes(".tmp-"))
+              .map((versionEntry) =>
+                fs.rm(path.join(versionsDirectoryPath, versionEntry.name), {
+                  force: true,
+                  recursive: true,
+                }),
+              ),
+          );
+        } catch {
+          // No versions/ directory yet — nothing to clean up.
+        }
+      }),
+  );
 }
 
 function resolveSectionDirectoryPath(
@@ -269,7 +579,7 @@ async function writeCourseManifest(
   courseDirectoryPath: string,
   manifest: CourseManifest & Record<string, unknown>,
 ): Promise<void> {
-  await fs.writeFile(
+  await writeFileAtomic(
     path.join(courseDirectoryPath, "course.json"),
     JSON.stringify(manifest, null, 2),
   );
@@ -944,4 +1254,136 @@ export async function uploadLocalCourseAsset(
   });
 
   return { mimeType, path: filename };
+}
+
+export async function cutLocalCourseVersion(
+  input: CutCourseVersionInput,
+): Promise<CutCourseVersionResult> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseRootPath = resolveCourseRootPath(localCoursesRoot, input.courseId);
+  const draftDirectoryPath = getDraftDirectoryPath(courseRootPath);
+  const manifest = await readCourseManifest(draftDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const currentVersionInfo = manifest.versionInfo ?? parseCourseVersion(manifest.version);
+  const nextVersionInfo = bumpCourseVersion(currentVersionInfo, input.releaseType);
+  const nextVersion = formatCourseVersion(nextVersionInfo);
+  const versionsDirectoryPath = path.join(courseRootPath, "versions");
+  const targetSnapshotPath = path.join(versionsDirectoryPath, nextVersion);
+
+  if (await pathExists(targetSnapshotPath)) {
+    throw new Error(`Version "${nextVersion}" has already been cut`);
+  }
+
+  const previousSnapshot = await findMostRecentSnapshot(versionsDirectoryPath);
+  const tempSnapshotPath = `${targetSnapshotPath}.tmp-${process.pid}-${Date.now()}`;
+
+  const fileHashes = await copyDirectoryWithDedup(
+    draftDirectoryPath,
+    tempSnapshotPath,
+    previousSnapshot,
+  );
+
+  const nowIso = new Date().toISOString();
+
+  await writeCourseManifest(tempSnapshotPath, {
+    ...manifest,
+    updatedAt: nowIso,
+    version: nextVersion,
+    versionInfo: nextVersionInfo,
+  });
+  await fs.writeFile(
+    getVersionMetaPath(tempSnapshotPath),
+    JSON.stringify(
+      { cutAt: nowIso, fileHashes, releaseType: input.releaseType } satisfies CourseVersionMeta,
+      null,
+      2,
+    ),
+  );
+
+  try {
+    await assertCoursePackageIsPublishable(tempSnapshotPath);
+  } catch (error) {
+    await fs.rm(tempSnapshotPath, { force: true, recursive: true });
+    throw error;
+  }
+
+  await fs.rename(tempSnapshotPath, targetSnapshotPath);
+
+  await writeCourseManifest(draftDirectoryPath, {
+    ...manifest,
+    updatedAt: nowIso,
+    version: nextVersion,
+    versionInfo: nextVersionInfo,
+  });
+
+  return { version: nextVersion };
+}
+
+export async function revertLocalCourseDraftToVersion(
+  input: RevertCourseDraftInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseRootPath = resolveCourseRootPath(localCoursesRoot, input.courseId);
+  const draftDirectoryPath = getDraftDirectoryPath(courseRootPath);
+  const snapshotPath = path.join(courseRootPath, "versions", input.version);
+
+  if (!(await pathExists(snapshotPath))) {
+    throw new Error(`Version "${input.version}" does not exist`);
+  }
+
+  const stagingDraftPath = path.join(
+    courseRootPath,
+    `.draft-staging-${process.pid}-${Date.now()}`,
+  );
+
+  await copyDirectoryWithDedup(snapshotPath, stagingDraftPath, null);
+
+  const snapshotManifest = await readCourseManifest(stagingDraftPath);
+
+  await writeCourseManifest(stagingDraftPath, {
+    ...snapshotManifest,
+    status: "draft",
+    updatedAt: new Date().toISOString(),
+  });
+
+  const retiredDraftPath = path.join(
+    courseRootPath,
+    `.draft-retired-${process.pid}-${Date.now()}`,
+  );
+
+  await fs.rename(draftDirectoryPath, retiredDraftPath);
+  await fs.rename(stagingDraftPath, draftDirectoryPath);
+
+  await fs.rm(retiredDraftPath, { force: true, recursive: true }).catch(() => {
+    // Best-effort cleanup — an orphaned retired draft is wasted disk space,
+    // not a correctness problem.
+  });
+}
+
+export async function publishLocalCourseVersion(
+  input: PublishCourseVersionInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseRootPath = resolveCourseRootPath(localCoursesRoot, input.courseId);
+  const snapshotPath = path.join(courseRootPath, "versions", input.version);
+
+  if (!(await pathExists(snapshotPath))) {
+    throw new Error(`Version "${input.version}" does not exist`);
+  }
+
+  const releaseState = await readCourseReleaseState(courseRootPath);
+
+  if (releaseState.everPublishedVersions.includes(input.version)) {
+    throw new Error(`Version "${input.version}" has already been published`);
+  }
+
+  await writeCourseReleaseState(courseRootPath, {
+    everPublishedVersions: [...releaseState.everPublishedVersions, input.version],
+    publishedAt: new Date().toISOString(),
+    publishedVersion: input.version,
+  });
 }

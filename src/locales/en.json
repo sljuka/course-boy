@@ -82,6 +82,26 @@
     "missing": "This course could not be found.",
     "testLabel": "Test"
   },
+  "courseVersions": {
+    "actionErrorTitle": "Something went wrong",
+    "activeBadge": "Active",
+    "cutButton": "Cut new version",
+    "cutting": "Cutting version...",
+    "currentDraftVersion": "Draft is currently at version {{version}}",
+    "emptyState": "No versions have been cut yet.",
+    "notPublishedBadge": "Not published",
+    "openButton": "Version history",
+    "publishButton": "Publish this version",
+    "publishedBadge": "Published",
+    "publishing": "Publishing...",
+    "releaseTypeLabel": "Bump type",
+    "releaseTypeMajor": "Major",
+    "releaseTypeMinor": "Minor",
+    "releaseTypePatch": "Patch",
+    "revertButton": "Revert to this version",
+    "reverting": "Reverting...",
+    "title": "Version history"
+  },
   "courseItems": {
     "additionAndSubtraction": {
       "description": "Practice adding and subtracting with simple first-grade exercises.",

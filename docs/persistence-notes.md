@@ -62,7 +62,7 @@ To make file-backed drafts safe:
 1. Use atomic writes.
 2. Validate content before replacing files.
 3. Add autosave.
-4. Keep local snapshots or revision history for drafts.
+4. Keep local snapshots or revision history for drafts. **Implemented**: `courses/<id>/versions/<major.minor.patch>/` holds immutable snapshots created by "cutting a version" (`electron/course-paths.ts`'s `cutLocalCourseVersion`); a draft can revert to a previous cut (`revertLocalCourseDraftToVersion`), and one cut version can be marked the published one via a `release.json` pointer (`publishLocalCourseVersion`) — see the version-history UI on the course details page. Unchanged files between cuts are hardlinked rather than duplicated (`copyDirectoryWithDedup`).
 5. Store recovery metadata in the database.
 
 ## Write safety guidelines
@@ -82,8 +82,13 @@ The app should eventually support:
 
 - last known good save tracking
 - crash recovery markers
-- local draft snapshots
-- restore from previous snapshot when a save fails
+- local draft snapshots — **implemented**, see "Keep local snapshots or revision
+  history for drafts" above
+- restore from previous snapshot when a save fails — partially implemented:
+  `recoverInterruptedDraftReplacements` (`electron/course-paths.ts`, run on every
+  `ensureLocalCoursesRoot()`) self-heals a draft left mid-swap by a crashed
+  `revertLocalCourseDraftToVersion` call, but there is no equivalent for a crash
+  during ordinary lesson/section editing yet
 
 ## Architectural rule
 

@@ -3,14 +3,17 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 import Store from 'electron-store'
 import { spawnBareWorker } from './bare-worker'
-import { getCourseDetails, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
+import { getCourseDetails, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
   createLocalCourseDraft,
   createLocalCourseLesson,
   createLocalCourseSection,
+  cutLocalCourseVersion,
   ensureLocalCoursesRoot,
   getLocalCourseLessonTestDraft,
+  publishLocalCourseVersion,
   removeLocalCourse,
+  revertLocalCourseDraftToVersion,
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
   updateLocalCourseLessonTest,
@@ -21,7 +24,10 @@ import type {
   CreateCourseDraftInput,
   CreateCourseLessonInput,
   CreateCourseSectionInput,
+  CutCourseVersionInput,
   GetLessonTestDraftInput,
+  PublishCourseVersionInput,
+  RevertCourseDraftInput,
   SaveLessonTestInput,
   UpdateCourseDraftMetadataInput,
   UpdateLessonContentInput,
@@ -161,6 +167,24 @@ ipcMain.handle('courses:remove', (_event, courseId: string) => {
 
 ipcMain.handle('courses:upload-asset', (_event, input: UploadCourseAssetInput) => {
   return uploadLocalCourseAsset(input)
+})
+
+ipcMain.handle('courses:get-version-history', (_event, courseId: string) => {
+  return ensureLocalCoursesRoot().then((coursesRoot) =>
+    getCourseVersionHistory(coursesRoot, courseId),
+  )
+})
+
+ipcMain.handle('courses:cut-version', (_event, input: CutCourseVersionInput) => {
+  return cutLocalCourseVersion(input)
+})
+
+ipcMain.handle('courses:revert-to-version', (_event, input: RevertCourseDraftInput) => {
+  return revertLocalCourseDraftToVersion(input)
+})
+
+ipcMain.handle('courses:publish-version', (_event, input: PublishCourseVersionInput) => {
+  return publishLocalCourseVersion(input)
 })
 
 async function handleCourseAssetRequest(request: Request): Promise<Response> {

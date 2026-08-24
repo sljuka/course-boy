@@ -3,13 +3,18 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
   CourseDetails,
   CourseSummary,
+  CourseVersionHistory,
   CreateCourseDraftInput,
   CreateCourseDraftResult,
   CreateCourseLessonInput,
   CreateCourseLessonResult,
   CreateCourseSectionInput,
   CreateCourseSectionResult,
+  CutCourseVersionInput,
+  CutCourseVersionResult,
   GetLessonTestDraftInput,
+  PublishCourseVersionInput,
+  RevertCourseDraftInput,
   SaveLessonTestInput,
   SharedTestDefinition,
   UpdateLessonContentInput,
@@ -126,5 +131,56 @@ export function useLessonTestDraftQuery(input: GetLessonTestDraftInput | null) {
 export function useUploadCourseAssetMutation() {
   return useMutation<UploadCourseAssetResult, Error, UploadCourseAssetInput>({
     mutationFn: (input) => window.courses.uploadAsset(input),
+  });
+}
+
+export function useCourseVersionHistoryQuery(courseId: string | undefined) {
+  return useQuery<CourseVersionHistory | null>({
+    enabled: Boolean(courseId),
+    queryKey: ["courses", "version-history", courseId],
+    queryFn: () => window.courses.getVersionHistory(courseId!),
+  });
+}
+
+export function useCutCourseVersionMutation() {
+  return useMutation<CutCourseVersionResult, Error, CutCourseVersionInput>({
+    mutationFn: (input) => window.courses.cutVersion(input),
+    onSuccess: async (_result, input) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["courses", "detail", input.courseId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["courses", "version-history", input.courseId],
+        }),
+      ]);
+    },
+  });
+}
+
+export function useRevertCourseDraftMutation() {
+  return useMutation<void, Error, RevertCourseDraftInput>({
+    mutationFn: (input) => window.courses.revertToVersion(input),
+    onSuccess: async (_result, input) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["courses", "detail", input.courseId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["courses", "version-history", input.courseId],
+        }),
+      ]);
+    },
+  });
+}
+
+export function usePublishCourseVersionMutation() {
+  return useMutation<void, Error, PublishCourseVersionInput>({
+    mutationFn: (input) => window.courses.publishVersion(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "version-history", input.courseId],
+      });
+    },
   });
 }

@@ -8,7 +8,12 @@ import type {
   CreateCourseSectionResult,
   CourseDetails,
   CourseSummary,
+  CourseVersionHistory,
+  CutCourseVersionInput,
+  CutCourseVersionResult,
   GetLessonTestDraftInput,
+  PublishCourseVersionInput,
+  RevertCourseDraftInput,
   SaveLessonTestInput,
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
@@ -64,5 +69,17 @@ contextBridge.exposeInMainWorld('courses', {
   },
   uploadAsset(input: UploadCourseAssetInput) {
     return ipcRenderer.invoke('courses:upload-asset', input) as Promise<UploadCourseAssetResult>
+  },
+  getVersionHistory(courseId: string) {
+    return ipcRenderer.invoke('courses:get-version-history', courseId) as Promise<CourseVersionHistory | null>
+  },
+  cutVersion(input: CutCourseVersionInput) {
+    return ipcRenderer.invoke('courses:cut-version', input) as Promise<CutCourseVersionResult>
+  },
+  revertToVersion(input: RevertCourseDraftInput) {
+    return ipcRenderer.invoke('courses:revert-to-version', input) as Promise<void>
+  },
+  publishVersion(input: PublishCourseVersionInput) {
+    return ipcRenderer.invoke('courses:publish-version', input) as Promise<void>
   },
 })

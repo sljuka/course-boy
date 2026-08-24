@@ -13,6 +13,8 @@ import type {
   CoursePreviewItem,
   CourseSummary,
   CourseStatus,
+  CourseVersionHistory,
+  CourseVersionHistoryEntry,
   LessonPreview,
   LocalizedCourseMetadata,
   LocalizedLessonMetadata,
@@ -23,9 +25,11 @@ import type {
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import type { Locale } from "../src/lib/i18n";
 import {
+  compareCourseVersions,
   formatCourseVersion,
   parseCourseVersion,
   type CourseVersionInfo,
+  type CourseVersionReleaseType,
 } from "../src/lib/course-versioning";
 
 type CourseRecord = {
@@ -1027,5 +1031,152 @@ export async function getCourseDetails(
     sections,
     sectionIds,
     slug: courseRecord.manifest.slug,
+  };
+}
+
+type CourseReleaseState = {
+  everPublishedVersions: string[];
+  publishedAt: string | null;
+  publishedVersion: string | null;
+};
+
+type CourseVersionMeta = {
+  cutAt: string;
+  releaseType: CourseVersionReleaseType;
+};
+
+async function readCourseReleaseState(
+  courseRootPath: string,
+): Promise<CourseReleaseState> {
+  try {
+    const fileContents = await fs.readFile(
+      path.join(courseRootPath, "release.json"),
+      "utf8",
+    );
+    const parsed = JSON.parse(fileContents) as Partial<CourseReleaseState>;
+
+    return {
+      everPublishedVersions: Array.isArray(parsed.everPublishedVersions)
+        ? parsed.everPublishedVersions.filter(
+            (version): version is string => typeof version === "string",
+          )
+        : [],
+      publishedAt: typeof parsed.publishedAt === "string" ? parsed.publishedAt : null,
+      publishedVersion:
+        typeof parsed.publishedVersion === "string" ? parsed.publishedVersion : null,
+    };
+  } catch {
+    return { everPublishedVersions: [], publishedAt: null, publishedVersion: null };
+  }
+}
+
+async function readCourseVersionMeta(
+  versionDirectoryPath: string,
+): Promise<CourseVersionMeta> {
+  try {
+    const fileContents = await fs.readFile(
+      path.join(versionDirectoryPath, "version-meta.json"),
+      "utf8",
+    );
+    const parsed = JSON.parse(fileContents) as Partial<CourseVersionMeta>;
+
+    return {
+      cutAt: typeof parsed.cutAt === "string" ? parsed.cutAt : "",
+      releaseType: isCourseVersionReleaseType(parsed.releaseType)
+        ? parsed.releaseType
+        : "patch",
+    };
+  } catch {
+    return { cutAt: "", releaseType: "patch" };
+  }
+}
+
+/**
+ * Applies the same structural rules `readSharedSectionDefinitions` already
+ * enforces for a non-draft package (at least one section, contiguous
+ * indexes, each section has at least one lesson) to an arbitrary directory —
+ * used as a cut-time gate so an immutable version snapshot is never created
+ * from an incomplete draft. Does not read or write `status` on disk; the
+ * override here is purely in-memory, to reuse the existing validation path.
+ */
+export async function assertCoursePackageIsPublishable(
+  packageDirectoryPath: string,
+): Promise<void> {
+  const rawManifest = await readJsonFile(
+    path.join(packageDirectoryPath, "course.json"),
+    isRawCourseManifest,
+  );
+  const manifest = normalizeCourseManifest(rawManifest);
+
+  await readSharedSectionDefinitions({
+    courseRootPath: packageDirectoryPath,
+    manifest: { ...manifest, status: "published" },
+    packageDirectoryPath,
+  });
+}
+
+export async function getCourseVersionHistory(
+  rootDirectoryPath: string,
+  courseId: string,
+): Promise<CourseVersionHistory | null> {
+  const courseRootPath = path.resolve(rootDirectoryPath, courseId);
+  const relativeToRoot = path.relative(rootDirectoryPath, courseRootPath);
+
+  if (relativeToRoot.startsWith("..") || path.isAbsolute(relativeToRoot)) {
+    return null;
+  }
+
+  let draftManifest: CourseManifest;
+
+  try {
+    const rawManifest = await readJsonFile(
+      path.join(courseRootPath, "draft", "course.json"),
+      isRawCourseManifest,
+    );
+    draftManifest = normalizeCourseManifest(rawManifest);
+  } catch {
+    return null;
+  }
+
+  const versionsDirectoryPath = path.join(courseRootPath, "versions");
+  let versionDirectoryNames: string[] = [];
+
+  try {
+    const directoryEntries = await fs.readdir(versionsDirectoryPath, {
+      withFileTypes: true,
+    });
+    versionDirectoryNames = directoryEntries
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+  } catch {
+    versionDirectoryNames = [];
+  }
+
+  const releaseState = await readCourseReleaseState(courseRootPath);
+
+  const versionEntries: CourseVersionHistoryEntry[] = await Promise.all(
+    versionDirectoryNames.map(async (versionName) => {
+      const meta = await readCourseVersionMeta(
+        path.join(versionsDirectoryPath, versionName),
+      );
+
+      return {
+        cutAt: meta.cutAt,
+        isCurrentlyPublished: releaseState.publishedVersion === versionName,
+        isEverPublished: releaseState.everPublishedVersions.includes(versionName),
+        releaseType: meta.releaseType,
+        version: versionName,
+      };
+    }),
+  );
+
+  versionEntries.sort((left, right) =>
+    compareCourseVersions(parseCourseVersion(right.version), parseCourseVersion(left.version)),
+  );
+
+  return {
+    currentDraftVersion: draftManifest.version,
+    publishedVersion: releaseState.publishedVersion,
+    versions: versionEntries,
   };
 }

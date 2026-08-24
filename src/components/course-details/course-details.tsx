@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft, History, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
+import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
 import {
   buildLessonPath,
   buildLessonTestPath,
@@ -29,6 +30,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   const { locale } = useAppState();
   const { t } = useTranslation();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
     throwOnError: true,
   });
@@ -112,6 +114,14 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
               />
               <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
             </Tooltip>
+            <Button
+              onClick={() => setIsVersionHistoryOpen(true)}
+              size="sm"
+              variant="ghost"
+            >
+              <History aria-hidden="true" className="h-4 w-4" />
+              {t("courseVersions.openButton")}
+            </Button>
           </div>
         }
         top={
@@ -152,6 +162,11 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
           </CardContent>
         </Card>
       ))}
+      <VersionHistoryDialog
+        courseId={courseId}
+        onOpenChange={setIsVersionHistoryOpen}
+        open={isVersionHistoryOpen}
+      />
     </>
   );
 };

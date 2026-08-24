@@ -63,3 +63,14 @@ export function createInitialCourseVersion(): CourseVersionInfo {
     releaseType: "initial",
   };
 }
+
+export function compareCourseVersions(
+  left: CourseVersionInfo,
+  right: CourseVersionInfo,
+): number {
+  return (
+    left.major - right.major ||
+    left.minor - right.minor ||
+    left.patch - right.patch
+  );
+}
