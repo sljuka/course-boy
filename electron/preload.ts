@@ -23,6 +23,12 @@ import type {
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 import type { UserPreferences } from '../src/lib/preferences'
+import type {
+  ImportCourseInput,
+  ImportCourseResult,
+  ShareCourseInput,
+  ShareCourseResult,
+} from '../src/lib/sharing'
 
 contextBridge.exposeInMainWorld('preferences', {
   get() {
@@ -81,5 +87,17 @@ contextBridge.exposeInMainWorld('courses', {
   },
   publishVersion(input: PublishCourseVersionInput) {
     return ipcRenderer.invoke('courses:publish-version', input) as Promise<void>
+  },
+})
+
+contextBridge.exposeInMainWorld('sharing', {
+  getCreatorKey() {
+    return ipcRenderer.invoke('sharing:get-creator-key') as Promise<string>
+  },
+  shareCourse(input: ShareCourseInput) {
+    return ipcRenderer.invoke('sharing:share-course', input) as Promise<ShareCourseResult>
+  },
+  importCourse(input: ImportCourseInput) {
+    return ipcRenderer.invoke('sharing:import-course', input) as Promise<ImportCourseResult>
   },
 })

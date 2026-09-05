@@ -614,6 +614,21 @@ async function migrateNonBundledCoursesToDrafts(
             return;
           }
 
+          // A course sitting at its root with no draft/ isn't always pre-migration
+          // legacy content: a P2P import lands the same way (root course.json, no
+          // draft/), deliberately, matching how the bundled seed course already
+          // works. Only migrate genuinely unmigrated content — anything already
+          // marked published stays exactly where it is.
+          try {
+            const rootManifest = await readCourseManifest(courseRootPath);
+
+            if (rootManifest.status === "published") {
+              return;
+            }
+          } catch {
+            return;
+          }
+
           await fs.mkdir(draftDirectoryPath, { recursive: true });
 
           await Promise.all(
@@ -1386,4 +1401,16 @@ export async function publishLocalCourseVersion(
     publishedAt: new Date().toISOString(),
     publishedVersion: input.version,
   });
+}
+
+export async function getPublishedCoursePackagePath(courseId: string): Promise<string | null> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseRootPath = resolveCourseRootPath(localCoursesRoot, courseId);
+  const releaseState = await readCourseReleaseState(courseRootPath);
+
+  if (!releaseState.publishedVersion) {
+    return null;
+  }
+
+  return path.join(courseRootPath, "versions", releaseState.publishedVersion);
 }

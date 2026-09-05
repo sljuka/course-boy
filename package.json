@@ -22,6 +22,8 @@
     "@radix-ui/react-select": "^2.3.2",
     "@tailwindcss/vite": "^4.3.2",
     "@tanstack/react-query": "^5.101.2",
+    "bare-fs": "^4.8.1",
+    "bare-path": "^3.1.2",
     "bare-pipe": "^4.2.3",
     "bare-rpc": "^1.3.8",
     "bare-runtime": "^1.31.0",

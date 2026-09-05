@@ -102,6 +102,33 @@
     "reverting": "Враћање...",
     "title": "Историја верзија"
   },
+  "shareCourse": {
+    "acknowledgmentConfirm": "Настави",
+    "acknowledgmentDescription": "Дељење креира трајни идентитет који се користи за сваки курс који поделите. Касније се не може ресетовати.",
+    "acknowledgmentTitle": "Пре него што поделите",
+    "codeLabel": "Код за дељење",
+    "description": "Свако ко има овај код може да увезе ову верзију курса.",
+    "errorTitle": "Дељење курса није успело",
+    "hint": "Пошаљите овај код свакоме са ким желите да поделите курс.",
+    "latestVersionOption": "{{version}} (најновија)",
+    "notPublishedDescription": "Објавите верзију овог курса пре него што га поделите.",
+    "notPublishedTitle": "Још ништа није објављено",
+    "openButton": "Подели",
+    "shareButton": "Преузми код за дељење",
+    "sharing": "Преузимање кода за дељење...",
+    "title": "Подели курс",
+    "versionLabel": "Верзија за дељење"
+  },
+  "importCourse": {
+    "codeLabel": "Код за дељење",
+    "codePlaceholder": "Налепи код за дељење",
+    "description": "Налепите код за дељење да бисте увезли курс од другог корисника.",
+    "errorTitle": "Увоз курса није успео",
+    "importButton": "Увези",
+    "importing": "Увожење...",
+    "openButton": "Увези курс",
+    "title": "Увези курс"
+  },
   "courseItems": {
     "additionAndSubtraction": {
       "description": "Вежбај сабирање и одузимање кроз једноставне задатке за први разред.",

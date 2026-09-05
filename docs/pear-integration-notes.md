@@ -1,14 +1,14 @@
 # Pear integration notes
 
-> Research notes for the planned peer-to-peer work. **Phases 0–4 are the only Pear/Bare
+> Research notes for the planned peer-to-peer work. **Phases 0–6 are the only Pear/Bare
 > code in this repo** (`electron/bare-worker.ts`, `workers/main.cjs`) — local identity,
-> single-course publish, real peer discovery/import over Hyperswarm, and gated
-> (invite-only) sharing, not a product feature. Phase 4's live cross-process redemption
-> is confirmed working end to end as of 2026-08-23 — see the roadmap entry below for the
-> real guest-side replication bug that live testing caught (not a flaky-network issue,
-> as first suspected). Everything else here is verified fact about the upstream stack we
-> intend to adopt, recorded so the research is not repeated, not yet a contract about
-> Matko.
+> single-course publish, real peer discovery/import over Hyperswarm, gated (invite-only)
+> sharing, and a real Share/Import UI wired to the course versioning feature. Phase 4's
+> live cross-process redemption is confirmed working end to end as of 2026-08-23 — see
+> the roadmap entry below for the real guest-side replication bug that live testing
+> caught (not a flaky-network issue, as first suspected). Everything else here is
+> verified fact about the upstream stack we intend to adopt, recorded so the research is
+> not repeated, not yet a contract about Matko.
 >
 > Verified 2026-08-17, re-verified 2026-08-21 (upstream commit `5b419fff`), against
 > [holepunchto/hello-pear-electron](https://github.com/holepunchto/hello-pear-electron)
@@ -359,25 +359,71 @@ only publishers ever touch, not an onboarding step every user sees.
    (`core.length` went from `0` to `3`), and the course appeared in `PeerB`'s own course
    list with correct content.
 
-6. **Onboarding UX, once phases 0–3 exist:** two flows, no "peer" or "swarm" language
-   surfaced to users.
-   - **Share** (publisher-only) — a button on a course (or, later, a creator profile
-     page) generates a link or invite code, per whichever phase-5 decision was made, for
-     the user to distribute through any channel they like.
-   - **Import** (everyone) — paste or scan a code, the app resolves it, downloads, and
-     mirrors it into `courses/` like any other course.
-   - A local "creator profile page" (background image + course collection), if built
-     later, is the natural page a resolved key points to — not scoped here.
-   - **Open, not yet designed: a key-acknowledgment moment.** The first time Phase 1's
-     `createKeyPair('creator')` actually backs a real "Share" action, losing that key
-     has the same permanence problem already flagged elsewhere in this doc
-     (`pear.json#multisig`: losing keys strands every installed copy) — so generating it
-     should be an explicit, brief onboarding step ("this is permanent, here's what it
-     means," maybe an export/backup option), not a silent background action. This is
-     *not* "let the user choose a storage location" — Corestore's storage lives under
-     the app's own data directory the same way `courses/` and preferences already do,
-     with no user-facing choice needed there.
-   - **Open, not yet designed: search/discovery.** Hyperswarm/Corestore is a
+6. **Onboarding UX — Share/Import UI. Done, public-link only, 2026-09-06.** Real
+   `window.sharing` IPC surface (`getCreatorKey` / `shareCourse` / `importCourse`) wired
+   to a "Share" button on the course details page and an "Import course" button on My
+   Courses — the first two real, user-facing consumers of anything from Phases 0–5.
+   Gated/invite-only sharing UI is a deliberate fast-follow (`publishGatedCourse` /
+   `createInvite` / `redeemInvite` stay driver-only for now); the mechanism itself was
+   already proven live in Phase 4.
+
+   **Sources from a specific published version, not the live draft** — the course
+   versioning feature (cut/revert/publish, commit `7979537`) landed shortly before this
+   phase and gives a course a real immutable snapshot to share instead. `publishCourse`/
+   `publishGatedCourse` resolve `courses/<id>/versions/<x.y.z>/` via a new
+   `getPublishedCoursePackagePath` (defaults to `release.json`'s `publishedVersion`) or a
+   specific version the Share dialog's picker requests — the publisher can share any
+   version that was ever published, defaulting to latest, exactly as asked. Nothing else
+   in the app (not even the learner-facing course player) reads a published version yet;
+   that's a separate, larger gap, out of scope here — Share doesn't need it fixed, since
+   it never goes through `course-registry.ts`'s readers, only a raw directory path handed
+   to `Localdrive`.
+
+   **Import had to learn to discover its own course id.** `importCourse`/`redeemInvite`
+   used to require the *caller* already know the target `courseId` — fine for the
+   driver-only verification hooks of earlier phases, but a real import only has a pasted
+   code. Fixed by mirroring into a staging directory first, reading the real `id` from
+   the fetched manifest, and only then finalizing — refusing cleanly
+   (`"already imported"`) if that id already exists locally, rather than attempting any
+   merge/update. Needed `bare-fs` as a new direct dependency (already present
+   transitively via Corestore's own tree) for the Bare worker to do the exists-check and
+   stage-then-rename itself.
+
+   **Two real bugs found only by testing the actual live import, not the isolated
+   mechanism:**
+   - A published version's own snapshot manifest still says `status: "draft"` — a
+     copy-time artifact from how `cutLocalCourseVersion` writes it (see
+     persistence-notes.md). Landing that manifest verbatim at a new course's root (no
+     `draft/`, matching how the bundled seed course already works) made the import show
+     up in Drafts instead of My Courses. Fixed by patching `status` to `"published"`
+     during the worker's finalize step, before the rename.
+   - **A genuine, pre-existing cross-feature collision**: `migrateNonBundledCoursesToDrafts`
+     (`electron/course-paths.ts`, runs on every `ensureLocalCoursesRoot()` call) treats
+     *any* non-bundled-seed course sitting at its root with no `draft/` as legacy
+     pre-migration content, and force-converts it into an editable draft — silently
+     undoing the import on the very next `courses:list`/`courses:get` call after it
+     landed correctly. This safety net predates Import and was written when the *only*
+     root-only course was the explicitly-excluded bundled seed; nothing about it
+     anticipated a second legitimate source of root-only content. Fixed by skipping the
+     migration for any course whose root manifest already says `status: "published"`
+     (a real distinction from truly legacy content, which never had a `status` field at
+     all) — confirmed live: without this fix, an import looked correct immediately after
+     landing and then silently reverted to a draft on the next page load/reload.
+   - Also found and fixed in passing: `preferences:set` (`electron/main.ts`) had a
+     hardcoded per-field allowlist that silently dropped any field it didn't
+     specifically check for — the new `hasAcknowledgedCreatorKey` flag (below) was
+     written by the renderer but never actually persisted until a branch for it was
+     added. A silent-no-op failure mode worth remembering for the *next* new preference
+     field too.
+
+   **Key-acknowledgment moment, resolved as a lightweight dialog step, not a separate
+   onboarding route**: `ShareCourseDialog`'s first-ever open shows an explicit
+   acknowledgment ("this creates a permanent identity, it can't be reset later") gated by
+   a new `hasAcknowledgedCreatorKey` preference, before the real share action — reusing
+   the existing generic `preferences:set` IPC call rather than adding a new one. No
+   export/backup flow yet — flagged as a further follow-up, not solved here.
+
+   - **Still open, unchanged by this phase: search/discovery.** Hyperswarm/Corestore is a
      discovery-by-known-key model (join a swarm on a topic key someone gave you), not a
      searchable-index model — there is no built-in way to "find publishers/courses I
      don't already have a link to." A real search feature would need something acting as
@@ -385,3 +431,6 @@ only publishers ever touch, not an onboarding step every user sees.
      service, or accepting that discovery only ever happens through the Share/Import
      links above. Worth a deliberate decision before a "channel"/publisher-profile page
      implies more discoverability than the transport actually offers.
+   - **Still open: a local "creator profile page"** (background image + course
+     collection), if built later, is the natural page a resolved key points to — not
+     scoped here.

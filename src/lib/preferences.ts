@@ -10,6 +10,7 @@ export type UserRole = 'student' | 'teacher'
 
 export type UserPreferences = {
   category?: Category
+  hasAcknowledgedCreatorKey?: boolean
   locale?: Locale
   nickname?: string
   role?: UserRole

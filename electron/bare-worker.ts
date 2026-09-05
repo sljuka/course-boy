@@ -21,6 +21,7 @@ import path from 'node:path'
 import spawnBare from 'bare-runtime/spawn'
 import RPC from 'bare-rpc'
 import { app } from 'electron'
+import { getPublishedCoursePackagePath } from './course-paths'
 
 // Must match workers/main.cjs.
 const CMD_GET_CREATOR_KEY = 1
@@ -62,8 +63,23 @@ export async function getCreatorKey(): Promise<string> {
   return reply ? reply.toString() : ''
 }
 
-export async function publishCourse(courseId: string): Promise<string> {
-  const coursePath = path.join(app.getPath('userData'), 'courses', courseId, 'draft')
+async function resolveSharedCoursePackagePath(
+  courseId: string,
+  version?: string,
+): Promise<string> {
+  const coursePath = version
+    ? path.join(app.getPath('userData'), 'courses', courseId, 'versions', version)
+    : await getPublishedCoursePackagePath(courseId)
+
+  if (!coursePath) {
+    throw new Error(`Course "${courseId}" has no published version to share`)
+  }
+
+  return coursePath
+}
+
+export async function publishCourse(courseId: string, version?: string): Promise<string> {
+  const coursePath = await resolveSharedCoursePackagePath(courseId, version)
 
   const request = requireRpc().request(CMD_PUBLISH_COURSE)
   request.send(JSON.stringify({ courseId, coursePath }))
@@ -81,24 +97,30 @@ export async function publishCourse(courseId: string): Promise<string> {
   return result.driveKey ?? ''
 }
 
-export async function importCourse(driveKey: string, courseId: string): Promise<void> {
-  const destPath = path.join(app.getPath('userData'), 'courses', courseId, 'draft')
+export async function importCourse(driveKey: string): Promise<{ courseId: string }> {
+  const coursesRoot = path.join(app.getPath('userData'), 'courses')
 
   const request = requireRpc().request(CMD_IMPORT_COURSE)
-  request.send(JSON.stringify({ destPath, driveKey }))
+  request.send(JSON.stringify({ coursesRoot, driveKey }))
 
   const reply = await request.reply('utf-8')
-  const result = JSON.parse(reply ? reply.toString() : '{}') as { error?: string }
+  const result = JSON.parse(reply ? reply.toString() : '{}') as {
+    courseId?: string
+    error?: string
+  }
 
   if (result.error) {
     throw new Error(result.error)
   }
+
+  return { courseId: result.courseId ?? '' }
 }
 
 export async function publishGatedCourse(
   courseId: string,
+  version?: string,
 ): Promise<{ discoveryKey: string; driveKey: string }> {
-  const coursePath = path.join(app.getPath('userData'), 'courses', courseId, 'draft')
+  const coursePath = await resolveSharedCoursePackagePath(courseId, version)
 
   const request = requireRpc().request(CMD_PUBLISH_GATED_COURSE)
   request.send(JSON.stringify({ courseId, coursePath }))
@@ -147,15 +169,15 @@ export async function createInvite(
   return result.invite ?? ''
 }
 
-export async function redeemInvite(invite: string, courseId: string): Promise<string> {
-  const destPath = path.join(app.getPath('userData'), 'courses', courseId, 'draft')
+export async function redeemInvite(invite: string): Promise<{ courseId: string }> {
+  const coursesRoot = path.join(app.getPath('userData'), 'courses')
 
   const request = requireRpc().request(CMD_REDEEM_INVITE)
-  request.send(JSON.stringify({ destPath, invite }))
+  request.send(JSON.stringify({ coursesRoot, invite }))
 
   const reply = await request.reply('utf-8')
   const result = JSON.parse(reply ? reply.toString() : '{}') as {
-    driveKey?: string
+    courseId?: string
     error?: string
   }
 
@@ -163,7 +185,7 @@ export async function redeemInvite(invite: string, courseId: string): Promise<st
     throw new Error(result.error)
   }
 
-  return result.driveKey ?? ''
+  return { courseId: result.courseId ?? '' }
 }
 
 // No renderer/IPC surface yet (Phase 6's "Share"/"Import" triggers) — this is the

@@ -76,4 +76,13 @@ interface Window {
       preferences: Partial<import('../src/lib/preferences').UserPreferences>,
     ) => Promise<import('../src/lib/preferences').UserPreferences>
   }
+  sharing: {
+    getCreatorKey: () => Promise<string>
+    shareCourse: (
+      input: import('../src/lib/sharing').ShareCourseInput,
+    ) => Promise<import('../src/lib/sharing').ShareCourseResult>
+    importCourse: (
+      input: import('../src/lib/sharing').ImportCourseInput,
+    ) => Promise<import('../src/lib/sharing').ImportCourseResult>
+  }
 }

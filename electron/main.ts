@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, net, protocol } from 'electron'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import path from 'node:path'
 import Store from 'electron-store'
-import { spawnBareWorker } from './bare-worker'
+import { getCreatorKey, importCourse, publishCourse, spawnBareWorker } from './bare-worker'
 import { getCourseDetails, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
   createLocalCourseDraft,
@@ -34,6 +34,12 @@ import type {
   UploadCourseAssetInput,
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
+import type {
+  ImportCourseInput,
+  ImportCourseResult,
+  ShareCourseInput,
+  ShareCourseResult,
+} from '../src/lib/sharing'
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -51,6 +57,7 @@ type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
 type UserRole = 'student' | 'teacher'
 type UserPreferences = {
   category?: Category
+  hasAcknowledgedCreatorKey?: boolean
   locale?: Locale
   nickname?: string
   role?: UserRole
@@ -101,6 +108,10 @@ ipcMain.handle(
 
     if (typeof preferences.role === 'string') {
       preferencesStore.set('role', preferences.role)
+    }
+
+    if (typeof preferences.hasAcknowledgedCreatorKey === 'boolean') {
+      preferencesStore.set('hasAcknowledgedCreatorKey', preferences.hasAcknowledgedCreatorKey)
     }
 
     return preferencesStore.store
@@ -185,6 +196,20 @@ ipcMain.handle('courses:revert-to-version', (_event, input: RevertCourseDraftInp
 
 ipcMain.handle('courses:publish-version', (_event, input: PublishCourseVersionInput) => {
   return publishLocalCourseVersion(input)
+})
+
+ipcMain.handle('sharing:get-creator-key', () => {
+  return getCreatorKey()
+})
+
+ipcMain.handle('sharing:share-course', async (_event, input: ShareCourseInput) => {
+  const code = await publishCourse(input.courseId, input.version)
+  return { code } satisfies ShareCourseResult
+})
+
+ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput) => {
+  const { courseId } = await importCourse(input.code)
+  return { courseId } satisfies ImportCourseResult
 })
 
 async function handleCourseAssetRequest(request: Request): Promise<Response> {

@@ -54,18 +54,21 @@ adding a case to the e2e suite over one-off manual checking.
 - [docs/persistence-notes.md](docs/persistence-notes.md:1) — read when making decisions
   about draft storage, publishing, local state, or sharing architecture.
 - [docs/pear-integration-notes.md](docs/pear-integration-notes.md:1) — the planned
-  peer-to-peer work. Phases 0–4 are built: `electron/bare-worker.ts` +
+  peer-to-peer work. Phases 0–6 are built: `electron/bare-worker.ts` +
   `workers/main.cjs` spawn a Bare worker, derive and persist a Corestore-backed local
-  identity keypair over `bare-rpc`, mirror a course's package directory into a
-  Hyperdrive (`publishCourse`, each course namespaced to its own key derived from the
-  same root seed), can find a real peer and replicate a published course over
-  Hyperswarm (`importCourse` — every import also keeps seeding for as long as the
-  worker runs), and can gate a course to only vetted peers via a second Corestore plus
-  `blind-pairing` invites (`publishGatedCourse` / `createInvite` / `redeemInvite`,
-  expiry and use-limits enforced by our own code, not the library), verified live
-  end-to-end across two real instances. No renderer/onboarding UI yet
-  (`__matkoBareWorker` on `globalThis` is the driver-only verification hook), no
-  `pear-runtime`, no OTA updates.
+  identity keypair over `bare-rpc`, mirror a course's *published version* (see
+  [docs/persistence-notes.md](docs/persistence-notes.md:1)) into a Hyperdrive
+  (`publishCourse`, each course namespaced to its own key derived from the same root
+  seed), can find a real peer and replicate a published course over Hyperswarm
+  (`importCourse` — discovers the real course id from the fetched manifest, lands it as
+  a root-only published course like the bundled seed, and keeps seeding for as long as
+  the worker runs), and can gate a course to only vetted peers via a second Corestore
+  plus `blind-pairing` invites (`publishGatedCourse` / `createInvite` / `redeemInvite`,
+  driver-only for now). A real `window.sharing` IPC surface and Share/Import UI (public
+  link only; gated UI is a fast-follow) now exist — a "Share" button on the course
+  details page (with a version picker, defaulting to latest published) and an "Import
+  course" button on My Courses, gated behind a one-time creator-key acknowledgment
+  dialog. No `pear-runtime`, no OTA updates.
 
 ## Architecture rules
 

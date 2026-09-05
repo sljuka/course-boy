@@ -102,6 +102,33 @@
     "reverting": "Reverting...",
     "title": "Version history"
   },
+  "shareCourse": {
+    "acknowledgmentConfirm": "Continue",
+    "acknowledgmentDescription": "Sharing creates a permanent identity used for every course you share. It can't be reset later.",
+    "acknowledgmentTitle": "Before you share",
+    "codeLabel": "Share code",
+    "description": "Anyone with this code can import this version of the course.",
+    "errorTitle": "Couldn't share this course",
+    "hint": "Send this code to anyone you want to share the course with.",
+    "latestVersionOption": "{{version}} (latest)",
+    "notPublishedDescription": "Publish a version of this course before sharing it.",
+    "notPublishedTitle": "Nothing published yet",
+    "openButton": "Share",
+    "shareButton": "Get share code",
+    "sharing": "Getting share code...",
+    "title": "Share course",
+    "versionLabel": "Version to share"
+  },
+  "importCourse": {
+    "codeLabel": "Share code",
+    "codePlaceholder": "Paste a share code",
+    "description": "Paste a share code to import a course from another peer.",
+    "errorTitle": "Couldn't import this course",
+    "importButton": "Import",
+    "importing": "Importing...",
+    "openButton": "Import course",
+    "title": "Import course"
+  },
   "courseItems": {
     "additionAndSubtraction": {
       "description": "Practice adding and subtracting with simple first-grade exercises.",

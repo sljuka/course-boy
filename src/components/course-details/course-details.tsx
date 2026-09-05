@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, History, Star } from "lucide-react";
+import { ArrowLeft, History, Share2, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
+import { ShareCourseDialog } from "@/components/course-details/share-course-dialog";
 import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
 import {
   buildLessonPath,
@@ -31,6 +32,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   const { t } = useTranslation();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
     throwOnError: true,
   });
@@ -79,6 +81,10 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
           <>
             <Button disabled={!entryLessonId} onClick={startCourse} size="sm">
               {t("courseDetails.startCourse")}
+            </Button>
+            <Button onClick={() => setIsShareOpen(true)} size="sm" variant="secondary">
+              <Share2 aria-hidden="true" className="h-4 w-4" />
+              {t("shareCourse.openButton")}
             </Button>
             <Button
               aria-label={t(
@@ -166,6 +172,11 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         courseId={courseId}
         onOpenChange={setIsVersionHistoryOpen}
         open={isVersionHistoryOpen}
+      />
+      <ShareCourseDialog
+        courseId={courseId}
+        onOpenChange={setIsShareOpen}
+        open={isShareOpen}
       />
     </>
   );

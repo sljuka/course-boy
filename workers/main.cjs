@@ -10,6 +10,8 @@ const Localdrive = require('localdrive')
 const IdEncoding = require('hypercore-id-encoding')
 const Hyperswarm = require('hyperswarm')
 const BlindPairing = require('blind-pairing')
+const fsp = require('bare-fs/promises')
+const path = require('bare-path')
 
 const CMD_GET_CREATOR_KEY = 1 // must match electron/bare-worker.ts
 const CMD_PUBLISH_COURSE = 2 // must match electron/bare-worker.ts
@@ -107,7 +109,57 @@ async function start() {
     return drive
   }
 
-  async function importCourse(driveKey, destPath) {
+  // A real import only ever has the code (the driveKey/invite) — it doesn't know the
+  // shared course's real id in advance, only whoever published it does. Mirror into a
+  // staging directory first, then discover the id from the fetched course.json, and
+  // land it as a course root of its own (no draft/ wrapper — the same shape the
+  // bundled seed course already uses for "finished content you consume, not author").
+  async function finalizeImportedCourse(stagingPath, coursesRoot) {
+    let courseId
+
+    try {
+      const manifestPath = path.join(stagingPath, 'course.json')
+      const manifest = JSON.parse(await fsp.readFile(manifestPath, 'utf8'))
+      courseId = manifest.id
+
+      if (!courseId) {
+        throw new Error('course.json is missing an id')
+      }
+
+      // A published version's own snapshot manifest still says status: "draft" — a
+      // copy-time artifact from when it was cut (see docs/persistence-notes.md) that
+      // nothing reads while it stays inside versions/. Landing it at the course root
+      // with that same status would make it show up in Drafts instead of My Courses,
+      // even though there's no draft/ directory backing it — patch it before it lands.
+      await fsp.writeFile(
+        manifestPath,
+        JSON.stringify({ ...manifest, status: 'published' }, null, 2),
+      )
+    } catch (error) {
+      await fsp.rm(stagingPath, { recursive: true, force: true }).catch(() => {})
+      throw error
+    }
+
+    const finalPath = path.join(coursesRoot, courseId)
+    const alreadyExists = await fsp
+      .stat(finalPath)
+      .then(() => true)
+      .catch(() => false)
+
+    if (alreadyExists) {
+      await fsp.rm(stagingPath, { recursive: true, force: true }).catch(() => {})
+      throw new Error(`Course "${courseId}" is already imported`)
+    }
+
+    await fsp.rename(stagingPath, finalPath)
+    return courseId
+  }
+
+  function stagingPathFor(coursesRoot) {
+    return path.join(coursesRoot, `.import-staging-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  }
+
+  async function importCourse(driveKey, coursesRoot) {
     const drive = new Hyperdrive(store, driveKey)
     await drive.ready()
 
@@ -119,7 +171,11 @@ async function start() {
     await discovery.flushed()
     await swarm.flush()
 
-    await drive.mirror(new Localdrive(destPath)).done()
+    const stagingPath = stagingPathFor(coursesRoot)
+    await drive.mirror(new Localdrive(stagingPath)).done()
+
+    const courseId = await finalizeImportedCourse(stagingPath, coursesRoot)
+    return { courseId, driveKey: drive.key }
   }
 
   async function publishGatedCourse(courseId, coursePath) {
@@ -156,7 +212,7 @@ async function start() {
     return invite.invite
   }
 
-  async function redeemInvite(inviteBuffer, destPath) {
+  async function redeemInvite(inviteBuffer, coursesRoot) {
     const candidate = pairing.addCandidate({
       invite: inviteBuffer,
       userData: swarmKeyPair.publicKey,
@@ -197,9 +253,11 @@ async function start() {
     await swarm.flush()
     await drive.update()
 
-    await drive.mirror(new Localdrive(destPath)).done()
+    const stagingPath = stagingPathFor(coursesRoot)
+    await drive.mirror(new Localdrive(stagingPath)).done()
 
-    return drive.key
+    const courseId = await finalizeImportedCourse(stagingPath, coursesRoot)
+    return { courseId, driveKey: drive.key }
   }
 
   const rpc = new RPC(new Pipe(3), async (req) => {
@@ -228,11 +286,13 @@ async function start() {
     }
 
     if (req.command === CMD_IMPORT_COURSE) {
-      const { driveKey, destPath } = JSON.parse(req.data.toString())
+      const { driveKey, coursesRoot } = JSON.parse(req.data.toString())
 
       try {
-        await importCourse(driveKey, destPath)
-        req.reply(JSON.stringify({ ok: true }))
+        const result = await importCourse(driveKey, coursesRoot)
+        req.reply(
+          JSON.stringify({ courseId: result.courseId, driveKey: IdEncoding.normalize(result.driveKey) }),
+        )
       } catch (error) {
         console.error('[worker] failed to import course:', error)
         req.reply(JSON.stringify({ error: error.message }))
@@ -280,11 +340,13 @@ async function start() {
     }
 
     if (req.command === CMD_REDEEM_INVITE) {
-      const { invite, destPath } = JSON.parse(req.data.toString())
+      const { invite, coursesRoot } = JSON.parse(req.data.toString())
 
       try {
-        const driveKey = await redeemInvite(Buffer.from(invite, 'base64'), destPath)
-        req.reply(JSON.stringify({ driveKey: IdEncoding.normalize(driveKey) }))
+        const result = await redeemInvite(Buffer.from(invite, 'base64'), coursesRoot)
+        req.reply(
+          JSON.stringify({ courseId: result.courseId, driveKey: IdEncoding.normalize(result.driveKey) }),
+        )
       } catch (error) {
         console.error('[worker] failed to redeem invite:', error)
         req.reply(JSON.stringify({ error: error.message, code: error.code }))
