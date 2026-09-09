@@ -2,7 +2,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, getContrastTextColor } from "@/lib/utils";
 
 const tagVariants = cva("", {
   variants: {
@@ -60,18 +60,55 @@ const tagVariants = cva("", {
 
 type TagColor = NonNullable<VariantProps<typeof tagVariants>["color"]>;
 
+// The fixed set tagVariants' cva config actually knows how to render. Kept
+// as a plain literal (not derived from course-tags.ts, which itself derives
+// TagColor from this file) to avoid a circular import between the two.
+const KNOWN_TAG_COLORS: readonly string[] = [
+  "amber",
+  "emerald",
+  "rose",
+  "sky",
+  "stone",
+  "teal",
+];
+
+function isKnownTagColor(value: string): value is TagColor {
+  return KNOWN_TAG_COLORS.includes(value);
+}
+
 function Tag({
   className,
   color,
   selected,
+  style,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
-  color: TagColor;
+  color: string;
   selected?: boolean;
 }) {
+  if (isKnownTagColor(color)) {
+    return (
+      <Badge
+        className={cn(tagVariants({ color, selected }), className)}
+        style={style}
+        {...props}
+      />
+    );
+  }
+
+  // An arbitrary color (e.g. a hex value from a custom color picker) can't
+  // be a fixed cva variant, so it's applied as an inline style instead —
+  // the pill shape/padding/font size still come from Badge's own ui-tier
+  // classes, only the color itself is dynamic.
   return (
     <Badge
-      className={cn(tagVariants({ color, selected }), className)}
+      className={cn("border", className)}
+      style={{
+        backgroundColor: color,
+        borderColor: color,
+        color: getContrastTextColor(color),
+        ...style,
+      }}
       {...props}
     />
   );

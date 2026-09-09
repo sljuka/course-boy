@@ -86,6 +86,16 @@ const COMMANDS = {
     console.log('click-text', JSON.stringify(text), '->', await clickText(harness.page, text))
   },
 
+  async 'real-click-text'(text) {
+    if (!need()) return
+    try {
+      await harness.page.getByText(text, { exact: true }).first().click({ timeout: 3000 })
+      console.log('real-click-text', JSON.stringify(text), '-> OK')
+    } catch (error) {
+      console.log('real-click-text', JSON.stringify(text), '-> ERROR', error.message)
+    }
+  },
+
   async text(sel) {
     if (!need()) return
     console.log(await bodyText(harness.page, sel || null))

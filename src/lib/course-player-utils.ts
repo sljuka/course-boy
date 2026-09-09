@@ -1,20 +1,10 @@
-import type {
-  CourseExercise,
-  CourseExerciseVariable,
-  CourseLesson,
-} from "@/lib/course-package";
-import { evaluateFormula } from "@/lib/formula-dsl";
+import type { CourseExercise, CourseLesson } from "@/lib/course-package";
+import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
 
-export type ExerciseInstance = {
-  expectedAnswer: number;
-  variables: Record<string, number>;
-};
-
-export function roundToPrecision(value: number, precision: number): number {
-  const multiplier = 10 ** precision;
-
-  return Math.round(value * multiplier) / multiplier;
-}
+export type ExerciseInstance =
+  | { kind: "numeric"; expectedAnswer: number; variables: Record<string, number> }
+  | { kind: "multiple-choice"; optionOrder: number[] }
+  | { kind: "word-types" };
 
 export function interpolateTemplate(
   template: string,
@@ -25,55 +15,8 @@ export function interpolateTemplate(
   });
 }
 
-const MAX_PARITY_RESAMPLE_ATTEMPTS = 50;
-
-function matchesParity(value: number, parity: "even" | "odd" | undefined): boolean {
-  return !parity || (value % 2 === 0) === (parity === "even");
-}
-
-function nearestValueWithParity(
-  min: number,
-  max: number,
-  parity: "even" | "odd" | undefined,
-): number {
-  for (let value = min; value <= max; value += 1) {
-    if (matchesParity(value, parity)) {
-      return value;
-    }
-  }
-
-  return min;
-}
-
-export function rollVariableValue(definition: CourseExerciseVariable): number {
-  const span = definition.max - definition.min + 1;
-
-  for (let attempt = 0; attempt < MAX_PARITY_RESAMPLE_ATTEMPTS; attempt += 1) {
-    const candidate = Math.floor(Math.random() * span) + definition.min;
-
-    if (matchesParity(candidate, definition.parity)) {
-      return candidate;
-    }
-  }
-
-  return nearestValueWithParity(definition.min, definition.max, definition.parity);
-}
-
 export function buildExerciseInstance(exercise: CourseExercise): ExerciseInstance {
-  const variables = Object.fromEntries(
-    Object.entries(exercise.variables).map(([variableName, variableDefinition]) => {
-      return [variableName, rollVariableValue(variableDefinition)];
-    }),
-  );
-  const expectedAnswer = roundToPrecision(
-    evaluateFormula(exercise.formula, variables),
-    exercise.precision,
-  );
-
-  return {
-    expectedAnswer,
-    variables,
-  };
+  return getExerciseKindRuntime(exercise.kind).buildInstance(exercise);
 }
 
 function shuffleExercises(exercises: CourseExercise[]): CourseExercise[] {

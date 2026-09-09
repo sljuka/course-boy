@@ -1,15 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  Ellipsis,
-  Plus,
-  TriangleAlert,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, Ellipsis, Plus, Trash2, X } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
   AccordionContent,
@@ -17,7 +8,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { CardDescription } from "@/components/ui/card";
 import {
   Combobox,
   ComboboxContent,
@@ -33,41 +23,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tag } from "@/components/ui/tag";
-import { Textarea } from "@/components/ui/textarea";
-import type {
-  CourseTagDefinition,
-  TestExercise,
-  VariableConstraintType,
-} from "@/components/test-editor-prototype-types";
-import {
-  extractPromptVariables,
-  formatSampleVariables,
-  getConstraintLabel,
-  validateExerciseSolution,
-} from "@/components/test-editor-prototype-logic";
+import type { CourseTagDefinition, TestExercise } from "@/components/test-editor-prototype-types";
+import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import type { Locale } from "@/lib/i18n";
 import { useComboboxAnchor } from "@/components/ui/use-combobox-anchor";
-
-function getValidationLabel(status: "error" | "valid" | "warning") {
-  switch (status) {
-    case "error":
-      return "Invalid";
-    case "warning":
-      return "Warning";
-    case "valid":
-      return "Valid";
-  }
-}
 
 export function ExercisePromptCard({
   canMoveDown,
@@ -76,16 +36,12 @@ export function ExercisePromptCard({
   descriptiveTags,
   exercise,
   locale,
-  onAddConstraint,
+  onCollapsedChange,
   onDelete,
+  onExerciseChange,
   onMoveDown,
   onMoveUp,
-  onPromptChange,
-  onCollapsedChange,
-  onRemoveConstraint,
-  onSolutionChange,
   onToggleTag,
-  onVariableRemove,
 }: {
   canMoveDown: boolean;
   canMoveUp: boolean;
@@ -93,68 +49,21 @@ export function ExercisePromptCard({
   descriptiveTags: CourseTagDefinition[];
   exercise: TestExercise;
   locale: Locale;
-  onAddConstraint: (
-    exerciseId: string,
-    variableId: string,
-    type: VariableConstraintType,
-    value: number | null,
-  ) => void;
+  onCollapsedChange: (exerciseId: string, collapsed: boolean) => void;
   onDelete: (exerciseId: string) => void;
+  onExerciseChange: (
+    exerciseId: string,
+    updater: (exercise: TestExercise) => TestExercise,
+  ) => void;
   onMoveDown: (exerciseId: string) => void;
   onMoveUp: (exerciseId: string) => void;
-  onCollapsedChange: (exerciseId: string, collapsed: boolean) => void;
-  onPromptChange: (exercise: TestExercise, locale: Locale, prompt: string) => void;
-  onRemoveConstraint: (
-    exerciseId: string,
-    variableId: string,
-    constraintId: string,
-  ) => void;
-  onSolutionChange: (exerciseId: string, solution: string) => void;
   onToggleTag: (exerciseId: string, tagId: string) => void;
-  onVariableRemove: (exerciseId: string, variableId: string) => void;
 }) {
   const collapsedPromptPreviewMaxLength = 50;
-  const [activeConstraintVariableId, setActiveConstraintVariableId] = useState<
-    string | null
-  >(null);
-  const [constraintType, setConstraintType] =
-    useState<VariableConstraintType>("min-value");
-  const [constraintValue, setConstraintValue] = useState("5");
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
   const tagPickerAnchor = useComboboxAnchor();
-  const promptRef = useRef<HTMLTextAreaElement | null>(null);
-  const solutionRef = useRef<HTMLTextAreaElement | null>(null);
   const prompt = exercise.locales[locale]?.prompt ?? "";
-  const usedVariableNames = useMemo(
-    () => new Set(extractPromptVariables(prompt)),
-    [prompt],
-  );
-  const solutionValidation = useMemo(
-    () => validateExerciseSolution(exercise, usedVariableNames),
-    [exercise, usedVariableNames],
-  );
-
-  useEffect(() => {
-    const textarea = promptRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [prompt]);
-
-  useEffect(() => {
-    const textarea = solutionRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [exercise.solution]);
+  const { FieldsComponent } = getExerciseKindEditor(exercise.kind);
 
   const promptPreview = useMemo(() => {
     const normalizedPrompt = prompt.replace(/\s+/g, " ").trim();
@@ -185,18 +94,6 @@ export function ExercisePromptCard({
       ),
     [descriptiveTags],
   );
-
-  function submitConstraint(variableId: string) {
-    const nextValue =
-      constraintType === "min-value" || constraintType === "max-value"
-        ? Number(constraintValue) || 0
-        : null;
-
-    onAddConstraint(exercise.id, variableId, constraintType, nextValue);
-    setActiveConstraintVariableId(null);
-    setConstraintType("min-value");
-    setConstraintValue("5");
-  }
 
   function handleTagPickerValueChange(nextValue: string | string[] | null) {
     if (!Array.isArray(nextValue)) {
@@ -296,7 +193,7 @@ export function ExercisePromptCard({
               <DropdownMenuContent>
                 <DropdownMenuItem
                   className={canMoveUp ? undefined : "pointer-events-none text-stone-400"}
-                  onSelect={() => {
+                  onClick={() => {
                     if (canMoveUp) {
                       onMoveUp(exercise.id);
                     }
@@ -307,7 +204,7 @@ export function ExercisePromptCard({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className={canMoveDown ? undefined : "pointer-events-none text-stone-400"}
-                  onSelect={() => {
+                  onClick={() => {
                     if (canMoveDown) {
                       onMoveDown(exercise.id);
                     }
@@ -319,7 +216,7 @@ export function ExercisePromptCard({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                  onSelect={() => onDelete(exercise.id)}
+                  onClick={() => onDelete(exercise.id)}
                 >
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
                   Delete
@@ -330,176 +227,11 @@ export function ExercisePromptCard({
           </div>
           <AccordionContent>
             <div className="flex flex-col gap-4">
-              <Field>
-                <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>
-                  Prompt
-                </FieldLabel>
-                <Textarea
-                  className="min-h-0 resize-none overflow-hidden"
-                  id={`exercise-prompt-${exercise.id}-${locale}`}
-                  onChange={(event) => onPromptChange(exercise, locale, event.target.value)}
-                  placeholder="Mary had {{ apple_number }} apples..."
-                  ref={promptRef}
-                  rows={2}
-                  value={prompt}
-                />
-              </Field>
-
-              {exercise.variables.length > 0 && (
-                <Field>
-                  <FieldLabel>Variables</FieldLabel>
-                  {exercise.variables.map((variable) => {
-                    const isUsed = usedVariableNames.has(variable.name);
-
-                    return (
-                      <div className="flex flex-col gap-2" key={variable.id}>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge
-                            className={
-                              isUsed
-                                ? "border-sky-300 bg-sky-50 text-sky-900"
-                                : "border-amber-300 bg-amber-50 text-amber-900"
-                            }
-                            variant="outline"
-                          >
-                            <span>{variable.name}</span>
-                            {!isUsed && (
-                              <>
-                                <span
-                                  className="inline-flex items-center"
-                                  title="variable not used in prompt"
-                                >
-                                  <TriangleAlert
-                                    aria-hidden="true"
-                                    className="h-3.5 w-3.5"
-                                  />
-                                </span>
-                                <button
-                                  aria-label={`Remove variable ${variable.name}`}
-                                  className="inline-flex items-center"
-                                  onClick={() => onVariableRemove(exercise.id, variable.id)}
-                                  type="button"
-                                >
-                                  <X aria-hidden="true" className="h-3 w-3" />
-                                </button>
-                              </>
-                            )}
-                          </Badge>
-                          {variable.constraints.map((constraint) => (
-                            <Badge
-                              className="gap-1.5 pr-1"
-                              key={constraint.id}
-                              variant="secondary"
-                            >
-                              <span>{getConstraintLabel(constraint)}</span>
-                              <button
-                                aria-label={`Remove ${getConstraintLabel(constraint)}`}
-                                className="inline-flex items-center"
-                                onClick={() =>
-                                  onRemoveConstraint(
-                                    exercise.id,
-                                    variable.id,
-                                    constraint.id,
-                                  )
-                                }
-                                type="button"
-                              >
-                                <X aria-hidden="true" className="h-3 w-3" />
-                              </button>
-                            </Badge>
-                          ))}
-                          <Button
-                            onClick={() =>
-                              setActiveConstraintVariableId((currentId) =>
-                                currentId === variable.id ? null : variable.id,
-                              )
-                            }
-                            size="sm"
-                            variant="ghost"
-                          >
-                            <Plus aria-hidden="true" className="h-4 w-4" />
-                            New constraint
-                          </Button>
-                        </div>
-
-                        {activeConstraintVariableId === variable.id && (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Select
-                              onValueChange={(value) =>
-                                setConstraintType(value as VariableConstraintType)
-                              }
-                              value={constraintType}
-                            >
-                              <SelectTrigger className="w-full sm:w-48">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="min-value">min-value</SelectItem>
-                                <SelectItem value="max-value">max-value</SelectItem>
-                                <SelectItem value="even-number">even-number</SelectItem>
-                                <SelectItem value="odd-number">odd-number</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            {(constraintType === "min-value" ||
-                              constraintType === "max-value") && (
-                              <Input
-                                className="w-full sm:w-32"
-                                onChange={(event) => setConstraintValue(event.target.value)}
-                                type="number"
-                                value={constraintValue}
-                              />
-                            )}
-                            <Button
-                              onClick={() => submitConstraint(variable.id)}
-                              size="sm"
-                              variant="secondary"
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </Field>
-              )}
-
-              <Field>
-                <FieldLabel htmlFor={`exercise-solution-${exercise.id}`}>
-                  Solution
-                </FieldLabel>
-                <Textarea
-                  className="min-h-0 resize-none overflow-hidden"
-                  id={`exercise-solution-${exercise.id}`}
-                  onChange={(event) => onSolutionChange(exercise.id, event.target.value)}
-                  placeholder="apple_number + 42"
-                  ref={solutionRef}
-                  rows={2}
-                  value={exercise.solution}
-                />
-                {solutionValidation.status !== "idle" && (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge
-                        className={
-                          solutionValidation.status === "valid"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                            : "border-amber-300 bg-amber-50 text-amber-900"
-                        }
-                        variant="outline"
-                      >
-                        {getValidationLabel(solutionValidation.status)}
-                      </Badge>
-                      <CardDescription>{solutionValidation.message}</CardDescription>
-                    </div>
-                    {solutionValidation.sampleVariables && (
-                      <CardDescription>
-                        Variables: {formatSampleVariables(solutionValidation.sampleVariables)}
-                      </CardDescription>
-                    )}
-                  </div>
-                )}
-              </Field>
+              <FieldsComponent
+                exercise={exercise}
+                locale={locale}
+                onChange={(updater) => onExerciseChange(exercise.id, updater)}
+              />
 
               <div
                 className="flex flex-wrap items-center gap-3 pt-1"

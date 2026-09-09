@@ -168,6 +168,57 @@ design-system primitive supports, not the reverse — so it's not a tier violati
 Changing the build tool means changing all four together. This is the contract the
 planned electron-forge migration breaks first.
 
+## 8. Adding an exercise kind touches two files (plus the shapes it needs)
+
+Lesson tests support multiple exercise kinds (`numeric`, `multiple-choice`,
+`word-types`, ...), dispatched through two small registries instead of hand-written
+`if/else` chains, split exactly at the process boundary from contract 2 above:
+
+| Registry | File | Used by |
+|---|---|---|
+| Pure runtime | [src/lib/exercise-kinds/registry.ts](../src/lib/exercise-kinds/registry.ts:1) | `electron/course-registry.ts` (save-time structural guard, read-time locale collapsing), `course-player-utils.ts` (per-attempt instance building), `use-test-player-state.ts` (grading) |
+| Renderer editor | [src/components/exercise-kinds/registry.ts](../src/components/exercise-kinds/registry.ts:1) | the "Add exercise" menu, the exercise card's field dispatch, draft↔shared persistence conversion, the player's answer/print-answer UI |
+
+Both registries are typed `Record<ExerciseKind, ...>` (not an array + `.find`) so that
+adding a value to the `ExerciseKind` union in
+[src/lib/course-package.ts](../src/lib/course-package.ts:1) without registering it in
+**both** registries is a compile error, not a silent fallthrough to numeric handling.
+
+To add a kind:
+
+1. Add the literal to `ExerciseKind` and write its three shapes in `course-package.ts`
+   (player-facing `CourseExercise` member, on-disk `SharedTestExerciseDefinition`
+   member) — these intentionally stay three separate, hand-written shapes (player /
+   disk / draft-editor) rather than one unified type; see `src/components/
+   test-editor-prototype-types.ts` for the third (draft) shape.
+2. Create `src/lib/exercise-kinds/<kind>.ts` implementing `ExerciseKindRuntime`
+   (`isValid`, `resolveForPlayer`, `buildInstance`, `grade`) — pure, no React, no
+   filesystem, safe to import from Electron main.
+3. Create `src/components/exercise-kinds/<kind>.tsx` implementing `ExerciseKindEditor`
+   (`createExercise`, `validate`, `toShared`/`fromShared`, `FieldsComponent`,
+   `AnswerComponent`, optional `PrintAnswerComponent`) — register it in both
+   registries.
+
+A kind with no `PrintAnswerComponent` simply never renders in the print pass — that is
+the mechanism behind "multiple-choice and word-types are interactive-only."
+
+`grade()` returns a plain `{isCorrect} | {isCorrect: false, isAnswered, ...}` result and
+never calls `t(...)` — hint-formatting and translation are centralized once in
+`use-test-player-state.ts` rather than duplicated per kind.
+
+Every kind requires at least one tag to save — `hasValidTags` in the runtime registry
+enforces it at save time, but a kind's editor-side `validate()` must call the matching
+`validateHasTags()` from `src/components/exercise-kinds/types.ts` itself (last, after any
+kind-specific checks) or the UI can show "Valid" for an exercise the backend then
+rejects with no visible reason. This was a real bug for numeric specifically: it validated
+its formula but never checked for tags, while multiple-choice and word-types did.
+
+Both registries type their entries as `ExerciseKindRuntime<any, any>` /
+`ExerciseKindEditor<any, any, any>` — a deliberate, narrow loss of per-kind type
+precision at the registry boundary itself (an eslint-disable comment marks each spot).
+Each kind's own module still gets full type safety internally; only code that looks a
+kind up generically (rather than importing it directly) sees the erased type.
+
 ## Not yet contracts
 
 The Pear/Bare boundaries (worker spawn argv order, FramedStream pipe strings, the

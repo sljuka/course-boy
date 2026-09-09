@@ -1,11 +1,10 @@
 {
-  "total": 344,
+  "total": 336,
   "files": {
     "src/components/course-structure-prototype/course-structure-prototype.tsx": 32,
     "src/components/course-create/course-create.tsx": 22,
     "src/components/editor-prototype/block-card.tsx": 22,
     "src/components/editor-prototype/editor-prototype.tsx": 20,
-    "src/components/test-editor-prototype-exercise-card.tsx": 19,
     "src/components/app-menu.tsx": 18,
     "src/components/markdown-renderer.tsx": 17,
     "src/components/test-editor-prototype.tsx": 17,
@@ -13,6 +12,7 @@
     "src/components/course-layout.tsx": 14,
     "src/components/app-sidebar.tsx": 11,
     "src/components/course-details/course-details.tsx": 11,
+    "src/components/test-editor-prototype-exercise-card.tsx": 11,
     "src/components/test-player/alert-interactive-mode.tsx": 10,
     "src/components/course-player/print-document-header.tsx": 9,
     "src/components/test-editor-tag-manager.tsx": 8,

@@ -76,9 +76,11 @@
     "printCourse": "Print course",
     "refreshExercise": "Refresh exercise",
     "sections": "Sections",
+    "selectAnAnswer": "Select an answer before continuing.",
     "startCourse": "Start course",
     "loading": "Loading course...",
     "lessonLabel": "Lesson",
+    "markAllWords": "Mark every highlighted word before continuing.",
     "missing": "This course could not be found.",
     "testLabel": "Test"
   },

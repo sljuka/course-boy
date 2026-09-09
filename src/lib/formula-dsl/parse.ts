@@ -1,5 +1,5 @@
-import { tokenizeFormula } from "@/lib/formula-dsl/tokenize";
-import type { FormulaAstNode, FormulaToken } from "@/lib/formula-dsl/types";
+import { tokenizeFormula } from "./tokenize";
+import type { FormulaAstNode, FormulaToken } from "./types";
 
 class FormulaParser {
   private currentIndex = 0;

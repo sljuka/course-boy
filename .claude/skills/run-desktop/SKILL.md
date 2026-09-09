@@ -63,6 +63,7 @@ output from an earlier command and the next one races ahead.
 | `hit <i>` | click element `i` from `ui` |
 | `fill <i> <text>` | set input `i`'s value so React notices |
 | `click-text <text>` | click a button/link by its visible text |
+| `real-click-text <text>` | click via a real Playwright locator instead of DOM `.click()` — see gotcha below |
 | `text [sel]` | print `innerText` of the body or a selector |
 | `ss [name]` | screenshot → `/tmp/shots/<name>.png` |
 | `url` | current route |
@@ -112,6 +113,19 @@ ipc window.preferences.get()
   policy is set yet. `launchApp` filters it out of `errors`.
 - **`quit` exits the whole REPL process.** In tmux, subsequent `send-keys` then go to the
   shell. Relaunch `node .claude/skills/run-desktop/driver.mjs` to continue.
+- **`hit`/`click-text`'s DOM `.click()` does not activate `DropdownMenu` items
+  (`@base-ui/react/dropdown-menu`).** Confirmed on both a pre-existing menu (the exercise
+  card's Move/Delete actions) and a newly added one — plain `.click()`, a full synthetic
+  pointer-event sequence, and keyboard-only activation (focus + Enter + `press ArrowDown`
+  + `press Enter`) all silently no-op, with no console error. Use `real-click-text`
+  instead, which drives a genuine Playwright locator click. (`ContextMenu`, used for the
+  course-structure tree's right-click menu, does not have this problem — plain `.click()`
+  works there.) If a `DropdownMenuItem`'s `onSelect` still doesn't fire after switching to
+  `real-click-text`, that's a real bug, not the driver.
+- **The launched window defaults to well under the `lg` Tailwind breakpoint (1024px)**,
+  and several headers use `<PageActions>` (`hidden lg:flex`) for their action buttons —
+  they're invisible, and real clicks on them correctly fail, until the window is widened.
+  Resize it first: `main ctx.BrowserWindow.getAllWindows()[0].setSize(1300, 900)`.
 
 ## Automated equivalent
 

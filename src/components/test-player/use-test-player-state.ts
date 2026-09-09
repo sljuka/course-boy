@@ -5,9 +5,9 @@ import type { CourseExercise, CourseLesson } from "@/lib/course-package";
 import {
   buildExerciseInstance,
   buildTestExerciseSequence,
-  roundToPrecision,
   type ExerciseInstance,
 } from "@/lib/course-player-utils";
+import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
 
 export type ExerciseResult = {
   feedback: string | null;
@@ -105,41 +105,26 @@ export function useTestPlayerState(activeLesson?: CourseLesson) {
 
     let allCorrect = true;
     const nextResults = activeTestExercises.map((exercise, index) => {
-      const normalizedAnswer = (exerciseAnswers[index] ?? "").trim();
+      const rawAnswer = exerciseAnswers[index] ?? "";
+      const result = getExerciseKindRuntime(exercise.kind).grade(
+        exercise,
+        activeTestInstances[index],
+        rawAnswer,
+      );
 
-      if (!normalizedAnswer) {
-        allCorrect = false;
-        return {
-          feedback: t("courseDetails.enterAnswer"),
-          isCorrect: false,
-        };
-      }
-
-      const parsedAnswer = Number(normalizedAnswer.replace(",", "."));
-
-      if (Number.isNaN(parsedAnswer)) {
-        allCorrect = false;
-        return {
-          feedback: t("courseDetails.enterAnswer"),
-          isCorrect: false,
-        };
-      }
-
-      const roundedAnswer = roundToPrecision(parsedAnswer, exercise.precision);
-
-      if (roundedAnswer === activeTestInstances[index]?.expectedAnswer) {
-        return {
-          feedback: null,
-          isCorrect: true,
-        };
+      if (result.isCorrect) {
+        return { feedback: null, isCorrect: true };
       }
 
       allCorrect = false;
+
+      if (!result.isAnswered) {
+        return { feedback: t(result.noAnswerMessageKey), isCorrect: false };
+      }
+
       return {
         feedback: exercise.hint
-          ? t("courseDetails.incorrectAnswerWithHint", {
-              hint: exercise.hint,
-            })
+          ? t("courseDetails.incorrectAnswerWithHint", { hint: exercise.hint })
           : t("courseDetails.incorrectAnswer"),
         isCorrect: false,
       };

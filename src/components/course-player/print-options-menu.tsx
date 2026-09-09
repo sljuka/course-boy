@@ -5,6 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
@@ -93,7 +94,9 @@ export function PrintOptionsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger render={children} />
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{labels.title}</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>{labels.title}</DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuCheckboxItem
           checked={printOptions.showHeader}
           onCheckedChange={(checked) => updateOption("showHeader", checked)}
@@ -113,13 +116,13 @@ export function PrintOptionsMenu({
         {labels.answerStyle && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="pt-1">{labels.answerStyle.label}</DropdownMenuLabel>
             <DropdownMenuRadioGroup
               onValueChange={(value) =>
                 updateOption("answerStyle", value as CoursePrintAnswerStyle)
               }
               value={printOptions.answerStyle}
             >
+              <DropdownMenuLabel className="pt-1">{labels.answerStyle.label}</DropdownMenuLabel>
               {renderAnswerStyleOption("lines", labels.answerStyle.lines)}
               {renderAnswerStyleOption("box", labels.answerStyle.box)}
               {renderAnswerStyleOption("empty", labels.answerStyle.empty)}
@@ -130,9 +133,6 @@ export function PrintOptionsMenu({
         {labels.exerciseHints && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="pt-1">
-              {labels.exerciseHints.label}
-            </DropdownMenuLabel>
             <DropdownMenuRadioGroup
               onValueChange={(value) =>
                 updateOption(
@@ -142,6 +142,9 @@ export function PrintOptionsMenu({
               }
               value={printOptions.exerciseHintStyle}
             >
+              <DropdownMenuLabel className="pt-1">
+                {labels.exerciseHints.label}
+              </DropdownMenuLabel>
               {renderExerciseHintOption("hidden", labels.exerciseHints.hidden)}
               {renderExerciseHintOption("visible", labels.exerciseHints.visible)}
               {renderExerciseHintOption(
@@ -152,7 +155,7 @@ export function PrintOptionsMenu({
           </>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onPrint}>
+        <DropdownMenuItem onClick={onPrint}>
           <Printer aria-hidden="true" className="h-4 w-4" />
           <span>{labels.printNow}</span>
         </DropdownMenuItem>

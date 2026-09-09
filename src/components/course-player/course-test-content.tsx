@@ -1,17 +1,11 @@
 import { useTranslation } from "react-i18next";
 
 import { InlineMarkdown } from "@/components/course-player/inline-markdown";
-import { PrintAnswerBoxArea } from "@/components/course-player/print-answer-box-area";
-import { PrintAnswerLinesArea } from "@/components/course-player/print-answer-lines-area";
-import { PrintAnswerSquaresArea } from "@/components/course-player/print-answer-squares-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import type { CourseExercise } from "@/lib/course-package";
-import {
-  interpolateTemplate,
-  type ExerciseInstance,
-} from "@/lib/course-player-utils";
+import { interpolateTemplate, type ExerciseInstance } from "@/lib/course-player-utils";
 import type {
   CoursePrintAnswerStyle,
   CoursePrintExerciseHintStyle,
@@ -22,28 +16,6 @@ type ExerciseResult = {
   feedback: string | null;
   isCorrect: boolean;
 };
-
-function resolveSolutionSpaceRows(solutionSpace: CourseExercise["solutionSpace"]) {
-  if (typeof solutionSpace === "number") {
-    return solutionSpace;
-  }
-
-  switch (solutionSpace) {
-    case "md":
-      return 3;
-    case "lg":
-      return 5;
-    case "xl":
-      return 8;
-    case "sm":
-    default:
-      return 1;
-  }
-}
-
-function resolvePrintAnswerAreaMinHeight(rows: number) {
-  return `${rows === 1 ? 3.25 : rows * 2.75}rem`;
-}
 
 export const CourseTestContent = ({
   activeTestExercises,
@@ -84,7 +56,11 @@ export const CourseTestContent = ({
   const printableHints = activeTestExercises.flatMap((exercise, index) => {
     const exerciseInstance = activeTestInstances[index];
 
-    if (!exercise.hint || !exerciseInstance) {
+    if (
+      exercise.kind !== "numeric" ||
+      !exercise.hint ||
+      exerciseInstance?.kind !== "numeric"
+    ) {
       return [];
     }
 
@@ -103,11 +79,15 @@ export const CourseTestContent = ({
         {activeTestExercises.map((exercise, index) => {
           const exerciseInstance = activeTestInstances[index];
           const exerciseResult = exerciseResults[index];
-          const solutionRows = resolveSolutionSpaceRows(exercise.solutionSpace);
 
           if (!exerciseInstance) {
             return null;
           }
+
+          const promptSource =
+            exercise.kind === "numeric" && exerciseInstance.kind === "numeric"
+              ? interpolateTemplate(exercise.prompt, exerciseInstance.variables)
+              : exercise.prompt;
 
           return (
             <div
@@ -123,39 +103,30 @@ export const CourseTestContent = ({
                 >
                   {index + 1}
                 </Badge>
-                <InlineMarkdown
-                  source={interpolateTemplate(
-                    exercise.prompt,
-                    exerciseInstance.variables,
-                  )}
-                />
+                <InlineMarkdown source={promptSource} />
               </p>
-              <div className="flex max-w-xs flex-col gap-3 print:hidden">
-                <Input
-                  id={`course-exercise-answer-${index}`}
-                  onChange={(event) =>
-                    onUpdateExerciseAnswer(index, event.target.value)
-                  }
-                  placeholder={t("courseDetails.answerPlaceholder")}
-                  value={exerciseAnswers[index] ?? ""}
-                />
-              </div>
-              <div className="hidden print:block">
-                {printAnswerStyle === "lines" ? (
-                  <PrintAnswerLinesArea rows={solutionRows} />
-                ) : printAnswerStyle === "box" ? (
-                  <PrintAnswerBoxArea rows={solutionRows} />
-                ) : printAnswerStyle === "squares" ? (
-                  <PrintAnswerSquaresArea rows={solutionRows} />
-                ) : (
-                  <div
-                    className="bg-transparent"
-                    style={{
-                      minHeight: resolvePrintAnswerAreaMinHeight(solutionRows),
-                    }}
+              {(() => {
+                const { AnswerComponent } = getExerciseKindEditor(exercise.kind);
+
+                return (
+                  <AnswerComponent
+                    exercise={exercise}
+                    index={index}
+                    instance={exerciseInstance}
+                    onAnswerChange={(value) => onUpdateExerciseAnswer(index, value)}
+                    value={exerciseAnswers[index] ?? ""}
                   />
-                )}
-              </div>
+                );
+              })()}
+              {(() => {
+                const { PrintAnswerComponent } = getExerciseKindEditor(exercise.kind);
+
+                return (
+                  PrintAnswerComponent && (
+                    <PrintAnswerComponent exercise={exercise} printAnswerStyle={printAnswerStyle} />
+                  )
+                );
+              })()}
               {exerciseResult?.feedback && (
                 <div className="text-sm font-medium text-rose-700 print:hidden">
                   {exerciseResult.feedback}

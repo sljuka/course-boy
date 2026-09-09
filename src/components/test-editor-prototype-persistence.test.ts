@@ -1,91 +1,121 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  fromCourseExerciseVariable,
-  toCourseExerciseVariable,
+  fromSharedTestExerciseDefinition,
+  toSharedTestExerciseDefinition,
 } from "@/components/test-editor-prototype-persistence"
-import type { PromptVariable, VariableConstraint } from "@/components/test-editor-prototype-types"
+import type {
+  MultipleChoiceTestExercise,
+  NumericTestExercise,
+  WordTypeTestExercise,
+} from "@/components/test-editor-prototype-types"
+import type { SharedTestExerciseDefinition } from "@/lib/course-package"
 
-function constraint(
-  type: VariableConstraint["type"],
-  value: number | null = null,
-): VariableConstraint {
-  return { id: `c_${type}`, type, value }
-}
+describe("exercise kind persistence", () => {
+  it("round-trips a multiple-choice exercise", () => {
+    const exercise: MultipleChoiceTestExercise = {
+      kind: "multiple-choice",
+      correctOptionIndex: 1,
+      id: "ex_mc",
+      locales: {
+        en: { hint: "Think capitals", options: ["London", "Paris"], prompt: "Capital of France?" },
+      },
+      tagIds: ["geography"],
+    }
 
-function variable(name: string, constraints: VariableConstraint[]): PromptVariable {
-  return { constraints, id: `var_${name}`, name }
-}
+    const shared = toSharedTestExerciseDefinition(exercise)
 
-describe("toCourseExerciseVariable", () => {
-  it("aggregates min/max constraints into a plain range", () => {
-    const result = toCourseExerciseVariable(
-      variable("x", [constraint("min-value", 5), constraint("max-value", 20)]),
+    expect(shared).toMatchObject({
+      correctOptionIndex: 1,
+      kind: "multiple-choice",
+      tags: ["geography"],
+    })
+
+    const hydrated = fromSharedTestExerciseDefinition(shared) as MultipleChoiceTestExercise
+
+    expect(hydrated.kind).toBe("multiple-choice")
+    expect(hydrated.correctOptionIndex).toBe(1)
+    expect(hydrated.locales.en).toEqual({
+      hint: "Think capitals",
+      options: ["London", "Paris"],
+      prompt: "Capital of France?",
+    })
+  })
+
+  it("round-trips a numeric exercise with an explicit kind", () => {
+    const exercise: NumericTestExercise = {
+      kind: "numeric",
+      id: "ex_num",
+      locales: { en: { hint: "", prompt: "{{a}} + {{b}}" } },
+      solution: "a + b",
+      tagIds: ["easy"],
+      variables: [
+        {
+          constraints: [
+            { id: "c1", type: "min-value", value: 1 },
+            { id: "c2", type: "max-value", value: 10 },
+          ],
+          id: "var_a",
+          name: "a",
+        },
+      ],
+    }
+
+    const shared = toSharedTestExerciseDefinition(exercise)
+
+    expect(shared.kind).toBe("numeric")
+
+    const hydrated = fromSharedTestExerciseDefinition(shared) as NumericTestExercise
+
+    expect(hydrated.kind).toBe("numeric")
+    expect(hydrated.solution).toBe("a + b")
+  })
+
+  it("round-trips a word-types exercise", () => {
+    const exercise: WordTypeTestExercise = {
+      kind: "word-types",
+      id: "ex_wt",
+      locales: {
+        en: {
+          hint: "",
+          prompt: "Mark the nouns and verbs",
+          text: "Mike{{n}} is jumping{{v}} over the fence{{n}}.",
+        },
+      },
+      tagIds: ["grammar"],
+      wordTypes: [
+        { color: "sky", icon: "🟦", id: "wt_noun", names: { en: "Noun" }, symbol: "n" },
+        { color: "rose", icon: "🟥", id: "wt_verb", names: { en: "Verb" }, symbol: "v" },
+      ],
+    }
+
+    const shared = toSharedTestExerciseDefinition(exercise)
+
+    expect(shared).toMatchObject({
+      kind: "word-types",
+      tags: ["grammar"],
+    })
+
+    const hydrated = fromSharedTestExerciseDefinition(shared) as WordTypeTestExercise
+
+    expect(hydrated.kind).toBe("word-types")
+    expect(hydrated.locales.en.text).toBe(
+      "Mike{{n}} is jumping{{v}} over the fence{{n}}.",
     )
-
-    expect(result).toEqual({ max: 20, min: 5, type: "integer" })
+    expect(hydrated.wordTypes).toEqual(exercise.wordTypes)
   })
 
-  it("carries an even-number constraint through as parity", () => {
-    const result = toCourseExerciseVariable(
-      variable("x", [
-        constraint("min-value", 2),
-        constraint("max-value", 10),
-        constraint("even-number"),
-      ]),
-    )
+  it("defaults a missing `kind` (pre-multiple-choice on-disk files) to numeric", () => {
+    const legacyDefinition = {
+      locales: { en: { prompt: "{{a}} + {{b}}" } },
+      solution: { formula: "a + b", precision: 0 },
+      tags: ["easy"],
+      variables: { a: { max: 10, min: 1, type: "integer" as const } },
+    } as unknown as SharedTestExerciseDefinition
 
-    expect(result).toEqual({ max: 10, min: 2, parity: "even", type: "integer" })
-  })
+    const hydrated = fromSharedTestExerciseDefinition(legacyDefinition) as NumericTestExercise
 
-  it("carries an odd-number constraint through as parity", () => {
-    const result = toCourseExerciseVariable(
-      variable("x", [
-        constraint("min-value", 1),
-        constraint("max-value", 9),
-        constraint("odd-number"),
-      ]),
-    )
-
-    expect(result).toEqual({ max: 9, min: 1, parity: "odd", type: "integer" })
-  })
-
-  it("throws when a variable has both even and odd constraints", () => {
-    expect(() =>
-      toCourseExerciseVariable(
-        variable("x", [constraint("even-number"), constraint("odd-number")]),
-      ),
-    ).toThrow(/cannot be both even and odd/)
-  })
-
-  it("throws when bounds are impossible", () => {
-    expect(() =>
-      toCourseExerciseVariable(
-        variable("x", [constraint("min-value", 20), constraint("max-value", 5)]),
-      ),
-    ).toThrow(/impossible bounds/)
-  })
-})
-
-describe("fromCourseExerciseVariable / toCourseExerciseVariable round trip", () => {
-  it("round-trips a plain range", () => {
-    const original = { max: 50, min: 10, type: "integer" as const }
-    const hydrated = fromCourseExerciseVariable("x", original)
-
-    expect(toCourseExerciseVariable(hydrated)).toEqual(original)
-  })
-
-  it("round-trips an even-parity range", () => {
-    const original = { max: 8, min: 2, parity: "even" as const, type: "integer" as const }
-    const hydrated = fromCourseExerciseVariable("x", original)
-
-    expect(toCourseExerciseVariable(hydrated)).toEqual(original)
-  })
-
-  it("round-trips an odd-parity range", () => {
-    const original = { max: 9, min: 1, parity: "odd" as const, type: "integer" as const }
-    const hydrated = fromCourseExerciseVariable("x", original)
-
-    expect(toCourseExerciseVariable(hydrated)).toEqual(original)
+    expect(hydrated.kind).toBe("numeric")
+    expect(hydrated.solution).toBe("a + b")
   })
 })

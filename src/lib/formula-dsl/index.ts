@@ -1,11 +1,11 @@
-import { evaluateFormulaAst } from "@/lib/formula-dsl/evaluate";
-import { parseFormula } from "@/lib/formula-dsl/parse";
+import { evaluateFormulaAst } from "./evaluate";
+import { parseFormula } from "./parse";
 
 export type {
   FormulaAstNode,
   FormulaToken,
   FormulaVariables,
-} from "@/lib/formula-dsl/types";
+} from "./types";
 
 export { evaluateFormulaAst, parseFormula };
 

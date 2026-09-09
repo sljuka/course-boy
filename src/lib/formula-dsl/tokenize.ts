@@ -1,4 +1,4 @@
-import type { FormulaToken } from "@/lib/formula-dsl/types";
+import type { FormulaToken } from "./types";
 
 const numberPattern = /^(?:\d+\.?\d*|\.\d+)/;
 const identifierPattern = /^[A-Za-z_][A-Za-z0-9_]*/;

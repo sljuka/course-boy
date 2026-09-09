@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { getCourseDetails, listCourses } from "./course-registry";
+import { getCourseDetails, isSharedTestDefinition, listCourses } from "./course-registry";
 
 const coursesRoot = path.resolve(process.cwd(), "courses");
 
@@ -57,5 +57,198 @@ describe("getCourseDetails", () => {
     );
     expect(course?.sections[0]?.lessons[0]?.body).toContain("# What Matko Is");
     expect(course?.sections[0]?.lessons[0]?.test).toBeNull();
+  });
+});
+
+describe("isSharedTestDefinition", () => {
+  const numericExercise = {
+    kind: "numeric",
+    locales: { en: { prompt: "{{a}} + {{b}}" } },
+    solution: { formula: "a + b", precision: 0 },
+    tags: ["easy"],
+    variables: { a: { max: 10, min: 1, type: "integer" }, b: { max: 10, min: 1, type: "integer" } },
+  };
+
+  it("accepts a numeric exercise", () => {
+    expect(isSharedTestDefinition({ exercises: [numericExercise], template: "" })).toBe(true);
+  });
+
+  it("accepts a numeric exercise with no `kind` field, defaulting to numeric", () => {
+    const { kind: _kind, ...legacyExercise } = numericExercise;
+
+    expect(isSharedTestDefinition({ exercises: [legacyExercise], template: "" })).toBe(true);
+  });
+
+  it("accepts a valid multiple-choice exercise", () => {
+    const multipleChoiceExercise = {
+      kind: "multiple-choice",
+      correctOptionIndex: 1,
+      locales: { en: { options: ["London", "Paris"], prompt: "Capital of France?" } },
+      tags: ["geography"],
+    };
+
+    expect(
+      isSharedTestDefinition({ exercises: [multipleChoiceExercise], template: "" }),
+    ).toBe(true);
+  });
+
+  it("accepts a multiple-choice exercise with an untranslated locale's options left blank", () => {
+    const multipleChoiceExercise = {
+      kind: "multiple-choice",
+      correctOptionIndex: 1,
+      locales: {
+        en: { options: ["London", "Paris"], prompt: "Capital of France?" },
+        sr: { options: ["", ""], prompt: "" },
+      },
+      tags: ["geography"],
+    };
+
+    expect(
+      isSharedTestDefinition({ exercises: [multipleChoiceExercise], template: "" }),
+    ).toBe(true);
+  });
+
+  it("rejects a multiple-choice exercise with fewer than two options", () => {
+    const invalidExercise = {
+      kind: "multiple-choice",
+      correctOptionIndex: 0,
+      locales: { en: { options: ["Only one"], prompt: "?" } },
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a multiple-choice exercise with an out-of-range correctOptionIndex", () => {
+    const invalidExercise = {
+      kind: "multiple-choice",
+      correctOptionIndex: 5,
+      locales: { en: { options: ["London", "Paris"], prompt: "Capital of France?" } },
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("accepts a valid word-types exercise", () => {
+    const wordTypeExercise = {
+      kind: "word-types",
+      locales: {
+        en: {
+          prompt: "Mark the nouns and verbs",
+          text: "Mike{{n}} is jumping{{v}}.",
+        },
+      },
+      tags: ["grammar"],
+      wordTypes: [
+        { color: "sky", icon: "🟦", id: "wt_noun", names: { en: "Noun" }, symbol: "n" },
+        { color: "rose", icon: "🟥", id: "wt_verb", names: { en: "Verb" }, symbol: "v" },
+      ],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [wordTypeExercise], template: "" })).toBe(true);
+  });
+
+  it("accepts a word-types exercise with an untranslated locale's text left blank", () => {
+    const wordTypeExercise = {
+      kind: "word-types",
+      locales: {
+        en: { prompt: "Mark the nouns and verbs", text: "Mike{{n}} is jumping{{v}}." },
+        sr: { prompt: "", text: "" },
+      },
+      tags: ["grammar"],
+      wordTypes: [
+        { color: "sky", icon: "🟦", id: "wt_noun", names: { en: "Noun" }, symbol: "n" },
+        { color: "rose", icon: "🟥", id: "wt_verb", names: { en: "Verb" }, symbol: "v" },
+      ],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [wordTypeExercise], template: "" })).toBe(true);
+  });
+
+  it("accepts a word-types exercise whose word types have no icon", () => {
+    const wordTypeExercise = {
+      kind: "word-types",
+      locales: {
+        en: { prompt: "Mark the nouns and verbs", text: "Mike{{n}} is jumping{{v}}." },
+      },
+      tags: ["grammar"],
+      wordTypes: [
+        { color: "sky", icon: "", id: "wt_noun", names: { en: "Noun" }, symbol: "n" },
+        { color: "rose", icon: "", id: "wt_verb", names: { en: "Verb" }, symbol: "v" },
+      ],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [wordTypeExercise], template: "" })).toBe(true);
+  });
+
+  it("accepts a word-types exercise with hex string colors", () => {
+    const wordTypeExercise = {
+      kind: "word-types",
+      locales: {
+        en: { prompt: "Mark the nouns and verbs", text: "Mike{{n}} is jumping{{v}}." },
+      },
+      tags: ["grammar"],
+      wordTypes: [
+        { color: "#bae6fd", icon: "", id: "wt_noun", names: { en: "Noun" }, symbol: "n" },
+        { color: "#fbcfe8", icon: "", id: "wt_verb", names: { en: "Verb" }, symbol: "v" },
+      ],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [wordTypeExercise], template: "" })).toBe(true);
+  });
+
+  it("rejects a word-types exercise with an icon longer than 8 characters", () => {
+    const invalidExercise = {
+      kind: "word-types",
+      locales: {
+        en: { prompt: "Mark the nouns and verbs", text: "Mike{{n}} is jumping{{v}}." },
+      },
+      tags: ["grammar"],
+      wordTypes: [
+        { color: "sky", icon: "123456789", id: "wt_noun", names: { en: "Noun" }, symbol: "n" },
+        { color: "rose", icon: "", id: "wt_verb", names: { en: "Verb" }, symbol: "v" },
+      ],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a word-types exercise referencing an undefined symbol", () => {
+    const invalidExercise = {
+      kind: "word-types",
+      locales: { en: { prompt: "Mark the nouns", text: "Mike{{n}} is jumping{{v}}." } },
+      tags: ["grammar"],
+      wordTypes: [
+        { color: "sky", icon: "🟦", id: "wt_noun", names: { en: "Noun" }, symbol: "n" },
+      ],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a word-types exercise with duplicate symbols", () => {
+    const invalidExercise = {
+      kind: "word-types",
+      locales: { en: { prompt: "Mark the nouns", text: "Mike{{n}} is jumping{{n}}." } },
+      tags: ["grammar"],
+      wordTypes: [
+        { color: "sky", icon: "🟦", id: "wt_noun", names: { en: "Noun" }, symbol: "n" },
+        { color: "rose", icon: "🟥", id: "wt_verb", names: { en: "Verb" }, symbol: "n" },
+      ],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a word-types exercise with no word types defined", () => {
+    const invalidExercise = {
+      kind: "word-types",
+      locales: { en: { prompt: "Mark the nouns", text: "Mike is jumping." } },
+      tags: ["grammar"],
+      wordTypes: [],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
   });
 });

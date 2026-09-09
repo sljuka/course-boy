@@ -19,17 +19,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
 import { PageActions } from "@/components/page-actions";
+import { getExerciseKindEditor, listExerciseKindEditors } from "@/components/exercise-kinds/registry";
 import {
-  addConstraintToVariable,
   countMatchingExercises,
   createInitialState,
-  removeConstraintFromVariable,
-  removeVariableFromExercise,
-  syncExercisePrompt,
   toggleExerciseTag,
 } from "@/components/test-editor-prototype-logic";
 import type {
@@ -38,6 +41,7 @@ import type {
   TestEditorState,
   TestExercise,
 } from "@/components/test-editor-prototype-types";
+import type { ExerciseKind } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 
@@ -175,13 +179,8 @@ export function TestEditorPrototype({
     }));
   }
 
-  function addExercise() {
-    const nextState = createInitialState(supportedLocales, state.title);
-    const nextExercise = nextState.exercises[0];
-
-    if (!nextExercise) {
-      return;
-    }
+  function addExercise(kind: ExerciseKind) {
+    const nextExercise = getExerciseKindEditor(kind).createExercise(supportedLocales);
 
     setState((currentState) => ({
       ...currentState,
@@ -263,10 +262,19 @@ export function TestEditorPrototype({
               />
             </div>
             <PageActions>
-              <Button className="gap-2" onClick={addExercise}>
-                <Plus aria-hidden="true" className="h-4 w-4" />
-                Add exercise
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button className="gap-2" />}>
+                  <Plus aria-hidden="true" className="h-4 w-4" />
+                  Add exercise
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {listExerciseKindEditors().map((editor) => (
+                    <DropdownMenuItem key={editor.kind} onClick={() => addExercise(editor.kind)}>
+                      {editor.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </PageActions>
           </div>
 
@@ -431,55 +439,14 @@ export function TestEditorPrototype({
                           descriptiveTags={descriptiveTags}
                           exercise={exercise}
                           locale={locale}
-                          onAddConstraint={(exerciseId, variableId, type, value) =>
-                            updateExercise(exerciseId, (currentExercise) =>
-                              addConstraintToVariable(
-                                currentExercise,
-                                variableId,
-                                type,
-                                value,
-                              ),
-                            )
-                          }
+                          onCollapsedChange={setExerciseCollapsed}
                           onDelete={removeExercise}
+                          onExerciseChange={updateExercise}
                           onMoveDown={(exerciseId) => moveExercise(exerciseId, 1)}
                           onMoveUp={(exerciseId) => moveExercise(exerciseId, -1)}
-                          onCollapsedChange={setExerciseCollapsed}
-                          onPromptChange={(exerciseToUpdate, nextLocale, prompt) =>
-                            updateExercise(exerciseToUpdate.id, (currentExercise) =>
-                              syncExercisePrompt(currentExercise, nextLocale, prompt),
-                            )
-                          }
-                          onRemoveConstraint={(
-                            exerciseId,
-                            variableId,
-                            constraintId,
-                          ) =>
-                            updateExercise(exerciseId, (currentExercise) =>
-                              removeConstraintFromVariable(
-                                currentExercise,
-                                variableId,
-                                constraintId,
-                              ),
-                            )
-                          }
-                          onSolutionChange={(exerciseId, solution) =>
-                            updateExercise(exerciseId, (currentExercise) => ({
-                              ...currentExercise,
-                              solution,
-                            }))
-                          }
                           onToggleTag={(exerciseId, tagId) =>
                             updateExercise(exerciseId, (currentExercise) =>
                               toggleExerciseTag(currentExercise, tagId),
-                            )
-                          }
-                          onVariableRemove={(exerciseId, variableId) =>
-                            updateExercise(exerciseId, (currentExercise) =>
-                              removeVariableFromExercise(
-                                currentExercise,
-                                variableId,
-                              ),
                             )
                           }
                         />
@@ -495,14 +462,21 @@ export function TestEditorPrototype({
                   </div>
                 )}
 
-                <Button
-                  className="gap-2 self-start"
-                  onClick={addExercise}
-                  variant="default"
-                >
-                  <Plus aria-hidden="true" className="h-4 w-4" />
-                  Add exercise
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={<Button className="gap-2 self-start" variant="default" />}
+                  >
+                    <Plus aria-hidden="true" className="h-4 w-4" />
+                    Add exercise
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {listExerciseKindEditors().map((editor) => (
+                      <DropdownMenuItem key={editor.kind} onClick={() => addExercise(editor.kind)}>
+                        {editor.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TabsContent>
             ))}
           </Tabs>

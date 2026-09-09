@@ -64,7 +64,7 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   className="text-red-700 hover:bg-red-50 hover:text-red-800 focus-visible:ring-red-500"
-                  onSelect={() => {
+                  onClick={() => {
                     onRemove(course);
                   }}
                 >

@@ -4,8 +4,6 @@ import path from "node:path";
 import type {
   ContentRating,
   CourseTest,
-  CourseExerciseSolutionSpace,
-  CourseExerciseVariable,
   CourseLesson,
   CourseSectionPreview,
   CourseDetails,
@@ -23,7 +21,7 @@ import type {
   StoredSectionDefinition,
 } from "../src/lib/course-package";
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
-import type { Locale } from "../src/lib/i18n";
+import { isLocale, type Locale } from "../src/lib/i18n";
 import {
   compareCourseVersions,
   formatCourseVersion,
@@ -31,6 +29,10 @@ import {
   type CourseVersionInfo,
   type CourseVersionReleaseType,
 } from "../src/lib/course-versioning";
+import {
+  getExerciseKindRuntime,
+  normalizeExerciseKind,
+} from "../src/lib/exercise-kinds/registry";
 
 type CourseRecord = {
   courseRootPath: string;
@@ -67,14 +69,6 @@ const iconMimeTypes: Record<string, string> = {
   ".webp": "image/webp",
 };
 const sectionDirectoryPattern = /^section-(\d{2})-[a-z0-9-]+$/;
-
-function extractTemplateVariables(source: string): string[] {
-  return [...source.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]);
-}
-
-function isLocale(value: unknown): value is Locale {
-  return value === "en" || value === "sr" || value === "sr-Cyrl";
-}
 
 function isCourseStatus(value: unknown): value is CourseStatus {
   return value === "draft" || value === "published";
@@ -238,26 +232,6 @@ function isStoredSectionDefinition(
   );
 }
 
-function isVariableRangeSatisfiable(
-  min: number,
-  max: number,
-  parity: "even" | "odd" | undefined,
-): boolean {
-  if (!parity) {
-    return true;
-  }
-
-  const wantsEven = parity === "even";
-
-  for (let value = min; value <= max; value += 1) {
-    if (value % 2 === 0 === wantsEven) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 export function isSharedTestDefinition(
   value: unknown,
 ): value is SharedTestDefinition {
@@ -275,94 +249,22 @@ export function isSharedTestDefinition(
     return false;
   }
 
-  function isSolutionSpace(
-    solutionSpace: unknown,
-  ): solutionSpace is CourseExerciseSolutionSpace {
-    return (
-      (typeof solutionSpace === "number" &&
-        Number.isInteger(solutionSpace) &&
-        solutionSpace > 0) ||
-      solutionSpace === "sm" ||
-      solutionSpace === "md" ||
-      solutionSpace === "lg" ||
-      solutionSpace === "xl"
-    );
-  }
-
+  // Each kind's structural guard (and the "no `kind` field → numeric" legacy
+  // default) lives with that kind in src/lib/exercise-kinds/ — see "Adding an
+  // exercise kind" in docs/contracts.md.
   const exercisesAreValid = test.exercises.every((exercise) => {
     if (!exercise || typeof exercise !== "object") {
       return false;
     }
 
-    if (
-      !Array.isArray(exercise.tags) ||
-      exercise.tags.length === 0 ||
-      !exercise.tags.every((tag) => typeof tag === "string" && tag.length > 0)
-    ) {
+    const typedExercise = exercise as Record<string, unknown>;
+    const kind = normalizeExerciseKind(typedExercise.kind);
+
+    if (!kind) {
       return false;
     }
 
-    if (
-      !exercise.locales ||
-      typeof exercise.locales !== "object" ||
-      !Object.entries(exercise.locales).every(([locale, metadata]) => {
-        return (
-          isLocale(locale) &&
-          Boolean(metadata) &&
-          typeof metadata === "object" &&
-          typeof metadata.prompt === "string" &&
-          (typeof metadata.hint === "undefined" || typeof metadata.hint === "string")
-        );
-      })
-    ) {
-      return false;
-    }
-
-    if (
-      !exercise.solution ||
-      typeof exercise.solution !== "object" ||
-      typeof exercise.solution.formula !== "string" ||
-      typeof exercise.solution.precision !== "number" ||
-      (typeof exercise.solution.space !== "undefined" &&
-        !isSolutionSpace(exercise.solution.space)) ||
-      !exercise.variables ||
-      typeof exercise.variables !== "object" ||
-      !Object.values(exercise.variables).every((variable) => {
-        if (!variable || typeof variable !== "object") {
-          return false;
-        }
-
-        const typedVariable = variable as Partial<CourseExerciseVariable>;
-
-        if (
-          typedVariable.type !== "integer" ||
-          typeof typedVariable.min !== "number" ||
-          typeof typedVariable.max !== "number" ||
-          typedVariable.min > typedVariable.max ||
-          (typeof typedVariable.parity !== "undefined" &&
-            typedVariable.parity !== "even" &&
-            typedVariable.parity !== "odd")
-        ) {
-          return false;
-        }
-
-        return isVariableRangeSatisfiable(
-          typedVariable.min,
-          typedVariable.max,
-          typedVariable.parity,
-        );
-      })
-    ) {
-      return false;
-    }
-
-    const variableNames = new Set(Object.keys(exercise.variables));
-
-    return Object.values(exercise.locales).every((metadata) => {
-      return extractTemplateVariables(metadata.prompt).every((variableName) =>
-        variableNames.has(variableName),
-      );
-    });
+    return getExerciseKindRuntime(kind).isValid(typedExercise);
   });
 
   if (!exercisesAreValid) {
@@ -662,21 +564,31 @@ async function readLessonTest(
   });
 
   return {
-    exercises: sharedTest.exercises.map((exercise, index) => ({
-      formula: exercise.solution.formula,
-      hint: requestedLocales
+    exercises: sharedTest.exercises.map((exercise, index) => {
+      const id = `${testId}#${index + 1}`;
+      const hint = requestedLocales
         .map((locale) => exercise.locales[locale]?.hint)
-        .find((hint) => typeof hint === "string"),
-      id: `${testId}#${index + 1}`,
-      precision: exercise.solution.precision,
-      prompt:
+        .find((hintCandidate) => typeof hintCandidate === "string");
+      const prompt =
         requestedLocales
           .map((locale) => exercise.locales[locale]?.prompt)
-          .find((prompt) => typeof prompt === "string") ?? "",
-      solutionSpace: exercise.solution.space ?? "sm",
-      tags: exercise.tags,
-      variables: exercise.variables,
-    })),
+          .find((promptCandidate) => typeof promptCandidate === "string") ?? "";
+
+      // `exercise` passed `isSharedTestDefinition` to get here, so its kind is
+      // always resolvable — a `null` here means that validation gate has a bug.
+      const kind = normalizeExerciseKind(exercise.kind);
+
+      if (!kind) {
+        throw new Error(`Unresolvable exercise kind "${String(exercise.kind)}" in "${testId}"`);
+      }
+
+      return getExerciseKindRuntime(kind).resolveForPlayer(exercise, {
+        hint,
+        id,
+        prompt,
+        requestedLocales,
+      });
+    }),
     id: testId,
     structure: sharedTest.structure,
   };

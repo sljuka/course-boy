@@ -120,8 +120,20 @@ Not blockers, but do not mistake them for patterns to copy:
 - `src/components/ui/sidebar.tsx` (~720 LOC) and `combobox.tsx` are far past the ~150 LOC
   guideline in working-conventions. They are vendored primitives; leave them unless the
   task is specifically to split them.
-- The styling ratchet baseline is 344 visual utilities outside `ui`. That number should
+- The styling ratchet baseline is 336 visual utilities outside `ui`. That number should
   only ever go down.
+- **An exercise's `tags` are silently dropped at save time if they aren't registered in
+  the course's `descriptiveTags`.** `buildDraftEditorSnapshot` in `draft-detail-page.tsx`
+  filters every exercise's `tagIds`/blueprint rule down to tags present in the course's
+  own descriptive-tag list before persisting — a tag set via a direct
+  `window.courses.saveLessonTest`/`updateDraftMetadata` IPC call (bypassing the "Add tag"
+  combobox, which registers new tags into `descriptiveTags` as a side effect) will pass
+  the UI's own validation (which only checks `exercise.tagIds.length`, not
+  cross-registration) yet still fail the backend's `hasValidTags` guard on save, since the
+  tag gets stripped to `[]` first. Not a bug — it's what keeps an exercise from
+  referencing a tag that doesn't exist — but it is easy to misdiagnose as a save-pipeline
+  bug when constructing test fixtures or IPC calls by hand instead of going through the
+  real tag-picker UI.
 - **"Toggle Sidebar" is a hardcoded English literal** and stays untranslated in every
   locale. `check:i18n` cannot catch this class of bug (it compares key parity between
   locale files, not literals in components); it is pinned by an `it.fails` case in

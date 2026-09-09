@@ -1,7 +1,7 @@
 import type {
   FormulaAstNode,
   FormulaVariables,
-} from "@/lib/formula-dsl/types";
+} from "./types";
 
 export function evaluateFormulaAst(
   node: FormulaAstNode,

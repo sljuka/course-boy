@@ -1,8 +1,3 @@
-import {
-  evaluateFormulaAst,
-  parseFormula,
-  type FormulaAstNode,
-} from "@/lib/formula-dsl";
 import type { Locale } from "@/lib/i18n";
 import {
   createCourseTagDefinition,
@@ -11,55 +6,16 @@ import {
   type CourseTagDefinition,
 } from "@/lib/course-tags";
 
+import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import type {
   BlueprintRule,
-  PromptVariable,
-  SolutionValidationResult,
+  NumericTestExercise,
   TestEditorState,
   TestExercise,
-  VariableConstraint,
-  VariableConstraintType,
 } from "@/components/test-editor-prototype-types";
 
 function createId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function createExerciseLocaleMap(locales: Locale[]) {
-  return Object.fromEntries(
-    locales.map((locale) => [
-      locale,
-      {
-        hint: "",
-        prompt: "",
-      },
-    ]),
-  );
-}
-
-function createDefaultConstraints(): VariableConstraint[] {
-  return [
-    {
-      id: createId("constraint"),
-      type: "min-value",
-      value: 5,
-    },
-    {
-      id: createId("constraint"),
-      type: "max-value",
-      value: 100,
-    },
-  ];
-}
-
-function createExercise(locales: Locale[]): TestExercise {
-  return {
-    id: createId("ex"),
-    locales: createExerciseLocaleMap(locales),
-    solution: "",
-    tagIds: [],
-    variables: [],
-  };
 }
 
 function createInitialState(locales: Locale[], title: string): TestEditorState {
@@ -71,7 +27,7 @@ function createInitialState(locales: Locale[], title: string): TestEditorState {
       { count: 1, id: createId("rule"), tagId: "challenging" },
     ] satisfies BlueprintRule[],
     description: "",
-    exercises: [createExercise(locales)],
+    exercises: [getExerciseKindEditor("numeric").createExercise(locales)],
     selectedAdvancedSections: [],
     selectedLocale: locales[0] ?? "en",
     title,
@@ -101,29 +57,6 @@ function createInitialCourseTags(): CourseTagDefinition[] {
 
 function countMatchingExercises(exercises: TestExercise[], tagId: string) {
   return exercises.filter((exercise) => exercise.tagIds.includes(tagId)).length;
-}
-
-function extractPromptVariables(prompt: string) {
-  const variableNames = new Set<string>();
-  const variablePattern = /\{\{\s*([a-zA-Z_][\w-]*)\s*\}\}/g;
-
-  for (const match of prompt.matchAll(variablePattern)) {
-    const variableName = match[1]?.trim();
-
-    if (variableName) {
-      variableNames.add(variableName);
-    }
-  }
-
-  return [...variableNames];
-}
-
-function getConstraintLabel(constraint: VariableConstraint) {
-  if (constraint.value === null) {
-    return constraint.type;
-  }
-
-  return `${constraint.type}: ${constraint.value}`;
 }
 
 function normalizeDraftTestData(
@@ -212,14 +145,29 @@ function normalizeDraftTestData(
               : legacyTagLabels.map((tagLabel) =>
                   ensureDescriptiveTagByLabel(tagLabel),
                 );
+            const tagIds = [
+              ...new Set(rawTagIds.map((tagId) => ensureDescriptiveTagById(tagId))),
+            ];
 
-            return {
-              ...exercise,
-              tagIds: [
-                ...new Set(rawTagIds.map((tagId) => ensureDescriptiveTagById(tagId))),
-              ],
-              variables: Array.isArray(exercise.variables) ? exercise.variables : [],
-            };
+            // A draft saved before multiple choice/word types existed has no
+            // `kind` field at all — default it to "numeric", same as the
+            // on-disk test JSON convention. Any *recognized* kind (present or
+            // future) only ever needs its tagIds normalized here — its other
+            // fields are already correctly shaped by whichever kind wrote them.
+            if ((exercise as TestExercise).kind === undefined) {
+              const numericExercise = exercise as NumericTestExercise;
+
+              return {
+                ...numericExercise,
+                kind: "numeric",
+                tagIds,
+                variables: Array.isArray(numericExercise.variables)
+                  ? numericExercise.variables
+                  : [],
+              } satisfies NumericTestExercise;
+            }
+
+            return { ...exercise, tagIds } as TestExercise;
           })
         : [];
       const normalizedBlueprint = Array.isArray(draftState.blueprint)
@@ -288,267 +236,10 @@ function toggleExerciseTag(
   };
 }
 
-function syncExercisePrompt(
-  exercise: TestExercise,
-  locale: Locale,
-  prompt: string,
-): TestExercise {
-  const detectedVariableNames = extractPromptVariables(prompt);
-  const existingNames = new Set(exercise.variables.map((variable) => variable.name));
-  const nextVariables = [...exercise.variables];
-
-  for (const variableName of detectedVariableNames) {
-    if (!existingNames.has(variableName)) {
-      nextVariables.push({
-        constraints: createDefaultConstraints(),
-        id: createId("var"),
-        name: variableName,
-      });
-    }
-  }
-
-  return {
-    ...exercise,
-    locales: {
-      ...exercise.locales,
-      [locale]: {
-        ...(exercise.locales[locale] ?? {
-          hint: "",
-          prompt: "",
-        }),
-        prompt,
-      },
-    },
-    variables: nextVariables,
-  };
-}
-
-function addConstraintToVariable(
-  exercise: TestExercise,
-  variableId: string,
-  type: VariableConstraintType,
-  value: number | null,
-): TestExercise {
-  return {
-    ...exercise,
-    variables: exercise.variables.map((variable) =>
-      variable.id === variableId
-        ? {
-            ...variable,
-            constraints: [
-              ...variable.constraints,
-              {
-                id: createId("constraint"),
-                type,
-                value,
-              },
-            ],
-          }
-        : variable,
-    ),
-  };
-}
-
-function removeConstraintFromVariable(
-  exercise: TestExercise,
-  variableId: string,
-  constraintId: string,
-): TestExercise {
-  return {
-    ...exercise,
-    variables: exercise.variables.map((variable) =>
-      variable.id === variableId
-        ? {
-            ...variable,
-            constraints: variable.constraints.filter(
-              (constraint) => constraint.id !== constraintId,
-            ),
-          }
-        : variable,
-    ),
-  };
-}
-
-function removeVariableFromExercise(
-  exercise: TestExercise,
-  variableId: string,
-): TestExercise {
-  return {
-    ...exercise,
-    variables: exercise.variables.filter((variable) => variable.id !== variableId),
-  };
-}
-
-function collectFormulaVariables(node: FormulaAstNode): string[] {
-  switch (node.type) {
-    case "variable":
-      return [node.name];
-    case "binary":
-      return [...collectFormulaVariables(node.left), ...collectFormulaVariables(node.right)];
-    case "negate":
-      return collectFormulaVariables(node.operand);
-    case "number":
-      return [];
-  }
-}
-
-type VariableBounds = {
-  max: number;
-  min: number;
-  parity?: "even" | "odd";
-};
-
-function resolveVariableBounds(variable: PromptVariable): VariableBounds {
-  const minValueConstraints = variable.constraints.filter(
-    (constraint) => constraint.type === "min-value" && constraint.value !== null,
-  );
-  const maxValueConstraints = variable.constraints.filter(
-    (constraint) => constraint.type === "max-value" && constraint.value !== null,
-  );
-  const hasEvenConstraint = variable.constraints.some(
-    (constraint) => constraint.type === "even-number",
-  );
-  const hasOddConstraint = variable.constraints.some(
-    (constraint) => constraint.type === "odd-number",
-  );
-
-  if (hasEvenConstraint && hasOddConstraint) {
-    throw new Error(`Variable "${variable.name}" cannot be both even and odd`);
-  }
-
-  const minValue = minValueConstraints.reduce(
-    (currentMin, constraint) => Math.max(currentMin, constraint.value ?? currentMin),
-    Number.NEGATIVE_INFINITY,
-  );
-  const maxValue = maxValueConstraints.reduce(
-    (currentMax, constraint) => Math.min(currentMax, constraint.value ?? currentMax),
-    Number.POSITIVE_INFINITY,
-  );
-
-  const resolvedMin = Number.isFinite(minValue) ? minValue : 0;
-  const resolvedMax = Number.isFinite(maxValue) ? maxValue : 100;
-
-  if (resolvedMin > resolvedMax) {
-    throw new Error(
-      `Variable "${variable.name}" has impossible bounds (${resolvedMin} > ${resolvedMax})`,
-    );
-  }
-
-  return {
-    max: resolvedMax,
-    min: resolvedMin,
-    ...(hasEvenConstraint ? { parity: "even" as const } : {}),
-    ...(hasOddConstraint ? { parity: "odd" as const } : {}),
-  };
-}
-
-function resolveSampleValue(variable: PromptVariable): number {
-  const { max, min, parity } = resolveVariableBounds(variable);
-
-  for (let candidate = min; candidate <= max; candidate += 1) {
-    if (parity === "even" && candidate % 2 !== 0) {
-      continue;
-    }
-
-    if (parity === "odd" && candidate % 2 === 0) {
-      continue;
-    }
-
-    return candidate;
-  }
-
-  throw new Error(`Variable "${variable.name}" has no valid values`);
-}
-
-function validateExerciseSolution(
-  exercise: TestExercise,
-  usedPromptVariableNames: Set<string>,
-): SolutionValidationResult {
-  const solution = exercise.solution.trim();
-
-  if (!solution) {
-    return { status: "idle" };
-  }
-
-  try {
-    const formulaAst = parseFormula(solution);
-    const referencedVariables = [...new Set(collectFormulaVariables(formulaAst))];
-    const declaredVariables = new Map(
-      exercise.variables.map((variable) => [variable.name, variable]),
-    );
-    const unknownVariables = referencedVariables.filter(
-      (variableName) => !declaredVariables.has(variableName),
-    );
-
-    if (unknownVariables.length > 0) {
-      return {
-        message: `Unknown variable "${unknownVariables[0]}"`,
-        status: "error",
-      };
-    }
-
-    const sampleVariables = Object.fromEntries(
-      referencedVariables.map((variableName) => {
-        const variable = declaredVariables.get(variableName);
-
-        if (!variable) {
-          throw new Error(`Unknown variable "${variableName}"`);
-        }
-
-        return [variableName, resolveSampleValue(variable)];
-      }),
-    );
-    const sampleResult = evaluateFormulaAst(formulaAst, sampleVariables);
-    const promptUnusedVariables = referencedVariables.filter(
-      (variableName) => !usedPromptVariableNames.has(variableName),
-    );
-
-    if (promptUnusedVariables.length > 0) {
-      return {
-        message: `Variable "${promptUnusedVariables[0]}" is not used in prompt`,
-        sampleResult,
-        sampleVariables,
-        status: "warning",
-      };
-    }
-
-    return {
-      message: `Example result: ${sampleResult}`,
-      sampleResult,
-      sampleVariables,
-      status: "valid",
-    };
-  } catch (error) {
-    return {
-      message: error instanceof Error ? error.message : "Invalid solution",
-      status: "error",
-    };
-  }
-}
-
-function formatSampleVariables(sampleVariables: Record<string, number>) {
-  const entries = Object.entries(sampleVariables);
-
-  if (entries.length === 0) {
-    return "";
-  }
-
-  return entries.map(([name, value]) => `${name} = ${value}`).join(", ");
-}
-
 export {
-  addConstraintToVariable,
   countMatchingExercises,
   createInitialState,
   createInitialCourseTags,
-  extractPromptVariables,
-  formatSampleVariables,
-  getConstraintLabel,
   normalizeDraftTestData,
-  removeConstraintFromVariable,
-  removeVariableFromExercise,
-  resolveVariableBounds,
-  syncExercisePrompt,
   toggleExerciseTag,
-  validateExerciseSolution,
 };

@@ -46,6 +46,20 @@ module.exports = {
       },
     },
     {
+      // Each exercise kind's descriptor file (docs/contracts.md #8) co-exports its
+      // small `AnswerComponent`/`PrintAnswerComponent` React components alongside the
+      // final `ExerciseKindEditor` object export — the same co-export shape as the
+      // design-system override above, and for the same reason: `allowConstantExport`
+      // doesn't recognize an object literal that merely references components as a
+      // "constant export", so the rule misfires. Splitting each kind's components
+      // into their own file just to satisfy fast-refresh granularity would undo the
+      // consolidation this registry exists for.
+      files: ['src/components/exercise-kinds/**/*.{ts,tsx}'],
+      rules: {
+        'react-refresh/only-export-components': 'off',
+      },
+    },
+    {
       // Tier direction (docs/working-conventions.md): the design system is the
       // bottom layer. It may use `@/lib` helpers and other `ui` primitives, but it
       // must never reach up into feature components or pages.

@@ -12,6 +12,12 @@ type ExerciseLocaleContent = {
   prompt: string;
 };
 
+type MultipleChoiceExerciseLocaleContent = {
+  hint: string;
+  options: string[];
+  prompt: string;
+};
+
 type VariableConstraintType =
   | "min-value"
   | "max-value"
@@ -30,13 +36,51 @@ type PromptVariable = {
   name: string;
 };
 
-type TestExercise = {
+type NumericTestExercise = {
+  kind: "numeric";
   id: string;
   locales: Record<string, ExerciseLocaleContent>;
   solution: string;
   tagIds: string[];
   variables: PromptVariable[];
 };
+
+type MultipleChoiceTestExercise = {
+  kind: "multiple-choice";
+  correctOptionIndex: number;
+  id: string;
+  locales: Record<string, MultipleChoiceExerciseLocaleContent>;
+  tagIds: string[];
+};
+
+type WordTypeDefinitionDraft = {
+  // A named `CourseTagColor` or an arbitrary CSS color string (e.g. a hex
+  // value from the custom color picker) — see `isValidWordTypeColor`.
+  color: string;
+  icon: string;
+  id: string;
+  names: Record<string, string>;
+  symbol: string;
+};
+
+type WordTypeExerciseLocaleContent = {
+  hint: string;
+  prompt: string;
+  text: string;
+};
+
+type WordTypeTestExercise = {
+  kind: "word-types";
+  id: string;
+  locales: Record<string, WordTypeExerciseLocaleContent>;
+  tagIds: string[];
+  wordTypes: WordTypeDefinitionDraft[];
+};
+
+type TestExercise =
+  | NumericTestExercise
+  | MultipleChoiceTestExercise
+  | WordTypeTestExercise;
 
 type TestEditorState = {
   activeExerciseId: string;
@@ -62,10 +106,16 @@ export type {
   BlueprintRule,
   CourseTagDefinition,
   ExerciseLocaleContent,
+  MultipleChoiceExerciseLocaleContent,
+  MultipleChoiceTestExercise,
+  NumericTestExercise,
   PromptVariable,
   SolutionValidationResult,
   TestEditorState,
   TestExercise,
   VariableConstraint,
   VariableConstraintType,
+  WordTypeDefinitionDraft,
+  WordTypeExerciseLocaleContent,
+  WordTypeTestExercise,
 };

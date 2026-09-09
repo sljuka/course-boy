@@ -76,9 +76,11 @@
     "printCourse": "Štampaj kurs",
     "refreshExercise": "Osveži zadatak",
     "sections": "Sekcije",
+    "selectAnAnswer": "Izaberi odgovor pre nastavka.",
     "startCourse": "Počni kurs",
     "loading": "Učitavanje kursa...",
     "lessonLabel": "Lekcija",
+    "markAllWords": "Označite svaku istaknutu reč pre nego što nastavite.",
     "missing": "Ovaj kurs nije pronađen.",
     "testLabel": "Test"
   },

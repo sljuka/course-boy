@@ -55,6 +55,7 @@ export function useDraftEditorAutosave({
   const [willAutosave, setWillAutosave] = useState(false);
   const latestSnapshotRef = useRef<DraftEditorSnapshot | null>(snapshot);
   const lastSavedSnapshotRef = useRef<DraftEditorSnapshot | null>(null);
+  const lastFailedSnapshotRef = useRef<DraftEditorSnapshot | null>(null);
   const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -86,10 +87,12 @@ export function useDraftEditorAutosave({
       snapshot: nextSnapshot,
     }, {
       onError: (error) => {
+        lastFailedSnapshotRef.current = nextSnapshot;
         setErrorMessage(error.message);
         setStatus("error");
       },
       onSuccess: (record) => {
+        lastFailedSnapshotRef.current = null;
         lastSavedSnapshotRef.current = record.snapshot;
         setLastSavedAt(record.savedAt);
 
@@ -132,6 +135,10 @@ export function useDraftEditorAutosave({
     if (serializeSnapshot(snapshot) === serializeSnapshot(lastSavedSnapshotRef.current)) {
       setStatus(lastSavedSnapshotRef.current ? "saved" : "idle");
       clearScheduledSave();
+      return;
+    }
+
+    if (serializeSnapshot(snapshot) === serializeSnapshot(lastFailedSnapshotRef.current)) {
       return;
     }
 

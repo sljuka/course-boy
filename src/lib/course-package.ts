@@ -47,7 +47,10 @@ export type CourseExerciseVariable = {
 
 export type CourseExerciseSolutionSpace = number | "sm" | "md" | "lg" | "xl";
 
-export type CourseExercise = {
+export type ExerciseKind = "numeric" | "multiple-choice" | "word-types";
+
+export type NumericCourseExercise = {
+  kind: "numeric";
   hint?: string;
   id: string;
   precision: number;
@@ -57,6 +60,52 @@ export type CourseExercise = {
   variables: Record<string, CourseExerciseVariable>;
   formula: string;
 };
+
+export type MultipleChoiceCourseExercise = {
+  kind: "multiple-choice";
+  hint?: string;
+  id: string;
+  prompt: string;
+  tags: string[];
+  options: string[];
+  correctOptionIndex: number;
+};
+
+export type WordTypeDefinition = {
+  // A named `CourseTagColor` (from courses saved before the custom color
+  // picker existed) or an arbitrary CSS color string (typically a hex
+  // value) — see `isValidWordTypeColor` in `src/lib/exercise-kinds/word-types.ts`.
+  color: string;
+  icon: string;
+  id: string;
+  names: Partial<Record<Locale, string>>;
+  symbol: string;
+};
+
+export type WordTypeToken =
+  | { kind: "text"; value: string }
+  | { kind: "word"; value: string; wordTypeId: string };
+
+export type WordTypeCourseExercise = {
+  kind: "word-types";
+  hint?: string;
+  id: string;
+  prompt: string;
+  tags: string[];
+  tokens: WordTypeToken[];
+  wordTypes: Array<{
+    color: string;
+    icon: string;
+    id: string;
+    name: string;
+    symbol: string;
+  }>;
+};
+
+export type CourseExercise =
+  | NumericCourseExercise
+  | MultipleChoiceCourseExercise
+  | WordTypeCourseExercise;
 
 export type CourseTestStructureRule = {
   count: number;
@@ -72,9 +121,12 @@ export type CourseTest = {
 /**
  * On-disk shape of a `test-XX-slug.json` file — the canonical, all-locales
  * form. `readLessonTest` collapses this to a single-locale `CourseTest` for
- * the player; the draft editor needs this richer shape directly.
+ * the player; the draft editor needs this richer shape directly. A missing
+ * `kind` (every test file written before multiple-choice existed) defaults to
+ * `"numeric"` at read time — see `normalizeSharedTestExerciseDefinition`.
  */
-export type SharedTestExerciseDefinition = {
+export type SharedNumericTestExerciseDefinition = {
+  kind: "numeric";
   locales: Partial<Record<Locale, { hint?: string; prompt: string }>>;
   solution: {
     formula: string;
@@ -84,6 +136,25 @@ export type SharedTestExerciseDefinition = {
   tags: string[];
   variables: Record<string, CourseExerciseVariable>;
 };
+
+export type SharedMultipleChoiceTestExerciseDefinition = {
+  kind: "multiple-choice";
+  locales: Partial<Record<Locale, { hint?: string; prompt: string; options: string[] }>>;
+  correctOptionIndex: number;
+  tags: string[];
+};
+
+export type SharedWordTypeTestExerciseDefinition = {
+  kind: "word-types";
+  locales: Partial<Record<Locale, { hint?: string; prompt: string; text: string }>>;
+  tags: string[];
+  wordTypes: WordTypeDefinition[];
+};
+
+export type SharedTestExerciseDefinition =
+  | SharedNumericTestExerciseDefinition
+  | SharedMultipleChoiceTestExerciseDefinition
+  | SharedWordTypeTestExerciseDefinition;
 
 export type SharedTestDefinition = {
   exercises: SharedTestExerciseDefinition[];
