@@ -77,10 +77,33 @@ type WordTypeTestExercise = {
   wordTypes: WordTypeDefinitionDraft[];
 };
 
+type MissingWordVariableDraft = {
+  // Raw, as typed — e.g. "Paris" or "Solution1, Solution2, Solution3".
+  // Split into a trimmed, non-empty string[] only when saving (toShared).
+  answers: string;
+  matchCase: boolean;
+  name: string;
+};
+
+type MissingWordExerciseLocaleContent = {
+  hint: string;
+  prompt: string;
+  text: string;
+  variables: MissingWordVariableDraft[];
+};
+
+type MissingWordTestExercise = {
+  kind: "missing-word";
+  id: string;
+  locales: Record<string, MissingWordExerciseLocaleContent>;
+  tagIds: string[];
+};
+
 type TestExercise =
   | NumericTestExercise
   | MultipleChoiceTestExercise
-  | WordTypeTestExercise;
+  | WordTypeTestExercise
+  | MissingWordTestExercise;
 
 type TestEditorState = {
   activeExerciseId: string;
@@ -106,6 +129,9 @@ export type {
   BlueprintRule,
   CourseTagDefinition,
   ExerciseLocaleContent,
+  MissingWordExerciseLocaleContent,
+  MissingWordTestExercise,
+  MissingWordVariableDraft,
   MultipleChoiceExerciseLocaleContent,
   MultipleChoiceTestExercise,
   NumericTestExercise,

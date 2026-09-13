@@ -53,6 +53,138 @@ Instead:
 - track draft status and local metadata in the database
 - use the database to support UI and workflow state around those files
 
+## Previewing a draft test
+
+**Implemented.** A teacher must be able to verify a test behaves correctly for a
+student *without* cutting or publishing a version — publishing is a real,
+user-visible action (it changes what's distributed to students) and should
+never be a side effect of "let me just check this."
+
+The "Preview test" button in the test editor
+(`src/components/test-editor-prototype.tsx`) opens
+`TestPreviewPlayer` (`src/components/test-editor-prototype-preview.tsx`) as a
+full-screen overlay — the same page a student sees, not a scaled-down modal
+summary of it. It:
+
+1. Converts the in-memory draft (`TestEditorState`) to a `SharedTestDefinition`
+   via the same `toSharedTestDefinition` the real save path uses — no new
+   conversion logic.
+2. Resolves it to a single-locale `CourseTest` via
+   `resolveSharedTestForPlayer` (`src/lib/exercise-kinds/registry.ts`) — the
+   exact function `electron/course-registry.ts`'s real read path calls, so a
+   preview and a published course resolve identically. This was extracted
+   from that file specifically to make the preview possible without
+   duplicating per-kind resolution logic.
+3. Builds a synthetic "ready" `CoursePlayerReadyState`
+   (`src/components/course-player/use-course-player.ts`) around that
+   `CourseTest`, in place of the one `useCoursePlayer` would normally load
+   from disk by `courseId`/`lessonId`.
+4. Renders `TestPlayerView` (`src/components/test-player/test-player.tsx`) —
+   the presentational half of the real `TestPlayer`, split out specifically
+   so preview and the published route render identically: same header,
+   print/interactive-mode hints, `CourseTestContent`, everything.
+   `TestPlayer` itself is now just `useCoursePlayer` + `TestPlayerView`.
+
+`CoursePlayerReadyState.exitPlayer` (normally "navigate to `/courses/:id`")
+and `moveToNextLesson` (normally "go to the next lesson") both point at the
+same "close the preview, back to the draft" callback here — there is no
+course or next lesson to navigate to. `CoursePlayerActions`'s close button
+takes that callback directly (`onClose`) rather than building a
+`/courses/:id` link itself, which is what makes this substitution possible
+without an `if (isPreview)` branch anywhere in the player.
+
+Nothing in this path touches the filesystem: no version cut, no publish, no
+save. Closing the preview discards the in-progress attempt. This is also the
+practical way to exercise a new exercise kind's player-side behavior (answer
+UI, grading) during development without publishing a throwaway course
+version just to click through it as a "student."
+
+## Previewing and committing a course from its draft editor
+
+**Implemented.** The course-level page of the draft editor
+(`src/pages/draft-detail-page.tsx`, the `selectedNode.id === courseRootId`
+branch) has two page actions: **Preview course** and **Commit new version**.
+
+"Preview course" is just a `<Link to={\`/courses/${courseId}\`}>` to the real,
+read-only `CourseDetails` page — no new player-side code. This works because
+`resolvePackageDirectoryCandidates()` (`electron/course-registry.ts`) always
+prefers `draft/course.json` over a cut snapshot when both exist, so
+`/courses/:courseId` and the real lesson/test player routes already
+transparently serve live draft content for a personal (`distribution:
+"local"`) course. A teacher previewing sees exactly what a student would see
+if that draft were published right now — same components, same routes, no
+synthetic state (contrast with "Previewing a draft test" below, which *does*
+need synthetic state, because unsaved in-memory test content has no route to
+serve it from).
+
+"Commit new version" opens the existing `VersionHistoryDialog`
+(`src/components/course-details/version-history-dialog.tsx`) — the same
+dialog `course-details.tsx`'s "Version history" button opens — rather than
+duplicating cut/publish/revert logic. It is disabled with a tooltip
+("There are no changes on the course to commit.") whenever the course's
+`versionBadge.kind` is `"version"` (draft is byte-identical to its last cut);
+see "Version cutting" below for what that comparison actually does. The
+badge is read from `CourseLayoutOutletContext.versionBadge`, populated by the
+`useCourseDetailsQuery` call `CourseLayout` already makes for the explorer
+sidebar — no second fetch.
+
+A disabled `Button` sets `disabled:pointer-events-none`, which would also
+block the `Tooltip` trigger's hover/focus events if applied directly. The fix
+used here (and worth copying for the next disabled-button-with-tooltip case)
+is wrapping the `Button` in a plain `<span>` and making that span the
+`TooltipTrigger`'s `render` target — the span keeps pointer events, the
+button inside it stays visually and functionally disabled.
+
+## Learning vs. Teaching: distribution, not status
+
+**Implemented.** The sidebar splits into two groups: **Learning** (Home —
+attended courses) and **Teaching** (My courses — personal ones). The split is
+`CourseManifest.distribution` (`"local" | "bundled"`), not `CourseStatus`
+(`"draft" | "published"`) — the two look similar but answer different
+questions, and only one of them matches what "Learning vs. Teaching" means:
+
+- `status` lives in `draft/course.json` and reflects the *lesson content's*
+  lifecycle. Publishing a version does **not** flip it — cutting one requires
+  `status === "draft"` in the first place (see "Version cutting" below), so a
+  course being actively authored stays `"draft"` in its own manifest forever,
+  published or not. Filtering "My courses" by `status: "published"` (the old
+  behavior) mostly just showed the bundled tutorial, not the courses a
+  teacher was actually making.
+- `distribution` answers "did I make this on this device, or did it arrive
+  from somewhere else (bundled with the app; a future peer import)?" — see
+  `CourseDistribution` in `src/lib/course-package.ts`. That is exactly the
+  Learning/Teaching distinction. `CourseList` (`src/components/course-search/`)
+  filters on it; Home passes `"bundled"`, the repurposed `my-courses-page.tsx`
+  passes `"local"` and routes to `/drafts/:courseId` (the editor) instead of
+  the read-only `/courses/:courseId`.
+
+The old `/drafts` *listing* page is gone (it showed exactly the same set
+`distribution: "local"` now shows under Teaching) — `/drafts/:courseId`, the
+actual course editor, is untouched.
+
+## Version cutting: draft vs. "vX.Y.Z" badge
+
+**Implemented.** A personal course's card shows a **Draft** badge when its
+current draft has changes beyond its most recently cut version, or the cut
+version number (e.g. "0.2.0") when the draft is byte-identical to that cut —
+see `CourseVersionBadge` in `src/lib/course-package.ts` and
+`computeCourseVersionBadge` in `electron/course-registry.ts`.
+
+This is a real content comparison, not a flag someone remembers to set: it
+hashes every file under `draft/` and compares against the file hashes already
+stored in the latest `versions/<x.y.z>/version-meta.json` (written by
+`cutLocalCourseVersion` for its own hardlink-dedup optimization — reused here
+for a second purpose). Two files are deliberately excluded from the
+comparison: `course.json` (a cut always rewrites its `version`/`updatedAt`
+into the draft *after* the snapshot's hashes were already computed, so its
+hash can never match — that bug shipped once and was caught by
+`e2e/app.e2e.mjs`'s "course version badge" suite) and `version-meta.json`
+(only ever exists inside a `versions/` snapshot, never in `draft/`). Neither
+says anything about whether course *content* changed.
+
+A bundled course (`distribution: "bundled"`) has no `draft/` to diverge from
+anything, so its badge is always `{ kind: "version" }`.
+
 ## Safety and corruption concerns
 
 The main risk is not "files vs database". The real risk is unsafe write behavior.

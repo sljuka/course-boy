@@ -31,6 +31,7 @@ import type {
 } from "@/lib/draft-editor-types";
 import type {
   CourseSectionPreview,
+  CourseVersionBadge,
   LocalizedCourseMetadata,
 } from "@/lib/course-package";
 import { useDraftEditorAutosave } from "@/lib/use-draft-editor-autosave";
@@ -62,6 +63,7 @@ type CourseLayoutOutletContext = {
   setSelectedNode: (selection: StructureSelection) => void;
   setSupportedLocales: (locales: Locale[]) => void;
   supportedLocales: Locale[];
+  versionBadge: CourseVersionBadge | undefined;
 };
 
 export type { ContentRating, CourseLayoutOutletContext };
@@ -368,6 +370,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
                   setSelectedNode,
                   setSupportedLocales,
                   supportedLocales,
+                  versionBadge: courseDetailsQuery.data?.versionBadge,
                 } satisfies CourseLayoutOutletContext
               }
             />
@@ -442,14 +445,16 @@ function ExplorerSidebar({
       <SidebarHeader className="border-b border-stone-200 bg-white px-4 py-4">
         <Link
           className="inline-flex items-center gap-2 text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
-          to="/drafts"
+          to="/my-courses"
         >
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-          <span>Back to drafts</span>
+          <span>Back to my courses</span>
         </Link>
       </SidebarHeader>
       <SidebarContent className="bg-stone-100 p-3">
-        <Eyebrow className="px-1 pb-3">Explorer</Eyebrow>
+        <Eyebrow className="px-1 pb-3" size="small">
+          Explorer
+        </Eyebrow>
         <CourseStructurePrototype
           compact
           courseId={courseId}

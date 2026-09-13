@@ -267,7 +267,7 @@ async function pathExists(targetPath: string): Promise<boolean> {
   }
 }
 
-async function listFilesRecursively(rootPath: string): Promise<string[]> {
+export async function listFilesRecursively(rootPath: string): Promise<string[]> {
   const directoryEntries = await fs.readdir(rootPath, { withFileTypes: true });
 
   const nestedFilePaths = await Promise.all(
@@ -285,7 +285,7 @@ async function listFilesRecursively(rootPath: string): Promise<string[]> {
   return nestedFilePaths.flat();
 }
 
-async function hashFileContents(filePath: string): Promise<string> {
+export async function hashFileContents(filePath: string): Promise<string> {
   const contents = await fs.readFile(filePath);
 
   return crypto.createHash("sha256").update(contents).digest("hex");
@@ -433,7 +433,7 @@ async function readCourseVersionMeta(
   }
 }
 
-async function findMostRecentSnapshot(
+export async function findMostRecentSnapshot(
   versionsDirectoryPath: string,
 ): Promise<{ directoryPath: string; fileHashes: Record<string, string> } | null> {
   let versionDirectoryNames: string[];
@@ -858,7 +858,7 @@ export async function createLocalCourseDraft(
         version: formatCourseVersion(versionInfo),
         versionInfo,
         defaultLocale: input.defaultLocale,
-        contentRating: "all-ages",
+        contentRating: normalizeContentRating(input.contentRating),
         supportedLocales,
         builtin: false,
         slug: courseId,

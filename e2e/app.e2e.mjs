@@ -104,8 +104,19 @@ describe('onboarding', () => {
     await waitForUrl(harness.page, '#/onboarding', { shouldContain: false })
 
     expect(harness.page.url()).not.toContain('#/onboarding')
-    const text = await bodyText(harness.page)
-    expect(text).toContain('Create new course')
+
+    // "Create new course" is a Teaching (My courses) action, not a Learning
+    // (Home) one — it must not appear on the Home landing page.
+    const homeText = await bodyText(harness.page)
+    expect(homeText).not.toContain('Create new course')
+
+    await clickText(harness.page, 'My courses')
+    await waitForText(harness.page, 'Create new course')
+    expect(await bodyText(harness.page)).toContain('Create new course')
+
+    // Later tests in this file expect to land on Home.
+    await clickText(harness.page, 'Home')
+    await waitForText(harness.page, 'Getting Started with Matko')
   })
 
   it('persists the answers through electron-store', async () => {
@@ -166,8 +177,8 @@ describe('courses over IPC', () => {
 
   it('shows the new draft in the UI after a refetch', async () => {
     await harness.page.reload()
-    await waitForText(harness.page, 'Drafts')
-    await clickText(harness.page, 'Drafts')
+    await waitForText(harness.page, 'My courses')
+    await clickText(harness.page, 'My courses')
     await waitForText(harness.page, 'E2E Probe Course')
     expect(await bodyText(harness.page)).toContain('E2E Probe Course')
   })
@@ -239,6 +250,53 @@ describe('course assets', () => {
     harness.errors = harness.errors.filter(
       (message) => !message.includes('404 (Not Found)'),
     )
+  })
+})
+
+describe('course version badge', () => {
+  const courseId = 'e2e-probe-course'
+
+  it('shows "draft" for a course that has never been cut', async () => {
+    const courses = await harness.page.evaluate(() => window.courses.list('en'))
+    const course = courses.find((c) => c.id === courseId)
+
+    expect(course.versionBadge).toEqual({ kind: 'draft' })
+  })
+
+  it('shows the version once cut with no further changes', async () => {
+    const result = await harness.page.evaluate(
+      (id) => window.courses.cutVersion({ courseId: id, releaseType: 'minor' }),
+      courseId,
+    )
+    expect(result.version).toBe('0.2.0')
+
+    const courses = await harness.page.evaluate(() => window.courses.list('en'))
+    const course = courses.find((c) => c.id === courseId)
+
+    expect(course.versionBadge).toEqual({ kind: 'version', version: '0.2.0' })
+  })
+
+  it('shows "draft" again once real content changes past the last cut', async () => {
+    // An edit to `course.json` itself (version/updatedAt bookkeeping) does NOT
+    // count — that file is deliberately excluded from the comparison (see
+    // computeCourseVersionBadge in electron/course-registry.ts) since a cut
+    // always rewrites it. Edit the lesson file created in "course assets"
+    // instead, a real content file.
+    const sectionDir = fs
+      .readdirSync(path.join(USER_DATA, 'courses', courseId, 'draft'))
+      .find((name) => name.startsWith('section-'))
+    const lessonPath = fs
+      .readdirSync(path.join(USER_DATA, 'courses', courseId, 'draft', sectionDir))
+      .filter((name) => name.startsWith('lesson-'))
+      .map((name) => path.join(USER_DATA, 'courses', courseId, 'draft', sectionDir, name))[0]
+    const lesson = JSON.parse(fs.readFileSync(lessonPath, 'utf8'))
+    lesson.locales.en.description = 'Edited after cutting a version'
+    fs.writeFileSync(lessonPath, JSON.stringify(lesson, null, 2))
+
+    const courses = await harness.page.evaluate(() => window.courses.list('en'))
+    const course = courses.find((c) => c.id === courseId)
+
+    expect(course.versionBadge).toEqual({ kind: 'draft' })
   })
 })
 

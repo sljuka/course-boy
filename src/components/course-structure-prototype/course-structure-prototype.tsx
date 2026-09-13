@@ -4,13 +4,16 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronRight,
+  FilePlus2,
   FileText,
   FlaskConical,
   Folder,
+  FolderPlus,
   PanelRightOpen,
   type LucideIcon,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import {
   ContextMenu,
@@ -21,6 +24,7 @@ import {
 } from "@/components/ui/context-menu";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   courseRootId,
   type StructureSelection,
@@ -538,6 +542,66 @@ function ExplorerRow({
               </div>
             )}
           </div>
+
+          {onInsertSection && (
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button
+                  aria-label="Add section"
+                  className="shrink-0 text-stone-500"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onInsertSection();
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <FolderPlus aria-hidden="true" className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Add section</TooltipContent>
+            </Tooltip>
+          )}
+
+          {onInsertDocument && (
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button
+                  aria-label="Add document"
+                  className="shrink-0 text-stone-500"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onInsertDocument();
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <FilePlus2 aria-hidden="true" className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Add document</TooltipContent>
+            </Tooltip>
+          )}
+
+          {onInsertTest && (
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                <Button
+                  aria-label="Add test"
+                  className="shrink-0 text-stone-500"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onInsertTest();
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <FlaskConical aria-hidden="true" className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Add test</TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </ContextMenuTrigger>
 

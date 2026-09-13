@@ -4,7 +4,8 @@ import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
 export type ExerciseInstance =
   | { kind: "numeric"; expectedAnswer: number; variables: Record<string, number> }
   | { kind: "multiple-choice"; optionOrder: number[] }
-  | { kind: "word-types" };
+  | { kind: "word-types" }
+  | { kind: "missing-word" };
 
 export function interpolateTemplate(
   template: string,
@@ -49,11 +50,13 @@ export function buildTestExerciseSequence(lesson: CourseLesson): CourseExercise[
       exercise.tags.includes(rule.tag),
     );
 
-    if (matchingExercises.length < rule.count) {
-      return lesson.test.exercises;
-    }
-
-    const chosenExercises = shuffleExercises(matchingExercises).slice(0, rule.count);
+    // Take however many are available rather than requiring the full count —
+    // a single underfilled rule should not throw away every other rule's
+    // selection.
+    const chosenExercises = shuffleExercises(matchingExercises).slice(
+      0,
+      Math.min(rule.count, matchingExercises.length),
+    );
 
     for (const chosenExercise of chosenExercises) {
       const exerciseIndex = remainingExercises.findIndex(
@@ -67,5 +70,7 @@ export function buildTestExerciseSequence(lesson: CourseLesson): CourseExercise[
     }
   }
 
-  return selectedExercises;
+  // If literally nothing matched any rule, fall back to the full bank rather
+  // than handing the student an empty test.
+  return selectedExercises.length > 0 ? selectedExercises : lesson.test.exercises;
 }

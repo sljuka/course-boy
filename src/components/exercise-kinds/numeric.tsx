@@ -96,7 +96,7 @@ export const numericExerciseEditor: ExerciseKindEditor<
   createExercise,
   fromShared,
   kind: "numeric",
-  label: "Numeric",
+  label: "Template",
   toShared,
   validate,
 };

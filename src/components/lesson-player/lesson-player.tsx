@@ -60,8 +60,8 @@ export function LessonPlayer({
             }
             right={
               <CoursePlayerActions
-                courseId={courseId}
                 isRefreshingAvailable={false}
+                onClose={playerState.exitPlayer}
                 onRefreshExercise={() => {}}
                 printControl={
                   <PrintOptionsMenu

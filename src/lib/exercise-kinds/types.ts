@@ -37,11 +37,10 @@ export type ExerciseKindRuntime<TShared extends SharedTestExerciseDefinition, TC
   grade(exercise: TCourse, instance: ExerciseInstance, rawAnswer: string): GradeResult;
 };
 
-/** Every exercise kind requires at least one non-empty tag — shared by all `isValid`s. */
+/** Tags are optional, but when present must be well-formed — shared by all `isValid`s. */
 export function hasValidTags(exercise: Record<string, unknown>): boolean {
   return (
     Array.isArray(exercise.tags) &&
-    exercise.tags.length > 0 &&
     exercise.tags.every((tag) => typeof tag === "string" && tag.length > 0)
   );
 }

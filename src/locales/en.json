@@ -19,6 +19,8 @@
   "courseSearch": {
     "courseMenuLabel": "Course actions for {{title}}",
     "cancelRemove": "Cancel",
+    "draftBadge": "Draft",
+    "draftBadgeTooltip": "This course has changes that haven't been cut into a new version yet.",
     "confirmRemove": "OK",
     "empty": "No courses match your search yet.",
     "error": "Courses could not be loaded right now.",
@@ -43,6 +45,7 @@
   },
   "courseDetails": {
     "back": "Back to courses",
+    "backToEditor": "Back to editor",
     "answerLabel": "Your answer",
     "answerPlaceholder": "Type the result",
     "checkAnswer": "Check answer",
@@ -82,17 +85,22 @@
     "lessonLabel": "Lesson",
     "markAllWords": "Mark every highlighted word before continuing.",
     "missing": "This course could not be found.",
+    "noSectionsHint": "To kick off the creation of the course you can start by adding a new section in the explorer on the left.",
+    "noSectionsTitle": "Getting started",
     "testLabel": "Test"
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
     "activeBadge": "Active",
+    "commitButton": "Commit new version",
     "cutButton": "Cut new version",
     "cutting": "Cutting version...",
     "currentDraftVersion": "Draft is currently at version {{version}}",
     "emptyState": "No versions have been cut yet.",
+    "noChangesTooltip": "There are no changes on the course to commit.",
     "notPublishedBadge": "Not published",
     "openButton": "Version history",
+    "previewCourse": "Preview course",
     "publishButton": "Publish this version",
     "publishedBadge": "Published",
     "publishing": "Publishing...",
@@ -103,6 +111,9 @@
     "revertButton": "Revert to this version",
     "reverting": "Reverting...",
     "title": "Version history"
+  },
+  "courseTags": {
+    "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."
   },
   "shareCourse": {
     "acknowledgmentConfirm": "Continue",
@@ -268,6 +279,12 @@
     "student": "Student",
     "teacher": "Teacher"
   },
+  "contentRating": {
+    "allAges": "All ages",
+    "explicit": "Explicit",
+    "label": "Content rating",
+    "matureThemes": "Contains mature themes"
+  },
   "courseCreate": {
     "creating": "Creating course...",
     "description": "Start a local draft course package with the initial course details. After creating it, you will continue building the draft by adding sections.",
@@ -357,16 +374,9 @@
       "title": "Course structure"
     }
   },
-  "drafts": {
-    "description": "Review draft courses and continue building their structure before they are ready for learners.",
-    "empty": "No draft courses match this search yet.",
-    "error": "The drafts list could not be loaded.",
-    "searchPlaceholder": "Search draft courses",
-    "title": "Drafts"
-  },
   "myCourses": {
-    "description": "Browse the published courses available on this device.",
-    "empty": "No published courses match this search yet.",
+    "description": "Review and continue building the courses you're creating.",
+    "empty": "No courses match this search yet.",
     "error": "The courses list could not be loaded.",
     "searchPlaceholder": "Search my courses",
     "title": "My courses"
@@ -375,10 +385,9 @@
     "appName": "Course boy",
     "createCourse": "Create new course",
     "createCourseDescription": "Start a new course workspace and build its package structure, lessons, tests, and metadata.",
-    "drafts": "Drafts",
-    "draftsDescription": "Review and continue editing course drafts that are not ready to publish yet.",
+    "learning": "Learning",
     "myCourses": "My courses",
-    "myWork": "My work",
+    "teaching": "Teaching",
     "home": "Home",
     "title": "Teacher workspace"
   },

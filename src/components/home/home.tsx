@@ -35,7 +35,7 @@ export const Home = ({ actions }: HomeProps) => {
         placeholder={t("courseSearch.placeholder")}
         value={query}
       />
-      <CourseList query={query} />
+      <CourseList distribution="bundled" query={query} />
     </>
   );
 };

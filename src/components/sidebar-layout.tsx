@@ -3,7 +3,7 @@ import { Outlet, Route, Routes } from "react-router-dom";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppHeader } from "./app-header";
-import { HomePageActions } from "@/pages/home-page";
+import { CreateCourseAction } from "@/pages/my-courses-page";
 import { OnboardingGuard } from "./onboarding-guard";
 
 export const SidebarLayout = () => {
@@ -15,7 +15,7 @@ export const SidebarLayout = () => {
           <div className="flex flex-1 flex-col">
             <AppHeader>
               <Routes>
-                <Route element={<HomePageActions />} path="/" />
+                <Route element={<CreateCourseAction />} path="/my-courses" />
               </Routes>
             </AppHeader>
             <main className="min-h-screen flex justify-center flex-1 bg-white">

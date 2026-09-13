@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Eye, History, Info } from "lucide-react";
 import {
+  Link,
   Navigate,
   useLocation,
   useOutletContext,
   useParams,
 } from "react-router-dom";
 
+import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
 import { EditorPrototype } from "@/components/editor-prototype/editor-prototype";
 import { createInitialDocumentBlocks } from "@/components/editor-prototype/editor-prototype-types";
 import { LocalesTabs } from "@/components/locales-tabs";
+import { PageActions } from "@/components/page-actions";
 import { PageContent } from "@/components/page-content";
 import { TestEditorPrototype } from "@/components/test-editor-prototype";
 import { TestEditorTagManager } from "@/components/test-editor-tag-manager";
@@ -21,8 +25,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import {
   Field,
   FieldDescription,
@@ -51,7 +57,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useComboboxAnchor } from "@/components/ui/use-combobox-anchor";
+import { Button } from "@/components/ui/button";
 import { courseRootId } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import type {
   ContentRating,
@@ -67,6 +75,7 @@ import {
   normalizeCourseTagLabel,
   type CourseTagDefinition,
 } from "@/lib/course-tags";
+import { getContentRatingLabelKey } from "@/lib/course-utils";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { queryClient } from "@/lib/query-client";
@@ -142,17 +151,6 @@ function getLocaleLabel(locale: Locale, t: (key: string) => string) {
   }
 
   return t("language.english");
-}
-
-function getContentRatingLabel(contentRating: ContentRating) {
-  switch (contentRating) {
-    case "all-ages":
-      return "All ages";
-    case "mature-themes":
-      return "Contains mature themes";
-    case "explicit":
-      return "Explicit";
-  }
 }
 
 function buildPersistedDraftSnapshot({
@@ -264,9 +262,12 @@ export function DraftDetailPage() {
     setSelectedNode,
     setSupportedLocales,
     supportedLocales,
+    versionBadge,
   } = useOutletContext<CourseLayoutOutletContext>();
   const [activeCourseLocale, setActiveCourseLocale] =
     useState<Locale>(defaultLocale);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const canCommitNewVersion = versionBadge?.kind === "draft";
   const [documentDrafts, setDocumentDrafts] = useState<
     Record<
       string,
@@ -579,7 +580,7 @@ export function DraftDetailPage() {
   }
 
   if (!courseId) {
-    return <Navigate replace to="/drafts" />;
+    return <Navigate replace to="/my-courses" />;
   }
 
   if (!initialDraftSnapshotLoaded || !hasHydratedLocalDrafts) {
@@ -589,14 +590,44 @@ export function DraftDetailPage() {
   if (selectedNode.id === courseRootId) {
     return (
       <PageContent>
-        <div className="flex flex-col gap-6">
-          <Eyebrow>Course</Eyebrow>
+        <div className="mx-auto flex w-full flex-col gap-6 lg:max-w-3xl">
+          <div className="flex items-start justify-between gap-4">
+            <Eyebrow>Course</Eyebrow>
+            <PageActions>
+              <Button
+                render={<Link to={`/courses/${courseId}`} />}
+                size="sm"
+                variant="secondary"
+              >
+                <Eye aria-hidden="true" className="h-4 w-4" />
+                {t("courseVersions.previewCourse")}
+              </Button>
+              <Tooltip>
+                <TooltipTrigger render={<span className="inline-flex" />}>
+                  <Button
+                    disabled={!canCommitNewVersion}
+                    onClick={() => setIsVersionHistoryOpen(true)}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    <History aria-hidden="true" className="h-4 w-4" />
+                    {t("courseVersions.commitButton")}
+                  </Button>
+                </TooltipTrigger>
+                {!canCommitNewVersion && (
+                  <TooltipContent>
+                    {t("courseVersions.noChangesTooltip")}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </PageActions>
+          </div>
           <FieldSet>
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="draft-course-supported-locales">
                   <span className="flex items-center gap-3">
-                    <span>Supported locales</span>
+                    <span>Supported languages</span>
                     <Badge variant="secondary">{supportedLocales.length}</Badge>
                   </span>
                 </FieldLabel>
@@ -644,52 +675,6 @@ export function DraftDetailPage() {
                   </ComboboxContent>
                 </Combobox>
               </Field>
-
-              <Field>
-                <FieldLabel htmlFor="draft-course-content-rating">
-                  Content rating
-                </FieldLabel>
-                <Select
-                  onValueChange={(value) =>
-                    setContentRating(value as ContentRating)
-                  }
-                  value={contentRating}
-                >
-                  <SelectTrigger
-                    className="w-full max-w-sm"
-                    id="draft-course-content-rating"
-                  >
-                    <SelectValue>
-                      {getContentRatingLabel(contentRating)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-ages">All ages</SelectItem>
-                    <SelectItem value="mature-themes">
-                      Contains mature themes
-                    </SelectItem>
-                    <SelectItem value="explicit">Explicit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              <Accordion>
-                <AccordionItem value="descriptive-tags">
-                  <AccordionTrigger className="hover:no-underline">
-                    Manage tags
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <TestEditorTagManager
-                      hideHeader
-                      onCreateTag={createDescriptiveTag}
-                      onDeleteTag={deleteDescriptiveTag}
-                      onUpdateTag={updateDescriptiveTag}
-                      tags={descriptiveTags}
-                      unstyled
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
             </FieldGroup>
           </FieldSet>
           <LocalesTabs
@@ -756,7 +741,79 @@ export function DraftDetailPage() {
               </FieldSet>
             )}
           />
+          <FieldSet>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="draft-course-content-rating">
+                  {t("contentRating.label")}
+                </FieldLabel>
+                <Select
+                  onValueChange={(value) =>
+                    setContentRating(value as ContentRating)
+                  }
+                  value={contentRating}
+                >
+                  <SelectTrigger
+                    className="w-full max-w-sm"
+                    id="draft-course-content-rating"
+                  >
+                    <SelectValue>
+                      {t(`contentRating.${getContentRatingLabelKey(contentRating)}`)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all-ages">
+                      {t("contentRating.allAges")}
+                    </SelectItem>
+                    <SelectItem value="mature-themes">
+                      {t("contentRating.matureThemes")}
+                    </SelectItem>
+                    <SelectItem value="explicit">
+                      {t("contentRating.explicit")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              <Accordion>
+                <AccordionItem value="descriptive-tags">
+                  <div className="flex items-center gap-1">
+                    <AccordionTrigger className="flex-none hover:no-underline">
+                      Manage tags
+                    </AccordionTrigger>
+                    <InfoTooltip aria-label={t("courseTags.helpTooltip")}>
+                      {t("courseTags.helpTooltip")}
+                    </InfoTooltip>
+                  </div>
+                  <AccordionContent>
+                    <TestEditorTagManager
+                      hideHeader
+                      onCreateTag={createDescriptiveTag}
+                      onDeleteTag={deleteDescriptiveTag}
+                      onUpdateTag={updateDescriptiveTag}
+                      tags={descriptiveTags}
+                      unstyled
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </FieldGroup>
+          </FieldSet>
+          {courseSections.length === 0 && (
+            <Alert variant="info">
+              <Info aria-hidden="true" className="size-4" />
+              <AlertTitle>{t("courseDetails.noSectionsTitle")}</AlertTitle>
+              <AlertDescription>
+                {t("courseDetails.noSectionsHint")}
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
+        <VersionHistoryDialog
+          courseId={courseId}
+          onOpenChange={setIsVersionHistoryOpen}
+          open={isVersionHistoryOpen}
+        />
       </PageContent>
     );
   }
@@ -803,8 +860,8 @@ export function DraftDetailPage() {
 
     return (
       <PageContent>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2 border-b border-stone-200 pb-6">
+        <div className="mx-auto flex w-full flex-col gap-4 lg:max-w-3xl">
+          <div className="flex flex-col gap-2">
             <Eyebrow>Section</Eyebrow>
             <LocalesTabs
               activeLocale={activeSectionLocale}

@@ -5,20 +5,20 @@ import { CourseLoadingCard } from "@/components/course-loading-card";
 import { CourseCard } from "@/components/course-search/course-card";
 import { RemoveCourseDialog } from "@/components/course-search/remove-course-dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import type { CourseStatus, CourseSummary } from "@/lib/course-package";
+import type { CourseDistribution, CourseSummary } from "@/lib/course-package";
 import { useCoursesQuery } from "@/lib/course-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 export const CourseList = ({
+  distribution,
   emptyMessage,
   query,
   routeBuilder = (courseId) => `/courses/${courseId}`,
-  status,
 }: {
+  distribution?: CourseDistribution;
   emptyMessage?: string;
   query: string;
   routeBuilder?: (courseId: string) => string;
-  status?: CourseStatus;
 }) => {
   const { locale } = useAppState();
   const { t } = useTranslation();
@@ -30,21 +30,21 @@ export const CourseList = ({
 
   const filteredCourses = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    const statusFilteredCourses =
-      typeof status === "undefined"
+    const distributionFilteredCourses =
+      typeof distribution === "undefined"
         ? courses
-        : courses.filter((course) => course.status === status);
+        : courses.filter((course) => course.distribution === distribution);
 
     if (!normalizedQuery) {
-      return statusFilteredCourses;
+      return distributionFilteredCourses;
     }
 
-    return statusFilteredCourses.filter((course) => {
+    return distributionFilteredCourses.filter((course) => {
       return [course.title, course.description, course.id].some((value) =>
         value.toLowerCase().includes(normalizedQuery),
       );
     });
-  }, [courses, query, status]);
+  }, [courses, distribution, query]);
 
   if (isLoading) {
     return <CourseLoadingCard message={t("courseSearch.loading")} />;

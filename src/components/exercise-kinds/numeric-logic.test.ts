@@ -96,11 +96,9 @@ describe("fromCourseExerciseVariable / toCourseExerciseVariable round trip", () 
 })
 
 describe("validate", () => {
-  it("flags a numeric exercise with a valid formula but no tags, instead of reporting Valid", () => {
-    // Regression: this exact shape (a filled-in solution, zero tags) passed
-    // the UI's validator as "Valid" while the backend's hasValidTags guard
-    // rejected the save with no visible reason — multiple-choice and
-    // word-types already had this check, numeric never did.
+  it("reports Valid for a numeric exercise with a valid formula and no tags", () => {
+    // Tags are optional — they only matter to exercise randomization, which
+    // is itself optional. An untagged exercise must still save cleanly.
     const exercise: NumericTestExercise = {
       kind: "numeric",
       id: "ex_num",
@@ -113,10 +111,7 @@ describe("validate", () => {
       ],
     }
 
-    expect(validate(exercise, "en")).toEqual({
-      message: "Add at least one tag",
-      status: "error",
-    })
+    expect(validate(exercise, "en").status).toBe("valid")
   })
 
   it("reports Valid once a tag is present", () => {

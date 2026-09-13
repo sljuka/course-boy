@@ -33,11 +33,19 @@ import {
 } from "@/components/ui/field";
 import { LocalesTabs } from "@/components/locales-tabs";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useComboboxAnchor } from "@/components/ui/use-combobox-anchor";
-import type { LocalizedCourseMetadata } from "@/lib/course-package";
+import type { ContentRating, LocalizedCourseMetadata } from "@/lib/course-package";
 import { useCreateCourseDraftMutation } from "@/lib/course-queries";
 import { slugifyCourseName } from "@/lib/course-slug";
+import { getContentRatingLabelKey } from "@/lib/course-utils";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { useAppState } from "@/lib/use-app-state";
@@ -136,6 +144,7 @@ function CourseCreate() {
     getInitialSupportedLocales(locale),
   );
   const [deriveSrCyrlFromSr, setDeriveSrCyrlFromSr] = useState(true);
+  const [contentRating, setContentRating] = useState<ContentRating>("all-ages");
   const [activeLocale, setActiveLocale] = useState<Locale | null>(null);
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [localizedCourse, setLocalizedCourse] = useState<
@@ -242,6 +251,7 @@ function CourseCreate() {
 
             createDraftMutation.mutate(
               {
+                contentRating,
                 defaultLocale: defaultLocale!,
                 deriveSrCyrlFromSr,
                 locales: Object.fromEntries(
@@ -344,7 +354,6 @@ function CourseCreate() {
           {supportedLocales.length > 0 && activeLocale ? (
             <LocalesTabs
               activeLocale={activeLocale}
-              contentClassName="rounded-3xl border border-stone-200 bg-white p-6 shadow-[0_16px_30px_-24px_rgba(28,25,23,0.18)]"
               getIsIncomplete={(locale) =>
                 !isLocalizedCourseComplete(localizedCourse[locale])
               }
@@ -411,6 +420,41 @@ function CourseCreate() {
               </CardContent>
             </Card>
           )}
+          <FieldSet>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="course-create-content-rating">
+                  {t("contentRating.label")}
+                </FieldLabel>
+                <Select
+                  onValueChange={(value) =>
+                    setContentRating(value as ContentRating)
+                  }
+                  value={contentRating}
+                >
+                  <SelectTrigger
+                    className="w-full max-w-sm"
+                    id="course-create-content-rating"
+                  >
+                    <SelectValue>
+                      {t(`contentRating.${getContentRatingLabelKey(contentRating)}`)}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all-ages">
+                      {t("contentRating.allAges")}
+                    </SelectItem>
+                    <SelectItem value="mature-themes">
+                      {t("contentRating.matureThemes")}
+                    </SelectItem>
+                    <SelectItem value="explicit">
+                      {t("contentRating.explicit")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </FieldGroup>
+          </FieldSet>
           {shouldShowFolderPreview && (
             <Alert className="border-sky-200 bg-sky-50/90 text-sky-950 shadow-[0_12px_28px_-24px_rgba(14,165,233,0.35)]">
               <Info className="size-4" />

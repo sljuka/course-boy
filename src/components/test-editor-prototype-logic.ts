@@ -6,7 +6,6 @@ import {
   type CourseTagDefinition,
 } from "@/lib/course-tags";
 
-import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import type {
   BlueprintRule,
   NumericTestExercise,
@@ -27,7 +26,7 @@ function createInitialState(locales: Locale[], title: string): TestEditorState {
       { count: 1, id: createId("rule"), tagId: "challenging" },
     ] satisfies BlueprintRule[],
     description: "",
-    exercises: [getExerciseKindEditor("numeric").createExercise(locales)],
+    exercises: [],
     selectedAdvancedSections: [],
     selectedLocale: locales[0] ?? "en",
     title,

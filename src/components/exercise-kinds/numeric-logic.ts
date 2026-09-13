@@ -16,7 +16,7 @@ import type {
   VariableConstraint,
   VariableConstraintType,
 } from "@/components/test-editor-prototype-types";
-import { filterValidLocaleEntries, validateHasTags } from "@/components/exercise-kinds/types";
+import { filterValidLocaleEntries } from "@/components/exercise-kinds/types";
 
 function createId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
@@ -304,12 +304,6 @@ export function validate(exercise: NumericTestExercise, locale: Locale): Solutio
         sampleVariables,
         status: "warning",
       };
-    }
-
-    const tagError = validateHasTags(exercise);
-
-    if (tagError) {
-      return tagError;
     }
 
     return {

@@ -19,6 +19,8 @@
   "courseSearch": {
     "courseMenuLabel": "Radnje za kurs {{title}}",
     "cancelRemove": "Otkaži",
+    "draftBadge": "Nacrt",
+    "draftBadgeTooltip": "Ovaj kurs ima izmene koje još nisu isečene u novu verziju.",
     "confirmRemove": "U redu",
     "empty": "Nijedan kurs još ne odgovara tvojoj pretrazi.",
     "error": "Kursevi trenutno ne mogu da se učitaju.",
@@ -43,6 +45,7 @@
   },
   "courseDetails": {
     "back": "Nazad na kurseve",
+    "backToEditor": "Nazad na uređivač",
     "answerLabel": "Tvoj odgovor",
     "answerPlaceholder": "Unesi rezultat",
     "checkAnswer": "Proveri odgovor",
@@ -82,17 +85,22 @@
     "lessonLabel": "Lekcija",
     "markAllWords": "Označite svaku istaknutu reč pre nego što nastavite.",
     "missing": "Ovaj kurs nije pronađen.",
+    "noSectionsHint": "Da biste započeli pravljenje kursa, dodajte novu sekciju u pregledniku sa leve strane.",
+    "noSectionsTitle": "Za početak",
     "testLabel": "Test"
   },
   "courseVersions": {
     "actionErrorTitle": "Nešto nije u redu",
     "activeBadge": "Aktivna",
+    "commitButton": "Sačuvaj novu verziju",
     "cutButton": "Iseci novu verziju",
     "cutting": "Sečenje verzije...",
     "currentDraftVersion": "Nacrt je trenutno na verziji {{version}}",
     "emptyState": "Još nijedna verzija nije isečena.",
+    "noChangesTooltip": "Nema izmena na kursu za čuvanje.",
     "notPublishedBadge": "Nije objavljena",
     "openButton": "Istorija verzija",
+    "previewCourse": "Pregledaj kurs",
     "publishButton": "Objavi ovu verziju",
     "publishedBadge": "Objavljena",
     "publishing": "Objavljivanje...",
@@ -103,6 +111,9 @@
     "revertButton": "Vrati se na ovu verziju",
     "reverting": "Vraćanje...",
     "title": "Istorija verzija"
+  },
+  "courseTags": {
+    "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."
   },
   "shareCourse": {
     "acknowledgmentConfirm": "Nastavi",
@@ -268,6 +279,12 @@
     "student": "Učenik",
     "teacher": "Nastavnik"
   },
+  "contentRating": {
+    "allAges": "Za sve uzraste",
+    "explicit": "Eksplicitno",
+    "label": "Starosno ograničenje",
+    "matureThemes": "Sadrži teme za odrasle"
+  },
   "courseCreate": {
     "creating": "Pravljenje kursa...",
     "description": "Pokreni lokalni nacrt paketa kursa sa početnim podacima o kursu. Posle pravljenja nastavljaš izradu nacrta dodavanjem sekcija.",
@@ -357,16 +374,9 @@
       "title": "Struktura kursa"
     }
   },
-  "drafts": {
-    "description": "Pregledaj nacrte kurseva i nastavi izradu njihove strukture pre nego što budu spremni za učenike.",
-    "empty": "Nijedan nacrt kursa još ne odgovara ovoj pretrazi.",
-    "error": "Lista nacrta ne može da se učita.",
-    "searchPlaceholder": "Pretraži nacrte kurseva",
-    "title": "Nacrti"
-  },
   "myCourses": {
-    "description": "Pregledaj objavljene kurseve dostupne na ovom uređaju.",
-    "empty": "Nijedan objavljeni kurs još ne odgovara ovoj pretrazi.",
+    "description": "Pregledaj i nastavi izradu kurseva koje praviš.",
+    "empty": "Nijedan kurs još ne odgovara ovoj pretrazi.",
     "error": "Lista kurseva ne može da se učita.",
     "searchPlaceholder": "Pretraži moje kurseve",
     "title": "Moji kursevi"
@@ -375,10 +385,9 @@
     "appName": "Course boy",
     "createCourse": "Napravi novi kurs",
     "createCourseDescription": "Pokreni novi radni prostor za kurs i napravi njegovu strukturu, lekcije, testove i metapodatke.",
-    "drafts": "Nacrti",
-    "draftsDescription": "Pregledaj i nastavi uređivanje nacrta kurseva koji još nisu spremni za objavu.",
+    "learning": "Učenje",
     "myCourses": "Moji kursevi",
-    "myWork": "Moj rad",
+    "teaching": "Nastava",
     "home": "Početna",
     "title": "Nastavnički radni prostor"
   },

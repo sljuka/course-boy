@@ -8,6 +8,7 @@ import { useAppState } from "@/lib/use-app-state";
 
 export type CoursePlayerReadyState = {
   activeLesson: CourseLesson;
+  courseId: string;
   courseTitle: string;
   exitPlayer: () => void;
   moveToNextLesson: () => void;
@@ -129,6 +130,7 @@ export function useCoursePlayer({
 
   return {
     activeLesson,
+    courseId,
     courseTitle: course.title,
     exitPlayer,
     moveToNextLesson,

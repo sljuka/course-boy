@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Ellipsis, Plus, Trash2, X } from "lucide-react";
 
+import { cn } from "@/lib/utils";
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Combobox,
@@ -23,7 +26,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tag } from "@/components/ui/tag";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { getTagAccentStyle, Tag } from "@/components/ui/tag";
 import type { CourseTagDefinition, TestExercise } from "@/components/test-editor-prototype-types";
 import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import type { Locale } from "@/lib/i18n";
@@ -63,7 +67,9 @@ export function ExercisePromptCard({
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
   const tagPickerAnchor = useComboboxAnchor();
   const prompt = exercise.locales[locale]?.prompt ?? "";
-  const { FieldsComponent } = getExerciseKindEditor(exercise.kind);
+  const { FieldsComponent, label: exerciseKindLabel } = getExerciseKindEditor(
+    exercise.kind,
+  );
 
   const promptPreview = useMemo(() => {
     const normalizedPrompt = prompt.replace(/\s+/g, " ").trim();
@@ -94,6 +100,10 @@ export function ExercisePromptCard({
       ),
     [descriptiveTags],
   );
+  const firstTag = exercise.tagIds[0]
+    ? descriptiveTagsById.get(exercise.tagIds[0])
+    : undefined;
+  const titleAccentStyle = firstTag ? getTagAccentStyle(firstTag.color) : null;
 
   function handleTagPickerValueChange(nextValue: string | string[] | null) {
     if (!Array.isArray(nextValue)) {
@@ -122,11 +132,18 @@ export function ExercisePromptCard({
       >
         <AccordionItem value={exercise.id}>
           <div className="flex items-center gap-3 py-2">
-            <AccordionTrigger className="min-w-0 flex-1 justify-start gap-2 py-0 hover:no-underline [&_[data-slot=accordion-trigger-icon]]:order-first [&_[data-slot=accordion-trigger-icon]]:ml-0">
+            <AccordionTrigger className="min-w-0 flex-1 py-0 hover:no-underline">
               <div className="flex min-w-0 items-center gap-2 text-left">
-                <span className="text-sm font-medium text-stone-950">
+                <span
+                  className={cn(
+                    "border-b-2 border-transparent text-sm font-medium text-stone-950",
+                    titleAccentStyle?.className,
+                  )}
+                  style={titleAccentStyle?.style}
+                >
                   Exercise
                 </span>
+                <Badge variant="secondary">{exerciseKindLabel}</Badge>
                 {collapsed && (
                   <span className="truncate text-sm text-stone-600">
                     {promptPreview}
@@ -266,18 +283,7 @@ export function ExercisePromptCard({
                   <Plus aria-hidden="true" className="h-3.5 w-3.5" />
                   Add tag
                 </button>
-                <button
-                  aria-label="Tags are configured in the course root"
-                  className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 text-[11px] font-semibold text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-900"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                  title="Tags can be configured in the course root."
-                  type="button"
-                >
-                  ?
-                </button>
+                <InfoTooltip>Tags are configured in the course root.</InfoTooltip>
               </div>
             </div>
           </AccordionContent>

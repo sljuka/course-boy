@@ -8,12 +8,19 @@ import type {
 
 export type CourseStatus = "draft" | "published";
 export type ContentRating = "all-ages" | "mature-themes" | "explicit";
+// "local": authored on this device (has a draft/ directory that can diverge
+// from its last cut version — see CourseVersionBadge). "bundled": shipped
+// with the app or brought in from elsewhere (the seeded tutorial today; a
+// future peer import lands the same way) — read-only, always "at" its
+// version, never a draft.
+export type CourseDistribution = "local" | "bundled";
 
 export type CourseManifest = {
   builtin: boolean;
   contentRating: ContentRating;
   defaultLocale: Locale;
   descriptiveTags?: CourseTagDefinition[];
+  distribution: CourseDistribution;
   id: string;
   locales: Record<Locale, LocalizedCourseMetadata>;
   slug: string;
@@ -22,6 +29,18 @@ export type CourseManifest = {
   version: string;
   versionInfo?: CourseVersionInfo;
 };
+
+/**
+ * Whether a personal (distribution: "local") course's current draft has
+ * changes beyond its most recently cut version. Computed by comparing the
+ * draft's file hashes against the latest `versions/<x.y.z>/` snapshot's
+ * stored hashes — see `computeCourseVersionBadge` in
+ * electron/course-registry.ts. A bundled course (no draft/ to diverge) is
+ * always `{ kind: "version" }`.
+ */
+export type CourseVersionBadge =
+  | { kind: "draft" }
+  | { kind: "version"; version: string };
 
 export type LocalizedCourseMetadata = {
   description: string;
@@ -47,7 +66,7 @@ export type CourseExerciseVariable = {
 
 export type CourseExerciseSolutionSpace = number | "sm" | "md" | "lg" | "xl";
 
-export type ExerciseKind = "numeric" | "multiple-choice" | "word-types";
+export type ExerciseKind = "numeric" | "multiple-choice" | "word-types" | "missing-word";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -102,10 +121,33 @@ export type WordTypeCourseExercise = {
   }>;
 };
 
+export type MissingWordSegment =
+  | { kind: "text"; value: string }
+  | { kind: "blank"; variableName: string };
+
+export type MissingWordVariable = {
+  // Every accepted answer, already trimmed and non-empty.
+  answers: string[];
+  // Whether a student's answer must match the accepted answers' case exactly.
+  matchCase: boolean;
+  name: string;
+};
+
+export type MissingWordCourseExercise = {
+  kind: "missing-word";
+  hint?: string;
+  id: string;
+  prompt: string;
+  segments: MissingWordSegment[];
+  tags: string[];
+  variables: MissingWordVariable[];
+};
+
 export type CourseExercise =
   | NumericCourseExercise
   | MultipleChoiceCourseExercise
-  | WordTypeCourseExercise;
+  | WordTypeCourseExercise
+  | MissingWordCourseExercise;
 
 export type CourseTestStructureRule = {
   count: number;
@@ -151,10 +193,22 @@ export type SharedWordTypeTestExerciseDefinition = {
   wordTypes: WordTypeDefinition[];
 };
 
+export type SharedMissingWordTestExerciseDefinition = {
+  kind: "missing-word";
+  locales: Partial<
+    Record<
+      Locale,
+      { hint?: string; prompt: string; text: string; variables: MissingWordVariable[] }
+    >
+  >;
+  tags: string[];
+};
+
 export type SharedTestExerciseDefinition =
   | SharedNumericTestExerciseDefinition
   | SharedMultipleChoiceTestExerciseDefinition
-  | SharedWordTypeTestExerciseDefinition;
+  | SharedWordTypeTestExerciseDefinition
+  | SharedMissingWordTestExerciseDefinition;
 
 export type SharedTestDefinition = {
   exercises: SharedTestExerciseDefinition[];
@@ -200,6 +254,7 @@ export type CourseSummary = {
   defaultLocale: Locale;
   descriptiveTags: CourseTagDefinition[];
   description: string;
+  distribution: CourseDistribution;
   id: string;
   lessonPreviews: LessonPreview[];
   previewItems: CoursePreviewItem[];
@@ -207,6 +262,7 @@ export type CourseSummary = {
   supportedLocales: Locale[];
   title: string;
   version: string;
+  versionBadge: CourseVersionBadge;
 };
 
 export type CourseDetails = CourseSummary & {
@@ -220,6 +276,7 @@ export type CourseDetails = CourseSummary & {
 };
 
 export type CreateCourseDraftInput = {
+  contentRating?: ContentRating;
   defaultLocale: Locale;
   deriveSrCyrlFromSr?: boolean;
   locales: Partial<Record<Locale, LocalizedCourseMetadata>>;

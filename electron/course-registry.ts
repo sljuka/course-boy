@@ -4,6 +4,7 @@ import path from "node:path";
 import type {
   ContentRating,
   CourseTest,
+  CourseDistribution,
   CourseLesson,
   CourseSectionPreview,
   CourseDetails,
@@ -11,6 +12,7 @@ import type {
   CoursePreviewItem,
   CourseSummary,
   CourseStatus,
+  CourseVersionBadge,
   CourseVersionHistory,
   CourseVersionHistoryEntry,
   LessonPreview,
@@ -30,8 +32,14 @@ import {
   type CourseVersionReleaseType,
 } from "../src/lib/course-versioning";
 import {
+  findMostRecentSnapshot,
+  hashFileContents,
+  listFilesRecursively,
+} from "./course-paths";
+import {
   getExerciseKindRuntime,
   normalizeExerciseKind,
+  resolveSharedTestForPlayer,
 } from "../src/lib/exercise-kinds/registry";
 
 type CourseRecord = {
@@ -40,8 +48,9 @@ type CourseRecord = {
   packageDirectoryPath: string;
 };
 
-type RawCourseManifest = Omit<CourseManifest, "status"> & {
+type RawCourseManifest = Omit<CourseManifest, "distribution" | "status"> & {
   contentRating?: ContentRating;
+  distribution?: CourseDistribution;
   status?: CourseStatus;
 };
 
@@ -72,6 +81,10 @@ const sectionDirectoryPattern = /^section-(\d{2})-[a-z0-9-]+$/;
 
 function isCourseStatus(value: unknown): value is CourseStatus {
   return value === "draft" || value === "published";
+}
+
+function isCourseDistribution(value: unknown): value is CourseDistribution {
+  return value === "local" || value === "bundled";
 }
 
 function isContentRating(value: unknown): value is ContentRating {
@@ -131,6 +144,8 @@ function isRawCourseManifest(value: unknown): value is RawCourseManifest {
       isContentRating(manifest.contentRating)) &&
     typeof manifest.slug === "string" &&
     (typeof manifest.status === "undefined" || isCourseStatus(manifest.status)) &&
+    (typeof manifest.distribution === "undefined" ||
+      isCourseDistribution(manifest.distribution)) &&
     Boolean(manifest.locales) &&
     typeof manifest.locales === "object" &&
     Object.entries(manifest.locales).every(([locale, metadata]) => {
@@ -275,9 +290,13 @@ export function isSharedTestDefinition(
     return true;
   }
 
-  if (
-    !Array.isArray(test.structure) ||
-    !test.structure.every((rule) => {
+  // Whether enough exercises exist to fill a rule is a content-completeness
+  // concern, not a structural one — buildTestExerciseSequence (src/lib/
+  // course-player-utils.ts) already takes however many are available per
+  // rule instead of failing, so an underfilled rule must not block saving.
+  return (
+    Array.isArray(test.structure) &&
+    test.structure.every((rule) => {
       return (
         Boolean(rule) &&
         typeof rule === "object" &&
@@ -287,18 +306,7 @@ export function isSharedTestDefinition(
         rule.count > 0
       );
     })
-  ) {
-    return false;
-  }
-
-  const exerciseTagCounts = new Map<string, number>();
-  for (const exercise of test.exercises) {
-    for (const tag of exercise.tags) {
-      exerciseTagCounts.set(tag, (exerciseTagCounts.get(tag) ?? 0) + 1);
-    }
-  }
-
-  return test.structure.every((rule) => (exerciseTagCounts.get(rule.tag) ?? 0) >= rule.count);
+  );
 }
 
 async function readJsonFile<T>(
@@ -321,6 +329,7 @@ function normalizeCourseManifest(manifest: RawCourseManifest): CourseManifest {
   return {
     ...manifest,
     contentRating: manifest.contentRating ?? "all-ages",
+    distribution: manifest.distribution ?? "local",
     status: manifest.status ?? "published",
     version: formatCourseVersion(normalizedVersionInfo),
     versionInfo: normalizedVersionInfo,
@@ -563,35 +572,10 @@ async function readLessonTest(
     return Boolean(locale) && locales.indexOf(locale) === index;
   });
 
-  return {
-    exercises: sharedTest.exercises.map((exercise, index) => {
-      const id = `${testId}#${index + 1}`;
-      const hint = requestedLocales
-        .map((locale) => exercise.locales[locale]?.hint)
-        .find((hintCandidate) => typeof hintCandidate === "string");
-      const prompt =
-        requestedLocales
-          .map((locale) => exercise.locales[locale]?.prompt)
-          .find((promptCandidate) => typeof promptCandidate === "string") ?? "";
-
-      // `exercise` passed `isSharedTestDefinition` to get here, so its kind is
-      // always resolvable — a `null` here means that validation gate has a bug.
-      const kind = normalizeExerciseKind(exercise.kind);
-
-      if (!kind) {
-        throw new Error(`Unresolvable exercise kind "${String(exercise.kind)}" in "${testId}"`);
-      }
-
-      return getExerciseKindRuntime(kind).resolveForPlayer(exercise, {
-        hint,
-        id,
-        prompt,
-        requestedLocales,
-      });
-    }),
-    id: testId,
-    structure: sharedTest.structure,
-  };
+  // `sharedTest` passed `isSharedTestDefinition` to get here, so every
+  // exercise's kind is always resolvable — `resolveSharedTestForPlayer`
+  // throwing here would mean that validation gate has a bug.
+  return resolveSharedTestForPlayer(sharedTest, requestedLocales, testId);
 }
 
 async function readCourseLesson(
@@ -845,23 +829,88 @@ async function readSharedSectionDefinitions(
   );
 }
 
-function toCourseSummary(
+async function hashDirectoryContents(directoryPath: string): Promise<Record<string, string>> {
+  const filePaths = await listFilesRecursively(directoryPath);
+  const entries = await Promise.all(
+    filePaths.map(async (filePath) => {
+      const relativePath = path.relative(directoryPath, filePath);
+
+      return [relativePath, await hashFileContents(filePath)] as const;
+    }),
+  );
+
+  return Object.fromEntries(entries);
+}
+
+// Excluded from the draft-vs-cut-version comparison: `course.json` carries
+// the version/updatedAt bookkeeping a cut always changes (its hash in a
+// snapshot's own version-meta.json reflects the manifest *before* the cut
+// stamps the bumped version into it, so it can never match anyway), and
+// `version-meta.json` only exists inside `versions/<x.y.z>/`, never in
+// `draft/`. Neither says anything about whether course *content* changed.
+const VERSION_BADGE_COMPARISON_EXCLUDED_FILES = new Set(["course.json", "version-meta.json"]);
+
+function areFileHashesEqual(
+  left: Record<string, string>,
+  right: Record<string, string>,
+): boolean {
+  const leftKeys = Object.keys(left).filter(
+    (key) => !VERSION_BADGE_COMPARISON_EXCLUDED_FILES.has(key),
+  );
+  const rightKeys = Object.keys(right).filter(
+    (key) => !VERSION_BADGE_COMPARISON_EXCLUDED_FILES.has(key),
+  );
+
+  return (
+    leftKeys.length === rightKeys.length && leftKeys.every((key) => left[key] === right[key])
+  );
+}
+
+/**
+ * A "local" course's badge reflects whether its draft has diverged from the
+ * last cut version — see `CourseVersionBadge` in src/lib/course-package.ts.
+ * A "bundled" course (no draft/ to diverge) is always at its version.
+ */
+async function computeCourseVersionBadge(courseRecord: CourseRecord): Promise<CourseVersionBadge> {
+  const draftDirectoryPath = path.join(courseRecord.courseRootPath, "draft");
+
+  if (courseRecord.packageDirectoryPath !== draftDirectoryPath) {
+    return { kind: "version", version: courseRecord.manifest.version };
+  }
+
+  const versionsDirectoryPath = path.join(courseRecord.courseRootPath, "versions");
+  const mostRecentSnapshot = await findMostRecentSnapshot(versionsDirectoryPath);
+
+  if (!mostRecentSnapshot) {
+    return { kind: "draft" };
+  }
+
+  const draftFileHashes = await hashDirectoryContents(draftDirectoryPath);
+
+  return areFileHashesEqual(draftFileHashes, mostRecentSnapshot.fileHashes)
+    ? { kind: "version", version: courseRecord.manifest.version }
+    : { kind: "draft" };
+}
+
+async function toCourseSummary(
   courseRecord: CourseRecord,
   localizedCourseMetadata: LocalizedCourseMetadata,
   lessonPreviews: LessonPreview[],
   previewItems: CoursePreviewItem[],
-): CourseSummary {
+): Promise<CourseSummary> {
   return {
     contentRating: courseRecord.manifest.contentRating,
     defaultLocale: courseRecord.manifest.defaultLocale,
     descriptiveTags: courseRecord.manifest.descriptiveTags ?? [],
     description: localizedCourseMetadata.description,
+    distribution: courseRecord.manifest.distribution,
     id: courseRecord.manifest.id,
     lessonPreviews,
     previewItems,
     status: courseRecord.manifest.status,
     supportedLocales: courseRecord.manifest.supportedLocales,
     title: localizedCourseMetadata.title,
+    versionBadge: await computeCourseVersionBadge(courseRecord),
     version: courseRecord.manifest.version,
   };
 }
@@ -928,14 +977,14 @@ export async function getCourseDetails(
   );
 
   return {
-    ...toCourseSummary(
+    ...(await toCourseSummary(
       courseRecord,
       localizedCourseMetadata,
       sections.flatMap((section) =>
         section.lessons.map(({ body: _body, test: _test, ...preview }) => preview),
       ),
       previewItems,
-    ),
+    )),
     builtin: courseRecord.manifest.builtin,
     entrySectionId: sectionIds[0] ?? null,
     lessonIds,

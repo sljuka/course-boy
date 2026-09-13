@@ -5,6 +5,7 @@ import { CourseLayout } from "@/components/course-layout";
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
 import { SidebarLayout } from "@/components/sidebar-layout";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppStateProvider } from "@/lib/app-state";
 import { CourseCreatePage } from "@/pages/course-create-page";
 import { CourseDetailPage } from "@/pages/course-detail-page";
@@ -12,7 +13,6 @@ import { CourseLessonPlayerPage } from "@/pages/course-lesson-player-page";
 import { CourseStructurePrototypePage } from "@/pages/course-structure-prototype-page";
 import { CourseTestPlayerPage } from "@/pages/course-test-player-page";
 import { DraftDetailPage } from "@/pages/draft-detail-page";
-import { DraftsPage } from "@/pages/drafts-page";
 import { EditorPrototypePage } from "@/pages/editor-prototype-page";
 import { HomePage } from "@/pages/home-page";
 import { MyCoursesPage } from "@/pages/my-courses-page";
@@ -32,7 +32,6 @@ const AppRoutes = () => {
       <Route element={<SidebarLayout />}>
         <Route element={<HomePage />} path="/" />
         <Route element={<MyCoursesPage />} path="/my-courses" />
-        <Route element={<DraftsPage />} path="/drafts" />
         <Route element={<CourseCreatePage />} path="/courses/new" />
         <Route element={<EditorPrototypePage />} path="/courses/prototype" />
         <Route
@@ -71,7 +70,9 @@ const AppRoutes = () => {
 export const App = () => {
   return (
     <AppStateProvider>
-      <AppRoutes />
+      <TooltipProvider>
+        <AppRoutes />
+      </TooltipProvider>
     </AppStateProvider>
   );
 };

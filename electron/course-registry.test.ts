@@ -21,6 +21,13 @@ describe("listCourses", () => {
       title: "What Matko Is",
     });
     expect(gettingStartedCourse?.previewItems).toHaveLength(6);
+    // Bundled (no draft/ to diverge from a cut) — always its own version,
+    // never a "draft" badge. See computeCourseVersionBadge.
+    expect(gettingStartedCourse?.distribution).toBe("bundled");
+    expect(gettingStartedCourse?.versionBadge).toEqual({
+      kind: "version",
+      version: gettingStartedCourse?.version,
+    });
   });
 });
 
@@ -250,5 +257,118 @@ describe("isSharedTestDefinition", () => {
     };
 
     expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("accepts a valid missing-word exercise with a single blank", () => {
+    const missingWordExercise = {
+      kind: "missing-word",
+      locales: {
+        en: {
+          prompt: "Fill in the missing word",
+          text: "The capital of France is {{c1}}.",
+          variables: [{ answers: ["Paris"], matchCase: true, name: "c1" }],
+        },
+      },
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [missingWordExercise], template: "" })).toBe(true);
+  });
+
+  it("accepts a valid missing-word exercise with multiple blanks", () => {
+    const missingWordExercise = {
+      kind: "missing-word",
+      locales: {
+        en: {
+          prompt: "Fill in the missing words",
+          text: "The capital of France is {{c1}}. Capital of Serbia is {{c2}}.",
+          variables: [
+            { answers: ["Paris"], matchCase: true, name: "c1" },
+            { answers: ["Belgrade"], matchCase: false, name: "c2" },
+          ],
+        },
+      },
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [missingWordExercise], template: "" })).toBe(true);
+  });
+
+  it("accepts multiple accepted answers for one blank", () => {
+    const missingWordExercise = {
+      kind: "missing-word",
+      locales: {
+        en: {
+          prompt: "Fill in the missing word",
+          text: "The capital of France is {{c1}}.",
+          variables: [{ answers: ["Paris", "City of Light"], matchCase: true, name: "c1" }],
+        },
+      },
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [missingWordExercise], template: "" })).toBe(true);
+  });
+
+  it("rejects a missing-word exercise with no blank marked", () => {
+    const invalidExercise = {
+      kind: "missing-word",
+      locales: {
+        en: { prompt: "Fill in the missing word", text: "The capital of France is Paris.", variables: [] },
+      },
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a missing-word exercise with a blank that has no matching variable", () => {
+    const invalidExercise = {
+      kind: "missing-word",
+      locales: {
+        en: {
+          prompt: "Fill in the missing word",
+          text: "The capital of France is {{c1}}.",
+          variables: [],
+        },
+      },
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a missing-word exercise with an empty answer list", () => {
+    const invalidExercise = {
+      kind: "missing-word",
+      locales: {
+        en: {
+          prompt: "Fill in the missing word",
+          text: "The capital of France is {{c1}}.",
+          variables: [{ answers: [], matchCase: true, name: "c1" }],
+        },
+      },
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("accepts a missing-word exercise with no tags", () => {
+    // Tags are optional — they only matter to exercise randomization, which
+    // is itself optional.
+    const validExercise = {
+      kind: "missing-word",
+      locales: {
+        en: {
+          prompt: "Fill in the missing word",
+          text: "The capital of France is {{c1}}.",
+          variables: [{ answers: ["Paris"], matchCase: true, name: "c1" }],
+        },
+      },
+      tags: [],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [validExercise], template: "" })).toBe(true);
   });
 });

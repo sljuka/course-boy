@@ -1,4 +1,4 @@
-import { BookOpen, FileText, Home } from "lucide-react";
+import { BookOpen, Home } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
@@ -22,14 +22,11 @@ import { useAppState } from "@/lib/use-app-state";
 const sidebarGroups = [
   {
     items: [{ href: "/", icon: Home, id: "home" }],
-    label: null,
+    label: "learning",
   },
   {
-    items: [
-      { href: "/my-courses", icon: BookOpen, id: "myCourses" },
-      { href: "/drafts", icon: FileText, id: "drafts" },
-    ],
-    label: "myWork",
+    items: [{ href: "/my-courses", icon: BookOpen, id: "myCourses" }],
+    label: "teaching",
   },
 ] as const;
 

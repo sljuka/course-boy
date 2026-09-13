@@ -5,7 +5,7 @@ import type {
   MultipleChoiceTestExercise,
   SolutionValidationResult,
 } from "@/components/test-editor-prototype-types";
-import { filterValidLocaleEntries, validateHasTags } from "@/components/exercise-kinds/types";
+import { filterValidLocaleEntries } from "@/components/exercise-kinds/types";
 
 function createId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
@@ -176,12 +176,6 @@ export function validate(
     exercise.correctOptionIndex >= content.options.length
   ) {
     return { message: "Mark one option as correct", status: "error" };
-  }
-
-  const tagError = validateHasTags(exercise);
-
-  if (tagError) {
-    return tagError;
   }
 
   return { message: "Looks good", status: "valid" };

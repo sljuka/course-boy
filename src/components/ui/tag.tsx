@@ -76,6 +76,31 @@ function isKnownTagColor(value: string): value is TagColor {
   return KNOWN_TAG_COLORS.includes(value);
 }
 
+const tagAccentBorderClassName: Record<TagColor, string> = {
+  amber: "border-amber-300",
+  emerald: "border-emerald-300",
+  rose: "border-rose-300",
+  sky: "border-sky-300",
+  stone: "border-stone-300",
+  teal: "border-teal-300",
+};
+
+/**
+ * A subtle way to hint at a tag's color outside the pill itself (e.g. an
+ * accent border under a title) — a Tailwind class for the fixed named
+ * colors, or an inline style for an arbitrary one (a hex value can't be a
+ * cva variant, same reasoning as `Tag` itself above).
+ */
+function getTagAccentStyle(
+  color: string,
+): { className: string; style?: undefined } | { className?: undefined; style: React.CSSProperties } {
+  if (isKnownTagColor(color)) {
+    return { className: tagAccentBorderClassName[color] };
+  }
+
+  return { style: { borderColor: color } };
+}
+
 function Tag({
   className,
   color,
@@ -114,5 +139,5 @@ function Tag({
   );
 }
 
-export { Tag };
+export { getTagAccentStyle, Tag };
 export type { TagColor };

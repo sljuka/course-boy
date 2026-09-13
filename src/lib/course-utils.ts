@@ -1,4 +1,14 @@
-import type { CourseDetails } from "@/lib/course-package";
+import type { ContentRating, CourseDetails } from "@/lib/course-package";
+
+const contentRatingLabelKeys: Record<ContentRating, string> = {
+  "all-ages": "allAges",
+  explicit: "explicit",
+  "mature-themes": "matureThemes",
+};
+
+export function getContentRatingLabelKey(contentRating: ContentRating) {
+  return contentRatingLabelKeys[contentRating];
+}
 
 export function getEntryLessonId(course: CourseDetails) {
   const entrySection = course.sections.find(

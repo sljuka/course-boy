@@ -79,12 +79,21 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
             <Tooltip>
               <TooltipTrigger
                 render={
-                  <Badge className="font-normal" variant="secondary">
-                    {t("courseSearch.version", { version: course.version })}
+                  <Badge
+                    className="font-normal"
+                    variant={course.versionBadge.kind === "draft" ? "warning" : "secondary"}
+                  >
+                    {course.versionBadge.kind === "draft"
+                      ? t("courseSearch.draftBadge")
+                      : t("courseSearch.version", { version: course.versionBadge.version })}
                   </Badge>
                 }
               />
-              <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
+              <TooltipContent>
+                {course.versionBadge.kind === "draft"
+                  ? t("courseSearch.draftBadgeTooltip")
+                  : t("courseSearch.versionTooltip")}
+              </TooltipContent>
             </Tooltip>
             <Badge className="max-w-full" variant="secondary">
               <span aria-label={t("courseSearch.localesLabel")}>
