@@ -1,9 +1,41 @@
 import type { ReactNode } from "react";
 
+import { RoleGuard } from "@/components/role-guard";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
+
 type PageContentProps = {
   children: ReactNode;
+  /** Rendered in the small-screen compact bar, right of the sidebar toggle. */
+  actions?: ReactNode;
+  /** Skip the max-width cap — for canvases like the block editor that want the full width. */
+  fullBleed?: boolean;
+  className?: string;
 };
 
-export const PageContent = ({ children }: PageContentProps) => {
-  return <div className="mx-auto flex w-full flex-col gap-4 p-5">{children}</div>;
+export const PageContent = ({
+  actions,
+  children,
+  className,
+  fullBleed,
+}: PageContentProps) => {
+  return (
+    <div className="flex w-full flex-col">
+      <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-stone-200/80 bg-white px-4 py-2 lg:hidden">
+        <RoleGuard roles="teacher">
+          <SidebarTrigger className="h-10 w-10 rounded-full border-stone-200 bg-white shadow-[0_12px_30px_-20px_rgba(41,37,36,0.35)]" />
+        </RoleGuard>
+        {actions}
+      </div>
+      <div
+        className={cn(
+          "mx-auto flex w-full flex-col gap-4 p-4 sm:p-5 lg:p-6",
+          !fullBleed && "lg:max-w-4xl",
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
 };

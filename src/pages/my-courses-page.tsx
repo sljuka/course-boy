@@ -29,7 +29,13 @@ export function MyCoursesPage() {
   const [query, setQuery] = useState("");
 
   return (
-    <PageContent>
+    <PageContent
+      actions={
+        <PageActions>
+          <CreateCourseAction />
+        </PageActions>
+      }
+    >
       <ErrorBoundary fallback={<CourseErrorCard message={t("myCourses.error")} />}>
         <PageHeader
           right={

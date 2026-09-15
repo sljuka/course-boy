@@ -11,6 +11,8 @@ import {
 import {
   CoursePreviewStrip,
 } from "@/components/course-preview-strip";
+import { PageActions } from "@/components/page-actions";
+import { PageContent } from "@/components/page-content";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,16 +40,22 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   });
 
   if (isLoading) {
-    return <CourseLoadingCard message={t("courseDetails.loading")} />;
+    return (
+      <PageContent>
+        <CourseLoadingCard message={t("courseDetails.loading")} />
+      </PageContent>
+    );
   }
 
   if (!course) {
     return (
-      <Card className="overflow-hidden">
-        <CardContent className="py-10 text-sm text-stone-600">
-          {t("courseDetails.missing")}
-        </CardContent>
-      </Card>
+      <PageContent>
+        <Card className="overflow-hidden">
+          <CardContent className="py-10 text-sm text-stone-600">
+            {t("courseDetails.missing")}
+          </CardContent>
+        </Card>
+      </PageContent>
     );
   }
 
@@ -73,35 +81,35 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
     navigate(buildLessonPath(courseId, entryLessonId));
   }
 
+  const actions = (
+    <PageActions>
+      <Button disabled={!entryLessonId} onClick={startCourse} size="sm">
+        {t("courseDetails.startCourse")}
+      </Button>
+      <Button onClick={() => setIsShareOpen(true)} size="sm" variant="secondary">
+        <Share2 aria-hidden="true" className="h-4 w-4" />
+        {t("shareCourse.openButton")}
+      </Button>
+      <Button
+        aria-label={t(isFavorite ? "removeFavoriteCourse" : "favoriteCourse")}
+        className="rounded-full"
+        onClick={() => setIsFavorite((currentValue) => !currentValue)}
+        size="icon"
+        variant={isFavorite ? "default" : "secondary"}
+      >
+        <Star
+          aria-hidden="true"
+          className={isFavorite ? "h-5 w-5 fill-current" : "h-5 w-5"}
+        />
+      </Button>
+    </PageActions>
+  );
+
   return (
-    <>
+    <PageContent actions={actions}>
       <PageHeader
         children={<></>}
-        right={
-          <>
-            <Button disabled={!entryLessonId} onClick={startCourse} size="sm">
-              {t("courseDetails.startCourse")}
-            </Button>
-            <Button onClick={() => setIsShareOpen(true)} size="sm" variant="secondary">
-              <Share2 aria-hidden="true" className="h-4 w-4" />
-              {t("shareCourse.openButton")}
-            </Button>
-            <Button
-              aria-label={t(
-                isFavorite ? "removeFavoriteCourse" : "favoriteCourse",
-              )}
-              className="rounded-full"
-              onClick={() => setIsFavorite((currentValue) => !currentValue)}
-              size="icon"
-              variant={isFavorite ? "default" : "secondary"}
-            >
-              <Star
-                aria-hidden="true"
-                className={isFavorite ? "h-5 w-5 fill-current" : "h-5 w-5"}
-              />
-            </Button>
-          </>
-        }
+        right={actions}
         subtitle={
           <CardDescription className="max-w-3xl">
             {resolvedCourse.description}
@@ -186,6 +194,6 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         onOpenChange={setIsShareOpen}
         open={isShareOpen}
       />
-    </>
+    </PageContent>
   );
 };

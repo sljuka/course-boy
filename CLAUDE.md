@@ -120,7 +120,7 @@ Not blockers, but do not mistake them for patterns to copy:
 - `src/components/ui/sidebar.tsx` (~720 LOC) and `combobox.tsx` are far past the ~150 LOC
   guideline in working-conventions. They are vendored primitives; leave them unless the
   task is specifically to split them.
-- The styling ratchet baseline is 336 visual utilities outside `ui`. That number should
+- The styling ratchet baseline is 317 visual utilities outside `ui`. That number should
   only ever go down.
 - **An exercise's `tags` are silently dropped at save time if they aren't registered in
   the course's `descriptiveTags`.** `buildDraftEditorSnapshot` in `draft-detail-page.tsx`

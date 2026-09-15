@@ -19,7 +19,7 @@ function InfoTooltip({
         <button
           aria-label={ariaLabel}
           className={cn(
-            "inline-flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 text-stone-500 transition-colors hover:border-stone-300 hover:text-stone-900",
+            "inline-flex h-6 w-6 items-center justify-center text-stone-400 transition-colors hover:text-stone-900",
             className,
           )}
           onClick={(event) => {
@@ -28,7 +28,7 @@ function InfoTooltip({
           }}
           type="button"
         >
-          <CircleHelp aria-hidden="true" className="h-3.5 w-3.5" />
+          <CircleHelp aria-hidden="true" className="h-4 w-4" />
         </button>
       </TooltipTrigger>
       <TooltipContent className="block max-w-xs">{children}</TooltipContent>

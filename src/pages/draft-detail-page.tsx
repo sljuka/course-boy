@@ -588,38 +588,44 @@ export function DraftDetailPage() {
   }
 
   if (selectedNode.id === courseRootId) {
+    const courseActionButtons = (
+      <>
+        <Button
+          render={<Link to={`/courses/${courseId}`} />}
+          size="sm"
+          variant="secondary"
+        >
+          <Eye aria-hidden="true" className="h-4 w-4" />
+          {t("courseVersions.previewCourse")}
+        </Button>
+        <Tooltip>
+          <TooltipTrigger render={<span className="inline-flex" />}>
+            <Button
+              disabled={!canCommitNewVersion}
+              onClick={() => setIsVersionHistoryOpen(true)}
+              size="sm"
+              variant="secondary"
+            >
+              <History aria-hidden="true" className="h-4 w-4" />
+              {t("courseVersions.commitButton")}
+            </Button>
+          </TooltipTrigger>
+          {!canCommitNewVersion && (
+            <TooltipContent>
+              {t("courseVersions.noChangesTooltip")}
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </>
+    );
+
     return (
-      <PageContent>
-        <div className="mx-auto flex w-full flex-col gap-6 lg:max-w-3xl">
-          <div className="flex items-start justify-between gap-4">
+      <PageContent actions={<PageActions>{courseActionButtons}</PageActions>}>
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <Eyebrow>Course</Eyebrow>
-            <PageActions>
-              <Button
-                render={<Link to={`/courses/${courseId}`} />}
-                size="sm"
-                variant="secondary"
-              >
-                <Eye aria-hidden="true" className="h-4 w-4" />
-                {t("courseVersions.previewCourse")}
-              </Button>
-              <Tooltip>
-                <TooltipTrigger render={<span className="inline-flex" />}>
-                  <Button
-                    disabled={!canCommitNewVersion}
-                    onClick={() => setIsVersionHistoryOpen(true)}
-                    size="sm"
-                    variant="secondary"
-                  >
-                    <History aria-hidden="true" className="h-4 w-4" />
-                    {t("courseVersions.commitButton")}
-                  </Button>
-                </TooltipTrigger>
-                {!canCommitNewVersion && (
-                  <TooltipContent>
-                    {t("courseVersions.noChangesTooltip")}
-                  </TooltipContent>
-                )}
-              </Tooltip>
+            <PageActions className="hidden lg:flex">
+              {courseActionButtons}
             </PageActions>
           </div>
           <FieldSet>
@@ -628,7 +634,9 @@ export function DraftDetailPage() {
                 <FieldLabel htmlFor="draft-course-supported-locales">
                   <span className="flex items-center gap-3">
                     <span>Supported languages</span>
-                    <Badge variant="secondary">{supportedLocales.length}</Badge>
+                    <Badge shape="circle" variant="secondary">
+                      {supportedLocales.length}
+                    </Badge>
                   </span>
                 </FieldLabel>
                 <Combobox
@@ -658,10 +666,10 @@ export function DraftDetailPage() {
                         </ComboboxChip>
                       ))}
                     </ComboboxValue>
-                    <ComboboxChipsInput placeholder="Add supported locales" />
+                    <ComboboxChipsInput placeholder="Add supported languages" />
                   </ComboboxChips>
                   <ComboboxContent anchor={supportedLocalesAnchor}>
-                    <ComboboxEmpty>No locales found.</ComboboxEmpty>
+                    <ComboboxEmpty>No languages found.</ComboboxEmpty>
                     <ComboboxList>
                       {locales.map((locale) => (
                         <ComboboxItem key={locale} value={locale}>
@@ -860,7 +868,7 @@ export function DraftDetailPage() {
 
     return (
       <PageContent>
-        <div className="mx-auto flex w-full flex-col gap-4 lg:max-w-3xl">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Eyebrow>Section</Eyebrow>
             <LocalesTabs
@@ -981,7 +989,7 @@ export function DraftDetailPage() {
   };
 
   return (
-    <div className="h-full p-4 sm:p-5 lg:p-6">
+    <PageContent fullBleed>
       <EditorPrototype
         activeLocale={activeDocumentLocale}
         blocks={activeLocalizedDocumentDraft.blocks}
@@ -1004,6 +1012,6 @@ export function DraftDetailPage() {
         onActiveLocaleChange={setActiveDocumentLocale}
         supportedLocales={supportedLocales}
       />
-    </div>
+    </PageContent>
   );
 }

@@ -23,8 +23,16 @@ const badgeVariants = cva(
         warning: "border-amber-300 bg-amber-50 text-amber-900",
         info: "border-sky-300 bg-sky-50 text-sky-900",
       },
+      // A pill's width tracks its content, so a single- or double-digit count
+      // ends up wider than it is tall and reads as an ellipse rather than a
+      // dot. `circle` fixes the width to the badge's own height instead.
+      shape: {
+        pill: "",
+        circle: "w-5 justify-center px-0",
+      },
     },
     defaultVariants: {
+      shape: "pill",
       variant: "default",
     },
   }
@@ -32,6 +40,7 @@ const badgeVariants = cva(
 
 function Badge({
   className,
+  shape = "pill",
   variant = "default",
   render,
   ...props
@@ -40,12 +49,13 @@ function Badge({
     defaultTagName: "span",
     props: mergeProps<"span">(
       {
-        className: cn(badgeVariants({ variant }), className),
+        className: cn(badgeVariants({ shape, variant }), className),
       },
       props
     ),
     render,
     state: {
+      shape,
       slot: "badge",
       variant,
     },

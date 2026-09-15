@@ -15,13 +15,15 @@ export const CourseDetailPage = () => {
   }
 
   return (
-    <PageContent>
-      <ErrorBoundary
-        fallback={<CourseErrorCard message={t("courseDetails.error")} />}
-        key={courseId}
-      >
-        <CourseDetails courseId={courseId} />
-      </ErrorBoundary>
-    </PageContent>
+    <ErrorBoundary
+      fallback={
+        <PageContent>
+          <CourseErrorCard message={t("courseDetails.error")} />
+        </PageContent>
+      }
+      key={courseId}
+    >
+      <CourseDetails courseId={courseId} />
+    </ErrorBoundary>
   );
 };

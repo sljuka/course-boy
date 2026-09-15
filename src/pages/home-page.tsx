@@ -14,25 +14,25 @@ export const HomePage = () => {
   const { t } = useTranslation();
   const [isImportOpen, setIsImportOpen] = useState(false);
 
+  const actions = (
+    <PageActions>
+      <Button
+        className="gap-2"
+        onClick={() => setIsImportOpen(true)}
+        variant="secondary"
+      >
+        <Download aria-hidden="true" className="h-4 w-4 shrink-0" />
+        <span>{t("importCourse.openButton")}</span>
+      </Button>
+    </PageActions>
+  );
+
   return (
-    <PageContent>
+    <PageContent actions={actions}>
       <ErrorBoundary
         fallback={<CourseErrorCard message={t("courseSearch.error")} />}
       >
-        <Home
-          actions={
-            <PageActions>
-              <Button
-                className="gap-2"
-                onClick={() => setIsImportOpen(true)}
-                variant="secondary"
-              >
-                <Download aria-hidden="true" className="h-4 w-4 shrink-0" />
-                <span>{t("importCourse.openButton")}</span>
-              </Button>
-            </PageActions>
-          }
-        />
+        <Home actions={actions} />
         <ImportCourseDialog onOpenChange={setIsImportOpen} open={isImportOpen} />
       </ErrorBoundary>
     </PageContent>

@@ -29,7 +29,7 @@ export const PageHeader = ({
           </div>
         </div>
         {right && (
-          <div className="flex w-full items-center gap-3 self-start sm:w-auto">
+          <div className="hidden items-center gap-3 self-start lg:flex">
             {right}
           </div>
         )}

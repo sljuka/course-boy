@@ -34,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
 import { TestPreviewPlayer } from "@/components/test-editor-prototype-preview";
 import { PageActions } from "@/components/page-actions";
+import { PageContent } from "@/components/page-content";
 import { getExerciseKindEditor, listExerciseKindEditors } from "@/components/exercise-kinds/registry";
 import {
   countMatchingExercises,
@@ -266,10 +267,35 @@ export function TestEditorPrototype({
     }));
   }
 
+  const testActionButtons = (
+    <>
+      <Button
+        onClick={() => setIsPreviewOpen(true)}
+        variant="secondary"
+      >
+        <Play aria-hidden="true" className="h-4 w-4" />
+        Preview test
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button className="gap-2" />}>
+          <Plus aria-hidden="true" className="h-4 w-4" />
+          Add exercise
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {listExerciseKindEditors().map((editor) => (
+            <DropdownMenuItem key={editor.kind} onClick={() => addExercise(editor.kind)}>
+              {editor.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+
   return (
-    <div className="h-full p-4 sm:p-5 lg:p-6">
-      <div className="mx-auto flex max-w-4xl flex-col gap-4">
-        <div className="flex items-start justify-between gap-4">
+    <PageContent actions={<PageActions>{testActionButtons}</PageActions>}>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <Eyebrow>Test</Eyebrow>
             <Input
@@ -287,27 +313,8 @@ export function TestEditorPrototype({
               value={state.description}
             />
           </div>
-          <PageActions>
-            <Button
-              onClick={() => setIsPreviewOpen(true)}
-              variant="secondary"
-            >
-              <Play aria-hidden="true" className="h-4 w-4" />
-              Preview test
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button className="gap-2" />}>
-                <Plus aria-hidden="true" className="h-4 w-4" />
-                Add exercise
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {listExerciseKindEditors().map((editor) => (
-                  <DropdownMenuItem key={editor.kind} onClick={() => addExercise(editor.kind)}>
-                    {editor.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <PageActions className="hidden lg:flex">
+            {testActionButtons}
           </PageActions>
         </div>
 
@@ -510,6 +517,6 @@ export function TestEditorPrototype({
         supportedLocales={supportedLocales}
         testState={state}
       />
-    </div>
+    </PageContent>
   );
 }
