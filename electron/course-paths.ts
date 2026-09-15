@@ -7,14 +7,17 @@ import type {
   CreateCourseDraftInput,
   CreateCourseLessonInput,
   CreateCourseSectionInput,
+  CreateCourseSectionTestInput,
   CourseStatus,
   CourseManifest,
   CutCourseVersionInput,
   CutCourseVersionResult,
   GetLessonTestDraftInput,
+  GetSectionTestDraftInput,
   PublishCourseVersionInput,
   RevertCourseDraftInput,
   SaveLessonTestInput,
+  SaveSectionTestInput,
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
   UpdateLessonContentInput,
@@ -763,6 +766,50 @@ async function resolveNextLessonId(sectionDirectoryPath: string, title: string) 
   return `lesson-${String(nextIndex).padStart(2, "0")}-${slug}`;
 }
 
+async function hasSiblingSectionTestWithTitle(
+  sectionDirectoryPath: string,
+  defaultLocale: Locale,
+  title: string,
+): Promise<boolean> {
+  const directoryEntries = await fs.readdir(sectionDirectoryPath, {
+    withFileTypes: true,
+  });
+  const sectionTestJsonPaths = directoryEntries
+    .filter(
+      (entry) =>
+        entry.isFile() && /^section-test-\d{2}-[a-z0-9-]+\.json$/.test(entry.name),
+    )
+    .map((entry) => path.join(sectionDirectoryPath, entry.name));
+  const titles = await Promise.all(
+    sectionTestJsonPaths.map((filePath) =>
+      readStoredLocalizedTitle(filePath, defaultLocale),
+    ),
+  );
+  const normalizedTarget = normalizeTitleForComparison(title);
+
+  return titles.some(
+    (existingTitle) =>
+      existingTitle !== null &&
+      normalizeTitleForComparison(existingTitle) === normalizedTarget,
+  );
+}
+
+async function resolveNextSectionTestId(sectionDirectoryPath: string, title: string) {
+  const directoryEntries = await fs.readdir(sectionDirectoryPath, {
+    withFileTypes: true,
+  });
+  const testIndexes = directoryEntries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name.match(/^section-test-(\d{2})-[a-z0-9-]+\.json$/))
+    .filter((match): match is RegExpMatchArray => Boolean(match))
+    .map((match) => Number.parseInt(match[1], 10))
+    .sort((left, right) => left - right);
+  const nextIndex = (testIndexes.at(-1) ?? 0) + 1;
+  const slug = slugifyCourseName(title) || "untitled-test";
+
+  return `section-test-${String(nextIndex).padStart(2, "0")}-${slug}`;
+}
+
 function normalizeSupportedLocales(
   defaultLocale: Locale,
   supportedLocales: Locale[],
@@ -1160,6 +1207,179 @@ export async function getLocalCourseLessonTestDraft(
 
   if (!isSharedTestDefinition(parsedValue)) {
     throw new Error(`Invalid JSON structure in ${testDefinitionPath}`);
+  }
+
+  return parsedValue;
+}
+
+export async function createLocalCourseSectionTest(
+  input: CreateCourseSectionTestInput,
+): Promise<{ testId: string }> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+
+  try {
+    await fs.access(path.join(sectionDirectoryPath, "section.json"));
+  } catch {
+    throw new Error(`Section "${input.sectionId}" does not exist`);
+  }
+
+  const normalizedTitle = input.title.trim();
+
+  if (!normalizedTitle) {
+    throw new Error("Test title is required");
+  }
+
+  if (
+    await hasSiblingSectionTestWithTitle(
+      sectionDirectoryPath,
+      manifest.defaultLocale,
+      normalizedTitle,
+    )
+  ) {
+    throw new Error(
+      `A test titled "${normalizedTitle}" already exists in this section`,
+    );
+  }
+
+  const testId = await resolveNextSectionTestId(sectionDirectoryPath, normalizedTitle);
+  const localizedTestMetadata = Object.fromEntries(
+    manifest.supportedLocales.map((locale) => [
+      locale,
+      { description: "", title: normalizedTitle },
+    ]),
+  );
+
+  // No content fields (`template`/`exercises`) yet — this file exists purely
+  // so the explorer tree has something to select before the author has saved
+  // a single exercise, mirroring how a lesson's own `.json` exists before its
+  // body/test do. See `getLocalCourseSectionTestDraft`'s comment for the
+  // resulting read-side difference from a lesson-attached test.
+  await writeFileAtomic(
+    path.join(sectionDirectoryPath, `${testId}.json`),
+    JSON.stringify(
+      {
+        id: testId,
+        slug: testId.replace(/^section-test-\d{2}-/, ""),
+        locales: localizedTestMetadata,
+      },
+      null,
+      2,
+    ),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+
+  return { testId };
+}
+
+export async function updateLocalCourseSectionTest(
+  input: SaveSectionTestInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+  const testDefinitionPath = path.join(sectionDirectoryPath, `${input.testId}.json`);
+
+  let existingFileContents: string;
+
+  try {
+    existingFileContents = await fs.readFile(testDefinitionPath, "utf8");
+  } catch {
+    throw new Error(`Test "${input.testId}" does not exist`);
+  }
+
+  if (!isSharedTestDefinition(input.test)) {
+    throw new Error("Test data is invalid");
+  }
+
+  // Unlike a lesson-attached test file (only ever content, no identity), a
+  // standalone test's file also carries its id/slug/locales — preserve them,
+  // only replacing the content fields.
+  const existingIdentity = JSON.parse(existingFileContents) as {
+    id: string;
+    locales: unknown;
+    slug: string;
+  };
+
+  await writeFileAtomic(
+    testDefinitionPath,
+    JSON.stringify(
+      {
+        id: existingIdentity.id,
+        slug: existingIdentity.slug,
+        locales: existingIdentity.locales,
+        ...input.test,
+      },
+      null,
+      2,
+    ),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function getLocalCourseSectionTestDraft(
+  input: GetSectionTestDraftInput,
+): Promise<SharedTestDefinition | null> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+  const testDefinitionPath = path.join(sectionDirectoryPath, `${input.testId}.json`);
+
+  let fileContents: string;
+
+  try {
+    fileContents = await fs.readFile(testDefinitionPath, "utf8");
+  } catch {
+    return null;
+  }
+
+  const parsedValue = JSON.parse(fileContents) as unknown;
+
+  // A standalone test's file exists as soon as it's created (holding just its
+  // title), before any content is saved — unlike a lesson-attached test file,
+  // whose mere existence already implies valid content. So a shape mismatch
+  // here means "no exercises saved yet," not corruption.
+  if (!isSharedTestDefinition(parsedValue)) {
+    return null;
   }
 
   return parsedValue;

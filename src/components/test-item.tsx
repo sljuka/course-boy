@@ -14,9 +14,16 @@ function formatPreviewItemTitle(
   testLabel: string,
 ): string {
   const matchedIndex = item.id.match(/^test-(\d{2})-/);
-  const index = matchedIndex?.[1] ?? item.id;
 
-  return testLabel.replace("{{index}}", index);
+  // A lesson-attached test has no real title of its own (see docs/contracts.md)
+  // — its id matches this pattern and `item.title` is just that same id, so a
+  // numbered label is synthesized instead. A standalone test's id doesn't
+  // match (it's `section-test-XX-*`) and does carry a real title — use it.
+  if (!matchedIndex) {
+    return item.title;
+  }
+
+  return testLabel.replace("{{index}}", matchedIndex[1]);
 }
 
 export function TestItem({ item, onSelect, testLabel }: TestItemProps) {

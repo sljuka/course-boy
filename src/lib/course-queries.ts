@@ -10,12 +10,16 @@ import type {
   CreateCourseLessonResult,
   CreateCourseSectionInput,
   CreateCourseSectionResult,
+  CreateCourseSectionTestInput,
+  CreateCourseSectionTestResult,
   CutCourseVersionInput,
   CutCourseVersionResult,
   GetLessonTestDraftInput,
+  GetSectionTestDraftInput,
   PublishCourseVersionInput,
   RevertCourseDraftInput,
   SaveLessonTestInput,
+  SaveSectionTestInput,
   SharedTestDefinition,
   UpdateLessonContentInput,
   UploadCourseAssetInput,
@@ -125,6 +129,36 @@ export function useLessonTestDraftQuery(input: GetLessonTestDraftInput | null) {
     enabled: input !== null,
     queryKey: ["courses", "lesson-test-draft", input?.courseId, input?.lessonId],
     queryFn: () => window.courses.getLessonTestDraft(input!),
+  });
+}
+
+export function useCreateCourseSectionTestMutation() {
+  return useMutation<CreateCourseSectionTestResult, Error, CreateCourseSectionTestInput>({
+    mutationFn: (input) => window.courses.createSectionTest(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
+export function useSaveSectionTestMutation() {
+  return useMutation<void, Error, SaveSectionTestInput>({
+    mutationFn: (input) => window.courses.saveSectionTest(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
+export function useSectionTestDraftQuery(input: GetSectionTestDraftInput | null) {
+  return useQuery<SharedTestDefinition | null>({
+    enabled: input !== null,
+    queryKey: ["courses", "section-test-draft", input?.courseId, input?.testId],
+    queryFn: () => window.courses.getSectionTestDraft(input!),
   });
 }
 

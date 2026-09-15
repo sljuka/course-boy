@@ -101,6 +101,7 @@ courses/<course-id>/course.json                              # published manifes
 courses/<course-id>/<section>/section.json
 courses/<course-id>/<section>/<lesson>.json
 courses/<course-id>/<section>/<test>.json                    # optional, one per lesson
+courses/<course-id>/<section>/<section-test>.json             # optional, standalone — no parent lesson
 courses/<course-id>/<section>/locales/<locale>/<lesson>.md
 courses/<course-id>/assets/<filename>                         # course-level, referenced by filename only
 courses/<course-id>/draft/course.json                        # draft manifest
@@ -127,6 +128,19 @@ its filename fully derived from the lesson's: `lesson-01-foo.json` pairs with
 the only thing that ties a test to its lesson — there is no `testId` field stored
 anywhere, and a test has no independent identity or title. A lesson without a test simply
 has no `test-XX-*.json` file; `CourseLesson.test` is `null` in that case.
+
+A **standalone test** (`CourseSectionTest` in
+[src/lib/course-package.ts](../src/lib/course-package.ts:1)) is the other, independent way a
+section can hold a test — no parent lesson, no document, its own real identity. Its file,
+`section-test-XX-slug.json`, is distinct from the `test-XX-*` naming above precisely so a
+directory scan can tell the two apart by filename alone, with no dependence on file
+*absence* to infer meaning. Unlike a lesson/test pair, there's no document to justify
+splitting metadata from content, so one file carries both: it's created with only
+`id`/`slug`/`locales` (so the explorer tree has something to select before a single
+exercise exists), then gains `template`/`exercises`/`structure` once the author saves —
+`CourseSectionTest.test` is `null` until then. This is additive: existing courses' `lesson`/
+`test` file pairs are untouched, read and written through the exact same paths they always
+were.
 
 Drafts live in a `draft/` subdirectory of the course root, so one course id can hold both
 a published version and an in-progress draft. Writers resolve it via

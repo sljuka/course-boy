@@ -235,11 +235,22 @@ export type CourseLesson = LessonPreview & {
   test: CourseTest | null;
 };
 
+// A test that stands on its own as a section item — no parent lesson, no
+// document. Distinct from `CourseLesson.test`, which is attached to (and
+// whose file identity is derived from) a lesson. `test` is `null` until the
+// author saves at least one exercise, mirroring `CourseLesson.test` — a
+// standalone test's own file exists (holding its title) before its content
+// does. See docs/contracts.md.
+export type CourseSectionTest = LessonPreview & {
+  test: CourseTest | null;
+};
+
 export type CourseSectionPreview = {
   description?: string;
   id: string;
   lessons: CourseLesson[];
   locales: Record<Locale, LocalizedSectionMetadata>;
+  tests: CourseSectionTest[];
   title: string;
 };
 
@@ -326,6 +337,29 @@ export type GetLessonTestDraftInput = {
   courseId: string;
   lessonId: string;
   sectionId: string;
+};
+
+export type CreateCourseSectionTestInput = {
+  courseId: string;
+  sectionId: string;
+  title: string;
+};
+
+export type CreateCourseSectionTestResult = {
+  testId: string;
+};
+
+export type SaveSectionTestInput = {
+  courseId: string;
+  sectionId: string;
+  test: SharedTestDefinition;
+  testId: string;
+};
+
+export type GetSectionTestDraftInput = {
+  courseId: string;
+  sectionId: string;
+  testId: string;
 };
 
 export type UpdateCourseDraftMetadataInput = {

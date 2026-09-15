@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import type { CourseLesson } from "@/lib/course-package";
+import type { CourseLesson, CourseSectionTest } from "@/lib/course-package";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
-import { buildLessonPath } from "@/lib/course-utils";
+import { buildLessonPath, buildLessonTestPath } from "@/lib/course-utils";
 import { useAppState } from "@/lib/use-app-state";
 
+// A step in the player's overall sequence is either a document (a lesson,
+// which may itself carry an attached test reached via its own "Continue"
+// button) or a standalone test with no document at all — see CourseSectionTest.
+export type CoursePlayerStep =
+  | { item: CourseLesson; kind: "lesson" }
+  | { item: CourseSectionTest; kind: "test" };
+
 export type CoursePlayerReadyState = {
-  activeLesson: CourseLesson;
+  activeStep: CoursePlayerStep;
   courseId: string;
   courseTitle: string;
   exitPlayer: () => void;
-  moveToNextLesson: () => void;
+  moveToNextStep: () => void;
   progressCurrent: number;
   progressTotal: number;
   sectionTitle: string;
@@ -49,62 +56,77 @@ export function useCoursePlayer({
     throwOnError: true,
   });
 
-  const lessonSequence = useMemo(() => {
+  const stepSequence = useMemo(() => {
     if (!course) {
       return [];
     }
 
-    return course.sections.flatMap((section) =>
-      section.lessons.map((lesson) => ({
-        lesson,
-        sectionTitle: section.title,
-      })),
-    );
+    return course.sections.flatMap((section) => [
+      ...section.lessons.map(
+        (lesson) =>
+          ({ item: lesson, kind: "lesson", sectionTitle: section.title }) as const,
+      ),
+      ...section.tests.map(
+        (sectionTest) =>
+          ({ item: sectionTest, kind: "test", sectionTitle: section.title }) as const,
+      ),
+    ]);
   }, [course]);
 
-  const activeLessonIndex = lessonSequence.findIndex(
-    (entry) => entry.lesson.id === lessonId,
+  const activeStepIndex = stepSequence.findIndex(
+    (entry) => entry.item.id === lessonId,
   );
-  const activeLessonEntry =
-    activeLessonIndex >= 0 ? lessonSequence[activeLessonIndex] : null;
-  const activeLesson = activeLessonEntry?.lesson ?? null;
+  const activeStepEntry =
+    activeStepIndex >= 0 ? stepSequence[activeStepIndex] : null;
 
   useEffect(() => {
     setIsCourseComplete(false);
   }, [courseId, lessonId, locale]);
 
-  function moveToNextLesson() {
-    if (activeLessonIndex + 1 >= lessonSequence.length) {
+  function pathForStep(step: CoursePlayerStep) {
+    return step.kind === "lesson"
+      ? buildLessonPath(courseId, step.item.id)
+      : buildLessonTestPath(courseId, step.item.id);
+  }
+
+  function moveToNextStep() {
+    if (activeStepIndex + 1 >= stepSequence.length) {
       setIsCourseComplete(true);
       return;
     }
 
-    const nextLesson = lessonSequence[activeLessonIndex + 1]?.lesson;
+    const nextEntry = stepSequence[activeStepIndex + 1];
 
-    if (!nextLesson) {
+    if (!nextEntry) {
       return;
     }
 
-    navigate(buildLessonPath(courseId, nextLesson.id));
+    navigate(pathForStep(nextEntry));
   }
 
   function exitPlayer() {
     navigate(`/courses/${courseId}`);
   }
 
-  if (course && lessonSequence.length > 0 && !activeLesson) {
+  if (course && stepSequence.length > 0 && !activeStepEntry) {
     const entrySection = course.sections.find(
       (section) => section.id === course.entrySectionId,
     );
-    const fallbackLessonId =
-      entrySection?.lessons[0]?.id ??
-      course.sections[0]?.lessons[0]?.id ??
+    const fallbackStep =
+      entrySection?.lessons[0] ??
+      entrySection?.tests[0] ??
+      course.sections[0]?.lessons[0] ??
+      course.sections[0]?.tests[0] ??
       null;
 
-    if (fallbackLessonId) {
+    if (fallbackStep) {
+      const isLesson = "body" in fallbackStep;
+
       return {
         status: "redirect",
-        to: buildLessonPath(courseId, fallbackLessonId),
+        to: isLesson
+          ? buildLessonPath(courseId, fallbackStep.id)
+          : buildLessonTestPath(courseId, fallbackStep.id),
       };
     }
   }
@@ -124,19 +146,19 @@ export function useCoursePlayer({
     };
   }
 
-  if (!activeLesson || !activeLessonEntry) {
+  if (!activeStepEntry) {
     return { status: "missing" };
   }
 
   return {
-    activeLesson,
+    activeStep: activeStepEntry,
     courseId,
     courseTitle: course.title,
     exitPlayer,
-    moveToNextLesson,
-    progressCurrent: activeLessonIndex + 1,
-    progressTotal: lessonSequence.length,
-    sectionTitle: activeLessonEntry.sectionTitle,
+    moveToNextStep,
+    progressCurrent: activeStepIndex + 1,
+    progressTotal: stepSequence.length,
+    sectionTitle: activeStepEntry.sectionTitle,
     status: "ready",
   };
 }

@@ -45,6 +45,15 @@ interface Window {
     getLessonTestDraft: (
       input: import('../src/lib/course-package').GetLessonTestDraftInput,
     ) => Promise<import('../src/lib/course-package').SharedTestDefinition | null>
+    createSectionTest: (
+      input: import('../src/lib/course-package').CreateCourseSectionTestInput,
+    ) => Promise<import('../src/lib/course-package').CreateCourseSectionTestResult>
+    saveSectionTest: (
+      input: import('../src/lib/course-package').SaveSectionTestInput,
+    ) => Promise<void>
+    getSectionTestDraft: (
+      input: import('../src/lib/course-package').GetSectionTestDraftInput,
+    ) => Promise<import('../src/lib/course-package').SharedTestDefinition | null>
     get: (
       courseId: string,
       locale?: import('../src/lib/i18n').Locale,

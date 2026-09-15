@@ -34,6 +34,7 @@ import { resolveTestIdForLesson } from "@/lib/course-test-id";
 import {
   useCreateCourseLessonMutation,
   useCreateCourseSectionMutation,
+  useCreateCourseSectionTestMutation,
 } from "@/lib/course-queries";
 
 type DocumentNode = {
@@ -43,8 +44,17 @@ type DocumentNode = {
   type: "document";
 };
 
+// A standalone test — a section child in its own right, independent of any
+// document. Distinct from the "Test" row nested under a DocumentNode above,
+// which represents a lesson-attached test instead.
+type TestNode = {
+  id: string;
+  title: string;
+  type: "test";
+};
+
 type SectionNode = {
-  children: DocumentNode[];
+  children: Array<DocumentNode | TestNode>;
   id: string;
   title: string;
   type: "section";
@@ -52,7 +62,8 @@ type SectionNode = {
 
 type PendingCreate =
   | { type: "section" }
-  | { sectionId: string; type: "document" };
+  | { sectionId: string; type: "document" }
+  | { sectionId: string; type: "test" };
 
 const courseRootTitle = "Course";
 
@@ -81,16 +92,26 @@ export function CourseStructurePrototype({
 
   const createSectionMutation = useCreateCourseSectionMutation();
   const createLessonMutation = useCreateCourseLessonMutation();
+  const createSectionTestMutation = useCreateCourseSectionTestMutation();
 
   const sectionNodes: SectionNode[] = sections.map((section) => ({
-    children: section.lessons.map(
-      (lesson): DocumentNode => ({
-        hasTest: lesson.test !== null,
-        id: lesson.id,
-        title: lesson.title,
-        type: "document",
-      }),
-    ),
+    children: [
+      ...section.lessons.map(
+        (lesson): DocumentNode => ({
+          hasTest: lesson.test !== null,
+          id: lesson.id,
+          title: lesson.title,
+          type: "document",
+        }),
+      ),
+      ...section.tests.map(
+        (test): TestNode => ({
+          id: test.id,
+          title: test.title,
+          type: "test",
+        }),
+      ),
+    ],
     id: section.id,
     title: section.title,
     type: "section",
@@ -116,6 +137,15 @@ export function CourseStructurePrototype({
 
     setPendingCreate({ sectionId, type: "document" });
     setPendingTitle(`Document ${(section?.lessons.length ?? 0) + 1}`);
+    setPendingError(null);
+    setCollapsedSectionIds((currentIds) => currentIds.filter((id) => id !== sectionId));
+  }
+
+  function startAddTest(sectionId: string) {
+    const section = sections.find((candidate) => candidate.id === sectionId);
+
+    setPendingCreate({ sectionId, type: "test" });
+    setPendingTitle(`Test ${(section?.tests.length ?? 0) + 1}`);
     setPendingError(null);
     setCollapsedSectionIds((currentIds) => currentIds.filter((id) => id !== sectionId));
   }
@@ -149,7 +179,7 @@ export function CourseStructurePrototype({
         setPendingError(`A section titled "${title}" already exists`);
         return;
       }
-    } else {
+    } else if (pendingCreate.type === "document") {
       const targetSection = sections.find(
         (section) => section.id === pendingCreate.sectionId,
       );
@@ -161,19 +191,38 @@ export function CourseStructurePrototype({
         setPendingError(`A document titled "${title}" already exists in this section`);
         return;
       }
+    } else {
+      const targetSection = sections.find(
+        (section) => section.id === pendingCreate.sectionId,
+      );
+      const isDuplicate = targetSection?.tests.some(
+        (test) => test.title.trim().toLowerCase() === normalizedTitle,
+      );
+
+      if (isDuplicate) {
+        setPendingError(`A test titled "${title}" already exists in this section`);
+        return;
+      }
     }
 
     try {
       if (pendingCreate.type === "section") {
         const result = await createSectionMutation.mutateAsync({ courseId, title });
         onSelectionChange?.({ id: result.sectionId, title, type: "section" });
-      } else {
+      } else if (pendingCreate.type === "document") {
         const result = await createLessonMutation.mutateAsync({
           courseId,
           sectionId: pendingCreate.sectionId,
           title,
         });
         onSelectionChange?.({ id: result.lessonId, title, type: "document" });
+      } else {
+        const result = await createSectionTestMutation.mutateAsync({
+          courseId,
+          sectionId: pendingCreate.sectionId,
+          title,
+        });
+        onSelectionChange?.({ id: result.testId, title, type: "test" });
       }
 
       cancelPendingCreate();
@@ -246,6 +295,7 @@ export function CourseStructurePrototype({
                       key={node.id}
                       node={node}
                       onAddDocument={() => startAddDocument(node.id)}
+                      onAddTest={() => startAddTest(node.id)}
                       onSelectionChange={onSelectionChange}
                       onSelectTest={selectTest}
                       pendingDocument={
@@ -254,9 +304,15 @@ export function CourseStructurePrototype({
                           ? { error: pendingError, title: pendingTitle }
                           : null
                       }
-                      onPendingDocumentCancel={cancelPendingCreate}
-                      onPendingDocumentChange={setPendingTitle}
-                      onPendingDocumentCommit={commitPendingCreate}
+                      pendingTest={
+                        pendingCreate?.type === "test" &&
+                        pendingCreate.sectionId === node.id
+                          ? { error: pendingError, title: pendingTitle }
+                          : null
+                      }
+                      onPendingCreateCancel={cancelPendingCreate}
+                      onPendingCreateChange={setPendingTitle}
+                      onPendingCreateCommit={commitPendingCreate}
                       onToggle={() => toggleSection(node.id)}
                       sectionIsExpanded={!collapsedSectionIds.includes(node.id)}
                       selectedNodeId={selectedNodeId}
@@ -286,25 +342,29 @@ export function CourseStructurePrototype({
 function SectionRow({
   node,
   onAddDocument,
-  onPendingDocumentCancel,
-  onPendingDocumentChange,
-  onPendingDocumentCommit,
+  onAddTest,
+  onPendingCreateCancel,
+  onPendingCreateChange,
+  onPendingCreateCommit,
   onSelectionChange,
   onSelectTest,
   onToggle,
   pendingDocument,
+  pendingTest,
   sectionIsExpanded,
   selectedNodeId,
 }: {
   node: SectionNode;
   onAddDocument: () => void;
-  onPendingDocumentCancel: () => void;
-  onPendingDocumentChange: (title: string) => void;
-  onPendingDocumentCommit: () => void;
+  onAddTest: () => void;
+  onPendingCreateCancel: () => void;
+  onPendingCreateChange: (title: string) => void;
+  onPendingCreateCommit: () => void;
   onSelectionChange?: (selection: StructureSelection) => void;
   onSelectTest: (lessonId: string) => void;
   onToggle: () => void;
   pendingDocument: { error: string | null; title: string } | null;
+  pendingTest: { error: string | null; title: string } | null;
   sectionIsExpanded: boolean;
   selectedNodeId: string;
 }) {
@@ -319,6 +379,7 @@ function SectionRow({
         isSelected={selectedNodeId === node.id}
         label="Section"
         onInsertDocument={onAddDocument}
+        onInsertTest={onAddTest}
         onMoveDown={() => {}}
         onMoveUp={() => {}}
         onSelect={() =>
@@ -330,19 +391,57 @@ function SectionRow({
 
       {sectionIsExpanded && (
         <div className="ml-3 border-l border-stone-200 pl-3">
-          {node.children.map((child) => (
-            <div key={child.id}>
+          {node.children.map((child) =>
+            child.type === "document" ? (
+              <div key={child.id}>
+                <ExplorerRow
+                  canMoveDown={false}
+                  canMoveUp={false}
+                  icon={FileText}
+                  isFixed
+                  isSelected={selectedNodeId === child.id}
+                  label="Document"
+                  onInsertTest={child.hasTest ? undefined : () => onSelectTest(child.id)}
+                  onMoveDown={() => {}}
+                  onMoveUp={() => {}}
+                  onOpen={() => {}}
+                  onSelect={() =>
+                    onSelectionChange?.({
+                      id: child.id,
+                      title: child.title,
+                      type: child.type,
+                    })
+                  }
+                  title={child.title}
+                />
+                {child.hasTest && (
+                  <div className="ml-3 pl-3">
+                    <ExplorerRow
+                      canMoveDown={false}
+                      canMoveUp={false}
+                      icon={FlaskConical}
+                      isFixed
+                      isSelected={selectedNodeId === resolveTestIdForLesson(child.id)}
+                      label="Test"
+                      onMoveDown={() => {}}
+                      onMoveUp={() => {}}
+                      onSelect={() => onSelectTest(child.id)}
+                      title="Test"
+                    />
+                  </div>
+                )}
+              </div>
+            ) : (
               <ExplorerRow
                 canMoveDown={false}
                 canMoveUp={false}
-                icon={FileText}
+                icon={FlaskConical}
                 isFixed
                 isSelected={selectedNodeId === child.id}
-                label="Document"
-                onInsertTest={child.hasTest ? undefined : () => onSelectTest(child.id)}
+                key={child.id}
+                label="Test"
                 onMoveDown={() => {}}
                 onMoveUp={() => {}}
-                onOpen={() => {}}
                 onSelect={() =>
                   onSelectionChange?.({
                     id: child.id,
@@ -352,33 +451,28 @@ function SectionRow({
                 }
                 title={child.title}
               />
-              {child.hasTest && (
-                <div className="ml-3 pl-3">
-                  <ExplorerRow
-                    canMoveDown={false}
-                    canMoveUp={false}
-                    icon={FlaskConical}
-                    isFixed
-                    isSelected={selectedNodeId === resolveTestIdForLesson(child.id)}
-                    label="Test"
-                    onMoveDown={() => {}}
-                    onMoveUp={() => {}}
-                    onSelect={() => onSelectTest(child.id)}
-                    title="Test"
-                  />
-                </div>
-              )}
-            </div>
-          ))}
+            ),
+          )}
           {pendingDocument && (
             <PendingRow
               error={pendingDocument.error}
               icon={FileText}
               label="Document"
-              onCancel={onPendingDocumentCancel}
-              onChange={onPendingDocumentChange}
-              onCommit={onPendingDocumentCommit}
+              onCancel={onPendingCreateCancel}
+              onChange={onPendingCreateChange}
+              onCommit={onPendingCreateCommit}
               title={pendingDocument.title}
+            />
+          )}
+          {pendingTest && (
+            <PendingRow
+              error={pendingTest.error}
+              icon={FlaskConical}
+              label="Test"
+              onCancel={onPendingCreateCancel}
+              onChange={onPendingCreateChange}
+              onCommit={onPendingCreateCommit}
+              title={pendingTest.title}
             />
           )}
         </div>

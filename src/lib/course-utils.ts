@@ -10,12 +10,22 @@ export function getContentRatingLabelKey(contentRating: ContentRating) {
   return contentRatingLabelKeys[contentRating];
 }
 
-export function getEntryLessonId(course: CourseDetails) {
+export function getEntryStep(
+  course: CourseDetails,
+): { id: string; kind: "lesson" | "test" } | null {
   const entrySection = course.sections.find(
     (section) => section.id === course.entrySectionId,
   );
+  const fallbackSection = course.sections[0];
+  const lessonId = entrySection?.lessons[0]?.id ?? fallbackSection?.lessons[0]?.id;
 
-  return entrySection?.lessons[0]?.id ?? course.sections[0]?.lessons[0]?.id ?? null;
+  if (lessonId) {
+    return { id: lessonId, kind: "lesson" };
+  }
+
+  const testId = entrySection?.tests[0]?.id ?? fallbackSection?.tests[0]?.id;
+
+  return testId ? { id: testId, kind: "test" } : null;
 }
 
 export function buildLessonPath(courseId: string, lessonId: string) {

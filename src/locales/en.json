@@ -85,6 +85,7 @@
     "lessonLabel": "Lesson",
     "markAllWords": "Mark every highlighted word before continuing.",
     "missing": "This course could not be found.",
+    "missingBackToHome": "Back to home",
     "noSectionsHint": "To kick off the creation of the course you can start by adding a new section in the explorer on the left.",
     "noSectionsTitle": "Getting started",
     "testLabel": "Test"

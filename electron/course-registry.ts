@@ -7,6 +7,7 @@ import type {
   CourseDistribution,
   CourseLesson,
   CourseSectionPreview,
+  CourseSectionTest,
   CourseDetails,
   CourseManifest,
   CoursePreviewItem,
@@ -66,6 +67,19 @@ type SharedSectionDefinition = {
   id: string;
   locales: Record<Locale, LocalizedSectionMetadata>;
   lessonIds: string[];
+  testIds: string[];
+  slug: string;
+};
+
+// The on-disk shape of a `section-test-XX-slug.json` file — a standalone
+// test's own metadata (id/slug/locales, like a lesson's), independent of any
+// lesson. Unlike a lesson/test pair, there's no document to justify splitting
+// metadata from content, so the same file also carries `SharedTestDefinition`
+// fields once the author saves at least one exercise — see
+// `isStoredSectionTestDefinition` and `readCourseSectionTest`.
+type StoredSectionTestDefinition = {
+  id: string;
+  locales: Record<Locale, LocalizedLessonMetadata>;
   slug: string;
 };
 
@@ -243,6 +257,26 @@ function isStoredSectionDefinition(
     typeof section.locales === "object" &&
     Object.entries(section.locales).every(([locale, metadata]) => {
       return isLocale(locale) && isLocalizedSectionMetadata(metadata);
+    })
+  );
+}
+
+function isStoredSectionTestDefinition(
+  value: unknown,
+): value is StoredSectionTestDefinition {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const test = value as Partial<StoredSectionTestDefinition>;
+
+  return (
+    typeof test.id === "string" &&
+    typeof test.slug === "string" &&
+    Boolean(test.locales) &&
+    typeof test.locales === "object" &&
+    Object.entries(test.locales).every(([locale, metadata]) => {
+      return isLocale(locale) && isLocalizedLessonMetadata(metadata);
     })
   );
 }
@@ -456,21 +490,29 @@ async function readSharedSectionDefinition(
     .filter((entry) => entry.isFile() && /^lesson-\d{2}-.*\.json$/.test(entry.name))
     .map((entry) => entry.name.replace(/\.json$/, ""))
     .sort((leftLessonId, rightLessonId) => leftLessonId.localeCompare(rightLessonId, undefined, { numeric: true }));
+  const testIds = directoryEntries
+    .filter((entry) => entry.isFile() && /^section-test-\d{2}-.*\.json$/.test(entry.name))
+    .map((entry) => entry.name.replace(/\.json$/, ""))
+    .sort((leftTestId, rightTestId) => leftTestId.localeCompare(rightTestId, undefined, { numeric: true }));
 
-  if (lessonIds.length === 0) {
+  if (lessonIds.length === 0 && testIds.length === 0) {
     if (courseRecord.manifest.status === "draft") {
       return {
         ...storedSection,
         lessonIds: [],
+        testIds: [],
       };
     }
 
-    throw new Error(`Section "${sectionId}" does not contain any lesson-xx-* files`);
+    throw new Error(
+      `Section "${sectionId}" does not contain any lesson-xx-* or section-test-xx-* files`,
+    );
   }
 
   return {
     ...storedSection,
     lessonIds,
+    testIds,
   };
 }
 
@@ -483,6 +525,62 @@ async function readSharedTestDefinition(
     path.join(resolveSectionDirectoryPath(courseRecord, sectionId), `${testId}.json`),
     isSharedTestDefinition,
   );
+}
+
+async function readSharedSectionTestDefinition(
+  courseRecord: CourseRecord,
+  sectionId: string,
+  testId: string,
+): Promise<StoredSectionTestDefinition> {
+  return readJsonFile(
+    path.join(resolveSectionDirectoryPath(courseRecord, sectionId), `${testId}.json`),
+    isStoredSectionTestDefinition,
+  );
+}
+
+async function readCourseSectionTest(
+  courseRecord: CourseRecord,
+  sectionId: string,
+  testId: string,
+  preferredLocale?: Locale,
+): Promise<CourseSectionTest> {
+  const sharedSectionTest = await readSharedSectionTestDefinition(
+    courseRecord,
+    sectionId,
+    testId,
+  );
+  const requestedLocales = [
+    preferredLocale,
+    courseRecord.manifest.defaultLocale,
+  ].filter((locale, index, locales): locale is Locale => {
+    return Boolean(locale) && locales.indexOf(locale) === index;
+  });
+  const matchedLocale = requestedLocales.find(
+    (locale) => sharedSectionTest.locales[locale],
+  );
+  const preview: LessonPreview = matchedLocale
+    ? {
+        description: sharedSectionTest.locales[matchedLocale].description,
+        id: testId,
+        iconUrl: null,
+        title: sharedSectionTest.locales[matchedLocale].title,
+      }
+    : {
+        description: "",
+        id: testId,
+        iconUrl: null,
+        title: sharedSectionTest.slug.replace(/-/g, " "),
+      };
+
+  // The same file carries both the standalone test's identity (validated
+  // above) and its content once the author has saved at least one exercise —
+  // `isSharedTestDefinition` only checks for the content fields, so it's safe
+  // to probe the same already-read object a second time.
+  const test = isSharedTestDefinition(sharedSectionTest)
+    ? resolveSharedTestForPlayer(sharedSectionTest, requestedLocales, testId)
+    : null;
+
+  return { ...preview, test };
 }
 
 function resolveLocalizedLessonBodyPath(
@@ -681,8 +779,8 @@ async function readCoursePreviewItems(
   sections: SharedSectionDefinition[],
   preferredLocale?: Locale,
 ): Promise<CoursePreviewItem[]> {
-  const previewItems = await Promise.all(
-    sections.flatMap((section) =>
+  const previewItems = await Promise.all([
+    ...sections.flatMap((section) =>
       section.lessonIds.map(async (lessonId) => {
         const [lessonPreview, lessonHasTest] = await Promise.all([
           readLessonPreview(courseRecord, section.id, lessonId, preferredLocale),
@@ -707,7 +805,26 @@ async function readCoursePreviewItems(
         ];
       }),
     ),
-  );
+    ...sections.flatMap((section) =>
+      section.testIds.map(async (testId) => {
+        const sectionTest = await readCourseSectionTest(
+          courseRecord,
+          section.id,
+          testId,
+          preferredLocale,
+        );
+
+        return [
+          {
+            iconUrl: sectionTest.iconUrl,
+            id: sectionTest.id,
+            kind: "test" as const,
+            title: sectionTest.title,
+          },
+        ];
+      }),
+    ),
+  ]);
 
   return previewItems.flat().slice(0, 6);
 }
@@ -747,6 +864,11 @@ async function readCourseSections(
           ),
         ),
         locales: section.locales,
+        tests: await Promise.all(
+          section.testIds.map((testId) =>
+            readCourseSectionTest(courseRecord, section.id, testId, preferredLocale),
+          ),
+        ),
         title: localizedSectionMetadata?.title ?? formatSectionTitle(section.slug),
       };
     }),

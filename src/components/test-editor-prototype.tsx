@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
 import { TestPreviewPlayer } from "@/components/test-editor-prototype-preview";
 import { PageActions } from "@/components/page-actions";
@@ -267,15 +268,27 @@ export function TestEditorPrototype({
     }));
   }
 
+  const hasExercises = state.exercises.length > 0;
+
   const testActionButtons = (
     <>
-      <Button
-        onClick={() => setIsPreviewOpen(true)}
-        variant="secondary"
-      >
-        <Play aria-hidden="true" className="h-4 w-4" />
-        Preview test
-      </Button>
+      <Tooltip>
+        <TooltipTrigger render={<span className="inline-flex" />}>
+          <Button
+            disabled={!hasExercises}
+            onClick={() => setIsPreviewOpen(true)}
+            variant="secondary"
+          >
+            <Play aria-hidden="true" className="h-4 w-4" />
+            Preview test
+          </Button>
+        </TooltipTrigger>
+        {!hasExercises && (
+          <TooltipContent>
+            Add at least one exercise to preview this test
+          </TooltipContent>
+        )}
+      </Tooltip>
       <DropdownMenu>
         <DropdownMenuTrigger render={<Button className="gap-2" />}>
           <Plus aria-hidden="true" className="h-4 w-4" />

@@ -37,18 +37,21 @@ export function TestPreviewPlayer({
     const test = resolveSharedTestForPlayer(sharedTest, requestedLocales, "preview");
 
     return {
-      activeLesson: {
-        body: "",
-        description: "",
-        iconUrl: null,
-        id: "preview",
-        test,
-        title: testState.title || "Test",
+      activeStep: {
+        item: {
+          body: "",
+          description: "",
+          iconUrl: null,
+          id: "preview",
+          test,
+          title: testState.title || "Test",
+        },
+        kind: "lesson",
       },
       courseId: "preview",
       courseTitle: testState.title || "Test",
       exitPlayer: onClose,
-      moveToNextLesson: onClose,
+      moveToNextStep: onClose,
       progressCurrent: 1,
       progressTotal: 1,
       sectionTitle: "Preview",

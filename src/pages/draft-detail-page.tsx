@@ -79,7 +79,7 @@ import { getContentRatingLabelKey } from "@/lib/course-utils";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { queryClient } from "@/lib/query-client";
-import { useLessonTestDraftQuery } from "@/lib/course-queries";
+import { useLessonTestDraftQuery, useSectionTestDraftQuery } from "@/lib/course-queries";
 import { resolveLessonIdForTest } from "@/lib/course-test-id";
 import { useTranslation } from "react-i18next";
 
@@ -161,6 +161,7 @@ function buildPersistedDraftSnapshot({
   documentDrafts,
   localizedCourse,
   sectionDrafts,
+  sectionTestDrafts,
   supportedLocales,
   testDrafts,
 }: {
@@ -177,6 +178,7 @@ function buildPersistedDraftSnapshot({
     string,
     { locales: Partial<Record<Locale, SectionDraftLocaleValue>> }
   >;
+  sectionTestDrafts: Record<string, TestEditorState>;
   supportedLocales: Locale[];
   testDrafts: Record<string, TestEditorState>;
 }) {
@@ -186,21 +188,26 @@ function buildPersistedDraftSnapshot({
   const persistedTagIds = new Set(
     persistedDescriptiveTags.map((tag) => tag.id),
   );
-  const persistedTestDrafts = Object.fromEntries(
-    Object.entries(testDrafts).map(([draftId, draftState]) => [
-      draftId,
-      {
-        ...draftState,
-        blueprint: draftState.blueprint.filter((rule) =>
-          persistedTagIds.has(rule.tagId),
-        ),
-        exercises: draftState.exercises.map((exercise) => ({
-          ...exercise,
-          tagIds: exercise.tagIds.filter((tagId) => persistedTagIds.has(tagId)),
-        })),
-      },
-    ]),
-  ) satisfies Record<string, TestEditorState>;
+  function persistTestDrafts(rawTestDrafts: Record<string, TestEditorState>) {
+    return Object.fromEntries(
+      Object.entries(rawTestDrafts).map(([draftId, draftState]) => [
+        draftId,
+        {
+          ...draftState,
+          blueprint: draftState.blueprint.filter((rule) =>
+            persistedTagIds.has(rule.tagId),
+          ),
+          exercises: draftState.exercises.map((exercise) => ({
+            ...exercise,
+            tagIds: exercise.tagIds.filter((tagId) => persistedTagIds.has(tagId)),
+          })),
+        },
+      ]),
+    ) satisfies Record<string, TestEditorState>;
+  }
+
+  const persistedTestDrafts = persistTestDrafts(testDrafts);
+  const persistedSectionTestDrafts = persistTestDrafts(sectionTestDrafts);
   const persistedSectionDrafts = Object.fromEntries(
     Object.entries(sectionDrafts)
       .map(([sectionId, sectionDraft]) => {
@@ -231,6 +238,7 @@ function buildPersistedDraftSnapshot({
       ]),
     ) as Partial<Record<Locale, LocalizedCourseMetadata>>,
     sectionDrafts: persistedSectionDrafts,
+    sectionTestDrafts: persistedSectionTestDrafts,
     supportedLocales,
     testDrafts: persistedTestDrafts,
     version: 2 as const,
@@ -290,6 +298,9 @@ export function DraftDetailPage() {
   const [testDrafts, setTestDrafts] = useState<Record<string, TestEditorState>>(
     {},
   );
+  const [sectionTestDrafts, setSectionTestDrafts] = useState<
+    Record<string, TestEditorState>
+  >({});
   const [hasHydratedLocalDrafts, setHasHydratedLocalDrafts] = useState(false);
   const shouldAutoFocusCourseTitle =
     (location.state as { focusCourseTitle?: boolean } | null)
@@ -306,6 +317,7 @@ export function DraftDetailPage() {
               documentDrafts,
               localizedCourse,
               sectionDrafts,
+              sectionTestDrafts,
               supportedLocales,
               testDrafts,
             }),
@@ -321,6 +333,7 @@ export function DraftDetailPage() {
       initialDraftSnapshotLoaded,
       localizedCourse,
       sectionDrafts,
+      sectionTestDrafts,
       supportedLocales,
       testDrafts,
     ],
@@ -339,11 +352,19 @@ export function DraftDetailPage() {
       initialDraftSnapshot?.testDrafts ?? {},
       initialDraftSnapshot?.descriptiveTags ?? courseDescriptiveTags,
     );
+    // Chained onto the first call's already-normalized tags, rather than the
+    // raw list, so a tag implied by either draft set only gets registered
+    // once.
+    const normalizedSectionTestDrafts = normalizeDraftTestData(
+      initialDraftSnapshot?.sectionTestDrafts ?? {},
+      normalizedDraftTests.descriptiveTags,
+    );
 
-    setDescriptiveTags(normalizedDraftTests.descriptiveTags);
+    setDescriptiveTags(normalizedSectionTestDrafts.descriptiveTags);
     setDocumentDrafts(initialDraftSnapshot?.documentDrafts ?? {});
     setSectionDrafts(initialDraftSnapshot?.sectionDrafts ?? {});
     setTestDrafts(normalizedDraftTests.testDrafts);
+    setSectionTestDrafts(normalizedSectionTestDrafts.testDrafts);
     setHasHydratedLocalDrafts(true);
   }, [
     courseDescriptiveTags,
@@ -391,8 +412,22 @@ export function DraftDetailPage() {
     setActiveSectionLocale(defaultLocale);
   }, [activeSectionLocale, defaultLocale, supportedLocales]);
 
+  // A selected "test" node is either a standalone CourseSectionTest (its id
+  // is found directly in some section's `tests`) or a lesson-attached test
+  // (its id is derived from a lesson id via resolveLessonIdForTest) — these
+  // are two different persisted things with different save/draft plumbing.
+  const selectedSectionTestSectionId =
+    selectedNode.type === "test"
+      ? (courseSections.find((section) =>
+          section.tests.some((test) => test.id === selectedNode.id),
+        )?.id ?? null)
+      : null;
+  const isSelectedTestStandalone = selectedSectionTestSectionId !== null;
+
   const selectedTestLessonId =
-    selectedNode.type === "test" ? resolveLessonIdForTest(selectedNode.id) : null;
+    selectedNode.type === "test" && !isSelectedTestStandalone
+      ? resolveLessonIdForTest(selectedNode.id)
+      : null;
   const selectedTestSectionId = selectedTestLessonId
     ? (courseSections.find((section) =>
         section.lessons.some((lesson) => lesson.id === selectedTestLessonId),
@@ -401,6 +436,11 @@ export function DraftDetailPage() {
   const lessonTestDraftQuery = useLessonTestDraftQuery(
     courseId && selectedTestLessonId && selectedTestSectionId
       ? { courseId, lessonId: selectedTestLessonId, sectionId: selectedTestSectionId }
+      : null,
+  );
+  const sectionTestDraftQuery = useSectionTestDraftQuery(
+    courseId && isSelectedTestStandalone && selectedSectionTestSectionId
+      ? { courseId, sectionId: selectedSectionTestSectionId, testId: selectedNode.id }
       : null,
   );
 
@@ -499,6 +539,22 @@ export function DraftDetailPage() {
 
   const handleTestStateChange = useCallback(
     (state: TestEditorState) => {
+      if (isSelectedTestStandalone) {
+        const testId = selectedNode.id;
+
+        setSectionTestDrafts((currentDrafts) => {
+          if (currentDrafts[testId] === state) {
+            return currentDrafts;
+          }
+
+          return {
+            ...currentDrafts,
+            [testId]: state,
+          };
+        });
+        return;
+      }
+
       const lessonId = resolveLessonIdForTest(selectedNode.id);
 
       setTestDrafts((currentDrafts) => {
@@ -512,7 +568,7 @@ export function DraftDetailPage() {
         };
       });
     },
-    [selectedNode.id],
+    [isSelectedTestStandalone, selectedNode.id],
   );
 
   function updateDescriptiveTag(
@@ -823,6 +879,34 @@ export function DraftDetailPage() {
           open={isVersionHistoryOpen}
         />
       </PageContent>
+    );
+  }
+
+  if (selectedNode.type === "test" && isSelectedTestStandalone) {
+    const existingDraft = sectionTestDrafts[selectedNode.id];
+
+    if (!existingDraft && sectionTestDraftQuery.isLoading) {
+      return <PageContent>{null}</PageContent>;
+    }
+
+    const hydratedState =
+      !existingDraft && sectionTestDraftQuery.data
+        ? fromSharedTestDefinition(sectionTestDraftQuery.data, supportedLocales)
+        : undefined;
+
+    // Unlike a lesson-attached test, a standalone test's own file does carry
+    // a real title (selectedNode.title, sourced from CourseSectionTest) — but
+    // SharedTestDefinition still has no title field, so an edit made inside
+    // TestEditorPrototype's own title input doesn't round-trip on save any
+    // more than it does for a lesson-attached test today.
+    return (
+      <TestEditorPrototype
+        descriptiveTags={descriptiveTags}
+        initialState={existingDraft ?? hydratedState}
+        initialTitle={selectedNode.title}
+        onStateChange={handleTestStateChange}
+        supportedLocales={supportedLocales}
+      />
     );
   }
 

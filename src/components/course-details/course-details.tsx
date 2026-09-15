@@ -24,7 +24,7 @@ import { VersionHistoryDialog } from "@/components/course-details/version-histor
 import {
   buildLessonPath,
   buildLessonTestPath,
-  getEntryLessonId,
+  getEntryStep,
 } from "@/lib/course-utils";
 import { useAppState } from "@/lib/use-app-state";
 
@@ -60,7 +60,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   }
 
   const resolvedCourse = course;
-  const entryLessonId = getEntryLessonId(resolvedCourse);
+  const entryStep = getEntryStep(resolvedCourse);
 
   function handlePreviewItemSelect(item: CoursePreviewStripItem) {
     const targetLessonId = item.targetLessonId ?? item.id;
@@ -74,16 +74,20 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   }
 
   function startCourse() {
-    if (!entryLessonId) {
+    if (!entryStep) {
       return;
     }
 
-    navigate(buildLessonPath(courseId, entryLessonId));
+    navigate(
+      entryStep.kind === "lesson"
+        ? buildLessonPath(courseId, entryStep.id)
+        : buildLessonTestPath(courseId, entryStep.id),
+    );
   }
 
   const actions = (
     <PageActions>
-      <Button disabled={!entryLessonId} onClick={startCourse} size="sm">
+      <Button disabled={!entryStep} onClick={startCourse} size="sm">
         {t("courseDetails.startCourse")}
       </Button>
       <Button onClick={() => setIsShareOpen(true)} size="sm" variant="secondary">
@@ -177,7 +181,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
             </div>
             <div className="overflow-x-auto pb-2">
               <CoursePreviewStrip
-                items={buildSectionPreviewItems(section.lessons)}
+                items={buildSectionPreviewItems(section)}
                 onSelect={handlePreviewItemSelect}
               />
             </div>

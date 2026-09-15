@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Printer } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { CourseLessonContent } from "@/components/course-player/course-lesson-content";
@@ -31,6 +31,19 @@ export function LessonPlayer({
     return <CoursePlayerShell playerState={playerState} />;
   }
 
+  // This route has no document to show for a standalone test — send the
+  // reader straight to its test instead.
+  if (playerState.activeStep.kind === "test") {
+    return (
+      <Navigate
+        replace
+        to={buildLessonTestPath(courseId, playerState.activeStep.item.id)}
+      />
+    );
+  }
+
+  const activeLesson = playerState.activeStep.item;
+
   return (
     <CoursePlayerShell playerState={playerState}>
       <>
@@ -39,7 +52,7 @@ export function LessonPlayer({
           label={t("courseDetails.lessonLabel")}
           show={printOptions.showHeader}
           sectionTitle={playerState.sectionTitle}
-          title={playerState.activeLesson.title}
+          title={activeLesson.title}
         />
         <div className="print:hidden">
           <PageHeader
@@ -85,11 +98,11 @@ export function LessonPlayer({
           />
         </div>
         <CourseLessonContent
-          activeLesson={playerState.activeLesson}
+          activeLesson={activeLesson}
           courseId={courseId}
           onContinueFromLesson={(lesson) => {
             if (!lesson.test || lesson.test.exercises.length === 0) {
-              playerState.moveToNextLesson();
+              playerState.moveToNextStep();
               return;
             }
 

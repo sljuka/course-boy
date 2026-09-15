@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { CourseExercise, CourseLesson } from "@/lib/course-package";
+import type { CourseExercise, CourseTest } from "@/lib/course-package";
 import {
   buildExerciseInstance,
   buildTestExerciseSequence,
@@ -21,7 +21,7 @@ function createEmptyResults(exercises: CourseExercise[]) {
   }));
 }
 
-export function useTestPlayerState(activeLesson?: CourseLesson) {
+export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
   const { t } = useTranslation();
   const [activeTestExercises, setActiveTestExercises] = useState<
     CourseExercise[]

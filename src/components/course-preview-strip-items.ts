@@ -5,9 +5,9 @@ export type CoursePreviewStripItem = CoursePreviewItem & {
 };
 
 export function buildSectionPreviewItems(
-  lessons: CourseSectionPreview["lessons"],
+  section: Pick<CourseSectionPreview, "lessons" | "tests">,
 ): CoursePreviewStripItem[] {
-  return lessons.flatMap((lesson) => [
+  const lessonItems = section.lessons.flatMap((lesson) => [
     {
       iconUrl: lesson.iconUrl,
       id: lesson.id,
@@ -27,4 +27,12 @@ export function buildSectionPreviewItems(
         ]
       : []),
   ]);
+  const sectionTestItems = section.tests.map((sectionTest) => ({
+    iconUrl: sectionTest.iconUrl,
+    id: sectionTest.id,
+    kind: "test" as const,
+    title: sectionTest.title,
+  }));
+
+  return [...lessonItems, ...sectionTestItems];
 }

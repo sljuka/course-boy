@@ -32,6 +32,10 @@ type DraftEditorSnapshot = {
   documentDrafts: Record<string, DraftDocumentDraft>;
   localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>;
   sectionDrafts: Record<string, DraftSectionDraft>;
+  // Local drafts for standalone tests (see CourseSectionTest), keyed by the
+  // test's own id — distinct from `testDrafts`, which is keyed by a lesson id
+  // for lesson-attached tests.
+  sectionTestDrafts: Record<string, TestEditorState>;
   supportedLocales: Locale[];
   testDrafts: Record<string, TestEditorState>;
   version: 2;

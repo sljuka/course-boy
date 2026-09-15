@@ -1,4 +1,4 @@
-import type { CourseExercise, CourseLesson } from "@/lib/course-package";
+import type { CourseExercise, CourseTest } from "@/lib/course-package";
 import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
 
 export type ExerciseInstance =
@@ -33,7 +33,12 @@ function shuffleExercises(exercises: CourseExercise[]): CourseExercise[] {
   return nextExercises;
 }
 
-export function buildTestExerciseSequence(lesson: CourseLesson): CourseExercise[] {
+// Accepts either a lesson (its attached test) or a standalone CourseSectionTest
+// — both carry a `test: CourseTest | null`, and nothing here reads anything
+// else off either shape.
+export function buildTestExerciseSequence(lesson: {
+  test: CourseTest | null;
+}): CourseExercise[] {
   if (!lesson.test) {
     return [];
   }

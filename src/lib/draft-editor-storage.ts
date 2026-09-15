@@ -25,6 +25,7 @@ type LegacyDraftEditorSnapshot = {
     | Record<string, DraftDocumentLocaleDraft>
     | DraftEditorSnapshot["documentDrafts"];
   sectionDrafts?: DraftEditorSnapshot["sectionDrafts"];
+  sectionTestDrafts?: DraftEditorSnapshot["sectionTestDrafts"];
   supportedLocales: Locale[];
   testDrafts: DraftEditorSnapshot["testDrafts"];
   version: 1 | 2;
@@ -67,7 +68,16 @@ function normalizeDraftEditorRecord(
   record: DraftEditorRecord | LegacyDraftEditorRecord,
 ): DraftEditorRecord {
   if ("localizedCourse" in record.snapshot) {
-    return record as DraftEditorRecord;
+    // Older saved records predate `sectionTestDrafts` — default it rather
+    // than let it stay `undefined` for a shape check that otherwise treats
+    // this snapshot as already-current.
+    return {
+      ...record,
+      snapshot: {
+        ...record.snapshot,
+        sectionTestDrafts: record.snapshot.sectionTestDrafts ?? {},
+      },
+    } as DraftEditorRecord;
   }
 
   const defaultLocale =
@@ -91,6 +101,7 @@ function normalizeDraftEditorRecord(
         },
       },
       sectionDrafts: normalizeSectionDrafts(record.snapshot.sectionDrafts),
+      sectionTestDrafts: record.snapshot.sectionTestDrafts ?? {},
       supportedLocales:
         record.snapshot.supportedLocales.length > 0
           ? record.snapshot.supportedLocales
@@ -203,6 +214,18 @@ function buildSectionIdByLessonId(courseSections: CourseSectionPreview[]) {
   return sectionIdByLessonId;
 }
 
+function buildSectionIdBySectionTestId(courseSections: CourseSectionPreview[]) {
+  const sectionIdBySectionTestId = new Map<string, string>();
+
+  for (const section of courseSections) {
+    for (const sectionTest of section.tests) {
+      sectionIdBySectionTestId.set(sectionTest.id, section.id);
+    }
+  }
+
+  return sectionIdBySectionTestId;
+}
+
 function diffAndDispatch<T>(
   previous: Record<string, T>,
   next: Record<string, T>,
@@ -247,8 +270,10 @@ export async function saveDraftEditorRecord(
   }
 
   const sectionIdByLessonId = buildSectionIdByLessonId(context.courseSections);
+  const sectionIdBySectionTestId = buildSectionIdBySectionTestId(context.courseSections);
   const previousDocumentDrafts = previousRecord?.snapshot.documentDrafts ?? {};
   const previousTestDrafts = previousRecord?.snapshot.testDrafts ?? {};
+  const previousSectionTestDrafts = previousRecord?.snapshot.sectionTestDrafts ?? {};
 
   await Promise.all([
     ...diffAndDispatch<DraftDocumentDraft>(
@@ -284,6 +309,24 @@ export async function saveDraftEditorRecord(
           lessonId,
           sectionId,
           test: toSharedTestDefinition(testState),
+        });
+      },
+    ),
+    ...diffAndDispatch<TestEditorState>(
+      previousSectionTestDrafts,
+      snapshot.sectionTestDrafts,
+      (testId, testState) => {
+        const sectionId = sectionIdBySectionTestId.get(testId);
+
+        if (!sectionId) {
+          return;
+        }
+
+        return window.courses.saveSectionTest({
+          courseId: snapshot.courseId,
+          sectionId,
+          test: toSharedTestDefinition(testState),
+          testId,
         });
       },
     ),

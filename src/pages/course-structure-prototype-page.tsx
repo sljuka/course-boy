@@ -29,12 +29,14 @@ const sampleSections: CourseSectionPreview[] = [
       createSampleLesson("sample-lesson-2", "Placeholder document B"),
     ],
     locales: createSampleLocales("Section 1"),
+    tests: [],
     title: "Section 1",
   },
   {
     id: "sample-section-2",
     lessons: [createSampleLesson("sample-lesson-3", "Placeholder document C")],
     locales: createSampleLocales("Section 2"),
+    tests: [],
     title: "Section 2",
   },
 ];

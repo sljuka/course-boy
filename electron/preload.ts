@@ -6,15 +6,19 @@ import type {
   CreateCourseLessonResult,
   CreateCourseSectionInput,
   CreateCourseSectionResult,
+  CreateCourseSectionTestInput,
+  CreateCourseSectionTestResult,
   CourseDetails,
   CourseSummary,
   CourseVersionHistory,
   CutCourseVersionInput,
   CutCourseVersionResult,
   GetLessonTestDraftInput,
+  GetSectionTestDraftInput,
   PublishCourseVersionInput,
   RevertCourseDraftInput,
   SaveLessonTestInput,
+  SaveSectionTestInput,
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
   UpdateLessonContentInput,
@@ -63,6 +67,15 @@ contextBridge.exposeInMainWorld('courses', {
   },
   getLessonTestDraft(input: GetLessonTestDraftInput) {
     return ipcRenderer.invoke('courses:get-lesson-test-draft', input) as Promise<SharedTestDefinition | null>
+  },
+  createSectionTest(input: CreateCourseSectionTestInput) {
+    return ipcRenderer.invoke('courses:create-section-test', input) as Promise<CreateCourseSectionTestResult>
+  },
+  saveSectionTest(input: SaveSectionTestInput) {
+    return ipcRenderer.invoke('courses:save-section-test', input) as Promise<void>
+  },
+  getSectionTestDraft(input: GetSectionTestDraftInput) {
+    return ipcRenderer.invoke('courses:get-section-test-draft', input) as Promise<SharedTestDefinition | null>
   },
   get(courseId: string, locale?: Locale) {
     return ipcRenderer.invoke('courses:get', courseId, locale) as Promise<CourseDetails | null>

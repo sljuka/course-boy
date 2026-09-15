@@ -48,6 +48,7 @@ export function TestPlayerView({
 }) {
   const { t } = useTranslation();
   const [printOptions, setPrintOptions] = useState(defaultTestPrintOptions);
+  const activeItem = playerState.activeStep.item;
   const {
     activeTestExercises,
     activeTestInstances,
@@ -62,13 +63,20 @@ export function TestPlayerView({
     submitExercise,
     testFeedback,
     updateExerciseAnswer,
-  } = useTestPlayerState(playerState.activeLesson);
+  } = useTestPlayerState(activeItem);
 
-  if (!playerState.activeLesson.test || playerState.activeLesson.test.exercises.length === 0) {
+  if (!activeItem.test || activeItem.test.exercises.length === 0) {
+    // A lesson-attached test with nothing to show falls back to its own
+    // document; a standalone test has no document to fall back to, so it
+    // exits back to the course details page instead.
     return (
       <Navigate
         replace
-        to={buildLessonPath(playerState.courseId, playerState.activeLesson.id)}
+        to={
+          playerState.activeStep.kind === "lesson"
+            ? buildLessonPath(playerState.courseId, activeItem.id)
+            : `/courses/${playerState.courseId}`
+        }
       />
     );
   }
@@ -80,7 +88,7 @@ export function TestPlayerView({
         label={t("courseDetails.testLabel")}
         show={printOptions.showHeader}
         sectionTitle={playerState.sectionTitle}
-        title={playerState.activeLesson.title}
+        title={activeItem.title}
       />
       <PageHeader
         title={
@@ -156,7 +164,7 @@ export function TestPlayerView({
           exerciseAnswers={exerciseAnswers}
           exerciseResults={exerciseResults}
           isTestPassed={isTestPassed}
-          onContinueAfterExercise={playerState.moveToNextLesson}
+          onContinueAfterExercise={playerState.moveToNextStep}
           onSubmitExercise={submitExercise}
           onUpdateExerciseAnswer={updateExerciseAnswer}
           printAnswerStyle={printOptions.answerStyle}

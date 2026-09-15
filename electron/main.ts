@@ -8,15 +8,18 @@ import {
   createLocalCourseDraft,
   createLocalCourseLesson,
   createLocalCourseSection,
+  createLocalCourseSectionTest,
   cutLocalCourseVersion,
   ensureLocalCoursesRoot,
   getLocalCourseLessonTestDraft,
+  getLocalCourseSectionTestDraft,
   publishLocalCourseVersion,
   removeLocalCourse,
   revertLocalCourseDraftToVersion,
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
   updateLocalCourseLessonTest,
+  updateLocalCourseSectionTest,
   uploadLocalCourseAsset,
 } from './course-paths'
 import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
@@ -24,11 +27,14 @@ import type {
   CreateCourseDraftInput,
   CreateCourseLessonInput,
   CreateCourseSectionInput,
+  CreateCourseSectionTestInput,
   CutCourseVersionInput,
   GetLessonTestDraftInput,
+  GetSectionTestDraftInput,
   PublishCourseVersionInput,
   RevertCourseDraftInput,
   SaveLessonTestInput,
+  SaveSectionTestInput,
   UpdateCourseDraftMetadataInput,
   UpdateLessonContentInput,
   UploadCourseAssetInput,
@@ -163,6 +169,18 @@ ipcMain.handle('courses:save-lesson-test', (_event, input: SaveLessonTestInput) 
 
 ipcMain.handle('courses:get-lesson-test-draft', (_event, input: GetLessonTestDraftInput) => {
   return getLocalCourseLessonTestDraft(input)
+})
+
+ipcMain.handle('courses:create-section-test', (_event, input: CreateCourseSectionTestInput) => {
+  return createLocalCourseSectionTest(input)
+})
+
+ipcMain.handle('courses:save-section-test', (_event, input: SaveSectionTestInput) => {
+  return updateLocalCourseSectionTest(input)
+})
+
+ipcMain.handle('courses:get-section-test-draft', (_event, input: GetSectionTestDraftInput) => {
+  return getLocalCourseSectionTestDraft(input)
 })
 
 ipcMain.handle(
