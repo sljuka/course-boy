@@ -26,10 +26,10 @@ export const RolePage = () => {
     <div className="space-y-5">
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2 pr-2">
-          <h2 className="text-xl font-semibold text-stone-900">
+          <h2 className="text-xl font-semibold text-foreground">
             {t('roleTitle', { name: submittedName })}
           </h2>
-          <p className="text-sm leading-6 text-stone-500">
+          <p className="text-sm leading-6 text-muted-foreground">
             {t('roleSubtitle')}
           </p>
         </div>

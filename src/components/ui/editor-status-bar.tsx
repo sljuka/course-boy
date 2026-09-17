@@ -26,7 +26,7 @@ export function EditorStatusBar({
           ) : status === "saving" ? (
             <LoaderCircle
               aria-hidden="true"
-              className="h-4 w-4 shrink-0 animate-spin text-stone-400"
+              className="h-4 w-4 shrink-0 animate-spin text-muted-foreground"
             />
           ) : status === "dirty" ? (
             <span
@@ -34,11 +34,11 @@ export function EditorStatusBar({
               className="h-2 w-2 shrink-0 rounded-full bg-stone-400"
             />
           ) : (
-            <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-stone-400" />
+            <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
           )}
           <span
             className={cn(
-              "text-sm text-stone-600",
+              "text-sm text-muted-foreground",
               status === "error" && "text-red-700",
             )}
           >

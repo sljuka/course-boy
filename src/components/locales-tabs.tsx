@@ -66,7 +66,15 @@ export function LocalesTabs({
         ))}
       </TabsList>
       {locales.map((locale) => (
-        <TabsContent className={contentClassName} key={locale} value={locale}>
+        <TabsContent
+          // `contentClassName` is a second forwarded style prop (distinct from
+          // `className`, which targets the root); the rule only recognizes a
+          // literal `className` prop as forwardable.
+          // eslint-disable-next-line shadcn/require-static-classes
+          className={contentClassName}
+          key={locale}
+          value={locale}
+        >
           {renderContent(locale)}
         </TabsContent>
       ))}

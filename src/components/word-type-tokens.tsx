@@ -46,7 +46,7 @@ export function WordTypeTokens({
     // line above it to make room, so the container needs a little headroom
     // of its own. Whatever wraps this must not clip (overflow-hidden) — see
     // the Card override in word-type-exercise-fields.tsx.
-    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-3 pt-2 leading-6 text-stone-700">
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-3 pt-2 leading-6 text-foreground">
       {tokens.map((token, tokenIndex) => {
         if (token.kind === "text") {
           return <span key={tokenIndex}>{token.value}</span>;

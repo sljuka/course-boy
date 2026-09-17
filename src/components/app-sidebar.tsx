@@ -36,10 +36,10 @@ function AppSidebar() {
   const { locale, setLocale } = useAppState();
 
   return (
-    <Sidebar className="border-y border-l border-stone-200 bg-white text-stone-900 shadow-[0_20px_48px_-28px_rgba(41,37,36,0.18)]">
-      <SidebarHeader className="space-y-4 border-b border-stone-200 px-4 py-5">
+    <Sidebar>
+      <SidebarHeader className="space-y-4 border-b px-4 py-5">
         <Link
-          className="flex items-center gap-2 text-base font-bold text-stone-950 transition-colors hover:text-stone-700"
+          className="flex items-center gap-2 text-base font-bold text-foreground transition-colors hover:text-foreground/80"
           to="/"
         >
           <CourseBoyLogo className="h-7 w-7 shrink-0" />
@@ -51,7 +51,7 @@ function AppSidebar() {
         {sidebarGroups.map((group) => (
           <SidebarGroup className="space-y-3" key={group.label ?? "root"}>
             {group.label && (
-              <SidebarGroupLabel className="px-2 text-stone-500">
+              <SidebarGroupLabel className="px-2 text-muted-foreground">
                 {t(`sidebar.${group.label}`)}
               </SidebarGroupLabel>
             )}
@@ -76,7 +76,7 @@ function AppSidebar() {
           </SidebarGroup>
         ))}
       </SidebarContent>
-      <SidebarFooter className="border-t border-stone-200 px-3 py-4">
+      <SidebarFooter className="border-t px-3 py-4">
         <AppMenu />
       </SidebarFooter>
     </Sidebar>

@@ -20,12 +20,9 @@ export function TestPlayerPrintHint({
   const { t } = useTranslation();
 
   return (
-    <Alert className="mb-4 print:hidden">
+    <Alert className="mb-4 print:hidden" variant="info">
       <div className="flex items-start gap-2">
-        <Info
-          aria-hidden="true"
-          className="h-4 w-4 shrink-0 text-sky-700"
-        />
+        <Info aria-hidden="true" className="h-4 w-4 shrink-0 text-info" />
         <div className="min-w-0 flex-1">
           <AlertTitle>{t("courseDetails.printHintTitle")}</AlertTitle>
           <AlertDescription className="mt-1.5">
@@ -41,7 +38,7 @@ export function TestPlayerPrintHint({
           >
             <Button
               aria-label={t("courseDetails.printCourse")}
-              className="rounded-full"
+              shape="circle"
               size="icon"
               variant="secondary"
             >
@@ -50,7 +47,7 @@ export function TestPlayerPrintHint({
           </PrintOptionsMenu>
           <button
             aria-label={t("courseDetails.dismissPrintHint")}
-            className="inline-flex h-4 w-4 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-sky-950 transition-colors hover:text-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-sky-50"
+            className="inline-flex h-4 w-4 shrink-0 items-center justify-center border-0 bg-transparent p-0 text-info transition-colors hover:text-info/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info/50 focus-visible:ring-offset-2 focus-visible:ring-offset-info/10"
             onClick={onDismiss}
             type="button"
           >

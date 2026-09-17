@@ -4,6 +4,7 @@ import { Check, Plus, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription } from "@/components/ui/card";
+import { ColorPickerField } from "@/components/color-picker-field";
 import { ColorSwatch } from "@/components/ui/color-swatch";
 import {
   DropdownMenu,
@@ -32,23 +33,6 @@ import type { FieldsComponentProps } from "@/components/exercise-kinds/types";
 import { MAX_WORD_TYPE_ICON_LENGTH } from "@/lib/exercise-kinds/word-types";
 import { extractMarkedWordTypeIds, parseWordTypeMarkup } from "@/lib/word-type-markup";
 
-// A curated palette of light colors for "use lighter colors as markers" —
-// the picker also offers a native color input for any other color.
-const LIGHT_WORD_TYPE_COLOR_OPTIONS = [
-  { hex: "#fecaca", name: "Red" },
-  { hex: "#fed7aa", name: "Orange" },
-  { hex: "#fde68a", name: "Amber" },
-  { hex: "#fef08a", name: "Yellow" },
-  { hex: "#d9f99d", name: "Lime" },
-  { hex: "#bbf7d0", name: "Green" },
-  { hex: "#99f6e4", name: "Teal" },
-  { hex: "#bae6fd", name: "Sky" },
-  { hex: "#bfdbfe", name: "Blue" },
-  { hex: "#e9d5ff", name: "Purple" },
-  { hex: "#fbcfe8", name: "Pink" },
-  { hex: "#e7e5e4", name: "Stone" },
-];
-
 function WordTypeColorField({
   onChange,
   value,
@@ -57,39 +41,13 @@ function WordTypeColorField({
   value: string;
 }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={<Button aria-label="Choose color" className="h-8 w-8" size="icon" variant="ghost" />}
-      >
-        <ColorSwatch className="size-5" color={value} />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {LIGHT_WORD_TYPE_COLOR_OPTIONS.map((option) => (
-          <DropdownMenuItem key={option.hex} onClick={() => onChange(option.hex)}>
-            <ColorSwatch color={option.hex} />
-            <span>{option.name}</span>
-            {value === option.hex && <Check aria-hidden="true" className="ml-auto h-4 w-4" />}
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        {/*
-          closeOnClick={false}: the menu closing mid-click would unmount this
-          item before the native color input's OS picker gets a chance to
-          open from the click.
-        */}
-        <DropdownMenuItem closeOnClick={false} render={<label className="relative" />}>
-          <ColorSwatch color={value} />
-          <span>Custom color…</span>
-          <input
-            aria-label="Custom color"
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            onChange={(event) => onChange(event.target.value)}
-            type="color"
-            value={value.startsWith("#") ? value : "#000000"}
-          />
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ColorPickerField
+      onChange={onChange}
+      trigger={<Button aria-label="Choose color" className="h-8 w-8" size="icon" variant="ghost" />}
+      value={value}
+    >
+      <ColorSwatch className="size-5" color={value} />
+    </ColorPickerField>
   );
 }
 
@@ -309,7 +267,7 @@ export function WordTypeExerciseFields({
               />
               <button
                 aria-label="Remove word type"
-                className="inline-flex items-center text-stone-400 hover:text-stone-700"
+                className="inline-flex items-center text-muted-foreground hover:text-foreground"
                 onClick={() =>
                   onChange((currentExercise) => removeWordType(currentExercise, wordType.id))
                 }

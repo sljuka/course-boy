@@ -243,7 +243,7 @@ export function CourseStructurePrototype({
     <div className={compact ? "flex flex-col gap-4" : "flex flex-col gap-8"}>
       {compact ? null : (
         <div className="space-y-3 border-b border-stone-200 pb-6">
-          <h1 className="text-4xl font-semibold tracking-tight text-stone-950">
+          <h1 className="text-4xl font-semibold tracking-tight text-foreground">
             Prototype 2
           </h1>
           <CardDescription className="max-w-3xl">
@@ -286,7 +286,7 @@ export function CourseStructurePrototype({
             {isCourseRootExpanded && (
               <div className="ml-3 border-l border-stone-200 pl-3">
                 {sectionNodes.length === 0 && !pendingCreate ? (
-                  <div className="rounded-sm px-3 py-3 text-sm text-stone-500">
+                  <div className="rounded-sm px-3 py-3 text-sm text-muted-foreground">
                     No sections yet. Right-click the root folder to add one.
                   </div>
                 ) : (
@@ -519,7 +519,7 @@ function PendingRow({
         onMoveUp={() => {}}
         title={title}
       />
-      {error && <p className="px-2 pb-1 text-xs text-rose-600">{error}</p>}
+      {error && <p className="px-2 pb-1 text-xs text-destructive">{error}</p>}
     </div>
   );
 }
@@ -585,15 +585,15 @@ function ExplorerRow({
       <ContextMenuTrigger>
         <div
           className={[
-            "group/row flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1 text-sm text-stone-700 hover:bg-stone-100",
-            isSelected || isContextMenuOpen ? "bg-stone-100 text-stone-950" : "",
+            "group/row flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1 text-sm text-foreground hover:bg-stone-100",
+            isSelected || isContextMenuOpen ? "bg-stone-100 text-foreground" : "",
           ].join(" ")}
           onClick={onSelect}
         >
           <button
             className={[
-              "flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-stone-500",
-              onToggle ? "hover:bg-stone-200 hover:text-stone-800" : "invisible",
+              "flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground",
+              onToggle ? "hover:bg-stone-200 hover:text-foreground" : "invisible",
             ].join(" ")}
             onClick={onToggle}
             type="button"
@@ -609,14 +609,15 @@ function ExplorerRow({
 
           <Icon
             aria-hidden="true"
-            className="h-4 w-4 shrink-0 text-stone-500"
+            className="h-4 w-4 shrink-0 text-muted-foreground"
           />
 
           <div className="min-w-0 flex-1">
             {isEditing ? (
               <Input
                 autoFocus={autoFocus}
-                className="h-7 border-0 bg-transparent px-1 text-sm text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0"
+                className="h-7 px-1 text-sm"
+                variant="ghost"
                 onBlur={onEditDone}
                 onChange={(event) => onChange?.(event.target.value)}
                 onKeyDown={(event) => {
@@ -631,7 +632,7 @@ function ExplorerRow({
                 value={title}
               />
             ) : (
-              <div className="block w-full truncate rounded-sm px-1 py-1 text-left text-sm text-stone-800">
+              <div className="block w-full truncate rounded-sm px-1 py-1 text-left text-sm text-foreground">
                 {title || `Untitled ${label.toLowerCase()}`}
               </div>
             )}
@@ -642,7 +643,7 @@ function ExplorerRow({
               <TooltipTrigger render={<span className="inline-flex" />}>
                 <Button
                   aria-label="Add section"
-                  className="shrink-0 text-stone-500"
+                  className="shrink-0 text-muted-foreground"
                   onClick={(event) => {
                     event.stopPropagation();
                     onInsertSection();
@@ -662,7 +663,7 @@ function ExplorerRow({
               <TooltipTrigger render={<span className="inline-flex" />}>
                 <Button
                   aria-label="Add document"
-                  className="shrink-0 text-stone-500"
+                  className="shrink-0 text-muted-foreground"
                   onClick={(event) => {
                     event.stopPropagation();
                     onInsertDocument();
@@ -682,7 +683,7 @@ function ExplorerRow({
               <TooltipTrigger render={<span className="inline-flex" />}>
                 <Button
                   aria-label="Add test"
-                  className="shrink-0 text-stone-500"
+                  className="shrink-0 text-muted-foreground"
                   onClick={(event) => {
                     event.stopPropagation();
                     onInsertTest();

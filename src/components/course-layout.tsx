@@ -10,7 +10,6 @@ import {
   type StructureSelection,
 } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import { OnboardingGuard } from "@/components/onboarding-guard";
-import { Button } from "@/components/ui/button";
 import { EditorStatusBar } from "@/components/ui/editor-status-bar";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import {
@@ -332,7 +331,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   return (
     <OnboardingGuard>
       <SidebarProvider
-        className="page-fade-in bg-white"
+        className="page-fade-in bg-background"
         style={{ "--sidebar-width": "22rem" } as React.CSSProperties}
       >
         <ExplorerSidebar
@@ -374,28 +373,17 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
           <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20">
             <div className="pointer-events-auto md:pl-(--sidebar-width)">
               <EditorStatusBar
-                action={
-                  <>
-                    {autosave.status === "dirty" && !autosave.willAutosave && (
-                      <Button onClick={autosave.saveNow} size="sm">
-                        Save
-                      </Button>
-                    )}
-                    {editorStatusAction}
-                  </>
-                }
+                action={editorStatusAction}
                 message={
                   draftEditorRecordQuery.isLoading
                     ? "Loading draft…"
                     : autosave.status === "dirty"
-                      ? autosave.willAutosave
-                        ? "Saving soon…"
-                        : "Unsaved changes"
-                    : autosave.status === "saving"
-                      ? "Saving…"
-                      : autosave.status === "error"
-                        ? autosave.errorMessage ?? "Save failed"
-                        : "All changes saved"
+                      ? "Saving soon…"
+                      : autosave.status === "saving"
+                        ? "Saving…"
+                        : autosave.status === "error"
+                          ? autosave.errorMessage ?? "Save failed"
+                          : "All changes saved"
                 }
                 onRetry={autosave.status === "error" ? autosave.saveNow : undefined}
                 status={
@@ -438,16 +426,16 @@ function ExplorerSidebar({
 
   return (
     <Sidebar collapsible="offcanvas">
-      <SidebarHeader className="border-b border-stone-200 bg-white px-4 py-4">
+      <SidebarHeader className="border-b px-4 py-4">
         <Link
-          className="inline-flex items-center gap-2 text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           to="/my-courses"
         >
           <ArrowLeft aria-hidden="true" className="h-4 w-4" />
           <span>Back to my courses</span>
         </Link>
       </SidebarHeader>
-      <SidebarContent className="bg-stone-100 p-3">
+      <SidebarContent className="bg-muted p-3">
         <Eyebrow className="px-1 pb-3" size="small">
           Explorer
         </Eyebrow>

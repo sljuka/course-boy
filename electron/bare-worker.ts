@@ -32,9 +32,7 @@ const CMD_CREATE_INVITE = 5
 const CMD_REDEEM_INVITE = 6
 
 declare global {
-  // eslint-disable-next-line no-var
   var __creatorPublicKeyPhase1: string
-  // eslint-disable-next-line no-var
   var __matkoBareWorker: {
     createInvite: typeof createInvite
     getCreatorKey: typeof getCreatorKey

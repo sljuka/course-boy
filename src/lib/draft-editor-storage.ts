@@ -236,6 +236,16 @@ function diffAndDispatch<T>(
     .map(([key, value]) => (async () => dispatch(key, value))());
 }
 
+// A test file, once it exists, must have at least one exercise —
+// `isSharedTestDefinition` (electron/course-registry.ts) rejects an empty
+// `exercises` array outright. A freshly opened test (or one whose last
+// exercise was just removed) is a valid *draft* state, just not one that can
+// be written to disk yet — skip it rather than dispatching a save that's
+// guaranteed to fail validation.
+function hasSavableExercises(testState: TestEditorState) {
+  return testState.exercises.length > 0;
+}
+
 function toMarkdownLocales(documentDraft: DraftDocumentDraft) {
   return Object.fromEntries(
     Object.entries(documentDraft.locales).map(([locale, localeDraft]) => [
@@ -300,7 +310,7 @@ export async function saveDraftEditorRecord(
       (lessonId, testState) => {
         const sectionId = sectionIdByLessonId.get(lessonId);
 
-        if (!sectionId) {
+        if (!sectionId || !hasSavableExercises(testState)) {
           return;
         }
 
@@ -318,7 +328,7 @@ export async function saveDraftEditorRecord(
       (testId, testState) => {
         const sectionId = sectionIdBySectionTestId.get(testId);
 
-        if (!sectionId) {
+        if (!sectionId || !hasSavableExercises(testState)) {
           return;
         }
 

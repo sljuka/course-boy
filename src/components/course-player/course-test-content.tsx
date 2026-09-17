@@ -84,10 +84,13 @@ export const CourseTestContent = ({
             return null;
           }
 
-          const promptSource =
-            exercise.kind === "numeric" && exerciseInstance.kind === "numeric"
-              ? interpolateTemplate(exercise.prompt, exerciseInstance.variables)
-              : exercise.prompt;
+          const isNumericExercise =
+            exercise.kind === "numeric" && exerciseInstance.kind === "numeric";
+          const promptSource = isNumericExercise
+            ? interpolateTemplate(exercise.prompt, exerciseInstance.variables, {
+                emphasizeValues: true,
+              })
+            : exercise.prompt;
 
           return (
             <div
@@ -96,7 +99,12 @@ export const CourseTestContent = ({
               }`}
               key={exercise.id}
             >
-              <p className="flex items-start gap-1.5 text-base leading-7 font-semibold text-stone-700">
+              <p
+                className={cn(
+                  "flex items-start gap-1.5 text-base leading-7 text-foreground",
+                  !isNumericExercise && "font-semibold",
+                )}
+              >
                 <Badge
                   className="size-6 shrink-0 justify-center"
                   variant="secondary"
@@ -128,7 +136,7 @@ export const CourseTestContent = ({
                 );
               })()}
               {exerciseResult?.feedback && (
-                <div className="text-sm font-medium text-rose-700 print:hidden">
+                <div className="text-sm font-medium text-destructive print:hidden">
                   {exerciseResult.feedback}
                 </div>
               )}
@@ -139,8 +147,8 @@ export const CourseTestContent = ({
           <div
             className={
               isTestPassed
-                ? "text-sm font-medium text-emerald-700 print:hidden"
-                : "text-sm font-medium text-rose-700 print:hidden"
+                ? "text-sm font-medium text-success print:hidden"
+                : "text-sm font-medium text-destructive print:hidden"
             }
           >
             {testFeedback}
@@ -161,17 +169,17 @@ export const CourseTestContent = ({
         <div className="hidden break-inside-avoid pt-4 print:mt-6 print:block">
           <div
             className={cn(
-              "rounded-lg border border-stone-200 px-3 py-2 text-xs leading-5 text-stone-600",
+              "rounded-lg border border-stone-200 px-3 py-2 text-xs leading-5 text-muted-foreground",
               printExerciseHintStyle === "upside-down" && "rotate-180",
             )}
           >
-            <div className="mb-1 font-semibold uppercase tracking-[0.12em] text-stone-500">
+            <div className="mb-1 font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               {t("courseDetails.printExerciseHints")}
             </div>
             <div className="space-y-1">
               {printableHints.map((hintItem) => (
                 <p key={`${hintItem.id}-print-hint`}>
-                  <span className="font-medium text-stone-600">
+                  <span className="font-medium text-muted-foreground">
                     {hintItem.index + 1}.
                   </span>{" "}
                   <InlineMarkdown source={hintItem.hint} />

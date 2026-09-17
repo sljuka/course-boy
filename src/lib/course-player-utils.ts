@@ -10,9 +10,14 @@ export type ExerciseInstance =
 export function interpolateTemplate(
   template: string,
   variables: Record<string, number>,
+  options: { emphasizeValues?: boolean } = {},
 ): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_match, variableName: string) => {
-    return String(variables[variableName] ?? "");
+    const value = String(variables[variableName] ?? "");
+    // `**value**` renders bold via InlineMarkdown — used for the prompt (the
+    // substituted numbers should stand out against otherwise regular-weight
+    // text), not for hints, which stay plain.
+    return options.emphasizeValues ? `**${value}**` : value;
   });
 }
 

@@ -18,7 +18,7 @@ export function PrintAnswerSquaresArea({
     >
       <svg
         aria-hidden="true"
-        className="absolute inset-0 h-full w-full text-stone-400/45"
+        className="absolute inset-0 h-full w-full text-muted-foreground/45"
         preserveAspectRatio="none"
       >
         <defs>

@@ -102,7 +102,7 @@ describe("validate", () => {
     const exercise: NumericTestExercise = {
       kind: "numeric",
       id: "ex_num",
-      locales: { en: { hint: "", prompt: "{{x}} + {{y}}" } },
+      locales: { en: { answerPlaceholder: "", hint: "", prompt: "{{x}} + {{y}}" } },
       solution: "x + y",
       tagIds: [],
       variables: [
@@ -118,7 +118,7 @@ describe("validate", () => {
     const exercise: NumericTestExercise = {
       kind: "numeric",
       id: "ex_num",
-      locales: { en: { hint: "", prompt: "{{x}} + {{y}}" } },
+      locales: { en: { answerPlaceholder: "", hint: "", prompt: "{{x}} + {{y}}" } },
       solution: "x + y",
       tagIds: ["easy"],
       variables: [

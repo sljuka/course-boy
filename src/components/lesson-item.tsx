@@ -16,7 +16,7 @@ export function LessonItem({ item, onSelect }: LessonItemProps) {
       src={item.iconUrl}
     />
   ) : (
-    <BookOpen aria-hidden="true" className="h-12 w-12 text-stone-700" />
+    <BookOpen aria-hidden="true" className="h-12 w-12 text-foreground" />
   );
 
   return (

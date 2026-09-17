@@ -46,6 +46,7 @@ export function ExercisePromptCard({
   onMoveDown,
   onMoveUp,
   onToggleTag,
+  orderLabel,
 }: {
   canMoveDown: boolean;
   canMoveUp: boolean;
@@ -62,6 +63,8 @@ export function ExercisePromptCard({
   onMoveDown: (exerciseId: string) => void;
   onMoveUp: (exerciseId: string) => void;
   onToggleTag: (exerciseId: string, tagId: string) => void;
+  /** Position within the test ("1", "2", ...), or "–" when exercise randomization picks at random. */
+  orderLabel: string;
 }) {
   const collapsedPromptPreviewMaxLength = 50;
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
@@ -132,11 +135,14 @@ export function ExercisePromptCard({
       >
         <AccordionItem value={exercise.id}>
           <div className="flex items-center gap-3 py-2">
-            <AccordionTrigger className="min-w-0 flex-1 py-0 hover:no-underline">
+            <AccordionTrigger className="min-w-0 flex-1 py-0">
               <div className="flex min-w-0 items-center gap-2 text-left">
+                <Badge shape="circle" variant="secondary">
+                  {orderLabel}
+                </Badge>
                 <span
                   className={cn(
-                    "border-b-2 border-transparent text-sm font-medium text-stone-950",
+                    "border-b-2 border-transparent text-sm font-medium text-foreground",
                     titleAccentStyle?.className,
                   )}
                   style={titleAccentStyle?.style}
@@ -145,7 +151,7 @@ export function ExercisePromptCard({
                 </span>
                 <Badge variant="secondary">{exerciseKindLabel}</Badge>
                 {collapsed && (
-                  <span className="truncate text-sm text-stone-600">
+                  <span className="truncate text-sm text-muted-foreground">
                     {promptPreview}
                   </span>
                 )}
@@ -209,32 +215,21 @@ export function ExercisePromptCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem
-                  className={canMoveUp ? undefined : "pointer-events-none text-stone-400"}
-                  onClick={() => {
-                    if (canMoveUp) {
-                      onMoveUp(exercise.id);
-                    }
-                  }}
+                  disabled={!canMoveUp}
+                  onClick={() => onMoveUp(exercise.id)}
                 >
                   <ArrowUp aria-hidden="true" className="h-4 w-4" />
                   Move up
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className={canMoveDown ? undefined : "pointer-events-none text-stone-400"}
-                  onClick={() => {
-                    if (canMoveDown) {
-                      onMoveDown(exercise.id);
-                    }
-                  }}
+                  disabled={!canMoveDown}
+                  onClick={() => onMoveDown(exercise.id)}
                 >
                   <ArrowDown aria-hidden="true" className="h-4 w-4" />
                   Move down
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                  onClick={() => onDelete(exercise.id)}
-                >
+                <DropdownMenuItem onClick={() => onDelete(exercise.id)} variant="destructive">
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
@@ -272,7 +267,7 @@ export function ExercisePromptCard({
                   </Tag>
                 ))}
                 <button
-                  className="inline-flex items-center gap-1 text-sm font-medium text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-900"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground underline decoration-stone-300 underline-offset-4 transition-colors hover:text-foreground"
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();

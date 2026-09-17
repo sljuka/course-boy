@@ -201,7 +201,7 @@ export function EditorPrototype({
           <Eyebrow>{nodeType}</Eyebrow>
           {isTitleEditing ? (
             <Input
-              className="h-auto border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-3xl"
+              className="text-2xl font-semibold tracking-tight md:text-3xl"
               onBlur={() => setIsTitleEditing(false)}
               onChange={(event) => onTitleChange?.(event.target.value)}
               onKeyDown={(event) => {
@@ -212,6 +212,7 @@ export function EditorPrototype({
               placeholder="Untitled document"
               ref={titleRef}
               value={title ?? ""}
+              variant="ghost"
             />
           ) : (
             <button
@@ -219,17 +220,18 @@ export function EditorPrototype({
               onClick={() => setIsTitleEditing(true)}
               type="button"
             >
-              <h1 className="text-2xl font-semibold tracking-tight text-stone-950 md:text-3xl">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
                 {title?.trim() || "Untitled document"}
               </h1>
             </button>
           )}
           <Textarea
-            className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-base font-medium text-stone-600 shadow-none placeholder:text-stone-400 focus-visible:ring-0 md:text-base"
+            className="min-h-0 resize-none overflow-hidden text-base font-medium text-muted-foreground md:text-base"
             onChange={(event) => onSubtitleChange?.(event.target.value)}
             placeholder="Add a short description"
             ref={subtitleRef}
             rows={1}
+            variant="ghost"
             value={subtitle ?? ""}
           />
         </div>

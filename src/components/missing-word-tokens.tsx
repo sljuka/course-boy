@@ -19,7 +19,7 @@ export function MissingWordText({
   let blankIndex = -1;
 
   return (
-    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-2 leading-8 text-stone-700">
+    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-2 leading-8 text-foreground">
       {segments.map((segment, index) => {
         if (segment.kind === "text") {
           return <span key={index}>{segment.value}</span>;

@@ -173,10 +173,9 @@ export function TestEditorTagManager({
               </Select>
               <Button
                 aria-label={`Delete ${tag.label} tag`}
-                className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                 onClick={() => onDeleteTag(tag.id)}
                 size="icon"
-                variant="ghost"
+                variant="destructive"
               >
                 <Trash2 aria-hidden="true" className="h-4 w-4" />
               </Button>
@@ -188,7 +187,7 @@ export function TestEditorTagManager({
       )}
 
       <button
-        className="inline-flex items-center gap-1 self-start text-sm font-medium text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-900"
+        className="inline-flex items-center gap-1 self-start text-sm font-medium text-muted-foreground underline decoration-stone-300 underline-offset-4 transition-colors hover:text-foreground"
         onClick={handleCreateTag}
         type="button"
       >

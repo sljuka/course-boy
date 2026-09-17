@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -55,6 +56,7 @@ export function NumericExerciseFields({
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
   const solutionRef = useRef<HTMLTextAreaElement | null>(null);
   const prompt = exercise.locales[locale]?.prompt ?? "";
+  const answerPlaceholder = exercise.locales[locale]?.answerPlaceholder ?? "";
   const usedVariableNames = useMemo(
     () => new Set(extractPromptVariables(prompt)),
     [prompt],
@@ -103,9 +105,16 @@ export function NumericExerciseFields({
   return (
     <>
       <Field>
-        <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>
-          Prompt
-        </FieldLabel>
+        <div className="flex items-center gap-1">
+          <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>
+            Prompt *
+          </FieldLabel>
+          <InfoTooltip>
+            {
+              "Use {{}} to make variables. For instance {{x}} for variable named x. Set constraints on it like minimal and maximal random value that can be assigned to it. Use it in the solution formula that will be used to calculate the answer."
+            }
+          </InfoTooltip>
+        </div>
         <Textarea
           className="min-h-0 resize-none overflow-hidden"
           id={`exercise-prompt-${exercise.id}-${locale}`}
@@ -228,7 +237,7 @@ export function NumericExerciseFields({
       )}
 
       <Field>
-        <FieldLabel htmlFor={`exercise-solution-${exercise.id}`}>Solution</FieldLabel>
+        <FieldLabel htmlFor={`exercise-solution-${exercise.id}`}>Solution *</FieldLabel>
         <Textarea
           className="min-h-0 resize-none overflow-hidden"
           id={`exercise-solution-${exercise.id}`}
@@ -244,20 +253,44 @@ export function NumericExerciseFields({
           value={exercise.solution}
         />
         {solutionValidation.status !== "idle" && (
-          <div className="flex flex-col gap-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={solutionValidation.status === "valid" ? "success" : "warning"}>
-                {getValidationLabel(solutionValidation.status)}
-              </Badge>
-              <CardDescription>{solutionValidation.message}</CardDescription>
-            </div>
-            {solutionValidation.sampleVariables && (
-              <CardDescription>
-                Variables: {formatSampleVariables(solutionValidation.sampleVariables)}
-              </CardDescription>
-            )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={solutionValidation.status === "valid" ? "success" : "warning"}>
+              {getValidationLabel(solutionValidation.status)}
+            </Badge>
+            <CardDescription>
+              {solutionValidation.sampleVariables
+                ? `Sample variables: ${formatSampleVariables(solutionValidation.sampleVariables)}. ${solutionValidation.message}`
+                : solutionValidation.message}
+            </CardDescription>
           </div>
         )}
+      </Field>
+
+      <Field>
+        <FieldLabel htmlFor={`exercise-answer-placeholder-${exercise.id}-${locale}`}>
+          Result input placeholder
+        </FieldLabel>
+        <Input
+          id={`exercise-answer-placeholder-${exercise.id}-${locale}`}
+          onChange={(event) =>
+            onChange((currentExercise) => ({
+              ...currentExercise,
+              locales: {
+                ...currentExercise.locales,
+                [locale]: {
+                  ...(currentExercise.locales[locale] ?? {
+                    answerPlaceholder: "",
+                    hint: "",
+                    prompt: "",
+                  }),
+                  answerPlaceholder: event.target.value,
+                },
+              },
+            }))
+          }
+          placeholder="Enter your result here"
+          value={answerPlaceholder}
+        />
       </Field>
     </>
   );

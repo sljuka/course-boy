@@ -37,7 +37,7 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
         <CardHeader className="min-w-0">
           <CardTitle className="min-w-0">
             <Link
-              className="flex min-w-0 items-center gap-1 transition-colors hover:text-stone-700"
+              className="flex min-w-0 items-center gap-1 transition-colors hover:text-foreground"
               to={href}
             >
               <span className="min-w-0 wrap-break-word">{course.title}</span>
@@ -53,9 +53,9 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
                     aria-label={t("courseSearch.courseMenuLabel", {
                       title: course.title,
                     })}
-                    className="shrink-0 border-transparent bg-transparent shadow-none hover:bg-stone-100"
+                    className="shrink-0"
                     size="icon-sm"
-                    variant="secondary"
+                    variant="ghost"
                   />
                 }
               >
@@ -63,10 +63,10 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  className="text-red-700 hover:bg-red-50 hover:text-red-800 focus-visible:ring-red-500"
                   onClick={() => {
                     onRemove(course);
                   }}
+                  variant="destructive"
                 >
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
                   {t("courseSearch.removeCourse")}

@@ -161,7 +161,7 @@ fill with a real publisher key — see
 
 `src/components/ui` is the bottom layer. It may import `@/lib/*`, `@/hooks/*`, and other
 `@/components/ui/*` — never feature components or pages. Enforced by
-`no-restricted-imports` in [.eslintrc.cjs](../.eslintrc.cjs:1).
+`no-restricted-imports` in [eslint.config.mjs](../eslint.config.mjs:1).
 
 `src/components/ui/tag.tsx` owns the canonical tag color palette as its `cva` variant
 keys (`TagColor`, derived via `VariantProps`); `src/lib/course-tags.ts`'s `CourseTagColor`

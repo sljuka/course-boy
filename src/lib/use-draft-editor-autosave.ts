@@ -11,25 +11,6 @@ function serializeSnapshot(snapshot: DraftEditorSnapshot | null) {
   return snapshot ? JSON.stringify(snapshot) : null;
 }
 
-function serializeWithoutDocumentDrafts(snapshot: DraftEditorSnapshot) {
-  const { documentDrafts: _documentDrafts, ...rest } = snapshot;
-
-  return JSON.stringify(rest);
-}
-
-function isDocumentOnlyChange(
-  previous: DraftEditorSnapshot | null,
-  next: DraftEditorSnapshot,
-) {
-  if (!previous) {
-    return false;
-  }
-
-  return (
-    serializeWithoutDocumentDrafts(previous) === serializeWithoutDocumentDrafts(next)
-  );
-}
-
 export function useDraftEditorAutosave({
   courseId,
   courseSections,
@@ -52,7 +33,6 @@ export function useDraftEditorAutosave({
   const [status, setStatus] = useState<DraftAutosaveStatus>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [willAutosave, setWillAutosave] = useState(false);
   const latestSnapshotRef = useRef<DraftEditorSnapshot | null>(snapshot);
   const lastSavedSnapshotRef = useRef<DraftEditorSnapshot | null>(null);
   const lastFailedSnapshotRef = useRef<DraftEditorSnapshot | null>(null);
@@ -67,7 +47,6 @@ export function useDraftEditorAutosave({
     setLastSavedAt(initialRecord?.savedAt ?? null);
     setErrorMessage(null);
     setStatus(initialRecord ? "saved" : "idle");
-    setWillAutosave(false);
   }, [courseId, initialRecord]);
 
   const clearScheduledSave = useCallback(() => {
@@ -75,7 +54,6 @@ export function useDraftEditorAutosave({
       window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    setWillAutosave(false);
   }, []);
 
   const persistSnapshot = useCallback((nextSnapshot: DraftEditorSnapshot) => {
@@ -146,11 +124,6 @@ export function useDraftEditorAutosave({
     setErrorMessage(null);
     clearScheduledSave();
 
-    if (!isDocumentOnlyChange(lastSavedSnapshotRef.current, snapshot)) {
-      return;
-    }
-
-    setWillAutosave(true);
     saveTimerRef.current = window.setTimeout(() => {
       persistSnapshot(snapshot);
     }, AUTOSAVE_DEBOUNCE_MS);
@@ -167,8 +140,7 @@ export function useDraftEditorAutosave({
       lastSavedAt,
       saveNow,
       status,
-      willAutosave,
     }),
-    [errorMessage, isSaving, lastSavedAt, saveNow, status, willAutosave],
+    [errorMessage, isSaving, lastSavedAt, saveNow, status],
   );
 }

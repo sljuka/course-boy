@@ -8,6 +8,7 @@ type BlueprintRule = {
 };
 
 type ExerciseLocaleContent = {
+  answerPlaceholder: string;
   hint: string;
   prompt: string;
 };
@@ -47,9 +48,10 @@ type NumericTestExercise = {
 
 type MultipleChoiceTestExercise = {
   kind: "multiple-choice";
-  correctOptionIndex: number;
+  correctOptionIndexes: number[];
   id: string;
   locales: Record<string, MultipleChoiceExerciseLocaleContent>;
+  selectionMode: "single" | "multiple";
   tagIds: string[];
 };
 

@@ -55,6 +55,7 @@ export const wordTypesExerciseEditor: ExerciseKindEditor<
   fromShared,
   kind: "word-types",
   label: "Word types",
+  description: "A passage where the student tags highlighted words with their grammatical type.",
   toShared,
   validate,
 };

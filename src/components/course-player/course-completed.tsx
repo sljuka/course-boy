@@ -13,10 +13,10 @@ export const CourseCompleted = ({
   return (
     <Card className="flex flex-1 items-center justify-center overflow-hidden border-stone-200/80 bg-white/90 shadow-none">
       <CardContent className="max-w-2xl items-center justify-center py-16 text-center">
-        <h3 className="text-3xl font-semibold text-stone-950">
+        <h3 className="text-3xl font-semibold text-foreground">
           {t("courseDetails.completedTitle")}
         </h3>
-        <p className="text-base leading-7 text-stone-600">
+        <p className="text-base leading-7 text-muted-foreground">
           {t("courseDetails.completedDescription")}
         </p>
         <Button onClick={onExitPlayer} size="lg">

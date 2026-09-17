@@ -9,7 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
@@ -23,12 +23,6 @@ import {
 } from "@/components/ui/select";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -70,6 +64,9 @@ export function TestEditorPrototype({
   const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const [collapsedExerciseIds, setCollapsedExerciseIds] = useState<string[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isAddingExercise, setIsAddingExercise] = useState(false);
+  const [draftExerciseKind, setDraftExerciseKind] = useState<ExerciseKind>("numeric");
+  const [draftExercise, setDraftExercise] = useState<TestExercise | null>(null);
   const [state, setState] = useState<TestEditorState>(() =>
     initialState ?? createInitialState(supportedLocales, initialTitle),
   );
@@ -208,14 +205,33 @@ export function TestEditorPrototype({
     }));
   }
 
-  function addExercise(kind: ExerciseKind) {
-    const nextExercise = getExerciseKindEditor(kind).createExercise(supportedLocales);
+  function startAddExercise() {
+    setIsAddingExercise(true);
+    setDraftExerciseKind("numeric");
+    setDraftExercise(null);
+  }
+
+  function selectDraftExerciseKind() {
+    setDraftExercise(getExerciseKindEditor(draftExerciseKind).createExercise(supportedLocales));
+  }
+
+  function cancelAddExercise() {
+    setIsAddingExercise(false);
+    setDraftExercise(null);
+  }
+
+  function commitDraftExercise() {
+    if (!draftExercise) {
+      return;
+    }
 
     setState((currentState) => ({
       ...currentState,
-      activeExerciseId: nextExercise.id,
-      exercises: [...currentState.exercises, nextExercise],
+      activeExerciseId: draftExercise.id,
+      exercises: [...currentState.exercises, draftExercise],
     }));
+    setIsAddingExercise(false);
+    setDraftExercise(null);
   }
 
   function setExerciseCollapsed(exerciseId: string, collapsed: boolean) {
@@ -269,6 +285,9 @@ export function TestEditorPrototype({
   }
 
   const hasExercises = state.exercises.length > 0;
+  const DraftFieldsComponent = draftExercise
+    ? getExerciseKindEditor(draftExercise.kind).FieldsComponent
+    : null;
 
   const testActionButtons = (
     <>
@@ -289,19 +308,6 @@ export function TestEditorPrototype({
           </TooltipContent>
         )}
       </Tooltip>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={<Button className="gap-2" />}>
-          <Plus aria-hidden="true" className="h-4 w-4" />
-          Add exercise
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          {listExerciseKindEditors().map((editor) => (
-            <DropdownMenuItem key={editor.kind} onClick={() => addExercise(editor.kind)}>
-              {editor.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
     </>
   );
 
@@ -312,18 +318,20 @@ export function TestEditorPrototype({
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <Eyebrow>Test</Eyebrow>
             <Input
-              className="h-auto border-0 bg-transparent p-0 text-2xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-3xl"
+              className="text-2xl font-semibold tracking-tight md:text-3xl"
               onChange={(event) => setTitle(event.target.value)}
               placeholder="Untitled test"
               value={state.title}
+              variant="ghost"
             />
             <Textarea
-              className="min-h-0 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 text-base font-medium text-stone-600 shadow-none placeholder:text-stone-400 focus-visible:ring-0 md:text-base"
+              className="min-h-0 resize-none overflow-hidden text-base font-medium text-muted-foreground md:text-base"
               onChange={(event) => setDescription(event.target.value)}
               placeholder="Add a short description"
               ref={descriptionRef}
               rows={1}
               value={state.description}
+              variant="ghost"
             />
           </div>
           <PageActions className="hidden lg:flex">
@@ -424,7 +432,7 @@ export function TestEditorPrototype({
                           />
                         </div>
                         {state.useBlueprint && rule.tagId && isInvalid && (
-                          <CardDescription className="text-amber-700">
+                          <CardDescription className="text-warning">
                             Need {rule.count} exercises tagged "
                             {descriptiveTags.find((tag) => tag.id === rule.tagId)?.label ??
                               rule.tagId}
@@ -501,25 +509,134 @@ export function TestEditorPrototype({
                         toggleExerciseTag(currentExercise, tagId),
                       )
                     }
+                    orderLabel={state.useBlueprint ? "–" : String(index + 1)}
                   />
                 </Fragment>
               ))}
 
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={<Button className="gap-2 self-start" variant="default" />}
+              {!isAddingExercise ? (
+                <Button
+                  className="gap-2 self-start"
+                  onClick={startAddExercise}
+                  variant="default"
                 >
                   <Plus aria-hidden="true" className="h-4 w-4" />
                   Add exercise
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {listExerciseKindEditors().map((editor) => (
-                    <DropdownMenuItem key={editor.kind} onClick={() => addExercise(editor.kind)}>
-                      {editor.label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </Button>
+              ) : (
+                <Card>
+                  <CardContent className="flex flex-col gap-4">
+                    {!draftExercise ? (
+                      <>
+                        <div className="flex flex-col gap-2">
+                          <Label htmlFor="draft-exercise-kind">Exercise type</Label>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Select
+                              onValueChange={(value) => {
+                                if (value) {
+                                  setDraftExerciseKind(value as ExerciseKind);
+                                }
+                              }}
+                              value={draftExerciseKind}
+                            >
+                              <SelectTrigger className="w-full sm:w-56" id="draft-exercise-kind">
+                                <SelectValue>
+                                  {getExerciseKindEditor(draftExerciseKind).label}
+                                </SelectValue>
+                              </SelectTrigger>
+                              <SelectContent>
+                                {listExerciseKindEditors().map((editor) => (
+                                  <SelectItem key={editor.kind} value={editor.kind}>
+                                    {editor.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button onClick={selectDraftExerciseKind} size="sm">
+                              Confirm
+                            </Button>
+                            <Button onClick={cancelAddExercise} size="sm" variant="ghost">
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <p className="text-sm font-medium text-foreground">
+                            {getExerciseKindEditor(draftExerciseKind).label} exercise type
+                          </p>
+                          <CardDescription>
+                            {getExerciseKindEditor(draftExerciseKind).description}
+                          </CardDescription>
+                        </div>
+                        {(() => {
+                          const { ExampleComponent } =
+                            getExerciseKindEditor(draftExerciseKind);
+
+                          return (
+                            ExampleComponent && (
+                              <div className="flex flex-col gap-2">
+                                <Eyebrow size="small">Example</Eyebrow>
+                                <ExampleComponent />
+                              </div>
+                            )
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      <>
+                        {DraftFieldsComponent && (
+                          <DraftFieldsComponent
+                            exercise={draftExercise}
+                            locale={locale}
+                            onChange={(updater) =>
+                              setDraftExercise((currentDraft) =>
+                                currentDraft ? updater(currentDraft) : currentDraft,
+                              )
+                            }
+                          />
+                        )}
+                        {(() => {
+                          const isMissingPrompt = !(
+                            draftExercise.locales[locale]?.prompt ?? ""
+                          ).trim();
+                          const isMissingSolution =
+                            draftExercise.kind === "numeric" &&
+                            !draftExercise.solution.trim();
+                          const isDraftIncomplete = isMissingPrompt || isMissingSolution;
+
+                          return (
+                            <div className="flex items-center gap-2">
+                              <Tooltip>
+                                <TooltipTrigger render={<span className="inline-flex" />}>
+                                  <Button
+                                    disabled={isDraftIncomplete}
+                                    onClick={commitDraftExercise}
+                                    size="sm"
+                                  >
+                                    Save exercise
+                                  </Button>
+                                </TooltipTrigger>
+                                {isDraftIncomplete && (
+                                  <TooltipContent>
+                                    {isMissingPrompt && isMissingSolution
+                                      ? "Add a prompt and solution before saving this exercise"
+                                      : isMissingPrompt
+                                        ? "Add a prompt before saving this exercise"
+                                        : "Add a solution before saving this exercise"}
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                              <Button onClick={cancelAddExercise} size="sm" variant="ghost">
+                                Cancel
+                              </Button>
+                            </div>
+                          );
+                        })()}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           ))}
         </Tabs>

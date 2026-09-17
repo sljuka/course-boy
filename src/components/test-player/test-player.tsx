@@ -92,13 +92,11 @@ export function TestPlayerView({
       />
       <PageHeader
         title={
-          <CardTitle className="text-xl font-semibold tracking-tight text-foreground">
-            {playerState.courseTitle}
-          </CardTitle>
+          <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
         }
         className="print:hidden"
         subtitle={
-          <CardDescription className="text-base text-stone-600">
+          <CardDescription className="text-base">
             {playerState.sectionTitle}
             {" · "}
             {t("courseDetails.progress", {
@@ -122,7 +120,7 @@ export function TestPlayerView({
                 >
                   <Button
                     aria-label={t("courseDetails.printCourse")}
-                    className="rounded-full"
+                    shape="circle"
                     size="icon"
                     variant="secondary"
                   >
@@ -131,14 +129,11 @@ export function TestPlayerView({
                 </PrintOptionsMenu>
                 <Button
                   aria-label={t("courseDetails.interactiveHintTitle")}
-                  className="rounded-full"
+                  shape="circle"
                   size="icon"
                   variant="secondary"
                 >
-                  <Play
-                    aria-hidden="true"
-                    className="h-5 w-5 fill-emerald-600 text-emerald-600"
-                  />
+                  <Play aria-hidden="true" className="h-5 w-5 fill-success text-success" />
                 </Button>
               </div>
             }

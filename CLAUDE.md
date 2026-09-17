@@ -13,12 +13,11 @@ files on disk.
 
 ```sh
 npm run dev          # Vite + Electron in development
-npm run check        # typecheck + lint + test + i18n parity + styling ratchet — the gate
+npm run check        # typecheck + lint + test + i18n parity — the gate
 npm run typecheck    # tsc --noEmit
-npm run lint         # eslint, --max-warnings 0
+npm run lint         # eslint, --max-warnings 0 (includes shadcn/no-restyle — see below)
 npm test             # vitest run
 npm run check:i18n   # locale key parity against en.json
-npm run check:styles # visual styling outside src/components/ui must not grow
 npm run check:e2e    # vite build + real Electron app driven by Playwright (~15s)
 npm run build        # tsc + vite build + electron-builder
 ```
@@ -84,9 +83,12 @@ adding a case to the e2e suite over one-off manual checking.
 - **Writes must be safe:** write to a temp file, validate, replace atomically. Never
   partially overwrite a draft in place.
 - **Design-system tiers.** `src/components/ui` is the bottom layer and may not import
-  feature components or pages (enforced by eslint). Visual styling — backgrounds, borders,
-  shadows, radius, typography — belongs there, expressed as `cva` variants. Outside `ui`,
-  styling should be layout-only (`flex`, `grid`, `gap`, sizing, spacing).
+  feature components or pages (enforced by `no-restricted-imports` in
+  `eslint.config.mjs`). Visual styling — backgrounds, borders, shadows, radius,
+  typography — belongs there, expressed as `cva` variants. Outside `ui`, styling should
+  be layout/spacing-only (`flex`, `grid`, `gap`, sizing, padding) — enforced for real by
+  `shadcn/no-restyle` in `eslint.config.mjs` (see its `contracts` array for which
+  components' slots are allowed which additional categories, and why).
 - **No user-facing strings in components.** All copy goes through i18next with a key in
   `src/locales/en.json`, mirrored into every other locale.
 
@@ -112,16 +114,11 @@ it.
 
 Not blockers, but do not mistake them for patterns to copy:
 
-- `src/components/ui/badge-variants.ts` is dead code with a hardcoded stone/amber palette
-  that contradicts the semantic tokens in `badge.tsx`. Left over from before the shadcn
-  restyle.
 - `electron/main.ts` redeclares `Category` / `UserRole` / `UserPreferences` locally instead
   of importing from `src/lib/preferences.ts`.
 - `src/components/ui/sidebar.tsx` (~720 LOC) and `combobox.tsx` are far past the ~150 LOC
   guideline in working-conventions. They are vendored primitives; leave them unless the
   task is specifically to split them.
-- The styling ratchet baseline is 317 visual utilities outside `ui`. That number should
-  only ever go down.
 - **An exercise's `tags` are silently dropped at save time if they aren't registered in
   the course's `descriptiveTags`.** `buildDraftEditorSnapshot` in `draft-detail-page.tsx`
   filters every exercise's `tagIds`/blueprint rule down to tags present in the course's

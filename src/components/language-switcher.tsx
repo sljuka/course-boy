@@ -63,8 +63,9 @@ function LanguageSwitcher({
               ? t('language.switchToLatin')
               : t('language.switchToCyrillic')
           }
-          className="rounded-full text-xs font-semibold"
+          className="text-xs font-semibold"
           onClick={handleScriptToggle}
+          shape="circle"
           size="icon"
           type="button"
           variant="outline"

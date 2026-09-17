@@ -33,7 +33,7 @@ export function TestItem({ item, onSelect, testLabel }: TestItemProps) {
       label={formatPreviewItemTitle(item, testLabel)}
       onSelect={onSelect}
     >
-      <ClipboardCheck aria-hidden="true" className="h-12 w-12 text-stone-700" />
+      <ClipboardCheck aria-hidden="true" className="h-12 w-12 text-foreground" />
     </PreviewTile>
   );
 }

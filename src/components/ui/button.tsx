@@ -32,10 +32,17 @@ const buttonVariants = cva(
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
       },
+      // A circular icon button (favorite, refresh, close, ...) — same axis as
+      // Badge's `shape` variant.
+      shape: {
+        square: "",
+        circle: "rounded-full",
+      },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
+      shape: "square",
     },
   }
 )
@@ -44,12 +51,13 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  shape = "square",
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, shape, className }))}
       {...props}
     />
   )

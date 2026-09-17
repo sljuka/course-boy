@@ -10,6 +10,7 @@ import type { Locale } from "../i18n";
  * `options`, word-types' `text`).
  */
 export type ResolveForPlayerContext = {
+  answerPlaceholder?: string;
   hint?: string;
   id: string;
   prompt: string;

@@ -50,6 +50,15 @@ export type ExerciseKindEditor<
 > = {
   kind: ExerciseKind;
   label: string;
+  /** One sentence shown while choosing an exercise kind — see the "Add exercise" wizard in test-editor-prototype.tsx. */
+  description: string;
+  /**
+   * A static, non-interactive rendering of what this kind looks like to a
+   * student — shown under an "Example" label below `description` in the
+   * "Add exercise" wizard's kind-choosing step. Optional: a kind with no
+   * illustrative example yet simply shows no example section.
+   */
+  ExampleComponent?: ComponentType<Record<string, never>>;
   createExercise(locales: Locale[]): TExercise;
   validate(exercise: TExercise, locale: Locale): SolutionValidationResult;
   toShared(exercise: TExercise): TShared;

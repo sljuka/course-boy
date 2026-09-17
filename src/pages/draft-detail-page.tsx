@@ -842,7 +842,7 @@ export function DraftDetailPage() {
               <Accordion>
                 <AccordionItem value="descriptive-tags">
                   <div className="flex items-center gap-1">
-                    <AccordionTrigger className="flex-none hover:no-underline">
+                    <AccordionTrigger className="flex-none">
                       Manage tags
                     </AccordionTrigger>
                     <InfoTooltip aria-label={t("courseTags.helpTooltip")}>
@@ -971,7 +971,7 @@ export function DraftDetailPage() {
                     <Field>
                       <FieldLabel htmlFor={`draft-section-title-${locale}`}>
                         Section title
-                        <span aria-hidden="true" className="text-rose-600">
+                        <span aria-hidden="true" className="text-destructive">
                           *
                         </span>
                       </FieldLabel>
@@ -1015,7 +1015,7 @@ export function DraftDetailPage() {
                         locale,
                         activeSectionDraft.locales[locale]?.title,
                       ) && (
-                        <FieldDescription className="text-rose-600">
+                        <FieldDescription variant="destructive">
                           {getSectionTitleValidationMessage(
                             locale,
                             activeSectionDraft.locales[locale]?.title,

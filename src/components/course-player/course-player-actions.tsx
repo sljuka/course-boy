@@ -23,8 +23,8 @@ export const CoursePlayerActions = ({
         {isRefreshingAvailable && (
           <Button
             aria-label={t("courseDetails.refreshExercise")}
-            className="rounded-full"
             onClick={onRefreshExercise}
+            shape="circle"
             size="icon"
             variant="secondary"
           >
@@ -35,10 +35,11 @@ export const CoursePlayerActions = ({
       {printControl}
       <Button
         aria-label={t("courseDetails.closeCourse")}
-        className="h-10! w-10! shrink-0 rounded-full border border-stone-200 bg-white px-0 text-stone-700 shadow-xs hover:bg-stone-100"
+        className="h-10! w-10! shrink-0"
         onClick={onClose}
+        shape="circle"
         size="icon"
-        variant="ghost"
+        variant="outline"
       >
         <X aria-hidden="true" className="h-5 w-5" />
       </Button>

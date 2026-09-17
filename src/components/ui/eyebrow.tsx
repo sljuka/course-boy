@@ -14,7 +14,7 @@ function Eyebrow({
   return (
     <p
       className={cn(
-        "font-semibold uppercase tracking-[0.18em] text-stone-600",
+        "font-semibold uppercase tracking-[0.18em] text-muted-foreground",
         size === "small" ? "text-xs" : "text-sm",
         className,
       )}

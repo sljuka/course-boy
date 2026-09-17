@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { CourseLoadingCard } from "@/components/course-loading-card";
 import { CourseCard } from "@/components/course-search/course-card";
 import { RemoveCourseDialog } from "@/components/course-search/remove-course-dialog";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import type { CourseDistribution, CourseSummary } from "@/lib/course-package";
 import { useCoursesQuery } from "@/lib/course-queries";
 import { useAppState } from "@/lib/use-app-state";
@@ -53,8 +53,8 @@ export const CourseList = ({
   if (filteredCourses.length === 0) {
     return (
         <Card className="overflow-hidden">
-        <CardContent className="py-10 text-sm text-stone-600">
-          {emptyMessage ?? t("courseSearch.empty")}
+        <CardContent className="py-10">
+          <CardDescription>{emptyMessage ?? t("courseSearch.empty")}</CardDescription>
         </CardContent>
       </Card>
     );

@@ -15,7 +15,7 @@ export const CourseSearchField = ({
     <label className="relative block">
       <Search
         aria-hidden="true"
-        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400"
+        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
       />
       <Input
         className="pl-9"

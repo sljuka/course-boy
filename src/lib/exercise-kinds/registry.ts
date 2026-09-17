@@ -67,6 +67,13 @@ export function resolveSharedTestForPlayer(
         requestedLocales
           .map((locale) => exercise.locales[locale]?.prompt)
           .find((promptCandidate) => typeof promptCandidate === "string") ?? "";
+      const answerPlaceholder = requestedLocales
+        .map(
+          (locale) =>
+            (exercise.locales[locale] as { answerPlaceholder?: string } | undefined)
+              ?.answerPlaceholder,
+        )
+        .find((placeholderCandidate) => typeof placeholderCandidate === "string");
       const kind = normalizeExerciseKind(exercise.kind);
 
       if (!kind) {
@@ -74,6 +81,7 @@ export function resolveSharedTestForPlayer(
       }
 
       return getExerciseKindRuntime(kind).resolveForPlayer(exercise, {
+        answerPlaceholder,
         hint,
         id,
         prompt,

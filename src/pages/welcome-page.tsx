@@ -34,10 +34,10 @@ export const WelcomePage = () => {
     <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-4 pr-2">
-          <CardTitle className="text-3xl text-amber-950 sm:text-4xl">
+          <CardTitle className="text-3xl text-primary sm:text-4xl">
             {t('welcomeTitle')}
           </CardTitle>
-          <p className="max-w-lg text-sm leading-6 text-stone-500">
+          <p className="max-w-lg text-sm leading-6 text-muted-foreground">
             {t('welcomeSubtitle')}
           </p>
         </div>

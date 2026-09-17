@@ -57,12 +57,10 @@ export function LessonPlayer({
         <div className="print:hidden">
           <PageHeader
             title={
-              <CardTitle className="text-xl font-semibold tracking-tight text-foreground">
-                {playerState.courseTitle}
-              </CardTitle>
+              <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
             }
             subtitle={
-              <CardDescription className="text-base text-stone-600">
+              <CardDescription className="text-base">
                 {playerState.sectionTitle}
                 {" · "}
                 {t("courseDetails.progress", {
@@ -85,7 +83,7 @@ export function LessonPlayer({
                   >
                     <Button
                       aria-label={t("courseDetails.printCourse")}
-                      className="rounded-full"
+                      shape="circle"
                       size="icon"
                       variant="secondary"
                     >

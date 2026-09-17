@@ -31,15 +31,11 @@ function HeaderIconButton({
   return (
     <Button
       aria-label={label}
-      className={
-        tone === "danger"
-          ? "h-7 w-7 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-          : "h-7 w-7 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
-      }
+      className={tone === "danger" ? "h-7 w-7" : "h-7 w-7 text-muted-foreground"}
       disabled={disabled}
       onClick={onClick}
       size="icon"
-      variant="ghost"
+      variant={tone === "danger" ? "destructive" : "ghost"}
     >
       <Icon aria-hidden="true" className="h-3.5 w-3.5" />
     </Button>
@@ -215,7 +211,7 @@ const HeadingBlockFields = forwardRef<
   return (
     <Input
       autoFocus={autoFocus}
-      className="h-auto flex-1 border-0 bg-transparent px-0 py-0 text-xl font-semibold tracking-tight text-stone-950 shadow-none placeholder:text-stone-300 focus-visible:ring-0 md:text-2xl"
+      className="flex-1 text-xl font-semibold tracking-tight md:text-2xl"
       onChange={(event) =>
         onChange({
           ...block,
@@ -225,6 +221,7 @@ const HeadingBlockFields = forwardRef<
       placeholder="Subheading"
       ref={ref}
       value={block.text}
+      variant="ghost"
     />
   );
 });
@@ -267,7 +264,7 @@ function MarkdownBlockFields({
         onBlur={() => {
           onEditingChange(false);
         }}
-        className="min-h-0 resize-none overflow-hidden border-0 bg-stone-900 font-mono text-sm leading-6 text-stone-100 shadow-none placeholder:text-stone-400 focus-visible:ring-0"
+        className="min-h-0 resize-none overflow-hidden border-0 bg-stone-900 font-mono text-sm leading-6 text-stone-100 shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
         onChange={(event) =>
           onChange({
             ...block,

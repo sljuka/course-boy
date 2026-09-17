@@ -86,11 +86,12 @@ describe("isSharedTestDefinition", () => {
     expect(isSharedTestDefinition({ exercises: [legacyExercise], template: "" })).toBe(true);
   });
 
-  it("accepts a valid multiple-choice exercise", () => {
+  it("accepts a valid single-answer multiple-choice exercise", () => {
     const multipleChoiceExercise = {
       kind: "multiple-choice",
-      correctOptionIndex: 1,
+      correctOptionIndexes: [1],
       locales: { en: { options: ["London", "Paris"], prompt: "Capital of France?" } },
+      selectionMode: "single",
       tags: ["geography"],
     };
 
@@ -99,14 +100,45 @@ describe("isSharedTestDefinition", () => {
     ).toBe(true);
   });
 
+  it("accepts a valid multiple-answer multiple-choice exercise", () => {
+    const multipleChoiceExercise = {
+      kind: "multiple-choice",
+      correctOptionIndexes: [0, 2],
+      locales: {
+        en: {
+          options: ["Paris", "Tokyo", "Berlin", "Cairo"],
+          prompt: "Which are capitals of European countries?",
+        },
+      },
+      selectionMode: "multiple",
+      tags: ["geography"],
+    };
+
+    expect(
+      isSharedTestDefinition({ exercises: [multipleChoiceExercise], template: "" }),
+    ).toBe(true);
+  });
+
+  it("accepts a legacy multiple-choice exercise with a single correctOptionIndex and no selectionMode", () => {
+    const legacyExercise = {
+      kind: "multiple-choice",
+      correctOptionIndex: 1,
+      locales: { en: { options: ["London", "Paris"], prompt: "Capital of France?" } },
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [legacyExercise], template: "" })).toBe(true);
+  });
+
   it("accepts a multiple-choice exercise with an untranslated locale's options left blank", () => {
     const multipleChoiceExercise = {
       kind: "multiple-choice",
-      correctOptionIndex: 1,
+      correctOptionIndexes: [1],
       locales: {
         en: { options: ["London", "Paris"], prompt: "Capital of France?" },
         sr: { options: ["", ""], prompt: "" },
       },
+      selectionMode: "single",
       tags: ["geography"],
     };
 
@@ -118,23 +150,49 @@ describe("isSharedTestDefinition", () => {
   it("rejects a multiple-choice exercise with fewer than two options", () => {
     const invalidExercise = {
       kind: "multiple-choice",
-      correctOptionIndex: 0,
+      correctOptionIndexes: [0],
       locales: { en: { options: ["Only one"], prompt: "?" } },
+      selectionMode: "single",
       tags: ["geography"],
     };
 
     expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
   });
 
-  it("rejects a multiple-choice exercise with an out-of-range correctOptionIndex", () => {
+  it("rejects a multiple-choice exercise with an out-of-range correct option index", () => {
     const invalidExercise = {
       kind: "multiple-choice",
-      correctOptionIndex: 5,
+      correctOptionIndexes: [5],
       locales: { en: { options: ["London", "Paris"], prompt: "Capital of France?" } },
+      selectionMode: "single",
       tags: ["geography"],
     };
 
     expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a single-answer multiple-choice exercise with more than one correct option", () => {
+    const invalidExercise = {
+      kind: "multiple-choice",
+      correctOptionIndexes: [0, 1],
+      locales: { en: { options: ["London", "Paris"], prompt: "Capital of France?" } },
+      selectionMode: "single",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("accepts a multiple-answer multiple-choice exercise with no correct options marked", () => {
+    const exercise = {
+      kind: "multiple-choice",
+      correctOptionIndexes: [],
+      locales: { en: { options: ["London", "Paris"], prompt: "Which of these is not a city?" } },
+      selectionMode: "multiple",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [exercise], template: "" })).toBe(true);
   });
 
   it("accepts a valid word-types exercise", () => {

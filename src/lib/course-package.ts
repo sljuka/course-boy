@@ -70,6 +70,7 @@ export type ExerciseKind = "numeric" | "multiple-choice" | "word-types" | "missi
 
 export type NumericCourseExercise = {
   kind: "numeric";
+  answerPlaceholder?: string;
   hint?: string;
   id: string;
   precision: number;
@@ -87,7 +88,8 @@ export type MultipleChoiceCourseExercise = {
   prompt: string;
   tags: string[];
   options: string[];
-  correctOptionIndex: number;
+  correctOptionIndexes: number[];
+  selectionMode: "single" | "multiple";
 };
 
 export type WordTypeDefinition = {
@@ -169,7 +171,9 @@ export type CourseTest = {
  */
 export type SharedNumericTestExerciseDefinition = {
   kind: "numeric";
-  locales: Partial<Record<Locale, { hint?: string; prompt: string }>>;
+  locales: Partial<
+    Record<Locale, { answerPlaceholder?: string; hint?: string; prompt: string }>
+  >;
   solution: {
     formula: string;
     precision: number;
@@ -182,7 +186,13 @@ export type SharedNumericTestExerciseDefinition = {
 export type SharedMultipleChoiceTestExerciseDefinition = {
   kind: "multiple-choice";
   locales: Partial<Record<Locale, { hint?: string; prompt: string; options: string[] }>>;
-  correctOptionIndex: number;
+  // `selectionMode` is explicit teacher intent, not derived from the option
+  // count — a file written before multi-select existed has neither field and
+  // is normalized at read time (see `normalizeMultipleChoiceCorrectOptions`
+  // in lib/exercise-kinds/multiple-choice.ts) from its legacy
+  // `correctOptionIndex: number`.
+  correctOptionIndexes: number[];
+  selectionMode: "single" | "multiple";
   tags: string[];
 };
 

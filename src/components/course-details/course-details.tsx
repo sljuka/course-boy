@@ -51,8 +51,8 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
     return (
       <PageContent>
         <Card className="overflow-hidden">
-          <CardContent className="py-10 text-sm text-stone-600">
-            {t("courseDetails.missing")}
+          <CardContent className="py-10">
+            <CardDescription>{t("courseDetails.missing")}</CardDescription>
           </CardContent>
         </Card>
       </PageContent>
@@ -96,8 +96,8 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       </Button>
       <Button
         aria-label={t(isFavorite ? "removeFavoriteCourse" : "favoriteCourse")}
-        className="rounded-full"
         onClick={() => setIsFavorite((currentValue) => !currentValue)}
+        shape="circle"
         size="icon"
         variant={isFavorite ? "default" : "secondary"}
       >
@@ -145,7 +145,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         top={
           <div className="px-2">
             <Link
-              className="inline-flex items-center gap-2 text-sm font-medium text-stone-600 transition-colors hover:text-stone-900"
+              className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
               to={
                 resolvedCourse.distribution === "local"
                   ? `/drafts/${courseId}`
@@ -170,13 +170,11 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         >
           <CardContent className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <div className="text-base font-semibold text-stone-900">
+              <div className="text-base font-semibold text-foreground">
                 {section.title}
               </div>
               {section.description && (
-                <CardDescription className="text-sm text-stone-600">
-                  {section.description}
-                </CardDescription>
+                <CardDescription>{section.description}</CardDescription>
               )}
             </div>
             <div className="overflow-x-auto pb-2">

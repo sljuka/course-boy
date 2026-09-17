@@ -12,29 +12,32 @@ import type {
 import type { SharedTestExerciseDefinition } from "@/lib/course-package"
 
 describe("exercise kind persistence", () => {
-  it("round-trips a multiple-choice exercise", () => {
+  it("round-trips a single-answer multiple-choice exercise", () => {
     const exercise: MultipleChoiceTestExercise = {
       kind: "multiple-choice",
-      correctOptionIndex: 1,
+      correctOptionIndexes: [1],
       id: "ex_mc",
       locales: {
         en: { hint: "Think capitals", options: ["London", "Paris"], prompt: "Capital of France?" },
       },
+      selectionMode: "single",
       tagIds: ["geography"],
     }
 
     const shared = toSharedTestExerciseDefinition(exercise)
 
     expect(shared).toMatchObject({
-      correctOptionIndex: 1,
+      correctOptionIndexes: [1],
       kind: "multiple-choice",
+      selectionMode: "single",
       tags: ["geography"],
     })
 
     const hydrated = fromSharedTestExerciseDefinition(shared) as MultipleChoiceTestExercise
 
     expect(hydrated.kind).toBe("multiple-choice")
-    expect(hydrated.correctOptionIndex).toBe(1)
+    expect(hydrated.correctOptionIndexes).toEqual([1])
+    expect(hydrated.selectionMode).toBe("single")
     expect(hydrated.locales.en).toEqual({
       hint: "Think capitals",
       options: ["London", "Paris"],
@@ -42,11 +45,56 @@ describe("exercise kind persistence", () => {
     })
   })
 
+  it("round-trips a multiple-answer multiple-choice exercise", () => {
+    const exercise: MultipleChoiceTestExercise = {
+      kind: "multiple-choice",
+      correctOptionIndexes: [0, 2],
+      id: "ex_mc_multi",
+      locales: {
+        en: {
+          hint: "",
+          options: ["Paris", "Tokyo", "Berlin", "Cairo"],
+          prompt: "Which are capitals of European countries?",
+        },
+      },
+      selectionMode: "multiple",
+      tagIds: ["geography"],
+    }
+
+    const shared = toSharedTestExerciseDefinition(exercise)
+
+    expect(shared).toMatchObject({
+      correctOptionIndexes: [0, 2],
+      selectionMode: "multiple",
+    })
+
+    const hydrated = fromSharedTestExerciseDefinition(shared) as MultipleChoiceTestExercise
+
+    expect(hydrated.correctOptionIndexes).toEqual([0, 2])
+    expect(hydrated.selectionMode).toBe("multiple")
+  })
+
+  it("hydrates a legacy on-disk multiple-choice exercise (single correctOptionIndex, no selectionMode)", () => {
+    const legacyDefinition = {
+      correctOptionIndex: 1,
+      kind: "multiple-choice" as const,
+      locales: {
+        en: { options: ["London", "Paris"], prompt: "Capital of France?" },
+      },
+      tags: ["geography"],
+    } as unknown as SharedTestExerciseDefinition
+
+    const hydrated = fromSharedTestExerciseDefinition(legacyDefinition) as MultipleChoiceTestExercise
+
+    expect(hydrated.correctOptionIndexes).toEqual([1])
+    expect(hydrated.selectionMode).toBe("multiple")
+  })
+
   it("round-trips a numeric exercise with an explicit kind", () => {
     const exercise: NumericTestExercise = {
       kind: "numeric",
       id: "ex_num",
-      locales: { en: { hint: "", prompt: "{{a}} + {{b}}" } },
+      locales: { en: { answerPlaceholder: "", hint: "", prompt: "{{a}} + {{b}}" } },
       solution: "a + b",
       tagIds: ["easy"],
       variables: [

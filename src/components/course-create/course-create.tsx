@@ -232,10 +232,10 @@ function CourseCreate() {
     <PageContent>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight text-stone-950">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             {t("courseCreate.title")}
           </h1>
-          <p className="max-w-2xl text-base text-stone-600">
+          <p className="max-w-2xl text-base text-muted-foreground">
             {t("courseCreate.description")}
           </p>
         </div>
@@ -368,7 +368,7 @@ function CourseCreate() {
                     <Field>
                       <FieldLabel htmlFor={`course-create-title-${locale}`}>
                         {t("courseCreate.fields.title")}
-                        <span aria-hidden="true" className="text-rose-600">
+                        <span aria-hidden="true" className="text-destructive">
                           *
                         </span>
                       </FieldLabel>
@@ -385,7 +385,7 @@ function CourseCreate() {
                         value={localizedCourse[locale]?.title ?? ""}
                       />
                       {hasAttemptedSubmit && getTitleValidationMessage(locale) && (
-                        <FieldDescription className="text-rose-600">
+                        <FieldDescription variant="destructive">
                           {getTitleValidationMessage(locale)}
                         </FieldDescription>
                       )}
@@ -456,12 +456,10 @@ function CourseCreate() {
             </FieldGroup>
           </FieldSet>
           {shouldShowFolderPreview && (
-            <Alert className="border-sky-200 bg-sky-50/90 text-sky-950 shadow-[0_12px_28px_-24px_rgba(14,165,233,0.35)]">
+            <Alert variant="info">
               <Info className="size-4" />
-              <AlertTitle className="text-sky-950">
-                {t("courseCreate.folderNamePreviewLabel")}
-              </AlertTitle>
-              <AlertDescription className="mt-1.5 text-sky-900/90">
+              <AlertTitle>{t("courseCreate.folderNamePreviewLabel")}</AlertTitle>
+              <AlertDescription className="mt-1.5">
                 {t("courseCreate.folderNameConvention", {
                   folderName: folderNamePreview,
                 })}
@@ -469,11 +467,9 @@ function CourseCreate() {
             </Alert>
           )}
           {createDraftMutation.isError && (
-            <Alert className="border-rose-200 bg-rose-50/90 text-rose-950 shadow-[0_12px_28px_-24px_rgba(244,63,94,0.35)]">
-              <AlertTitle className="text-rose-950">
-                {t("courseCreate.errorTitle")}
-              </AlertTitle>
-              <AlertDescription className="mt-1.5 text-rose-900/90">
+            <Alert variant="destructive">
+              <AlertTitle>{t("courseCreate.errorTitle")}</AlertTitle>
+              <AlertDescription className="mt-1.5">
                 {t("courseCreate.errorBody")}
               </AlertDescription>
             </Alert>

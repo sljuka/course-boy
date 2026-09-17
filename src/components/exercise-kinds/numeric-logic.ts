@@ -27,6 +27,7 @@ function createExerciseLocaleMap(locales: Locale[]) {
     locales.map((locale) => [
       locale,
       {
+        answerPlaceholder: "",
         hint: "",
         prompt: "",
       },
@@ -108,6 +109,7 @@ export function syncExercisePrompt(
       ...exercise.locales,
       [locale]: {
         ...(exercise.locales[locale] ?? {
+          answerPlaceholder: "",
           hint: "",
           prompt: "",
         }),
@@ -307,7 +309,7 @@ export function validate(exercise: NumericTestExercise, locale: Locale): Solutio
     }
 
     return {
-      message: `Example result: ${sampleResult}`,
+      message: `Result is ${sampleResult}`,
       sampleResult,
       sampleVariables,
       status: "valid",
@@ -389,7 +391,11 @@ export function fromShared(definition: SharedNumericTestExerciseDefinition): Num
     locales: Object.fromEntries(
       Object.entries(definition.locales).map(([locale, content]) => [
         locale,
-        { hint: content?.hint ?? "", prompt: content?.prompt ?? "" },
+        {
+          answerPlaceholder: content?.answerPlaceholder ?? "",
+          hint: content?.hint ?? "",
+          prompt: content?.prompt ?? "",
+        },
       ]),
     ),
     solution: definition.solution.formula,

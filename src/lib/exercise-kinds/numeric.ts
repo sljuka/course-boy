@@ -107,12 +107,18 @@ function isValid(
         return false;
       }
 
-      const typedMetadata = metadata as { hint?: unknown; prompt?: unknown };
+      const typedMetadata = metadata as {
+        answerPlaceholder?: unknown;
+        hint?: unknown;
+        prompt?: unknown;
+      };
 
       return (
         typeof typedMetadata.prompt === "string" &&
         (typeof typedMetadata.hint === "undefined" ||
-          typeof typedMetadata.hint === "string")
+          typeof typedMetadata.hint === "string") &&
+        (typeof typedMetadata.answerPlaceholder === "undefined" ||
+          typeof typedMetadata.answerPlaceholder === "string")
       );
     })
   ) {
@@ -175,6 +181,7 @@ function resolveForPlayer(
   context: ResolveForPlayerContext,
 ): NumericCourseExercise {
   return {
+    answerPlaceholder: context.answerPlaceholder,
     formula: shared.solution.formula,
     hint: context.hint,
     id: context.id,

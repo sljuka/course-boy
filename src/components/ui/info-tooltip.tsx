@@ -19,7 +19,7 @@ function InfoTooltip({
         <button
           aria-label={ariaLabel}
           className={cn(
-            "inline-flex h-6 w-6 items-center justify-center text-stone-400 transition-colors hover:text-stone-900",
+            "inline-flex h-6 w-6 items-center justify-center text-muted-foreground transition-colors hover:text-foreground",
             className,
           )}
           onClick={(event) => {

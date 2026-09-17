@@ -5,7 +5,7 @@ import { Link, Navigate } from "react-router-dom";
 import { CourseCompleted } from "@/components/course-player/course-completed";
 import { CourseLoadingCard } from "@/components/course-loading-card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import type { CoursePlayerState } from "@/components/course-player/use-course-player";
 
 type CoursePlayerShellProps = {
@@ -30,8 +30,8 @@ export function CoursePlayerShell({
   if (playerState.status === "missing") {
     return (
       <Card className="overflow-hidden">
-        <CardContent className="flex flex-col items-start gap-4 py-10 text-sm text-stone-600">
-          {t("courseDetails.missing")}
+        <CardContent className="flex flex-col items-start gap-4 py-10">
+          <CardDescription>{t("courseDetails.missing")}</CardDescription>
           <Button render={<Link to="/" />} size="sm" variant="secondary">
             {t("courseDetails.missingBackToHome")}
           </Button>

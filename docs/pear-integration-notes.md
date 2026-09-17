@@ -183,7 +183,7 @@ only publishers ever touch, not an onboarding step every user sees.
      package.json with `"type": "module"` (Matko's is) gets loaded as ESM, where
      `require` isn't defined, even though the script itself is written as CommonJS. Fails
      as `Uncaught ReferenceError: require is not defined` inside Bare, not at spawn time.
-     Fix: `.cjs` extension, same convention this repo already uses for `.eslintrc.cjs`.
+     Fix: `.cjs` extension, the same convention this repo already uses.
      **This directly affects Phase 1's `workers/main.js` plan below — that file will hit
      the identical failure and needs to be `workers/main.cjs` (or a `workers/package.json`
      with `{"type": "commonjs"}`) once it's built, whichever this repo settles on then.**

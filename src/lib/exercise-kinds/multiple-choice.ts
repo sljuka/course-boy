@@ -12,6 +12,43 @@ import {
   type ResolveForPlayerContext,
 } from "./types";
 
+/**
+ * A file written before multi-select existed stores a single
+ * `correctOptionIndex: number` and no `selectionMode` — normalize that
+ * legacy shape to one correct option, same "no field → treat as legacy"
+ * pattern as `normalizeExerciseKind` in registry.ts. A missing
+ * `selectionMode` on an otherwise-current file defaults to `"multiple"`
+ * (checkboxes) rather than `"single"`, since checkboxes is the more general
+ * mode and matches what an untouched "single answer" checkbox implies.
+ */
+export function normalizeMultipleChoiceCorrectOptions(
+  raw: Record<string, unknown>,
+): { correctOptionIndexes: number[]; selectionMode: "single" | "multiple" } | null {
+  const selectionMode = raw.selectionMode === "single" ? "single" : "multiple";
+
+  if (Array.isArray(raw.correctOptionIndexes)) {
+    if (
+      !raw.correctOptionIndexes.every(
+        (index) => typeof index === "number" && Number.isInteger(index) && index >= 0,
+      )
+    ) {
+      return null;
+    }
+
+    return { correctOptionIndexes: raw.correctOptionIndexes as number[], selectionMode };
+  }
+
+  if (
+    typeof raw.correctOptionIndex === "number" &&
+    Number.isInteger(raw.correctOptionIndex) &&
+    raw.correctOptionIndex >= 0
+  ) {
+    return { correctOptionIndexes: [raw.correctOptionIndex], selectionMode };
+  }
+
+  return null;
+}
+
 function isValid(
   exercise: Record<string, unknown>,
 ): exercise is SharedMultipleChoiceTestExerciseDefinition {
@@ -50,13 +87,18 @@ function isValid(
     exercise.locales as Record<string, { options: string[] }>,
   );
 
-  return (
-    typeof exercise.correctOptionIndex === "number" &&
-    Number.isInteger(exercise.correctOptionIndex) &&
-    exercise.correctOptionIndex >= 0 &&
-    localeEntries.every(
-      (metadata) => (exercise.correctOptionIndex as number) < metadata.options.length,
-    )
+  const normalized = normalizeMultipleChoiceCorrectOptions(exercise);
+
+  if (!normalized) {
+    return false;
+  }
+
+  if (normalized.selectionMode === "single" && normalized.correctOptionIndexes.length !== 1) {
+    return false;
+  }
+
+  return localeEntries.every((metadata) =>
+    normalized.correctOptionIndexes.every((index) => index < metadata.options.length),
   );
 }
 
@@ -64,8 +106,15 @@ function resolveForPlayer(
   shared: SharedMultipleChoiceTestExerciseDefinition,
   context: ResolveForPlayerContext,
 ): MultipleChoiceCourseExercise {
+  // `shared` may still be the on-disk legacy shape at runtime even though its
+  // static type is the current one — normalize defensively.
+  const normalized = normalizeMultipleChoiceCorrectOptions(shared) ?? {
+    correctOptionIndexes: [],
+    selectionMode: "multiple" as const,
+  };
+
   return {
-    correctOptionIndex: shared.correctOptionIndex,
+    correctOptionIndexes: normalized.correctOptionIndexes,
     hint: context.hint,
     id: context.id,
     kind: "multiple-choice",
@@ -74,8 +123,27 @@ function resolveForPlayer(
         .map((locale) => shared.locales[locale]?.options)
         .find((options) => Array.isArray(options)) ?? [],
     prompt: context.prompt,
+    selectionMode: normalized.selectionMode,
     tags: shared.tags,
   };
+}
+
+export function encodeMultipleChoiceSelection(selectedIndexes: number[]): string {
+  return JSON.stringify(selectedIndexes);
+}
+
+export function decodeMultipleChoiceSelection(raw: string): number[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+
+    if (Array.isArray(parsed) && parsed.every((value) => typeof value === "number")) {
+      return parsed;
+    }
+  } catch {
+    // fall through to the empty default below
+  }
+
+  return [];
 }
 
 function shuffleIndexes(length: number): number[] {
@@ -103,13 +171,19 @@ function grade(
   _instance: ExerciseInstance,
   rawAnswer: string,
 ): GradeResult {
-  const normalizedAnswer = rawAnswer.trim();
+  const selectedIndexes = decodeMultipleChoiceSelection(rawAnswer);
 
-  if (!normalizedAnswer) {
+  if (selectedIndexes.length === 0) {
     return { isAnswered: false, isCorrect: false, noAnswerMessageKey: "courseDetails.selectAnAnswer" };
   }
 
-  if (Number(normalizedAnswer) === exercise.correctOptionIndex) {
+  const correctSet = new Set(exercise.correctOptionIndexes);
+  const selectedSet = new Set(selectedIndexes);
+  const isCorrect =
+    correctSet.size === selectedSet.size &&
+    [...correctSet].every((index) => selectedSet.has(index));
+
+  if (isCorrect) {
     return { isCorrect: true };
   }
 
