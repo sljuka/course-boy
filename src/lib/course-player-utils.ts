@@ -5,7 +5,8 @@ export type ExerciseInstance =
   | { kind: "numeric"; expectedAnswer: number; variables: Record<string, number> }
   | { kind: "multiple-choice"; optionOrder: number[] }
   | { kind: "word-types" }
-  | { kind: "missing-word" };
+  | { kind: "missing-word" }
+  | { kind: "region-picker" };
 
 export function interpolateTemplate(
   template: string,

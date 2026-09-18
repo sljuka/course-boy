@@ -11,6 +11,11 @@ import type { Locale } from "../i18n";
  */
 export type ResolveForPlayerContext = {
   answerPlaceholder?: string;
+  // The only kind-agnostic piece of course-scoped data any kind currently
+  // needs — region-picker uses it to resolve its SVG asset's filename into a
+  // full `matko-asset://` URL. See `resolveSharedTestForPlayer` in
+  // registry.ts for where this comes from.
+  courseId: string;
   hint?: string;
   id: string;
   prompt: string;

@@ -15,11 +15,13 @@ import type { Locale } from "@/lib/i18n";
  * docs/persistence-notes.md.
  */
 export function TestPreviewPlayer({
+  courseId,
   onClose,
   open,
   supportedLocales,
   testState,
 }: {
+  courseId: string;
   onClose: () => void;
   open: boolean;
   supportedLocales: Locale[];
@@ -34,7 +36,10 @@ export function TestPreviewPlayer({
       (locale, index, locales) => locales.indexOf(locale) === index,
     );
     const sharedTest = toSharedTestDefinition(testState);
-    const test = resolveSharedTestForPlayer(sharedTest, requestedLocales, "preview");
+    // `courseId` here resolves this exercise's course-scoped assets (e.g.
+    // region-picker's SVG) — unrelated to the `courseId: "preview"` below,
+    // which only feeds this in-memory player's own navigation.
+    const test = resolveSharedTestForPlayer(sharedTest, requestedLocales, "preview", courseId);
 
     return {
       activeStep: {
@@ -58,7 +63,7 @@ export function TestPreviewPlayer({
       status: "ready",
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `supportedLocales.join` keys on content, not the array's (possibly re-created every render) identity
-  }, [onClose, open, supportedLocales.join(","), testState]);
+  }, [courseId, onClose, open, supportedLocales.join(","), testState]);
 
   if (!previewPlayerState) {
     return null;

@@ -47,6 +47,7 @@ import type { Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 
 type TestEditorPrototypeProps = {
+  courseId: string;
   descriptiveTags: CourseTagDefinition[];
   initialState?: TestEditorState;
   initialTitle: string;
@@ -55,6 +56,7 @@ type TestEditorPrototypeProps = {
 };
 
 export function TestEditorPrototype({
+  courseId,
   descriptiveTags,
   initialState,
   initialTitle,
@@ -496,6 +498,7 @@ export function TestEditorPrototype({
                     canMoveDown={index < state.exercises.length - 1}
                     canMoveUp={index > 0}
                     collapsed={collapsedExerciseIds.includes(exercise.id)}
+                    courseId={courseId}
                     descriptiveTags={descriptiveTags}
                     exercise={exercise}
                     locale={locale}
@@ -586,6 +589,7 @@ export function TestEditorPrototype({
                       <>
                         {DraftFieldsComponent && (
                           <DraftFieldsComponent
+                            courseId={courseId}
                             exercise={draftExercise}
                             locale={locale}
                             onChange={(updater) =>
@@ -642,6 +646,7 @@ export function TestEditorPrototype({
         </Tabs>
       </div>
       <TestPreviewPlayer
+        courseId={courseId}
         onClose={() => setIsPreviewOpen(false)}
         open={isPreviewOpen}
         supportedLocales={supportedLocales}

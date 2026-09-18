@@ -1,8 +1,12 @@
-type CourseAssetKind = "audio" | "image" | "video";
+type CourseAssetKind = "audio" | "image" | "svg" | "video";
 
 const assetExtensionsByKind: Record<CourseAssetKind, Set<string>> = {
   audio: new Set([".mp3", ".wav", ".m4a", ".ogg"]),
   image: new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"]),
+  // A dedicated kind (rather than reusing "image") so the upload dialog only
+  // offers files this exercise kind can actually render as clickable
+  // regions — a raster image picked from "image" would fail to parse.
+  svg: new Set([".svg"]),
   video: new Set([".mp4", ".webm", ".mov"]),
 };
 

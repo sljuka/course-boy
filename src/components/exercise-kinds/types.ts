@@ -19,6 +19,10 @@ export function filterValidLocaleEntries<T>(
 }
 
 export type FieldsComponentProps<TExercise extends TestExercise> = {
+  // Only region-picker's fields need this today (to upload/render this
+  // course's SVG asset), but every kind receives it uniformly rather than
+  // making it kind-specific — see `ResolveForPlayerContext.courseId`.
+  courseId: string;
   exercise: TExercise;
   locale: Locale;
   onChange: (updater: (exercise: TExercise) => TExercise) => void;

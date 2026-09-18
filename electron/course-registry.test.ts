@@ -195,6 +195,42 @@ describe("isSharedTestDefinition", () => {
     expect(isSharedTestDefinition({ exercises: [exercise], template: "" })).toBe(true);
   });
 
+  it("accepts a valid region-picker exercise", () => {
+    const regionPickerExercise = {
+      correctShapeIds: ["Norway", "Sweden"],
+      kind: "region-picker",
+      locales: { en: { prompt: "Mark Scandinavia" } },
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [regionPickerExercise], template: "" })).toBe(true);
+  });
+
+  it("rejects a region-picker exercise with no correct shapes marked", () => {
+    const invalidExercise = {
+      correctShapeIds: [],
+      kind: "region-picker",
+      locales: { en: { prompt: "Mark Scandinavia" } },
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a region-picker exercise with no SVG asset", () => {
+    const invalidExercise = {
+      correctShapeIds: ["Norway"],
+      kind: "region-picker",
+      locales: { en: { prompt: "Mark Scandinavia" } },
+      svgAssetFilename: "",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
   it("accepts a valid word-types exercise", () => {
     const wordTypeExercise = {
       kind: "word-types",

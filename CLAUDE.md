@@ -137,8 +137,13 @@ Not blockers, but do not mistake them for patterns to copy:
   `e2e/app.e2e.mjs`, which will start failing once the literal becomes a key. Adding an
   `i18next/no-literal-string` eslint rule would catch the whole class.
 - No Content-Security-Policy is set, so Electron logs a warning on every launch. Exposure
-  is currently low — `react-markdown` runs without `rehype-raw` and nothing uses
-  `dangerouslySetInnerHTML` — but this needs hardening before importing course content
-  from peers.
+  is still low for most content — `react-markdown` runs without `rehype-raw` — but the
+  `region-picker` exercise kind (`src/components/region-picker-canvas.tsx`) is now a real
+  exception: it renders an uploaded SVG's raw markup inline via `dangerouslySetInnerHTML`
+  so individual shapes can be clicked, sanitizing with `DOMPurify` (SVG profile, plus a
+  hook stripping non-fragment/non-`data:` `href`/`xlink:href` values) immediately before
+  every render. That sanitization is the one mitigation in place; general CSP hardening
+  for the rest of the app is still open, and matters more once peer-imported course
+  content (not just local uploads) reaches this or a future kind.
 - The `*-prototype` components (`editor-prototype`, `course-structure-prototype`,
   `test-editor-prototype`) are exploratory and hold most of the styling violations.

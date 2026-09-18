@@ -1,6 +1,11 @@
 import type { CourseAssetKind } from "@/lib/course-asset-id";
 import type { Locale } from "@/lib/i18n";
 
+// The subset of `CourseAssetKind` this document-block editor understands —
+// narrower than the full set (e.g. "svg" is region-picker-exercise-specific,
+// not an embeddable lesson-content block).
+export type DocumentAssetKind = Extract<CourseAssetKind, "audio" | "image" | "video">;
+
 export type HeadingBlock = {
   id: string;
   text: string;
@@ -72,7 +77,7 @@ export function createPrototypeBlock(
 }
 
 export function createUploadedPrototypeBlock(
-  kind: CourseAssetKind,
+  kind: DocumentAssetKind,
   path: string,
 ): EditorPrototypeBlock {
   const id = crypto.randomUUID();

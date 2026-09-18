@@ -577,7 +577,7 @@ async function readCourseSectionTest(
   // `isSharedTestDefinition` only checks for the content fields, so it's safe
   // to probe the same already-read object a second time.
   const test = isSharedTestDefinition(sharedSectionTest)
-    ? resolveSharedTestForPlayer(sharedSectionTest, requestedLocales, testId)
+    ? resolveSharedTestForPlayer(sharedSectionTest, requestedLocales, testId, courseRecord.manifest.id)
     : null;
 
   return { ...preview, test };
@@ -673,7 +673,7 @@ async function readLessonTest(
   // `sharedTest` passed `isSharedTestDefinition` to get here, so every
   // exercise's kind is always resolvable — `resolveSharedTestForPlayer`
   // throwing here would mean that validation gate has a bug.
-  return resolveSharedTestForPlayer(sharedTest, requestedLocales, testId);
+  return resolveSharedTestForPlayer(sharedTest, requestedLocales, testId, courseRecord.manifest.id);
 }
 
 async function readCourseLesson(

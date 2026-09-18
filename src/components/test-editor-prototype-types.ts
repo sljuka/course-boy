@@ -101,11 +101,26 @@ type MissingWordTestExercise = {
   tagIds: string[];
 };
 
+type RegionPickerExerciseLocaleContent = {
+  hint: string;
+  prompt: string;
+};
+
+type RegionPickerTestExercise = {
+  kind: "region-picker";
+  correctShapeIds: string[];
+  id: string;
+  locales: Record<string, RegionPickerExerciseLocaleContent>;
+  svgAssetFilename: string;
+  tagIds: string[];
+};
+
 type TestExercise =
   | NumericTestExercise
   | MultipleChoiceTestExercise
   | WordTypeTestExercise
-  | MissingWordTestExercise;
+  | MissingWordTestExercise
+  | RegionPickerTestExercise;
 
 type TestEditorState = {
   activeExerciseId: string;
@@ -138,6 +153,8 @@ export type {
   MultipleChoiceTestExercise,
   NumericTestExercise,
   PromptVariable,
+  RegionPickerExerciseLocaleContent,
+  RegionPickerTestExercise,
   SolutionValidationResult,
   TestEditorState,
   TestExercise,

@@ -66,7 +66,12 @@ export type CourseExerciseVariable = {
 
 export type CourseExerciseSolutionSpace = number | "sm" | "md" | "lg" | "xl";
 
-export type ExerciseKind = "numeric" | "multiple-choice" | "word-types" | "missing-word";
+export type ExerciseKind =
+  | "numeric"
+  | "multiple-choice"
+  | "word-types"
+  | "missing-word"
+  | "region-picker";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -145,11 +150,26 @@ export type MissingWordCourseExercise = {
   variables: MissingWordVariable[];
 };
 
+export type RegionPickerCourseExercise = {
+  kind: "region-picker";
+  hint?: string;
+  id: string;
+  prompt: string;
+  tags: string[];
+  // Fully resolved `matko-asset://<courseId>/<filename>` URL (or, for the
+  // "Add exercise" wizard's hardcoded example, a `data:image/svg+xml,...`
+  // URL) — built once in `resolveForPlayer` so nothing downstream needs the
+  // course id.
+  svgAssetUrl: string;
+  correctShapeIds: string[];
+};
+
 export type CourseExercise =
   | NumericCourseExercise
   | MultipleChoiceCourseExercise
   | WordTypeCourseExercise
-  | MissingWordCourseExercise;
+  | MissingWordCourseExercise
+  | RegionPickerCourseExercise;
 
 export type CourseTestStructureRule = {
   count: number;
@@ -214,11 +234,22 @@ export type SharedMissingWordTestExerciseDefinition = {
   tags: string[];
 };
 
+export type SharedRegionPickerTestExerciseDefinition = {
+  kind: "region-picker";
+  locales: Partial<Record<Locale, { hint?: string; prompt: string }>>;
+  // The diagram and its correct regions aren't localized — same convention
+  // as word-types' top-level `wordTypes`.
+  svgAssetFilename: string;
+  correctShapeIds: string[];
+  tags: string[];
+};
+
 export type SharedTestExerciseDefinition =
   | SharedNumericTestExerciseDefinition
   | SharedMultipleChoiceTestExerciseDefinition
   | SharedWordTypeTestExerciseDefinition
-  | SharedMissingWordTestExerciseDefinition;
+  | SharedMissingWordTestExerciseDefinition
+  | SharedRegionPickerTestExerciseDefinition;
 
 export type SharedTestDefinition = {
   exercises: SharedTestExerciseDefinition[];

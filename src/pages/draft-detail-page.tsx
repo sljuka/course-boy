@@ -901,6 +901,7 @@ export function DraftDetailPage() {
     // more than it does for a lesson-attached test today.
     return (
       <TestEditorPrototype
+        courseId={courseId}
         descriptiveTags={descriptiveTags}
         initialState={existingDraft ?? hydratedState}
         initialTitle={selectedNode.title}
@@ -925,6 +926,7 @@ export function DraftDetailPage() {
 
     return (
       <TestEditorPrototype
+        courseId={courseId}
         descriptiveTags={descriptiveTags}
         initialState={existingDraft ?? hydratedState}
         initialTitle="Test"

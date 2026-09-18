@@ -8,6 +8,7 @@ import {
   createPrototypeBlock,
   createUploadedPrototypeBlock,
   initialPrototypeBlocks,
+  type DocumentAssetKind,
   type EditorPrototypeBlock,
   type EditorPrototypeBlockType,
 } from "@/components/editor-prototype/editor-prototype-types";
@@ -15,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { CourseAssetKind } from "@/lib/course-asset-id";
 import { useUploadCourseAssetMutation } from "@/lib/course-queries";
 import type { Locale } from "@/lib/i18n";
 
@@ -35,7 +35,7 @@ const blockTypeLabels: Record<EditorPrototypeBlockType, string> = {
   video: "Video",
 };
 
-function isUploadedBlockType(type: EditorPrototypeBlockType): type is CourseAssetKind {
+function isUploadedBlockType(type: EditorPrototypeBlockType): type is DocumentAssetKind {
   return type === "image" || type === "video" || type === "audio";
 }
 
@@ -126,7 +126,7 @@ export function EditorPrototype({
     });
   }
 
-  async function insertUploadedBlock(kind: CourseAssetKind, index: number) {
+  async function insertUploadedBlock(kind: DocumentAssetKind, index: number) {
     if (!courseId) {
       return;
     }

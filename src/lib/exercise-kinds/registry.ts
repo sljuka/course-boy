@@ -4,6 +4,7 @@ import type { Locale } from "../i18n";
 import { missingWordExerciseRuntime } from "./missing-word";
 import { multipleChoiceExerciseRuntime } from "./multiple-choice";
 import { numericExerciseRuntime } from "./numeric";
+import { regionPickerExerciseRuntime } from "./region-picker";
 import type { ExerciseKindRuntime } from "./types";
 import { wordTypesExerciseRuntime } from "./word-types";
 
@@ -18,6 +19,7 @@ const EXERCISE_KIND_RUNTIMES: Record<ExerciseKind, ExerciseKindRuntime<any, any>
   "missing-word": missingWordExerciseRuntime,
   "multiple-choice": multipleChoiceExerciseRuntime,
   numeric: numericExerciseRuntime,
+  "region-picker": regionPickerExerciseRuntime,
   "word-types": wordTypesExerciseRuntime,
 };
 
@@ -56,6 +58,7 @@ export function resolveSharedTestForPlayer(
   sharedTest: SharedTestDefinition,
   requestedLocales: Locale[],
   testId: string,
+  courseId: string,
 ): CourseTest {
   return {
     exercises: sharedTest.exercises.map((exercise, index) => {
@@ -82,6 +85,7 @@ export function resolveSharedTestForPlayer(
 
       return getExerciseKindRuntime(kind).resolveForPlayer(exercise, {
         answerPlaceholder,
+        courseId,
         hint,
         id,
         prompt,

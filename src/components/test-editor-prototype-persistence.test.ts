@@ -7,6 +7,7 @@ import {
 import type {
   MultipleChoiceTestExercise,
   NumericTestExercise,
+  RegionPickerTestExercise,
   WordTypeTestExercise,
 } from "@/components/test-editor-prototype-types"
 import type { SharedTestExerciseDefinition } from "@/lib/course-package"
@@ -151,6 +152,36 @@ describe("exercise kind persistence", () => {
       "Mike{{n}} is jumping{{v}} over the fence{{n}}.",
     )
     expect(hydrated.wordTypes).toEqual(exercise.wordTypes)
+  })
+
+  it("round-trips a region-picker exercise", () => {
+    const exercise: RegionPickerTestExercise = {
+      correctShapeIds: ["Norway", "Sweden"],
+      id: "ex_rp",
+      kind: "region-picker",
+      locales: { en: { hint: "Think peninsula", prompt: "Mark Scandinavia" } },
+      svgAssetFilename: "europe-abc123.svg",
+      tagIds: ["geography"],
+    }
+
+    const shared = toSharedTestExerciseDefinition(exercise)
+
+    expect(shared).toMatchObject({
+      correctShapeIds: ["Norway", "Sweden"],
+      kind: "region-picker",
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+    })
+
+    const hydrated = fromSharedTestExerciseDefinition(shared) as RegionPickerTestExercise
+
+    expect(hydrated.kind).toBe("region-picker")
+    expect(hydrated.correctShapeIds).toEqual(["Norway", "Sweden"])
+    expect(hydrated.svgAssetFilename).toBe("europe-abc123.svg")
+    expect(hydrated.locales.en).toEqual({
+      hint: "Think peninsula",
+      prompt: "Mark Scandinavia",
+    })
   })
 
   it("defaults a missing `kind` (pre-multiple-choice on-disk files) to numeric", () => {

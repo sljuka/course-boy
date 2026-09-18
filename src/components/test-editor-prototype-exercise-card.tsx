@@ -37,6 +37,7 @@ export function ExercisePromptCard({
   canMoveDown,
   canMoveUp,
   collapsed,
+  courseId,
   descriptiveTags,
   exercise,
   locale,
@@ -51,6 +52,7 @@ export function ExercisePromptCard({
   canMoveDown: boolean;
   canMoveUp: boolean;
   collapsed: boolean;
+  courseId: string;
   descriptiveTags: CourseTagDefinition[];
   exercise: TestExercise;
   locale: Locale;
@@ -240,6 +242,7 @@ export function ExercisePromptCard({
           <AccordionContent>
             <div className="flex flex-col gap-4">
               <FieldsComponent
+                courseId={courseId}
                 exercise={exercise}
                 locale={locale}
                 onChange={(updater) => onExerciseChange(exercise.id, updater)}
