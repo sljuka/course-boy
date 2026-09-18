@@ -4,6 +4,7 @@ import {
   createExercise,
   fromShared,
   setSvgAsset,
+  setViewBox,
   toggleCorrectShape,
   toShared,
   validate,
@@ -123,5 +124,24 @@ describe("toShared / fromShared round trip", () => {
       hint: "Think peninsula",
       prompt: "Mark Scandinavia",
     });
+  });
+
+  it("round-trips a saved viewBox, and omits it once reset", () => {
+    const exercise = setViewBox(
+      { ...baseExercise(), svgAssetFilename: "europe.svg" },
+      "1000 2000 3000 4000",
+    );
+
+    const shared = toShared(exercise);
+
+    expect(shared.viewBox).toBe("1000 2000 3000 4000");
+
+    const hydrated = fromShared(shared);
+
+    expect(hydrated.viewBox).toBe("1000 2000 3000 4000");
+
+    const reset = setViewBox(hydrated, undefined);
+
+    expect(toShared(reset).viewBox).toBeUndefined();
   });
 });

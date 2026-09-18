@@ -107,6 +107,25 @@ const COMMANDS = {
     console.log('pressed', key)
   },
 
+  // Real OS-level wheel input via Playwright's mouse API (not a synthetic
+  // DOM WheelEvent) — args: "x y deltaY"
+  async wheel(args) {
+    if (!need()) return
+    const [x, y, deltaY] = args.split(' ').map(Number)
+    await harness.page.mouse.move(x, y)
+    await harness.page.mouse.wheel(0, deltaY)
+    console.log('wheel', x, y, deltaY)
+  },
+
+  // Real OS-level click at page coordinates via Playwright's mouse API —
+  // args: "x y"
+  async 'click-at'(args) {
+    if (!need()) return
+    const [x, y] = args.split(' ').map(Number)
+    await harness.page.mouse.click(x, y)
+    console.log('click-at', x, y)
+  },
+
   // Call the preload bridge: renderer -> preload -> ipcMain -> filesystem.
   async ipc(expr) {
     if (!need()) return

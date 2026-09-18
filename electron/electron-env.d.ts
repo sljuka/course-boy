@@ -65,6 +65,9 @@ interface Window {
     uploadAsset: (
       input: import('../src/lib/course-package').UploadCourseAssetInput,
     ) => Promise<import('../src/lib/course-package').UploadCourseAssetResult>
+    applySvgPreset: (
+      input: import('../src/lib/course-package').ApplyCourseSvgPresetInput,
+    ) => Promise<import('../src/lib/course-package').ApplyCourseSvgPresetResult>
     getVersionHistory: (
       courseId: string,
     ) => Promise<import('../src/lib/course-package').CourseVersionHistory | null>

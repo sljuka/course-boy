@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Ellipsis, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Ellipsis, Plus, Tag as TagIcon, Trash2, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -21,9 +21,13 @@ import {
 } from "@/components/ui/combobox";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
@@ -231,6 +235,28 @@ export function ExercisePromptCard({
                   Move down
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <TagIcon aria-hidden="true" className="h-4 w-4" />
+                    Tags
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {descriptiveTags.length === 0 ? (
+                      <DropdownMenuItem disabled>No descriptive tags defined yet</DropdownMenuItem>
+                    ) : (
+                      descriptiveTags.map((tag) => (
+                        <DropdownMenuCheckboxItem
+                          checked={exercise.tagIds.includes(tag.id)}
+                          key={tag.id}
+                          onCheckedChange={() => onToggleTag(exercise.id, tag.id)}
+                        >
+                          <Tag color={tag.color}>{tag.label}</Tag>
+                        </DropdownMenuCheckboxItem>
+                      ))
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onDelete(exercise.id)} variant="destructive">
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
                   Delete
@@ -239,7 +265,7 @@ export function ExercisePromptCard({
               </DropdownMenu>
             </div>
           </div>
-          <AccordionContent>
+          <AccordionContent keepMounted>
             <div className="flex flex-col gap-4">
               <FieldsComponent
                 courseId={courseId}

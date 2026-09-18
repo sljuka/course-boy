@@ -1,5 +1,7 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type {
+  ApplyCourseSvgPresetInput,
+  ApplyCourseSvgPresetResult,
   CreateCourseDraftInput,
   CreateCourseDraftResult,
   CreateCourseLessonInput,
@@ -88,6 +90,9 @@ contextBridge.exposeInMainWorld('courses', {
   },
   uploadAsset(input: UploadCourseAssetInput) {
     return ipcRenderer.invoke('courses:upload-asset', input) as Promise<UploadCourseAssetResult>
+  },
+  applySvgPreset(input: ApplyCourseSvgPresetInput) {
+    return ipcRenderer.invoke('courses:apply-svg-preset', input) as Promise<ApplyCourseSvgPresetResult>
   },
   getVersionHistory(courseId: string) {
     return ipcRenderer.invoke('courses:get-version-history', courseId) as Promise<CourseVersionHistory | null>

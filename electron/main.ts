@@ -5,6 +5,7 @@ import Store from 'electron-store'
 import { getCreatorKey, importCourse, publishCourse, spawnBareWorker } from './bare-worker'
 import { getCourseDetails, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
+  applyCourseSvgPreset,
   createLocalCourseDraft,
   createLocalCourseLesson,
   createLocalCourseSection,
@@ -24,6 +25,7 @@ import {
 } from './course-paths'
 import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
 import type {
+  ApplyCourseSvgPresetInput,
   CreateCourseDraftInput,
   CreateCourseLessonInput,
   CreateCourseSectionInput,
@@ -196,6 +198,10 @@ ipcMain.handle('courses:remove', (_event, courseId: string) => {
 
 ipcMain.handle('courses:upload-asset', (_event, input: UploadCourseAssetInput) => {
   return uploadLocalCourseAsset(input)
+})
+
+ipcMain.handle('courses:apply-svg-preset', (_event, input: ApplyCourseSvgPresetInput) => {
+  return applyCourseSvgPreset(input)
 })
 
 ipcMain.handle('courses:get-version-history', (_event, courseId: string) => {

@@ -79,7 +79,10 @@ export function TestEditorPrototype({
       return;
     }
 
-    setCollapsedExerciseIds([]);
+    // Opening an existing test starts with every exercise collapsed — with
+    // several exercises already authored, an all-expanded accordion is a
+    // wall of content before the teacher has chosen what to look at.
+    setCollapsedExerciseIds(initialState.exercises.map((exercise) => exercise.id));
     setState(initialState);
     hasInitializedExternalStateRef.current = true;
   }, [initialState]);
@@ -232,6 +235,10 @@ export function TestEditorPrototype({
       activeExerciseId: draftExercise.id,
       exercises: [...currentState.exercises, draftExercise],
     }));
+    // The exercise just moved from the draft form into the accordion list
+    // alongside every other already-authored exercise — it should land there
+    // collapsed like its siblings, not stay expanded just because it's new.
+    setCollapsedExerciseIds((currentIds) => [...currentIds, draftExercise.id]);
     setIsAddingExercise(false);
     setDraftExercise(null);
   }
@@ -329,7 +336,7 @@ export function TestEditorPrototype({
             <Textarea
               className="min-h-0 resize-none overflow-hidden text-base font-medium text-muted-foreground md:text-base"
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Add a short description"
+              placeholder="No description"
               ref={descriptionRef}
               rows={1}
               value={state.description}

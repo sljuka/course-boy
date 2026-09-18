@@ -113,6 +113,7 @@ type RegionPickerTestExercise = {
   locales: Record<string, RegionPickerExerciseLocaleContent>;
   svgAssetFilename: string;
   tagIds: string[];
+  viewBox?: string;
 };
 
 type TestExercise =

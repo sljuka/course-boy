@@ -231,6 +231,32 @@ describe("isSharedTestDefinition", () => {
     expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
   });
 
+  it("accepts a region-picker exercise with a well-formed viewBox", () => {
+    const exercise = {
+      correctShapeIds: ["Norway"],
+      kind: "region-picker",
+      locales: { en: { prompt: "Mark Scandinavia" } },
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+      viewBox: "1000 2000 3000 4000",
+    };
+
+    expect(isSharedTestDefinition({ exercises: [exercise], template: "" })).toBe(true);
+  });
+
+  it("rejects a region-picker exercise with a malformed viewBox", () => {
+    const invalidExercise = {
+      correctShapeIds: ["Norway"],
+      kind: "region-picker",
+      locales: { en: { prompt: "Mark Scandinavia" } },
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+      viewBox: "not a viewbox",
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
   it("accepts a valid word-types exercise", () => {
     const wordTypeExercise = {
       kind: "word-types",

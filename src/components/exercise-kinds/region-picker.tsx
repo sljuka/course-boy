@@ -49,6 +49,7 @@ function AnswerComponent({
         }
         selectedShapeIds={selectedShapeIds}
         svgUrl={exercise.svgAssetUrl}
+        viewBox={exercise.viewBox}
       />
     </div>
   );

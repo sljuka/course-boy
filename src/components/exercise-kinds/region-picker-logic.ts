@@ -67,6 +67,22 @@ export function setSvgAsset(
   return { ...exercise, correctShapeIds: [], svgAssetFilename };
 }
 
+export function setViewBox(
+  exercise: RegionPickerTestExercise,
+  viewBox: string | undefined,
+): RegionPickerTestExercise {
+  return { ...exercise, viewBox };
+}
+
+// Full reset, unlike `setSvgAsset` above: also drops `viewBox`, since a crop
+// expressed in the old file's coordinate space has no meaning once there is
+// no file at all.
+export function clearSvgAsset(
+  exercise: RegionPickerTestExercise,
+): RegionPickerTestExercise {
+  return { ...exercise, correctShapeIds: [], svgAssetFilename: "", viewBox: undefined };
+}
+
 export function toggleCorrectShape(
   exercise: RegionPickerTestExercise,
   shapeId: string,
@@ -117,6 +133,7 @@ export function toShared(
     locales: filterValidLocaleEntries(exercise.locales),
     svgAssetFilename: exercise.svgAssetFilename,
     tags: exercise.tagIds,
+    viewBox: exercise.viewBox,
   };
 }
 
@@ -135,5 +152,6 @@ export function fromShared(
     ),
     svgAssetFilename: definition.svgAssetFilename,
     tagIds: definition.tags,
+    viewBox: definition.viewBox,
   };
 }

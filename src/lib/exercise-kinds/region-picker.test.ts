@@ -56,6 +56,32 @@ describe("region-picker isValid", () => {
       }),
     ).toBe(false);
   });
+
+  it("accepts a definition with a well-formed viewBox", () => {
+    expect(
+      regionPickerExerciseRuntime.isValid({
+        correctShapeIds: ["Norway"],
+        kind: "region-picker",
+        locales: { en: { prompt: "Mark Scandinavia" } },
+        svgAssetFilename: "europe-abc123.svg",
+        tags: ["geography"],
+        viewBox: "1000 2000 3000 4000",
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects a definition with a malformed viewBox", () => {
+    expect(
+      regionPickerExerciseRuntime.isValid({
+        correctShapeIds: ["Norway"],
+        kind: "region-picker",
+        locales: { en: { prompt: "Mark Scandinavia" } },
+        svgAssetFilename: "europe-abc123.svg",
+        tags: ["geography"],
+        viewBox: "not a viewbox",
+      }),
+    ).toBe(false);
+  });
 });
 
 describe("region-picker resolveForPlayer", () => {
@@ -78,6 +104,47 @@ describe("region-picker resolveForPlayer", () => {
 
     expect(resolved.svgAssetUrl).toBe("matko-asset://my-course/europe-abc123.svg");
     expect(resolved.correctShapeIds).toEqual(["Norway"]);
+  });
+
+  it("passes a saved viewBox through unchanged", () => {
+    const resolved = regionPickerExerciseRuntime.resolveForPlayer(
+      {
+        correctShapeIds: ["Norway"],
+        kind: "region-picker",
+        locales: { en: { prompt: "Mark Norway" } },
+        svgAssetFilename: "europe-abc123.svg",
+        tags: [],
+        viewBox: "1000 2000 3000 4000",
+      },
+      {
+        courseId: "my-course",
+        id: "ex_1",
+        prompt: "Mark Norway",
+        requestedLocales: ["en"],
+      },
+    );
+
+    expect(resolved.viewBox).toBe("1000 2000 3000 4000");
+  });
+
+  it("leaves viewBox undefined when the exercise has no saved crop", () => {
+    const resolved = regionPickerExerciseRuntime.resolveForPlayer(
+      {
+        correctShapeIds: ["Norway"],
+        kind: "region-picker",
+        locales: { en: { prompt: "Mark Norway" } },
+        svgAssetFilename: "europe-abc123.svg",
+        tags: [],
+      },
+      {
+        courseId: "my-course",
+        id: "ex_1",
+        prompt: "Mark Norway",
+        requestedLocales: ["en"],
+      },
+    );
+
+    expect(resolved.viewBox).toBeUndefined();
   });
 });
 

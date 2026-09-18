@@ -162,6 +162,10 @@ export type RegionPickerCourseExercise = {
   // course id.
   svgAssetUrl: string;
   correctShapeIds: string[];
+  // A teacher-chosen crop of the diagram ("minX minY width height", the SVG
+  // `viewBox` attribute format) — absent means show the file's own native
+  // viewBox. Not localized, same as the diagram itself.
+  viewBox?: string;
 };
 
 export type CourseExercise =
@@ -241,6 +245,7 @@ export type SharedRegionPickerTestExerciseDefinition = {
   // as word-types' top-level `wordTypes`.
   svgAssetFilename: string;
   correctShapeIds: string[];
+  viewBox?: string;
   tags: string[];
 };
 
@@ -421,6 +426,16 @@ export type UploadCourseAssetResult = {
   mimeType: string;
   path: string;
 } | null;
+
+export type ApplyCourseSvgPresetInput = {
+  courseId: string;
+  presetId: string;
+};
+
+export type ApplyCourseSvgPresetResult = {
+  mimeType: string;
+  path: string;
+};
 
 export type CutCourseVersionInput = {
   courseId: string;

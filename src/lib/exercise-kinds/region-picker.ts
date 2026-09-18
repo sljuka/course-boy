@@ -13,6 +13,8 @@ import {
   type ResolveForPlayerContext,
 } from "./types";
 
+const VIEW_BOX_PATTERN = /^-?\d+(\.\d+)?(\s+-?\d+(\.\d+)?){3}$/;
+
 function isValid(
   exercise: Record<string, unknown>,
 ): exercise is SharedRegionPickerTestExerciseDefinition {
@@ -23,6 +25,13 @@ function isValid(
   if (
     typeof exercise.svgAssetFilename !== "string" ||
     exercise.svgAssetFilename.length === 0
+  ) {
+    return false;
+  }
+
+  if (
+    typeof exercise.viewBox !== "undefined" &&
+    (typeof exercise.viewBox !== "string" || !VIEW_BOX_PATTERN.test(exercise.viewBox))
   ) {
     return false;
   }
@@ -65,6 +74,7 @@ function resolveForPlayer(
     prompt: context.prompt,
     svgAssetUrl: matkoAssetUrl(context.courseId, shared.svgAssetFilename),
     tags: shared.tags,
+    viewBox: shared.viewBox,
   };
 }
 

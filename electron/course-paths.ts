@@ -3,6 +3,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { app, dialog } from "electron";
 import type {
+  ApplyCourseSvgPresetInput,
+  ApplyCourseSvgPresetResult,
   ContentRating,
   CreateCourseDraftInput,
   CreateCourseLessonInput,
@@ -29,6 +31,7 @@ import {
   assetMimeTypesByExtension,
   createAssetFilename,
 } from "../src/lib/course-asset-id";
+import { regionPickerSvgPresets } from "../src/lib/region-picker-svg-presets";
 import { assertCoursePackageIsPublishable, isSharedTestDefinition } from "./course-registry";
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import { locales, type Locale } from "../src/lib/i18n";
@@ -64,6 +67,20 @@ function normalizeContentRating(value: unknown): ContentRating {
 
 function getBundledCoursesRoot(): string {
   return path.join(process.env.APP_ROOT, "courses");
+}
+
+// Mirrors `getBundledCoursesRoot` — bundled, read-only source files shipped
+// alongside the app, copied into a course's own `assets/` directory on
+// selection so the resulting course stays self-contained (see
+// `applyCourseSvgPreset` below).
+function getBundledSvgPresetPath(presetId: string): string {
+  const preset = regionPickerSvgPresets.find((candidate) => candidate.id === presetId);
+
+  if (!preset) {
+    throw new Error(`Unknown SVG preset "${presetId}"`);
+  }
+
+  return path.join(process.env.APP_ROOT, "presets", "region-picker", preset.filename);
 }
 
 export function getLocalCoursesRoot(): string {
@@ -1489,6 +1506,44 @@ export async function uploadLocalCourseAsset(
   });
 
   return { mimeType, path: filename };
+}
+
+// Same shape as `uploadLocalCourseAsset` above, minus the native file dialog:
+// the source is one of the app's own bundled maps (`regionPickerSvgPresets`)
+// rather than a file the teacher picks, but the result — a copy landing in
+// the course's own `assets/` directory — is identical, so the exercise ends
+// up referencing a real course asset like any upload and the course stays
+// portable.
+export async function applyCourseSvgPreset(
+  input: ApplyCourseSvgPresetInput,
+): Promise<ApplyCourseSvgPresetResult> {
+  const sourcePath = getBundledSvgPresetPath(input.presetId);
+
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const assetsDirectoryPath = path.join(courseDirectoryPath, "assets");
+
+  await fs.mkdir(assetsDirectoryPath, { recursive: true });
+
+  const filename = createAssetFilename(path.basename(sourcePath));
+
+  await copyFileAtomic(sourcePath, path.join(assetsDirectoryPath, filename));
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+
+  return { mimeType: assetMimeTypesByExtension[".svg"], path: filename };
 }
 
 export async function cutLocalCourseVersion(

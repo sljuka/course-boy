@@ -1,6 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import type {
+  ApplyCourseSvgPresetInput,
+  ApplyCourseSvgPresetResult,
   CourseDetails,
   CourseSummary,
   CourseVersionHistory,
@@ -165,6 +167,12 @@ export function useSectionTestDraftQuery(input: GetSectionTestDraftInput | null)
 export function useUploadCourseAssetMutation() {
   return useMutation<UploadCourseAssetResult, Error, UploadCourseAssetInput>({
     mutationFn: (input) => window.courses.uploadAsset(input),
+  });
+}
+
+export function useApplySvgPresetMutation() {
+  return useMutation<ApplyCourseSvgPresetResult, Error, ApplyCourseSvgPresetInput>({
+    mutationFn: (input) => window.courses.applySvgPreset(input),
   });
 }
 
