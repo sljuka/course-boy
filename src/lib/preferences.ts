@@ -8,10 +8,13 @@ export type Category =
 
 export type UserRole = 'student' | 'teacher'
 
+export type Persona = 'course-boy' | 'course-girl' | 'course-bot' | 'course-monster'
+
 export type UserPreferences = {
   category?: Category
   hasAcknowledgedCreatorKey?: boolean
   locale?: Locale
   nickname?: string
+  persona?: Persona
   role?: UserRole
 }

@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
@@ -10,11 +11,15 @@ const roleOptions: UserRole[] = ['student', 'teacher']
 
 export const RolePage = () => {
   const navigate = useNavigate()
-  const { locale, role, setLocale, setRole, submittedName } = useAppState()
+  const { locale, persona, role, setLocale, setRole, submittedName } = useAppState()
   const { t } = useTranslation()
 
   if (!submittedName) {
     return <Navigate replace to="/onboarding" />
+  }
+
+  if (!persona) {
+    return <Navigate replace to="/onboarding/persona" />
   }
 
   function handleSelect(nextRole: UserRole) {
@@ -26,6 +31,15 @@ export const RolePage = () => {
     <div className="space-y-5">
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2 pr-2">
+          <Button
+            className="-ml-2 h-auto gap-1 px-2 py-1 text-muted-foreground"
+            onClick={() => navigate('/onboarding/persona')}
+            type="button"
+            variant="ghost"
+          >
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+            {t('back')}
+          </Button>
           <h2 className="text-xl font-semibold text-foreground">
             {t('roleTitle', { name: submittedName })}
           </h2>

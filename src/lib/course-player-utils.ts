@@ -7,7 +7,8 @@ export type ExerciseInstance =
   | { kind: "word-types" }
   | { kind: "missing-word" }
   | { kind: "region-picker" }
-  | { kind: "region-marker" };
+  | { kind: "region-marker" }
+  | { kind: "region-label" };
 
 export function interpolateTemplate(
   template: string,

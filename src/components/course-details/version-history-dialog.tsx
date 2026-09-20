@@ -34,12 +34,20 @@ type VersionHistoryDialogProps = {
   courseId: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  // "editor" (the drafts editor's "Commit new version" button) gets the
+  // full authoring workflow — cut, revert, publish. "history" (the
+  // read-only course-details page's "Version history" button) only ever
+  // looks at cut versions already on disk, so it's revert-only: cutting
+  // and publishing are authoring actions that belong in the editor, and a
+  // bundled course (no `draft/` to speak of) can't do either anyway.
+  mode: "editor" | "history";
 };
 
 export function VersionHistoryDialog({
   courseId,
   onOpenChange,
   open,
+  mode,
 }: VersionHistoryDialogProps) {
   const { t } = useTranslation();
   const [releaseType, setReleaseType] = useState<ReleaseType>("patch");
@@ -47,10 +55,15 @@ export function VersionHistoryDialog({
   const cutMutation = useCutCourseVersionMutation();
   const revertMutation = useRevertCourseDraftMutation();
   const publishMutation = usePublishCourseVersionMutation();
+  const canCut = mode === "editor";
+  const canPublish = mode === "editor";
 
   const isBusy =
-    cutMutation.isPending || revertMutation.isPending || publishMutation.isPending;
-  const activeError = cutMutation.error ?? revertMutation.error ?? publishMutation.error;
+    (canCut && cutMutation.isPending) || revertMutation.isPending || (canPublish && publishMutation.isPending);
+  const activeError =
+    (canCut ? cutMutation.error : undefined) ??
+    revertMutation.error ??
+    (canPublish ? publishMutation.error : undefined);
 
   return (
     <Dialog
@@ -75,32 +88,34 @@ export function VersionHistoryDialog({
             })}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex items-end gap-2">
-          <div className="flex flex-1 flex-col gap-1.5">
-            <Label>{t("courseVersions.releaseTypeLabel")}</Label>
-            <Select
-              onValueChange={(value) => setReleaseType(value as ReleaseType)}
-              value={releaseType}
+        {canCut && (
+          <div className="flex items-end gap-2">
+            <div className="flex flex-1 flex-col gap-1.5">
+              <Label>{t("courseVersions.releaseTypeLabel")}</Label>
+              <Select
+                onValueChange={(value) => setReleaseType(value as ReleaseType)}
+                value={releaseType}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="patch">{t("courseVersions.releaseTypePatch")}</SelectItem>
+                  <SelectItem value="minor">{t("courseVersions.releaseTypeMinor")}</SelectItem>
+                  <SelectItem value="major">{t("courseVersions.releaseTypeMajor")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              disabled={cutMutation.isPending}
+              onClick={() => cutMutation.mutate({ courseId, releaseType })}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="patch">{t("courseVersions.releaseTypePatch")}</SelectItem>
-                <SelectItem value="minor">{t("courseVersions.releaseTypeMinor")}</SelectItem>
-                <SelectItem value="major">{t("courseVersions.releaseTypeMajor")}</SelectItem>
-              </SelectContent>
-            </Select>
+              {cutMutation.isPending
+                ? t("courseVersions.cutting")
+                : t("courseVersions.cutButton")}
+            </Button>
           </div>
-          <Button
-            disabled={cutMutation.isPending}
-            onClick={() => cutMutation.mutate({ courseId, releaseType })}
-          >
-            {cutMutation.isPending
-              ? t("courseVersions.cutting")
-              : t("courseVersions.cutButton")}
-          </Button>
-        </div>
+        )}
         {activeError && (
           <Alert variant="destructive">
             <AlertTitle>{t("courseVersions.actionErrorTitle")}</AlertTitle>
@@ -111,9 +126,11 @@ export function VersionHistoryDialog({
           {history?.versions.length ? (
             history.versions.map((entry) => (
               <VersionHistoryRow
+                canPublish={canPublish}
                 entry={entry}
                 isActive={entry.version === history.currentDraftVersion}
                 isPublishPending={
+                  canPublish &&
                   publishMutation.isPending &&
                   publishMutation.variables?.version === entry.version
                 }

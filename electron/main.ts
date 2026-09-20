@@ -63,11 +63,13 @@ protocol.registerSchemesAsPrivileged([
 
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
 type UserRole = 'student' | 'teacher'
+type Persona = 'course-boy' | 'course-girl' | 'course-bot' | 'course-monster'
 type UserPreferences = {
   category?: Category
   hasAcknowledgedCreatorKey?: boolean
   locale?: Locale
   nickname?: string
+  persona?: Persona
   role?: UserRole
 }
 
@@ -118,6 +120,10 @@ ipcMain.handle(
       preferencesStore.set('role', preferences.role)
     }
 
+    if (typeof preferences.persona === 'string') {
+      preferencesStore.set('persona', preferences.persona)
+    }
+
     if (typeof preferences.hasAcknowledgedCreatorKey === 'boolean') {
       preferencesStore.set('hasAcknowledgedCreatorKey', preferences.hasAcknowledgedCreatorKey)
     }
@@ -130,6 +136,7 @@ ipcMain.handle('preferences:reset-onboarding', () => {
   preferencesStore.delete('nickname')
   preferencesStore.delete('category')
   preferencesStore.delete('role')
+  preferencesStore.delete('persona')
 
   return preferencesStore.store
 })

@@ -95,9 +95,25 @@ describe('onboarding', () => {
     expect(continueAfter?.disabled).toBe(false)
   })
 
-  it('advances through the role step into the app', async () => {
+  it('advances through the persona and role steps into the app', async () => {
     const continueIdx = await findIndex(harness.page, (e) => e.text === 'Continue')
     await clickIndex(harness.page, continueIdx)
+    await waitForUrl(harness.page, '#/onboarding/persona')
+    expect(harness.page.url()).toContain('#/onboarding/persona')
+
+    // Selecting a persona's radio reveals its avatar image before the user
+    // continues — each `RadioGroupItem` carries an `aria-label` since the
+    // radio itself has no text content.
+    const courseBotRadioIdx = await findIndex(
+      harness.page,
+      (e) => e.role === 'radio' && e.ariaLabel === 'Course bot',
+    )
+    expect(courseBotRadioIdx).toBeGreaterThanOrEqual(0)
+    await clickIndex(harness.page, courseBotRadioIdx)
+
+    const personaContinueIdx = await findIndex(harness.page, (e) => e.text === 'Continue')
+    expect(personaContinueIdx).toBeGreaterThanOrEqual(0)
+    await clickIndex(harness.page, personaContinueIdx)
     await waitForUrl(harness.page, '#/onboarding/role')
     expect(harness.page.url()).toContain('#/onboarding/role')
 

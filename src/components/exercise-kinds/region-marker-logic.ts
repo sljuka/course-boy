@@ -1,5 +1,5 @@
 import type { SharedRegionMarkerTestExerciseDefinition } from "@/lib/course-package";
-import { LIGHT_COLOR_OPTIONS } from "@/lib/color-options";
+import { pickUnusedLightColor } from "@/lib/color-options";
 import type { Locale } from "@/lib/i18n";
 
 import type {
@@ -18,24 +18,12 @@ function createExerciseLocaleMap(locales: Locale[]) {
   );
 }
 
-// Grey ("Stone") is excluded from the pool entirely: most diagrams a teacher
-// picks (e.g. the bundled Europe map) already render their regions in light
-// grey by default, so a region assigned this color would look unmarked even
-// once correctly colored.
-const REGION_MARKER_COLOR_POOL = LIGHT_COLOR_OPTIONS.filter(
-  (option) => option.name !== "Stone",
-);
-
 // Prefers a color not already used by another region in this exercise, so
 // the legend stays unambiguous (two regions sharing a color would show two
 // identically-colored tags with different labels) — falls back to a fully
 // random pick once every color in the pool is already in use.
 function pickRegionColor(usedColors: string[]): string {
-  const used = new Set(usedColors);
-  const unused = REGION_MARKER_COLOR_POOL.filter((option) => !used.has(option.hex));
-  const pool = unused.length > 0 ? unused : REGION_MARKER_COLOR_POOL;
-
-  return pool[Math.floor(Math.random() * pool.length)].hex;
+  return pickUnusedLightColor(usedColors);
 }
 
 export function createExercise(locales: Locale[]): RegionMarkerTestExercise {

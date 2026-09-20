@@ -132,14 +132,16 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
               />
               <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
             </Tooltip>
-            <Button
-              onClick={() => setIsVersionHistoryOpen(true)}
-              size="sm"
-              variant="ghost"
-            >
-              <History aria-hidden="true" className="h-4 w-4" />
-              {t("courseVersions.openButton")}
-            </Button>
+            {resolvedCourse.distribution === "local" && (
+              <Button
+                onClick={() => setIsVersionHistoryOpen(true)}
+                size="sm"
+                variant="ghost"
+              >
+                <History aria-hidden="true" className="h-4 w-4" />
+                {t("courseVersions.openButton")}
+              </Button>
+            )}
           </div>
         }
         top={
@@ -188,6 +190,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       ))}
       <VersionHistoryDialog
         courseId={courseId}
+        mode="history"
         onOpenChange={setIsVersionHistoryOpen}
         open={isVersionHistoryOpen}
       />

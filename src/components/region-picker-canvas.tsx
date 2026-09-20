@@ -93,15 +93,21 @@ function isFiniteBox(box: ViewBoxBox): boolean {
 
 export function RegionPickerCanvas({
   isAdjustingView = false,
+  onLabelOffsetChange,
   onSelectedShapesOutOfView,
   onToggleShape,
   onViewBoxChange,
   selectedShapeIds = [],
   shapeColors,
+  shapeLabelOffsets,
+  shapeLabels,
   svgUrl,
   viewBox,
 }: {
   isAdjustingView?: boolean;
+  // Present only for the teacher-facing (draggable) canvas — its absence is
+  // also what keeps the student-facing labels non-interactive.
+  onLabelOffsetChange?: (shapeId: string, offset: { dx: number; dy: number }) => void;
   onSelectedShapesOutOfView?: (updater: (current: string[]) => string[]) => void;
   onToggleShape: (shapeId: string) => void;
   onViewBoxChange?: (viewBox: string) => void;
@@ -112,12 +118,23 @@ export function RegionPickerCanvas({
   // own distinct color rather than one shared highlight. The two are
   // independent: a kind only ever passes one of them.
   shapeColors?: Record<string, string>;
+  // A per-shape manual nudge (in root-SVG viewBox units) added to that
+  // shape's computed bounding-box center — see the label effect below for
+  // why a shape's true center isn't always inside its own fill.
+  shapeLabelOffsets?: Record<string, { dx: number; dy: number }>;
+  // A per-shape text label (shape id -> display text) drawn centered on top
+  // of it — region-label uses this to show each region's sequence number.
+  // Independent of `shapeColors`; a kind can pass either, both, or neither.
+  shapeLabels?: Record<string, string>;
   svgUrl: string;
   // A teacher-chosen crop; `undefined` shows the file's own native viewBox.
   viewBox?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const previousShapeColorIdsRef = useRef<Set<string>>(new Set());
+  // Cached so a re-render only updates existing <text> elements' position/
+  // content instead of tearing every one down and recreating it.
+  const labelElementsByIdRef = useRef<Map<string, SVGTextElement>>(new Map());
   // A shape's original `fill` (its own author-set color, read once before we
   // ever override it) — see the effect below for why this can't just be
   // `removeProperty`d back.
@@ -162,9 +179,13 @@ export function RegionPickerCanvas({
   const onToggleShapeRef = useRef(onToggleShape);
   const onViewBoxChangeRef = useRef(onViewBoxChange);
   const onSelectedShapesOutOfViewRef = useRef(onSelectedShapesOutOfView);
+  const onLabelOffsetChangeRef = useRef(onLabelOffsetChange);
+  const shapeLabelOffsetsRef = useRef(shapeLabelOffsets);
   onToggleShapeRef.current = onToggleShape;
   onViewBoxChangeRef.current = onViewBoxChange;
   onSelectedShapesOutOfViewRef.current = onSelectedShapesOutOfView;
+  onLabelOffsetChangeRef.current = onLabelOffsetChange;
+  shapeLabelOffsetsRef.current = shapeLabelOffsets;
 
   useEffect(() => {
     let cancelled = false;
@@ -176,6 +197,7 @@ export function RegionPickerCanvas({
     // same-id shape in a completely different file.
     previousShapeColorIdsRef.current = new Set();
     originalFillByIdRef.current = new Map();
+    labelElementsByIdRef.current = new Map();
 
     fetch(svgUrl)
       .then((response) => {
@@ -455,6 +477,172 @@ export function RegionPickerCanvas({
 
     previousShapeColorIdsRef.current = currentIds;
   }, [shapeColors, sanitizedMarkup]);
+
+  // Draws a `<text>` centered on each labeled shape — region-label's
+  // sequence numbers. `getBBox()` alone gives the shape's bounding box in
+  // its own *local* coordinate space, before its own `transform` attribute
+  // is applied (some bundled maps, like the Africa preset, put a
+  // `transform="matrix(...)"` on every individual shape). `getCTM()` does
+  // not map straight into the root `<svg>`'s viewBox coordinate system,
+  // though — it maps into the SVG's *rendered pixel* viewport, which only
+  // matches the viewBox when the two happen to share dimensions. Dividing
+  // out the root's own `getCTM()` cancels that viewBox-to-pixel scaling,
+  // leaving just the shape's transform chain relative to the root's own
+  // user space — the same space a `<text>` appended as the root's direct
+  // child draws in. That's also why panning/zooming (a CSS transform on the
+  // wrapper div, never a change to the SVG's own coordinates) doesn't need
+  // any special handling here: the label is real SVG content, so it scales
+  // and pans exactly like every shape around it.
+  //
+  // A shape's bounding-box center isn't always inside its own fill (a thin
+  // or concave region, e.g. Norway's northern sliver, can center the box
+  // over empty space) — `shapeLabelOffsets` is a per-shape manual nudge, in
+  // this same root user-space, that the teacher sets by dragging (see the
+  // pointer handlers below, only attached when `onLabelOffsetChange` is
+  // provided — the student-facing canvas leaves labels non-interactive).
+  useEffect(() => {
+    const container = containerRef.current;
+    const svg = container?.querySelector("svg");
+
+    if (!container || !svg || !(svg instanceof SVGSVGElement) || !shapeLabels) {
+      return;
+    }
+
+    const currentIds = new Set(Object.keys(shapeLabels));
+
+    for (const [id, textElement] of labelElementsByIdRef.current) {
+      if (!currentIds.has(id)) {
+        textElement.remove();
+        labelElementsByIdRef.current.delete(id);
+      }
+    }
+
+    const fontSize = nativeBox
+      ? Math.min(nativeBox.width, nativeBox.height) * 0.035
+      : 12;
+    const rootCtm = svg.getCTM();
+    const draggable = Boolean(onLabelOffsetChangeRef.current);
+
+    for (const [id, label] of Object.entries(shapeLabels)) {
+      const shape = container.querySelector(`[id="${CSS.escape(id)}"]`);
+
+      if (!(shape instanceof SVGGraphicsElement) || !rootCtm) {
+        continue;
+      }
+
+      let textElement = labelElementsByIdRef.current.get(id);
+
+      if (!textElement) {
+        textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        textElement.setAttribute("text-anchor", "middle");
+        textElement.setAttribute("dominant-baseline", "central");
+        textElement.setAttribute("fill", "#1c1917");
+        textElement.setAttribute("stroke", "#ffffff");
+        textElement.setAttribute("stroke-width", String(fontSize * 0.15));
+        textElement.setAttribute("paint-order", "stroke");
+        textElement.setAttribute("font-weight", "bold");
+        svg.appendChild(textElement);
+        labelElementsByIdRef.current.set(id, textElement);
+
+        // Attached once, at creation, and reads everything else it needs
+        // through refs at drag time — the effect that (re)computes each
+        // label's rest position runs far more often than a shape is
+        // dragged, and re-attaching these on every run would either drop a
+        // gesture mid-drag or need its own careful re-binding dance.
+        textElement.addEventListener("pointerdown", (event) => {
+          if (!onLabelOffsetChangeRef.current) {
+            return;
+          }
+
+          const screenCtm = svg.getScreenCTM();
+
+          if (!screenCtm) {
+            return;
+          }
+
+          event.stopPropagation();
+
+          const inverseScreenCtm = screenCtm.inverse();
+          const toUserPoint = (clientX: number, clientY: number) => {
+            const point = svg.createSVGPoint();
+            point.x = clientX;
+            point.y = clientY;
+
+            return point.matrixTransform(inverseScreenCtm);
+          };
+
+          const startUserPoint = toUserPoint(event.clientX, event.clientY);
+          const startOffset = shapeLabelOffsetsRef.current?.[id] ?? { dx: 0, dy: 0 };
+
+          const handlePointerMove = (moveEvent: PointerEvent) => {
+            const currentUserPoint = toUserPoint(moveEvent.clientX, moveEvent.clientY);
+
+            onLabelOffsetChangeRef.current?.(id, {
+              dx: startOffset.dx + (currentUserPoint.x - startUserPoint.x),
+              dy: startOffset.dy + (currentUserPoint.y - startUserPoint.y),
+            });
+          };
+
+          const stopDragging = () => {
+            textElement?.removeEventListener("pointermove", handlePointerMove);
+            textElement?.removeEventListener("pointerup", stopDragging);
+            textElement?.removeEventListener("pointercancel", stopDragging);
+          };
+
+          textElement?.setPointerCapture(event.pointerId);
+          textElement?.addEventListener("pointermove", handlePointerMove);
+          textElement?.addEventListener("pointerup", stopDragging);
+          textElement?.addEventListener("pointercancel", stopDragging);
+        });
+
+        textElement.addEventListener("dblclick", (event) => {
+          if (!onLabelOffsetChangeRef.current) {
+            return;
+          }
+
+          event.stopPropagation();
+          onLabelOffsetChangeRef.current(id, { dx: 0, dy: 0 });
+        });
+
+        // The container's own click-to-toggle-a-region listener (below)
+        // walks up from the click target to the nearest ancestor with an
+        // `id` — for a click that lands on this `<text>` (no `id` of its
+        // own), that would otherwise be the root `<svg>`'s own `id`,
+        // spuriously "toggling" a shape that doesn't exist. Only relevant
+        // once the label is interactive at all (`draggable`); the
+        // student-facing canvas leaves it `pointer-events: none`, so clicks
+        // never land on it in the first place.
+        textElement.addEventListener("click", (event) => {
+          if (onLabelOffsetChangeRef.current) {
+            event.stopPropagation();
+          }
+        });
+      }
+
+      textElement.setAttribute("pointer-events", draggable ? "auto" : "none");
+      textElement.style.cursor = draggable ? "grab" : "";
+
+      try {
+        const bbox = shape.getBBox();
+        const center = svg.createSVGPoint();
+        center.x = bbox.x + bbox.width / 2;
+        center.y = bbox.y + bbox.height / 2;
+
+        const shapeCtm = shape.getCTM();
+        const relativeMatrix = shapeCtm ? rootCtm.inverse().multiply(shapeCtm) : null;
+        const transformedCenter = relativeMatrix ? center.matrixTransform(relativeMatrix) : center;
+        const offset = shapeLabelOffsets?.[id];
+
+        textElement.setAttribute("x", String(transformedCenter.x + (offset?.dx ?? 0)));
+        textElement.setAttribute("y", String(transformedCenter.y + (offset?.dy ?? 0)));
+        textElement.setAttribute("font-size", String(fontSize));
+        textElement.textContent = label;
+      } catch {
+        // Best-effort only — a shape with degenerate geometry (a zero-size
+        // bbox) shouldn't break labeling every other region.
+      }
+    }
+  }, [shapeLabels, shapeLabelOffsets, sanitizedMarkup, nativeBox]);
 
   useEffect(() => {
     const container = containerRef.current;

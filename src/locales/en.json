@@ -273,9 +273,16 @@
     "settings": "Settings"
   },
   "nameHint": "You don't need to use your real name. This isn't a government office. You can use a nickname like 'Lizard' or 'Quacky McDuck'. In general, it's better not to share personal data when there's no real need. Of course, you can use your real name too. Your choice.",
-  "nameLabel": "what should I call you?",
+  "nameLabel": "Username or nickname",
   "namePlaceholder": "Type a name or nickname",
   "niceToMeetYou": "Nice to meet you, {{name}}.",
+  "personaTitle": "Which logo do you prefer?",
+  "personas": {
+    "courseBoy": "Course boy",
+    "courseGirl": "Course girl",
+    "courseBot": "Course bot",
+    "courseMonster": "Course monster"
+  },
   "roleSubtitle": "Choose the path that fits how you want to use Matko right now.",
   "roleTitle": "Hi {{name}}, are you a student or a teacher?",
   "roles": {
@@ -385,7 +392,6 @@
     "title": "My courses"
   },
   "sidebar": {
-    "appName": "Course boy",
     "createCourse": "Create new course",
     "createCourseDescription": "Start a new course workspace and build its package structure, lessons, tests, and metadata.",
     "learning": "Learning",
@@ -394,6 +400,6 @@
     "home": "Home",
     "title": "Teacher workspace"
   },
-  "welcomeSubtitle": "Matko is an open platform for creating tutorials and tests, and for solving those tests either on the platform or on paper. The format is print-friendly, with a focus on making new tests easy to create, easy to complete, and enjoyable to learn from 😊",
+  "welcomeSubtitle": "Matko is an open platform for creating and attending courses. Tests and documents that make up the courses are adjusted to be print-friendly. The focus is on making learning and teaching an enjoyable experience 😊",
   "welcomeTitle": "Welcome! 😊"
 }

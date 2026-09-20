@@ -48,6 +48,18 @@ const COMMANDS = {
     console.log('screenshot:', f)
   },
 
+  // Screenshot just a clipped region — args: "name x y width height"
+  async 'ss-clip'(args) {
+    if (!need()) return
+    const [name, x, y, width, height] = args.split(' ')
+    const f = path.join(SHOT_DIR, name + '.png')
+    await harness.page.screenshot({
+      path: f,
+      clip: { x: Number(x), y: Number(y), width: Number(width), height: Number(height) },
+    })
+    console.log('screenshot:', f)
+  },
+
   async url() {
     if (!need()) return
     console.log(harness.page.url())
@@ -124,6 +136,17 @@ const COMMANDS = {
     const [x, y] = args.split(' ').map(Number)
     await harness.page.mouse.click(x, y)
     console.log('click-at', x, y)
+  },
+
+  // Real OS-level drag via Playwright's mouse API — args: "x1 y1 x2 y2"
+  async drag(args) {
+    if (!need()) return
+    const [x1, y1, x2, y2] = args.split(' ').map(Number)
+    await harness.page.mouse.move(x1, y1)
+    await harness.page.mouse.down()
+    await harness.page.mouse.move(x2, y2, { steps: 10 })
+    await harness.page.mouse.up()
+    console.log('drag', x1, y1, '->', x2, y2)
   },
 
   // Call the preload bridge: renderer -> preload -> ipcMain -> filesystem.

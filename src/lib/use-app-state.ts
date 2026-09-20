@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 
 import type { Locale } from '@/lib/i18n'
-import type { Category, UserRole } from '@/lib/preferences'
+import type { Category, Persona, UserRole } from '@/lib/preferences'
 
 type AppStateContextValue = {
   category: Category | null
@@ -10,11 +10,13 @@ type AppStateContextValue = {
   locale: Locale
   nickname: string
   logout: () => void
+  persona: Persona | null
   role: UserRole | null
   submittedName: string
   setCategory: (category: Category) => void
   setLocale: (locale: Locale) => void
   setNickname: (nickname: string) => void
+  setPersona: (persona: Persona) => void
   setRole: (role: UserRole) => void
   submitNickname: (nickname: string) => void
 }

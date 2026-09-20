@@ -16,6 +16,7 @@ import { DraftDetailPage } from "@/pages/draft-detail-page";
 import { EditorPrototypePage } from "@/pages/editor-prototype-page";
 import { HomePage } from "@/pages/home-page";
 import { MyCoursesPage } from "@/pages/my-courses-page";
+import { PersonaPage } from "@/pages/persona-page";
 import { RolePage } from "@/pages/role-page";
 import { WelcomePage } from "@/pages/welcome-page";
 import { useAppState } from "@/lib/use-app-state";
@@ -61,6 +62,7 @@ const AppRoutes = () => {
       </Route>
       <Route element={<OnboardingLayout />}>
         <Route element={<WelcomePage />} path="/onboarding" />
+        <Route element={<PersonaPage />} path="/onboarding/persona" />
         <Route element={<RolePage />} path="/onboarding/role" />
       </Route>
     </Routes>

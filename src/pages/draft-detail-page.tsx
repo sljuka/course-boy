@@ -875,6 +875,7 @@ export function DraftDetailPage() {
         </div>
         <VersionHistoryDialog
           courseId={courseId}
+          mode="editor"
           onOpenChange={setIsVersionHistoryOpen}
           open={isVersionHistoryOpen}
         />

@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
 import { AppMenu } from "@/components/app-menu";
-import { CourseBoyLogo } from "@/components/course-boy-logo";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import {
   Sidebar,
@@ -17,6 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { DEFAULT_PERSONA, PERSONAS, getPersonaImageUrl } from "@/lib/personas";
 import { useAppState } from "@/lib/use-app-state";
 
 const sidebarGroups = [
@@ -33,7 +33,10 @@ const sidebarGroups = [
 function AppSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
-  const { locale, setLocale } = useAppState();
+  const { locale, persona, setLocale } = useAppState();
+  const personaLabelKey =
+    PERSONAS.find((option) => option.id === persona)?.labelKey ??
+    PERSONAS.find((option) => option.id === DEFAULT_PERSONA)!.labelKey;
 
   return (
     <Sidebar>
@@ -42,8 +45,8 @@ function AppSidebar() {
           className="flex items-center gap-2 text-base font-bold text-foreground transition-colors hover:text-foreground/80"
           to="/"
         >
-          <CourseBoyLogo className="h-7 w-7 shrink-0" />
-          <span>{t("sidebar.appName")}</span>
+          <img alt="" className="h-7 w-7 shrink-0 rounded-full" src={getPersonaImageUrl(persona)} />
+          <span>{t(personaLabelKey)}</span>
         </Link>
         <LanguageSwitcher locale={locale} onLocaleChange={setLocale} />
       </SidebarHeader>

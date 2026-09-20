@@ -1,15 +1,12 @@
 import { FormEvent } from 'react'
+import { Info } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
 import { CardTitle } from '@/components/ui/card'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from '@/components/ui/field'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useAppState } from '@/lib/use-app-state'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +24,7 @@ export const WelcomePage = () => {
     }
 
     submitNickname(normalizedName)
-    navigate('/onboarding/role')
+    navigate('/onboarding/persona')
   }
 
   return (
@@ -56,8 +53,11 @@ export const WelcomePage = () => {
             placeholder={t('namePlaceholder')}
             value={nickname}
           />
-          <FieldDescription>{t('nameHint')}</FieldDescription>
         </Field>
+        <Alert variant="info">
+          <Info aria-hidden="true" className="h-4 w-4 text-info" />
+          <AlertDescription>{t('nameHint')}</AlertDescription>
+        </Alert>
         <div className="flex flex-col gap-4 sm:flex-row">
           <Button className="sm:w-auto sm:px-6" disabled={!nickname.trim()} type="submit">
             {t('continue')}

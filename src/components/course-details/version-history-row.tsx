@@ -6,6 +6,7 @@ import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import type { CourseVersionHistoryEntry } from "@/lib/course-package";
 
 type VersionHistoryRowProps = {
+  canPublish: boolean;
   entry: CourseVersionHistoryEntry;
   isActive: boolean;
   isPublishPending: boolean;
@@ -15,6 +16,7 @@ type VersionHistoryRowProps = {
 };
 
 export function VersionHistoryRow({
+  canPublish,
   entry,
   isActive,
   isPublishPending,
@@ -55,7 +57,7 @@ export function VersionHistoryRow({
               : t("courseVersions.revertButton")}
           </Button>
         )}
-        {!entry.isEverPublished && (
+        {canPublish && !entry.isEverPublished && (
           <Button disabled={isPublishPending} onClick={onPublish} size="sm">
             {isPublishPending
               ? t("courseVersions.publishing")

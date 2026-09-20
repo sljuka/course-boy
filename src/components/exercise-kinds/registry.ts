@@ -3,6 +3,7 @@ import type { ExerciseKind } from "@/lib/course-package";
 import { missingWordExerciseEditor } from "@/components/exercise-kinds/missing-word";
 import { multipleChoiceExerciseEditor } from "@/components/exercise-kinds/multiple-choice";
 import { numericExerciseEditor } from "@/components/exercise-kinds/numeric";
+import { regionLabelExerciseEditor } from "@/components/exercise-kinds/region-label";
 import { regionMarkerExerciseEditor } from "@/components/exercise-kinds/region-marker";
 import { regionPickerExerciseEditor } from "@/components/exercise-kinds/region-picker";
 import type { ExerciseKindEditor } from "@/components/exercise-kinds/types";
@@ -19,6 +20,7 @@ const EXERCISE_KIND_EDITORS: Record<ExerciseKind, ExerciseKindEditor<any, any, a
   "missing-word": missingWordExerciseEditor,
   "multiple-choice": multipleChoiceExerciseEditor,
   numeric: numericExerciseEditor,
+  "region-label": regionLabelExerciseEditor,
   "region-marker": regionMarkerExerciseEditor,
   "region-picker": regionPickerExerciseEditor,
   "word-types": wordTypesExerciseEditor,

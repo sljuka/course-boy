@@ -72,7 +72,8 @@ export type ExerciseKind =
   | "word-types"
   | "missing-word"
   | "region-picker"
-  | "region-marker";
+  | "region-marker"
+  | "region-label";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -195,13 +196,49 @@ export type RegionMarkerCourseExercise = {
   viewBox?: string;
 };
 
+export type RegionLabelOffset = { dx: number; dy: number };
+
+export type RegionLabelRegionDefinition = {
+  // Same convention as `RegionMarkerRegionDefinition.color` above.
+  color: string;
+  id: string;
+  // Every accepted answer, per locale — same shape as `MissingWordVariable`.
+  answers: Partial<Record<Locale, string[]>>;
+  matchCase: boolean;
+  // The auto-computed shape-center position (bounding-box center) can land
+  // outside a region's actual fill for a thin or concave shape — a teacher
+  // override, in root-SVG viewBox units, added to that computed position.
+  // Undefined means "use the computed center as-is."
+  labelOffset?: RegionLabelOffset;
+};
+
+export type RegionLabelCourseExercise = {
+  kind: "region-label";
+  hint?: string;
+  id: string;
+  prompt: string;
+  tags: string[];
+  svgAssetUrl: string;
+  // Array order is the region's displayed sequence number (index + 1) —
+  // not a separate stored field.
+  regions: Array<{
+    color: string;
+    id: string;
+    answers: string[];
+    matchCase: boolean;
+    labelOffset?: RegionLabelOffset;
+  }>;
+  viewBox?: string;
+};
+
 export type CourseExercise =
   | NumericCourseExercise
   | MultipleChoiceCourseExercise
   | WordTypeCourseExercise
   | MissingWordCourseExercise
   | RegionPickerCourseExercise
-  | RegionMarkerCourseExercise;
+  | RegionMarkerCourseExercise
+  | RegionLabelCourseExercise;
 
 export type CourseTestStructureRule = {
   count: number;
@@ -288,13 +325,25 @@ export type SharedRegionMarkerTestExerciseDefinition = {
   tags: string[];
 };
 
+export type SharedRegionLabelTestExerciseDefinition = {
+  kind: "region-label";
+  locales: Partial<Record<Locale, { hint?: string; prompt: string }>>;
+  // Same convention as region-marker: the diagram and its marked regions
+  // aren't localized, only each region's own answers are.
+  svgAssetFilename: string;
+  regions: RegionLabelRegionDefinition[];
+  viewBox?: string;
+  tags: string[];
+};
+
 export type SharedTestExerciseDefinition =
   | SharedNumericTestExerciseDefinition
   | SharedMultipleChoiceTestExerciseDefinition
   | SharedWordTypeTestExerciseDefinition
   | SharedMissingWordTestExerciseDefinition
   | SharedRegionPickerTestExerciseDefinition
-  | SharedRegionMarkerTestExerciseDefinition;
+  | SharedRegionMarkerTestExerciseDefinition
+  | SharedRegionLabelTestExerciseDefinition;
 
 export type SharedTestDefinition = {
   exercises: SharedTestExerciseDefinition[];

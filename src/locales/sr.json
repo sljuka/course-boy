@@ -273,9 +273,16 @@
     "settings": "Podešavanja"
   },
   "nameHint": "Ne moraš koristiti svoje pravo ime. Nije ovo MUP 👮. Možeš koristiti nadimak tipa 'Gušter 🦎' ili 'Patak Kvakanović'. Generalno ne treba unositi lične podatke gde nema potrebe. Naravno, može i lično ime da se koristi, izbor je na tebi.",
-  "nameLabel": "Kako želiš da te oslovljavam?",
+  "nameLabel": "Korisničko ime ili nadimak",
   "namePlaceholder": "Unesi ime ili nadimak",
   "niceToMeetYou": "Drago mi je, {{name}}.",
+  "personaTitle": "Koji logo ti se više sviđa?",
+  "personas": {
+    "courseBoy": "Course boy",
+    "courseGirl": "Course girl",
+    "courseBot": "Course bot",
+    "courseMonster": "Course monster"
+  },
   "roleSubtitle": "Izaberi putanju koja najbolje odgovara načinu na koji želiš sada da koristiš Matko.",
   "roleTitle": "Zdravo {{name}}, da li si učenik ili nastavnik?",
   "roles": {
@@ -385,7 +392,6 @@
     "title": "Moji kursevi"
   },
   "sidebar": {
-    "appName": "Course boy",
     "createCourse": "Napravi novi kurs",
     "createCourseDescription": "Pokreni novi radni prostor za kurs i napravi njegovu strukturu, lekcije, testove i metapodatke.",
     "learning": "Učenje",
@@ -394,6 +400,6 @@
     "home": "Početna",
     "title": "Nastavnički radni prostor"
   },
-  "welcomeSubtitle": "Matko je otvorena mreža za kreiranje tutorijala, testova kao i rešavanje kreiranih testova na platformi ili papiru (testovi su pogodnog formata za štampanje). Nadamo se da će te naučiti nešto novo",
+  "welcomeSubtitle": "Matko je otvorena platforma za kreiranje i pohađanje kurseva. Testovi i dokumenti od kojih su kursevi sastavljeni prilagođeni su za štampanje. Fokus je na tome da učenje i podučavanje budu prijatno iskustvo 😊",
   "welcomeTitle": "Dobrodošli! 😊"
 }

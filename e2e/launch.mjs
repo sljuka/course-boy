@@ -15,7 +15,7 @@ export const APP_DIR = path.resolve(import.meta.dirname, '..')
 
 /** The same element set everywhere, so indices printed by one helper work in another. */
 export const INTERACTIVE_SELECTOR =
-  'button, a, input, textarea, select, [role="button"], [role="option"], [role="combobox"], [role="tab"], [role="menuitem"]'
+  'button, a, input, textarea, select, [role="button"], [role="option"], [role="combobox"], [role="tab"], [role="menuitem"], [role="radio"]'
 
 function electronBinary() {
   const base = path.join(APP_DIR, 'node_modules/electron/dist')
@@ -90,6 +90,7 @@ export function listInteractive(page) {
         tag: e.tagName.toLowerCase(),
         role: e.getAttribute('type') || e.getAttribute('role') || '',
         text: (e.textContent || '').trim().slice(0, 45),
+        ariaLabel: e.getAttribute('aria-label') || '',
         placeholder: e.getAttribute('placeholder') || '',
         value: e.value ?? '',
         disabled: !!e.disabled,

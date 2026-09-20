@@ -5,7 +5,7 @@ import {
 } from 'react'
 
 import { detectLocale, i18n, type Locale } from '@/lib/i18n'
-import type { Category, UserRole } from '@/lib/preferences'
+import type { Category, Persona, UserRole } from '@/lib/preferences'
 import { AppStateContext } from '@/lib/use-app-state'
 
 function AppStateProvider({ children }: { children: ReactNode }) {
@@ -14,6 +14,7 @@ function AppStateProvider({ children }: { children: ReactNode }) {
   const [submittedName, setSubmittedName] = useState('')
   const [category, setCategoryState] = useState<Category | null>(null)
   const [role, setRoleState] = useState<UserRole | null>(null)
+  const [persona, setPersonaState] = useState<Persona | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
@@ -34,6 +35,7 @@ function AppStateProvider({ children }: { children: ReactNode }) {
         setSubmittedName(preferences.nickname ?? '')
         setCategoryState(preferences.category ?? null)
         setRoleState(preferences.role ?? null)
+        setPersonaState(preferences.persona ?? null)
         setIsLoaded(true)
       })
       .catch(() => {
@@ -94,26 +96,38 @@ function AppStateProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  function setPersona(nextPersona: Persona) {
+    setPersonaState(nextPersona)
+    void window.preferences.set({
+      locale,
+      nickname: submittedName,
+      persona: nextPersona,
+    })
+  }
+
   function logout() {
     setNicknameState('')
     setSubmittedName('')
     setCategoryState(null)
     setRoleState(null)
+    setPersonaState(null)
     void window.preferences.resetOnboarding()
   }
 
   const value = {
     category,
     isLoaded,
-    isOnboarded: Boolean(submittedName && role),
+    isOnboarded: Boolean(submittedName && persona && role),
     locale,
     logout,
     nickname,
+    persona,
     role,
     submittedName,
     setCategory,
     setLocale,
     setNickname,
+    setPersona,
     setRole,
     submitNickname,
   }

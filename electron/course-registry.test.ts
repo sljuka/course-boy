@@ -296,6 +296,45 @@ describe("isSharedTestDefinition", () => {
     expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
   });
 
+  it("accepts a valid region-label exercise", () => {
+    const regionLabelExercise = {
+      kind: "region-label",
+      locales: { en: { prompt: "Name each numbered country" } },
+      regions: [
+        { answers: { en: ["Hungary"] }, color: "#bbf7d0", id: "Hungary", matchCase: false },
+        { answers: { en: ["Norway"] }, color: "#fecaca", id: "Norway", matchCase: true },
+      ],
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [regionLabelExercise], template: "" })).toBe(true);
+  });
+
+  it("rejects a region-label exercise with no regions marked", () => {
+    const invalidExercise = {
+      kind: "region-label",
+      locales: { en: { prompt: "Name each numbered country" } },
+      regions: [],
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a region-label exercise with a region that has no accepted answers", () => {
+    const invalidExercise = {
+      kind: "region-label",
+      locales: { en: { prompt: "Name each numbered country" } },
+      regions: [{ answers: { en: [] }, color: "#bbf7d0", id: "Hungary", matchCase: false }],
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
   it("accepts a valid word-types exercise", () => {
     const wordTypeExercise = {
       kind: "word-types",

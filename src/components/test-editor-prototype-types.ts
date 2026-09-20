@@ -137,13 +137,40 @@ type RegionMarkerTestExercise = {
   viewBox?: string;
 };
 
+type RegionLabelRegionDraft = {
+  color: string;
+  id: string;
+  // Raw, as typed, per locale — e.g. "Paris" or "Solution1, Solution2".
+  // Split into a trimmed, non-empty string[] only when saving (toShared),
+  // same convention as `MissingWordVariableDraft.answers`.
+  answers: Record<string, string>;
+  matchCase: boolean;
+  labelOffset?: { dx: number; dy: number };
+};
+
+type RegionLabelExerciseLocaleContent = {
+  hint: string;
+  prompt: string;
+};
+
+type RegionLabelTestExercise = {
+  kind: "region-label";
+  id: string;
+  locales: Record<string, RegionLabelExerciseLocaleContent>;
+  regions: RegionLabelRegionDraft[];
+  svgAssetFilename: string;
+  tagIds: string[];
+  viewBox?: string;
+};
+
 type TestExercise =
   | NumericTestExercise
   | MultipleChoiceTestExercise
   | WordTypeTestExercise
   | MissingWordTestExercise
   | RegionPickerTestExercise
-  | RegionMarkerTestExercise;
+  | RegionMarkerTestExercise
+  | RegionLabelTestExercise;
 
 type TestEditorState = {
   activeExerciseId: string;
@@ -176,6 +203,9 @@ export type {
   MultipleChoiceTestExercise,
   NumericTestExercise,
   PromptVariable,
+  RegionLabelExerciseLocaleContent,
+  RegionLabelRegionDraft,
+  RegionLabelTestExercise,
   RegionMarkerExerciseLocaleContent,
   RegionMarkerRegionDraft,
   RegionMarkerTestExercise,
