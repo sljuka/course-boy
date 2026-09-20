@@ -96,7 +96,8 @@ export function RegionPickerCanvas({
   onSelectedShapesOutOfView,
   onToggleShape,
   onViewBoxChange,
-  selectedShapeIds,
+  selectedShapeIds = [],
+  shapeColors,
   svgUrl,
   viewBox,
 }: {
@@ -104,12 +105,23 @@ export function RegionPickerCanvas({
   onSelectedShapesOutOfView?: (updater: (current: string[]) => string[]) => void;
   onToggleShape: (shapeId: string) => void;
   onViewBoxChange?: (viewBox: string) => void;
-  selectedShapeIds: string[];
+  // The boolean "is this shape marked" highlight region-picker uses.
+  selectedShapeIds?: string[];
+  // A per-shape arbitrary fill color (shape id -> hex) — region-marker uses
+  // this instead of `selectedShapeIds` since each of its regions needs its
+  // own distinct color rather than one shared highlight. The two are
+  // independent: a kind only ever passes one of them.
+  shapeColors?: Record<string, string>;
   svgUrl: string;
   // A teacher-chosen crop; `undefined` shows the file's own native viewBox.
   viewBox?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const previousShapeColorIdsRef = useRef<Set<string>>(new Set());
+  // A shape's original `fill` (its own author-set color, read once before we
+  // ever override it) — see the effect below for why this can't just be
+  // `removeProperty`d back.
+  const originalFillByIdRef = useRef<Map<string, string>>(new Map());
   const viewBoxRef = useRef(viewBox);
   const [sanitizedMarkup, setSanitizedMarkup] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -159,6 +171,11 @@ export function RegionPickerCanvas({
     setSanitizedMarkup(null);
     setLoadError(false);
     setNativeBox(null);
+    // A new file means new elements — any cached "original fill" belonged to
+    // the previous document's DOM and would otherwise wrongly restore onto a
+    // same-id shape in a completely different file.
+    previousShapeColorIdsRef.current = new Set();
+    originalFillByIdRef.current = new Map();
 
     fetch(svgUrl)
       .then((response) => {
@@ -378,6 +395,66 @@ export function RegionPickerCanvas({
       }
     }
   }, [selectedShapeIds, sanitizedMarkup]);
+
+  // `shapeColors` is a separate, independent highlight mechanism from
+  // `selectedShapeIds` above (see its prop doc). Unlike that effect, this one
+  // must NOT blindly touch every `[id]` element: many of this SVG's shapes
+  // set their own natural color via an inline `style="fill:..."` (not the
+  // `fill="..."` attribute), and clearing every unlisted element's inline
+  // style would wipe that out, leaving the shape black (its DOM-default
+  // fill). So this only ever writes to, and later clears, shapes that were
+  // themselves once a `shapeColors` key — tracked across renders in
+  // `previousShapeColorIdsRef` — never any other shape in the file.
+  //
+  // Clearing isn't a plain `removeProperty` either: `element.style` is the
+  // live CSSOM view of the inline `style` attribute, so the first
+  // `setProperty("fill", ...)` below overwrites — and permanently loses — a
+  // shape's own original color, the same one `removeProperty` would need to
+  // bring back. `originalFillByIdRef` snapshots that value the first time a
+  // shape is colored, so unmarking it (cycling back to "none") restores the
+  // real original instead of leaving no fill at all, which SVG renders as
+  // solid black.
+  useEffect(() => {
+    const container = containerRef.current;
+
+    if (!container || !shapeColors) {
+      return;
+    }
+
+    const currentIds = new Set(Object.keys(shapeColors));
+
+    for (const id of previousShapeColorIdsRef.current) {
+      if (currentIds.has(id)) {
+        continue;
+      }
+
+      const element = container.querySelector(`[id="${CSS.escape(id)}"]`);
+
+      if (element instanceof SVGElement) {
+        const originalFill = originalFillByIdRef.current.get(id);
+
+        if (originalFill) {
+          element.style.setProperty("fill", originalFill);
+        } else {
+          element.style.removeProperty("fill");
+        }
+      }
+    }
+
+    for (const [id, color] of Object.entries(shapeColors)) {
+      const element = container.querySelector(`[id="${CSS.escape(id)}"]`);
+
+      if (element instanceof SVGElement) {
+        if (!originalFillByIdRef.current.has(id)) {
+          originalFillByIdRef.current.set(id, element.style.getPropertyValue("fill"));
+        }
+
+        element.style.setProperty("fill", color, "important");
+      }
+    }
+
+    previousShapeColorIdsRef.current = currentIds;
+  }, [shapeColors, sanitizedMarkup]);
 
   useEffect(() => {
     const container = containerRef.current;

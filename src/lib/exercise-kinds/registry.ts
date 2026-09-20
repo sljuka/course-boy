@@ -4,6 +4,7 @@ import type { Locale } from "../i18n";
 import { missingWordExerciseRuntime } from "./missing-word";
 import { multipleChoiceExerciseRuntime } from "./multiple-choice";
 import { numericExerciseRuntime } from "./numeric";
+import { regionMarkerExerciseRuntime } from "./region-marker";
 import { regionPickerExerciseRuntime } from "./region-picker";
 import type { ExerciseKindRuntime } from "./types";
 import { wordTypesExerciseRuntime } from "./word-types";
@@ -19,6 +20,7 @@ const EXERCISE_KIND_RUNTIMES: Record<ExerciseKind, ExerciseKindRuntime<any, any>
   "missing-word": missingWordExerciseRuntime,
   "multiple-choice": multipleChoiceExerciseRuntime,
   numeric: numericExerciseRuntime,
+  "region-marker": regionMarkerExerciseRuntime,
   "region-picker": regionPickerExerciseRuntime,
   "word-types": wordTypesExerciseRuntime,
 };

@@ -257,6 +257,45 @@ describe("isSharedTestDefinition", () => {
     expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
   });
 
+  it("accepts a valid region-marker exercise", () => {
+    const regionMarkerExercise = {
+      kind: "region-marker",
+      locales: { en: { prompt: "Match each country to its color" } },
+      regions: [
+        { color: "#bbf7d0", id: "Hungary", labels: { en: "Hungary" } },
+        { color: "#fecaca", id: "Norway", labels: { en: "Norway" } },
+      ],
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [regionMarkerExercise], template: "" })).toBe(true);
+  });
+
+  it("rejects a region-marker exercise with no regions marked", () => {
+    const invalidExercise = {
+      kind: "region-marker",
+      locales: { en: { prompt: "Match each country to its color" } },
+      regions: [],
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
+  it("rejects a region-marker exercise with a malformed region color", () => {
+    const invalidExercise = {
+      kind: "region-marker",
+      locales: { en: { prompt: "Match each country to its color" } },
+      regions: [{ color: "green", id: "Hungary", labels: { en: "Hungary" } }],
+      svgAssetFilename: "europe-abc123.svg",
+      tags: ["geography"],
+    };
+
+    expect(isSharedTestDefinition({ exercises: [invalidExercise], template: "" })).toBe(false);
+  });
+
   it("accepts a valid word-types exercise", () => {
     const wordTypeExercise = {
       kind: "word-types",

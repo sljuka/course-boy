@@ -71,7 +71,8 @@ export type ExerciseKind =
   | "multiple-choice"
   | "word-types"
   | "missing-word"
-  | "region-picker";
+  | "region-picker"
+  | "region-marker";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -168,12 +169,39 @@ export type RegionPickerCourseExercise = {
   viewBox?: string;
 };
 
+export type RegionMarkerRegionDefinition = {
+  // Always a hex value from the shared light-color palette
+  // (`LIGHT_COLOR_OPTIONS` in `src/lib/color-options.ts`), assigned randomly
+  // when the teacher marks the region — see `isValidRegionMarkerColor` in
+  // `src/lib/exercise-kinds/region-marker.ts`.
+  color: string;
+  id: string;
+  labels: Partial<Record<Locale, string>>;
+};
+
+export type RegionMarkerCourseExercise = {
+  kind: "region-marker";
+  hint?: string;
+  id: string;
+  prompt: string;
+  tags: string[];
+  // See `RegionPickerCourseExercise.svgAssetUrl` above.
+  svgAssetUrl: string;
+  regions: Array<{
+    color: string;
+    id: string;
+    label: string;
+  }>;
+  viewBox?: string;
+};
+
 export type CourseExercise =
   | NumericCourseExercise
   | MultipleChoiceCourseExercise
   | WordTypeCourseExercise
   | MissingWordCourseExercise
-  | RegionPickerCourseExercise;
+  | RegionPickerCourseExercise
+  | RegionMarkerCourseExercise;
 
 export type CourseTestStructureRule = {
   count: number;
@@ -249,12 +277,24 @@ export type SharedRegionPickerTestExerciseDefinition = {
   tags: string[];
 };
 
+export type SharedRegionMarkerTestExerciseDefinition = {
+  kind: "region-marker";
+  locales: Partial<Record<Locale, { hint?: string; prompt: string }>>;
+  // Same convention as region-picker: the diagram and its marked regions
+  // aren't localized, only each region's own label is.
+  svgAssetFilename: string;
+  regions: RegionMarkerRegionDefinition[];
+  viewBox?: string;
+  tags: string[];
+};
+
 export type SharedTestExerciseDefinition =
   | SharedNumericTestExerciseDefinition
   | SharedMultipleChoiceTestExerciseDefinition
   | SharedWordTypeTestExerciseDefinition
   | SharedMissingWordTestExerciseDefinition
-  | SharedRegionPickerTestExerciseDefinition;
+  | SharedRegionPickerTestExerciseDefinition
+  | SharedRegionMarkerTestExerciseDefinition;
 
 export type SharedTestDefinition = {
   exercises: SharedTestExerciseDefinition[];

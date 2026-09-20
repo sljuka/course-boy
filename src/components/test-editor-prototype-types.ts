@@ -116,12 +116,34 @@ type RegionPickerTestExercise = {
   viewBox?: string;
 };
 
+type RegionMarkerRegionDraft = {
+  color: string;
+  id: string;
+  labels: Record<string, string>;
+};
+
+type RegionMarkerExerciseLocaleContent = {
+  hint: string;
+  prompt: string;
+};
+
+type RegionMarkerTestExercise = {
+  kind: "region-marker";
+  id: string;
+  locales: Record<string, RegionMarkerExerciseLocaleContent>;
+  regions: RegionMarkerRegionDraft[];
+  svgAssetFilename: string;
+  tagIds: string[];
+  viewBox?: string;
+};
+
 type TestExercise =
   | NumericTestExercise
   | MultipleChoiceTestExercise
   | WordTypeTestExercise
   | MissingWordTestExercise
-  | RegionPickerTestExercise;
+  | RegionPickerTestExercise
+  | RegionMarkerTestExercise;
 
 type TestEditorState = {
   activeExerciseId: string;
@@ -154,6 +176,9 @@ export type {
   MultipleChoiceTestExercise,
   NumericTestExercise,
   PromptVariable,
+  RegionMarkerExerciseLocaleContent,
+  RegionMarkerRegionDraft,
+  RegionMarkerTestExercise,
   RegionPickerExerciseLocaleContent,
   RegionPickerTestExercise,
   SolutionValidationResult,

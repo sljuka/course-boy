@@ -177,8 +177,8 @@ function ExampleComponent() {
           {testFeedback}
         </div>
       )}
-      <Button className="self-start" onClick={submitExercise} size="sm">
-        {t("courseDetails.checkAnswer")}
+      <Button className="self-start" onClick={submitExercise} size="sm" variant="secondary">
+        {t("courseDetails.checkExampleAnswer")}
       </Button>
     </div>
   );

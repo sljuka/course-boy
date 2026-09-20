@@ -6,7 +6,8 @@ export type ExerciseInstance =
   | { kind: "multiple-choice"; optionOrder: number[] }
   | { kind: "word-types" }
   | { kind: "missing-word" }
-  | { kind: "region-picker" };
+  | { kind: "region-picker" }
+  | { kind: "region-marker" };
 
 export function interpolateTemplate(
   template: string,

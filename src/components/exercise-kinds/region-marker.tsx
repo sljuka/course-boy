@@ -1,53 +1,67 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import exampleSvgUrl from "@/assets/region-picker-example-europe.svg?url";
 
 import type {
   CourseTest,
-  RegionPickerCourseExercise,
-  SharedRegionPickerTestExerciseDefinition,
+  RegionMarkerCourseExercise,
+  SharedRegionMarkerTestExerciseDefinition,
 } from "@/lib/course-package";
 import {
-  decodeRegionPickerSelection,
-  encodeRegionPickerSelection,
-} from "@/lib/exercise-kinds/region-picker";
+  cycleRegionMarkerColor,
+  decodeRegionMarkerSelections,
+} from "@/lib/exercise-kinds/region-marker";
 
-import { RegionPickerExerciseFields } from "@/components/region-picker-exercise-fields";
+import { RegionMarkerExerciseFields } from "@/components/region-marker-exercise-fields";
 import { RegionPickerCanvas } from "@/components/region-picker-canvas";
 import { InlineMarkdown } from "@/components/course-player/inline-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
+import { Tag } from "@/components/ui/tag";
 import { useTestPlayerState } from "@/components/test-player/use-test-player-state";
-import type { RegionPickerTestExercise } from "@/components/test-editor-prototype-types";
+import type { RegionMarkerTestExercise } from "@/components/test-editor-prototype-types";
 import type { AnswerComponentProps, ExerciseKindEditor } from "@/components/exercise-kinds/types";
 import {
   createExercise,
   fromShared,
   toShared,
   validate,
-} from "@/components/exercise-kinds/region-picker-logic";
+} from "@/components/exercise-kinds/region-marker-logic";
 
 function AnswerComponent({
   exercise,
   onAnswerChange,
   value,
-}: AnswerComponentProps<RegionPickerCourseExercise>) {
-  const selectedShapeIds = decodeRegionPickerSelection(value);
+}: AnswerComponentProps<RegionMarkerCourseExercise>) {
+  // Distinct colors in first-appearance order — the fixed cycle every click
+  // steps through, one color per click, wrapping back to "unmarked".
+  const usedColors = useMemo(
+    () => [...new Set(exercise.regions.map((region) => region.color))],
+    [exercise.regions],
+  );
+  // Any shape on the diagram is clickable, not just the teacher's designated
+  // regions — the student has to find the right country themselves, so
+  // restricting clicks to a hidden subset would make most of the map look
+  // (and be) unresponsive. Grading below only checks the designated regions;
+  // coloring some other country costs nothing.
+  const shapeColors = decodeRegionMarkerSelections(value);
 
   return (
-    <div className="print:hidden">
+    <div className="flex flex-col gap-3 print:hidden">
+      <div className="flex flex-wrap items-center gap-2">
+        {exercise.regions.map((region) => (
+          <Tag color={region.color} key={region.id}>
+            {region.label}
+          </Tag>
+        ))}
+      </div>
       <RegionPickerCanvas
         onToggleShape={(shapeId) =>
-          onAnswerChange(
-            encodeRegionPickerSelection(
-              selectedShapeIds.includes(shapeId)
-                ? selectedShapeIds.filter((selectedId) => selectedId !== shapeId)
-                : [...selectedShapeIds, shapeId],
-            ),
-          )
+          onAnswerChange(cycleRegionMarkerColor(value, shapeId, usedColors))
         }
-        selectedShapeIds={selectedShapeIds}
+        shapeColors={shapeColors}
         svgUrl={exercise.svgAssetUrl}
         viewBox={exercise.viewBox}
       />
@@ -55,15 +69,18 @@ function AnswerComponent({
   );
 }
 
-// A real map, bundled as a static asset (not a course asset — this example
-// has no course/upload behind it) so the wizard's example is the real thing
-// a teacher would upload, not a simplified stand-in. Shape ids are the
-// actual country names Inkscape assigned when the map was authored.
-const EXAMPLE_EXERCISE: RegionPickerCourseExercise = {
-  correctShapeIds: ["Norway", "Sweden"],
+// The exact three-region example from the feature's own design conversation
+// (Hungary/Norway/Ireland), on the same bundled map region-picker's example
+// uses — a real map, not a simplified stand-in.
+const EXAMPLE_EXERCISE: RegionMarkerCourseExercise = {
   id: "example",
-  kind: "region-picker",
-  prompt: "Mark the countries of the Scandinavian peninsula.",
+  kind: "region-marker",
+  prompt: "Match each country to its color.",
+  regions: [
+    { color: "#bbf7d0", id: "Hungary", label: "Hungary" },
+    { color: "#fecaca", id: "Norway", label: "Norway" },
+    { color: "#bfdbfe", id: "Ireland", label: "Ireland" },
+  ],
   svgAssetUrl: exampleSvgUrl,
   tags: [],
 };
@@ -97,8 +114,8 @@ function ExampleComponent() {
   if (
     !exercise ||
     !instance ||
-    exercise.kind !== "region-picker" ||
-    instance.kind !== "region-picker"
+    exercise.kind !== "region-marker" ||
+    instance.kind !== "region-marker"
   ) {
     return null;
   }
@@ -141,20 +158,20 @@ function ExampleComponent() {
   );
 }
 
-export const regionPickerExerciseEditor: ExerciseKindEditor<
-  RegionPickerTestExercise,
-  SharedRegionPickerTestExerciseDefinition,
-  RegionPickerCourseExercise
+export const regionMarkerExerciseEditor: ExerciseKindEditor<
+  RegionMarkerTestExercise,
+  SharedRegionMarkerTestExerciseDefinition,
+  RegionMarkerCourseExercise
 > = {
   AnswerComponent,
   ExampleComponent,
-  FieldsComponent: RegionPickerExerciseFields,
+  FieldsComponent: RegionMarkerExerciseFields,
   createExercise,
   fromShared,
-  kind: "region-picker",
-  label: "Region picker",
+  kind: "region-marker",
+  label: "Region marker",
   description:
-    "Upload a diagram (an SVG with id'd shapes, like a country map) and mark which shapes are the correct answer. Students answer by clicking the same shapes in the diagram.",
+    "In this exercise type student can mark various regions on the diagram. Teacher can either upload his own SVG diagram or use one of the presets (like Europe in example below). There is also possibility to zoom-in and pan to show only part of the diagram to the student.",
   toShared,
   validate,
 };

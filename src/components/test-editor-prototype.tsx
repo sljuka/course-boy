@@ -64,7 +64,6 @@ export function TestEditorPrototype({
   supportedLocales,
 }: TestEditorPrototypeProps) {
   const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
-  const [collapsedExerciseIds, setCollapsedExerciseIds] = useState<string[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [draftExerciseKind, setDraftExerciseKind] = useState<ExerciseKind>("numeric");
@@ -79,10 +78,6 @@ export function TestEditorPrototype({
       return;
     }
 
-    // Opening an existing test starts with every exercise collapsed — with
-    // several exercises already authored, an all-expanded accordion is a
-    // wall of content before the teacher has chosen what to look at.
-    setCollapsedExerciseIds(initialState.exercises.map((exercise) => exercise.id));
     setState(initialState);
     hasInitializedExternalStateRef.current = true;
   }, [initialState]);
@@ -94,7 +89,6 @@ export function TestEditorPrototype({
 
     const nextState = createInitialState(supportedLocales, initialTitle);
     const firstExerciseId = nextState.exercises[0]?.id ?? "";
-    setCollapsedExerciseIds([]);
     setState({
       ...nextState,
       activeExerciseId: firstExerciseId,
@@ -235,26 +229,8 @@ export function TestEditorPrototype({
       activeExerciseId: draftExercise.id,
       exercises: [...currentState.exercises, draftExercise],
     }));
-    // The exercise just moved from the draft form into the accordion list
-    // alongside every other already-authored exercise — it should land there
-    // collapsed like its siblings, not stay expanded just because it's new.
-    setCollapsedExerciseIds((currentIds) => [...currentIds, draftExercise.id]);
     setIsAddingExercise(false);
     setDraftExercise(null);
-  }
-
-  function setExerciseCollapsed(exerciseId: string, collapsed: boolean) {
-    setCollapsedExerciseIds((currentIds) => {
-      const isCurrentlyCollapsed = currentIds.includes(exerciseId);
-
-      if (isCurrentlyCollapsed === collapsed) {
-        return currentIds;
-      }
-
-      return collapsed
-        ? [...currentIds, exerciseId]
-        : currentIds.filter((id) => id !== exerciseId);
-    });
   }
 
   function moveExercise(exerciseId: string, direction: -1 | 1) {
@@ -284,9 +260,6 @@ export function TestEditorPrototype({
   }
 
   function removeExercise(exerciseId: string) {
-    setCollapsedExerciseIds((currentIds) =>
-      currentIds.filter((id) => id !== exerciseId),
-    );
     setState((currentState) => ({
       ...currentState,
       exercises: currentState.exercises.filter((exercise) => exercise.id !== exerciseId),
@@ -504,12 +477,10 @@ export function TestEditorPrototype({
                   <ExercisePromptCard
                     canMoveDown={index < state.exercises.length - 1}
                     canMoveUp={index > 0}
-                    collapsed={collapsedExerciseIds.includes(exercise.id)}
                     courseId={courseId}
                     descriptiveTags={descriptiveTags}
                     exercise={exercise}
                     locale={locale}
-                    onCollapsedChange={setExerciseCollapsed}
                     onDelete={removeExercise}
                     onExerciseChange={updateExercise}
                     onMoveDown={(exerciseId) => moveExercise(exerciseId, 1)}
@@ -572,7 +543,7 @@ export function TestEditorPrototype({
                         </div>
                         <div className="flex flex-col gap-1">
                           <p className="text-sm font-medium text-foreground">
-                            {getExerciseKindEditor(draftExerciseKind).label} exercise type
+                            {getExerciseKindEditor(draftExerciseKind).label}
                           </p>
                           <CardDescription>
                             {getExerciseKindEditor(draftExerciseKind).description}

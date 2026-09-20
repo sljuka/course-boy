@@ -40,12 +40,10 @@ import { useComboboxAnchor } from "@/components/ui/use-combobox-anchor";
 export function ExercisePromptCard({
   canMoveDown,
   canMoveUp,
-  collapsed,
   courseId,
   descriptiveTags,
   exercise,
   locale,
-  onCollapsedChange,
   onDelete,
   onExerciseChange,
   onMoveDown,
@@ -55,12 +53,10 @@ export function ExercisePromptCard({
 }: {
   canMoveDown: boolean;
   canMoveUp: boolean;
-  collapsed: boolean;
   courseId: string;
   descriptiveTags: CourseTagDefinition[];
   exercise: TestExercise;
   locale: Locale;
-  onCollapsedChange: (exerciseId: string, collapsed: boolean) => void;
   onDelete: (exerciseId: string) => void;
   onExerciseChange: (
     exerciseId: string,
@@ -73,6 +69,10 @@ export function ExercisePromptCard({
   orderLabel: string;
 }) {
   const collapsedPromptPreviewMaxLength = 50;
+  // Every exercise starts collapsed — uncontrolled, entirely local to this
+  // card. Nothing outside ever needs to force a specific card open or
+  // closed, so there's no reason for the parent to own this.
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
   const tagPickerAnchor = useComboboxAnchor();
   const prompt = exercise.locales[locale]?.prompt ?? "";
@@ -133,11 +133,8 @@ export function ExercisePromptCard({
       <Accordion
         className="w-full"
         multiple
-        onValueChange={(value) => {
-          const isExpanded = value.includes(exercise.id);
-          onCollapsedChange(exercise.id, !isExpanded);
-        }}
-        value={collapsed ? [] : [exercise.id]}
+        onValueChange={(value) => setIsCollapsed(!value.includes(exercise.id))}
+        value={isCollapsed ? [] : [exercise.id]}
       >
         <AccordionItem value={exercise.id}>
           <div className="flex items-center gap-3 py-2">
@@ -156,7 +153,7 @@ export function ExercisePromptCard({
                   Exercise
                 </span>
                 <Badge variant="secondary">{exerciseKindLabel}</Badge>
-                {collapsed && (
+                {isCollapsed && (
                   <span className="truncate text-sm text-muted-foreground">
                     {promptPreview}
                   </span>
