@@ -39,6 +39,7 @@ export function toSharedTestDefinition(testState: TestEditorState): SharedTestDe
 
   return {
     exercises: testState.exercises.map(toSharedTestExerciseDefinition),
+    strictAdvancement: testState.strictAdvancement,
     template: testState.description,
     ...(structure ? { structure } : {}),
   };
@@ -62,6 +63,7 @@ export function fromSharedTestDefinition(
     exercises,
     selectedAdvancedSections: [],
     selectedLocale: supportedLocales[0] ?? "en",
+    strictAdvancement: definition.strictAdvancement ?? true,
     title: "",
     useBlueprint: Boolean(definition.structure && definition.structure.length > 0),
   };

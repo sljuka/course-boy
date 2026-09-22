@@ -54,6 +54,15 @@ interface Window {
     getSectionTestDraft: (
       input: import('../src/lib/course-package').GetSectionTestDraftInput,
     ) => Promise<import('../src/lib/course-package').SharedTestDefinition | null>
+    deleteSection: (
+      input: import('../src/lib/course-package').DeleteCourseSectionInput,
+    ) => Promise<void>
+    deleteLesson: (
+      input: import('../src/lib/course-package').DeleteCourseLessonInput,
+    ) => Promise<void>
+    deleteSectionTest: (
+      input: import('../src/lib/course-package').DeleteCourseSectionTestInput,
+    ) => Promise<void>
     get: (
       courseId: string,
       locale?: import('../src/lib/i18n').Locale,

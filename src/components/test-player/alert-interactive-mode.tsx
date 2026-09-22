@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 
 type AlertInteractiveModeProps = {
   onDismiss: () => void;
+  onStart: () => void;
 };
 
 export function AlertInteractiveMode({
   onDismiss,
+  onStart,
 }: AlertInteractiveModeProps) {
   const { t } = useTranslation();
 
@@ -25,6 +27,7 @@ export function AlertInteractiveMode({
         </div>
         <Button
           aria-label={t("courseDetails.interactiveHintTitle")}
+          onClick={onStart}
           shape="circle"
           size="icon"
           variant="secondary"

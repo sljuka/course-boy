@@ -1,11 +1,15 @@
 import { useTranslation } from "react-i18next";
 
+import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
 import { InlineMarkdown } from "@/components/course-player/inline-markdown";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import type { CourseExercise } from "@/lib/course-package";
-import { interpolateTemplate, type ExerciseInstance } from "@/lib/course-player-utils";
+import {
+  getExercisePromptSource,
+  interpolateTemplate,
+  type ExerciseInstance,
+} from "@/lib/course-player-utils";
 import type {
   CoursePrintAnswerStyle,
   CoursePrintExerciseHintStyle,
@@ -84,35 +88,16 @@ export const CourseTestContent = ({
             return null;
           }
 
-          const isNumericExercise =
-            exercise.kind === "numeric" && exerciseInstance.kind === "numeric";
-          const promptSource = isNumericExercise
-            ? interpolateTemplate(exercise.prompt, exerciseInstance.variables, {
-                emphasizeValues: true,
-              })
-            : exercise.prompt;
+          const promptSource = getExercisePromptSource(exercise, exerciseInstance);
 
           return (
             <div
-              className={`flex break-inside-avoid flex-col gap-3 border-b border-stone-200 pb-4 last:border-b-0 last:pb-0 print:gap-3 print:pb-3 ${
+              className={`flex break-inside-avoid flex-col gap-3 border-b border-border pb-4 last:border-b-0 last:pb-0 print:gap-3 print:pb-3 ${
                 showPrintTestSeparators ? "" : "print:border-b-0"
               }`}
               key={exercise.id}
             >
-              <p
-                className={cn(
-                  "flex items-start gap-1.5 text-base leading-7 text-foreground",
-                  !isNumericExercise && "font-semibold",
-                )}
-              >
-                <Badge
-                  className="size-6 shrink-0 justify-center"
-                  variant="secondary"
-                >
-                  {index + 1}
-                </Badge>
-                <InlineMarkdown source={promptSource} />
-              </p>
+              <ExercisePromptHeader index={index} promptSource={promptSource} />
               {(() => {
                 const { AnswerComponent } = getExerciseKindEditor(exercise.kind);
 
@@ -122,6 +107,7 @@ export const CourseTestContent = ({
                     index={index}
                     instance={exerciseInstance}
                     onAnswerChange={(value) => onUpdateExerciseAnswer(index, value)}
+                    size="lg"
                     value={exerciseAnswers[index] ?? ""}
                   />
                 );
@@ -169,6 +155,7 @@ export const CourseTestContent = ({
         <div className="hidden break-inside-avoid pt-4 print:mt-6 print:block">
           <div
             className={cn(
+              // eslint-disable-next-line shadcn/no-raw-colors -- print-only (hidden except print:block above), stays literal for paper regardless of app theme
               "rounded-lg border border-stone-200 px-3 py-2 text-xs leading-5 text-muted-foreground",
               printExerciseHintStyle === "upside-down" && "rotate-180",
             )}

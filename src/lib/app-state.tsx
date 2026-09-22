@@ -5,8 +5,16 @@ import {
 } from 'react'
 
 import { detectLocale, i18n, type Locale } from '@/lib/i18n'
-import type { Category, Persona, UserRole } from '@/lib/preferences'
+import type { Category, Persona, Theme, UserRole } from '@/lib/preferences'
 import { AppStateContext } from '@/lib/use-app-state'
+
+function detectTheme(): Theme {
+  if (typeof window === 'undefined' || !window.matchMedia) {
+    return 'light'
+  }
+
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
 
 function AppStateProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => detectLocale())
@@ -15,6 +23,7 @@ function AppStateProvider({ children }: { children: ReactNode }) {
   const [category, setCategoryState] = useState<Category | null>(null)
   const [role, setRoleState] = useState<UserRole | null>(null)
   const [persona, setPersonaState] = useState<Persona | null>(null)
+  const [theme, setThemeState] = useState<Theme>(() => detectTheme())
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
@@ -36,6 +45,7 @@ function AppStateProvider({ children }: { children: ReactNode }) {
         setCategoryState(preferences.category ?? null)
         setRoleState(preferences.role ?? null)
         setPersonaState(preferences.persona ?? null)
+        setThemeState(preferences.theme ?? detectTheme())
         setIsLoaded(true)
       })
       .catch(() => {
@@ -58,6 +68,10 @@ function AppStateProvider({ children }: { children: ReactNode }) {
 
     void window.preferences.set({ locale })
   }, [isLoaded, locale])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+  }, [theme])
 
   function setLocale(nextLocale: Locale) {
     setLocaleState(nextLocale)
@@ -105,6 +119,11 @@ function AppStateProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  function setTheme(nextTheme: Theme) {
+    setThemeState(nextTheme)
+    void window.preferences.set({ locale, theme: nextTheme })
+  }
+
   function logout() {
     setNicknameState('')
     setSubmittedName('')
@@ -124,11 +143,13 @@ function AppStateProvider({ children }: { children: ReactNode }) {
     persona,
     role,
     submittedName,
+    theme,
     setCategory,
     setLocale,
     setNickname,
     setPersona,
     setRole,
+    setTheme,
     submitNickname,
   }
 

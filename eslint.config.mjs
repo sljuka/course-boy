@@ -57,6 +57,11 @@ export default [
       // Pure existence/readability checks — no design-system policy choices.
       "shadcn/no-unknown-classes": "error",
       "shadcn/require-static-classes": "error",
+      // Catches raw Tailwind palette colors (bg-white, bg-stone-200, ...) on
+      // *any* element, including plain divs/spans that no-restyle can't see
+      // (it only tracks PascalCase component references) — this is what
+      // should have caught the dark-mode "explorer is white" class of bug.
+      "shadcn/no-raw-colors": "error",
       // The design-system tiering rule (docs/working-conventions.md), enforced
       // for real: components own their appearance, callers only place them.
       // `spacing` (padding/gap) is promoted to the baseline alongside `layout`
@@ -161,6 +166,32 @@ export default [
     files: ["src/components/exercise-kinds/**/*.{ts,tsx}"],
     rules: {
       "react-refresh/only-export-components": "off",
+    },
+  },
+  {
+    // Tag's whole point is a fixed palette of named, user-chosen swatches
+    // (amber/emerald/rose/sky/stone/teal) defined inside a `cva()` variant
+    // map — deliberately raw colors, not theme tokens that should track the
+    // app's single light/dark scheme. no-raw-colors' `contracts` can't scope
+    // this: component attribution comes from the enclosing JSX element, and
+    // these strings live inside a plain object literal with no JSX parent at
+    // all, so they resolve to no component and always hit the baseline
+    // policy regardless of any `contracts` pattern — a file-level override
+    // is the only thing that actually reaches them.
+    files: ["src/components/ui/tag.tsx"],
+    rules: {
+      "shadcn/no-raw-colors": "off",
+    },
+  },
+  {
+    // Print output is paper, not a themed screen surface — these render
+    // exclusively inside `print:` styles (see docs/persistence-notes.md's
+    // print-friendly format goal), so they stay literal black-on-white
+    // regardless of the app's light/dark theme, the same reasoning
+    // `@media print` in index.css already applies globally.
+    files: ["src/components/course-player/print-*.tsx"],
+    rules: {
+      "shadcn/no-raw-colors": "off",
     },
   },
   {

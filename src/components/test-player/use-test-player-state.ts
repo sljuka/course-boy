@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import type { CourseExercise, CourseTest } from "@/lib/course-package";
@@ -13,6 +14,30 @@ export type ExerciseResult = {
   feedback: string | null;
   isCorrect: boolean;
 };
+
+function deriveExerciseResult(
+  exercise: CourseExercise,
+  instance: ExerciseInstance,
+  rawAnswer: string,
+  t: TFunction,
+): ExerciseResult {
+  const result = getExerciseKindRuntime(exercise.kind).grade(exercise, instance, rawAnswer);
+
+  if (result.isCorrect) {
+    return { feedback: null, isCorrect: true };
+  }
+
+  if (!result.isAnswered) {
+    return { feedback: t(result.noAnswerMessageKey), isCorrect: false };
+  }
+
+  return {
+    feedback: exercise.hint
+      ? t("courseDetails.incorrectAnswerWithHint", { hint: exercise.hint })
+      : t("courseDetails.incorrectAnswer"),
+    isCorrect: false,
+  };
+}
 
 function createEmptyResults(exercises: CourseExercise[]) {
   return exercises.map(() => ({
@@ -36,6 +61,7 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
   const [isPrintHintVisible, setIsPrintHintVisible] = useState(true);
   const [isInteractiveHintVisible, setIsInteractiveHintVisible] =
     useState(true);
+  const [isInteractiveMode, setIsInteractiveMode] = useState(false);
 
   function resetExerciseState() {
     setActiveTestExercises([]);
@@ -44,6 +70,7 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     setExerciseResults([]);
     setTestFeedback(null);
     setIsTestPassed(false);
+    setIsInteractiveMode(false);
   }
 
   function hydrateExercises(exercises: CourseExercise[]) {
@@ -103,32 +130,10 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
       return;
     }
 
-    let allCorrect = true;
-    const nextResults = activeTestExercises.map((exercise, index) => {
-      const rawAnswer = exerciseAnswers[index] ?? "";
-      const result = getExerciseKindRuntime(exercise.kind).grade(
-        exercise,
-        activeTestInstances[index],
-        rawAnswer,
-      );
-
-      if (result.isCorrect) {
-        return { feedback: null, isCorrect: true };
-      }
-
-      allCorrect = false;
-
-      if (!result.isAnswered) {
-        return { feedback: t(result.noAnswerMessageKey), isCorrect: false };
-      }
-
-      return {
-        feedback: exercise.hint
-          ? t("courseDetails.incorrectAnswerWithHint", { hint: exercise.hint })
-          : t("courseDetails.incorrectAnswer"),
-        isCorrect: false,
-      };
-    });
+    const nextResults = activeTestExercises.map((exercise, index) =>
+      deriveExerciseResult(exercise, activeTestInstances[index], exerciseAnswers[index] ?? "", t),
+    );
+    const allCorrect = nextResults.every((result) => result.isCorrect);
 
     setExerciseResults(nextResults);
     setIsTestPassed(allCorrect);
@@ -139,18 +144,53 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     );
   }
 
+  // Grades a single exercise for interactive mode, leaving every other
+  // exercise's result untouched — unlike `submitExercise`, this never writes
+  // a whole-test "incorrect" banner, since interactive mode shows its own
+  // per-exercise feedback instead. The whole-test passed state still gets
+  // set once every exercise (across however many separate calls to this
+  // function it took) ends up correct, so finishing the walkthrough
+  // satisfies the exact same `isTestPassed` condition the all-at-once view
+  // gates "Continue" on.
+  function submitSingleExercise(index: number) {
+    const exercise = activeTestExercises[index];
+    const instance = activeTestInstances[index];
+
+    if (!exercise || !instance) {
+      return;
+    }
+
+    const result = deriveExerciseResult(exercise, instance, exerciseAnswers[index] ?? "", t);
+
+    setExerciseResults((currentResults) => {
+      const nextResults = currentResults.map((currentResult, resultIndex) =>
+        resultIndex === index ? result : currentResult,
+      );
+      const allCorrect =
+        nextResults.length > 0 && nextResults.every((nextResult) => nextResult.isCorrect);
+
+      setIsTestPassed(allCorrect);
+      setTestFeedback(allCorrect ? t("courseDetails.correctAnswer") : null);
+
+      return nextResults;
+    });
+  }
+
   return {
     activeTestExercises,
     activeTestInstances,
     exerciseAnswers,
     exerciseResults,
     isInteractiveHintVisible,
+    isInteractiveMode,
     isPrintHintVisible,
     isTestPassed,
     refreshExercises,
     setIsInteractiveHintVisible,
+    setIsInteractiveMode,
     setIsPrintHintVisible,
     submitExercise,
+    submitSingleExercise,
     testFeedback,
     updateExerciseAnswer,
   };

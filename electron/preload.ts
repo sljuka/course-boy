@@ -15,6 +15,9 @@ import type {
   CourseVersionHistory,
   CutCourseVersionInput,
   CutCourseVersionResult,
+  DeleteCourseLessonInput,
+  DeleteCourseSectionInput,
+  DeleteCourseSectionTestInput,
   GetLessonTestDraftInput,
   GetSectionTestDraftInput,
   PublishCourseVersionInput,
@@ -78,6 +81,15 @@ contextBridge.exposeInMainWorld('courses', {
   },
   getSectionTestDraft(input: GetSectionTestDraftInput) {
     return ipcRenderer.invoke('courses:get-section-test-draft', input) as Promise<SharedTestDefinition | null>
+  },
+  deleteSection(input: DeleteCourseSectionInput) {
+    return ipcRenderer.invoke('courses:delete-section', input) as Promise<void>
+  },
+  deleteLesson(input: DeleteCourseLessonInput) {
+    return ipcRenderer.invoke('courses:delete-lesson', input) as Promise<void>
+  },
+  deleteSectionTest(input: DeleteCourseSectionTestInput) {
+    return ipcRenderer.invoke('courses:delete-section-test', input) as Promise<void>
   },
   get(courseId: string, locale?: Locale) {
     return ipcRenderer.invoke('courses:get', courseId, locale) as Promise<CourseDetails | null>

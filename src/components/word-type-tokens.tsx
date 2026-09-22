@@ -82,6 +82,7 @@ export function WordTypeTokens({
         return (
           <button
             aria-label={`${token.value}: ${selectedType?.name ?? "unmarked"}`}
+            className="group cursor-pointer"
             key={tokenIndex}
             onClick={() => onWordClick(currentMarkedWordIndex)}
             type="button"

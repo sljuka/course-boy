@@ -149,6 +149,14 @@ const COMMANDS = {
     console.log('drag', x1, y1, '->', x2, y2)
   },
 
+  // Real OS-level right-click at page coordinates — args: "x y"
+  async 'right-click'(args) {
+    if (!need()) return
+    const [x, y] = args.split(' ').map(Number)
+    await harness.page.mouse.click(x, y, { button: 'right' })
+    console.log('right-click', x, y)
+  },
+
   // Call the preload bridge: renderer -> preload -> ipcMain -> filesystem.
   async ipc(expr) {
     if (!need()) return

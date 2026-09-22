@@ -10,6 +10,7 @@ import {
   Folder,
   FolderPlus,
   PanelRightOpen,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -29,6 +30,10 @@ import {
   courseRootId,
   type StructureSelection,
 } from "@/components/course-structure-prototype/course-structure-prototype-types";
+import {
+  ExplorerDeleteDialog,
+  type PendingExplorerDelete,
+} from "@/components/course-structure-prototype/explorer-delete-dialog";
 import type { CourseSectionPreview } from "@/lib/course-package";
 import { resolveTestIdForLesson } from "@/lib/course-test-id";
 import {
@@ -89,6 +94,7 @@ export function CourseStructurePrototype({
   const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null);
   const [pendingTitle, setPendingTitle] = useState("");
   const [pendingError, setPendingError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingExplorerDelete | null>(null);
 
   const createSectionMutation = useCreateCourseSectionMutation();
   const createLessonMutation = useCreateCourseLessonMutation();
@@ -242,7 +248,7 @@ export function CourseStructurePrototype({
   return (
     <div className={compact ? "flex flex-col gap-4" : "flex flex-col gap-8"}>
       {compact ? null : (
-        <div className="space-y-3 border-b border-stone-200 pb-6">
+        <div className="space-y-3 border-b border-border pb-6">
           <h1 className="text-4xl font-semibold tracking-tight text-foreground">
             Prototype 2
           </h1>
@@ -253,9 +259,9 @@ export function CourseStructurePrototype({
         </div>
       )}
 
-      <section className="overflow-hidden rounded-sm border border-stone-200 bg-white shadow-[0_12px_30px_-24px_rgba(28,25,23,0.12)]">
+      <section className="overflow-hidden rounded-sm border border-border bg-card shadow-[0_12px_30px_-24px_rgba(28,25,23,0.12)]">
         {showFrameHeader && (
-          <div className="flex items-center justify-between border-b border-stone-200 bg-stone-50 px-4 py-2">
+          <div className="flex items-center justify-between border-b border-border bg-muted px-4 py-2">
             <Eyebrow>Explorer</Eyebrow>
           </div>
         )}
@@ -284,7 +290,7 @@ export function CourseStructurePrototype({
               title={courseTitle}
             />
             {isCourseRootExpanded && (
-              <div className="ml-3 border-l border-stone-200 pl-3">
+              <div className="ml-3 border-l border-border pl-3">
                 {sectionNodes.length === 0 && !pendingCreate ? (
                   <div className="rounded-sm px-3 py-3 text-sm text-muted-foreground">
                     No sections yet. Right-click the root folder to add one.
@@ -296,6 +302,7 @@ export function CourseStructurePrototype({
                       node={node}
                       onAddDocument={() => startAddDocument(node.id)}
                       onAddTest={() => startAddTest(node.id)}
+                      onRequestDelete={setPendingDelete}
                       onSelectionChange={onSelectionChange}
                       onSelectTest={selectTest}
                       pendingDocument={
@@ -335,6 +342,18 @@ export function CourseStructurePrototype({
           </div>
         </div>
       </section>
+      <ExplorerDeleteDialog
+        courseId={courseId}
+        onDeleted={() =>
+          onSelectionChange?.({ id: courseRootId, title: courseTitle, type: "course" })
+        }
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingDelete(null);
+          }
+        }}
+        pending={pendingDelete}
+      />
     </div>
   );
 }
@@ -346,6 +365,7 @@ function SectionRow({
   onPendingCreateCancel,
   onPendingCreateChange,
   onPendingCreateCommit,
+  onRequestDelete,
   onSelectionChange,
   onSelectTest,
   onToggle,
@@ -360,6 +380,7 @@ function SectionRow({
   onPendingCreateCancel: () => void;
   onPendingCreateChange: (title: string) => void;
   onPendingCreateCommit: () => void;
+  onRequestDelete: (pending: PendingExplorerDelete) => void;
   onSelectionChange?: (selection: StructureSelection) => void;
   onSelectTest: (lessonId: string) => void;
   onToggle: () => void;
@@ -378,6 +399,9 @@ function SectionRow({
         isFixed
         isSelected={selectedNodeId === node.id}
         label="Section"
+        onDelete={() =>
+          onRequestDelete({ kind: "section", id: node.id, title: node.title })
+        }
         onInsertDocument={onAddDocument}
         onInsertTest={onAddTest}
         onMoveDown={() => {}}
@@ -390,7 +414,7 @@ function SectionRow({
       />
 
       {sectionIsExpanded && (
-        <div className="ml-3 border-l border-stone-200 pl-3">
+        <div className="ml-3 border-l border-border pl-3">
           {node.children.map((child) =>
             child.type === "document" ? (
               <div key={child.id}>
@@ -401,7 +425,14 @@ function SectionRow({
                   isFixed
                   isSelected={selectedNodeId === child.id}
                   label="Document"
-                  onInsertTest={child.hasTest ? undefined : () => onSelectTest(child.id)}
+                  onDelete={() =>
+                    onRequestDelete({
+                      kind: "document",
+                      id: child.id,
+                      sectionId: node.id,
+                      title: child.title,
+                    })
+                  }
                   onMoveDown={() => {}}
                   onMoveUp={() => {}}
                   onOpen={() => {}}
@@ -423,6 +454,14 @@ function SectionRow({
                       isFixed
                       isSelected={selectedNodeId === resolveTestIdForLesson(child.id)}
                       label="Test"
+                      onDelete={() =>
+                        onRequestDelete({
+                          kind: "test",
+                          id: resolveTestIdForLesson(child.id),
+                          sectionId: node.id,
+                          title: `Test for "${child.title}"`,
+                        })
+                      }
                       onMoveDown={() => {}}
                       onMoveUp={() => {}}
                       onSelect={() => onSelectTest(child.id)}
@@ -440,6 +479,14 @@ function SectionRow({
                 isSelected={selectedNodeId === child.id}
                 key={child.id}
                 label="Test"
+                onDelete={() =>
+                  onRequestDelete({
+                    kind: "test",
+                    id: child.id,
+                    sectionId: node.id,
+                    title: child.title,
+                  })
+                }
                 onMoveDown={() => {}}
                 onMoveUp={() => {}}
                 onSelect={() =>
@@ -535,6 +582,7 @@ function ExplorerRow({
   isSelected = false,
   label,
   onChange,
+  onDelete,
   onEditDone,
   onInsertDocument,
   onInsertSection,
@@ -557,6 +605,7 @@ function ExplorerRow({
   isSelected?: boolean;
   label: string;
   onChange?: (title: string) => void;
+  onDelete?: () => void;
   onEditDone?: () => void;
   onInsertDocument?: () => void;
   onInsertSection?: () => void;
@@ -585,15 +634,15 @@ function ExplorerRow({
       <ContextMenuTrigger>
         <div
           className={[
-            "group/row flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1 text-sm text-foreground hover:bg-stone-100",
-            isSelected || isContextMenuOpen ? "bg-stone-100 text-foreground" : "",
+            "group/row flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1 text-sm text-foreground hover:bg-muted",
+            isSelected || isContextMenuOpen ? "bg-muted text-foreground" : "",
           ].join(" ")}
           onClick={onSelect}
         >
           <button
             className={[
               "flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground",
-              onToggle ? "hover:bg-stone-200 hover:text-foreground" : "invisible",
+              onToggle ? "hover:bg-accent hover:text-foreground" : "invisible",
             ].join(" ")}
             onClick={onToggle}
             type="button"
@@ -674,7 +723,7 @@ function ExplorerRow({
                   <FilePlus2 aria-hidden="true" className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">Add document</TooltipContent>
+              <TooltipContent side="left">Add document</TooltipContent>
             </Tooltip>
           )}
 
@@ -739,6 +788,13 @@ function ExplorerRow({
           <ContextMenuItem disabled={!canMoveDown} onClick={onMoveDown}>
             <ArrowDown aria-hidden="true" />
             <span>Move down</span>
+          </ContextMenuItem>
+        )}
+        {onDelete && <ContextMenuSeparator />}
+        {onDelete && (
+          <ContextMenuItem onClick={onDelete} variant="destructive">
+            <Trash2 aria-hidden="true" />
+            <span>Remove</span>
           </ContextMenuItem>
         )}
       </ContextMenuContent>

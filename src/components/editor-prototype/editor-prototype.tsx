@@ -69,7 +69,6 @@ export function EditorPrototype({
   );
   const [autoFocusBlockId, setAutoFocusBlockId] = useState<string | null>(null);
   const [isTitleEditing, setIsTitleEditing] = useState(false);
-  const subtitleRef = useRef<HTMLTextAreaElement | null>(null);
   const titleRef = useRef<HTMLInputElement | null>(null);
   const uploadAssetMutation = useUploadCourseAssetMutation();
 
@@ -81,17 +80,6 @@ export function EditorPrototype({
     titleRef.current?.focus();
     titleRef.current?.select();
   }, [isTitleEditing]);
-
-  useEffect(() => {
-    const textarea = subtitleRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [subtitle]);
 
   const resolvedBlocks = blocks ?? internalBlocks;
 
@@ -197,7 +185,7 @@ export function EditorPrototype({
             )}
         </div>
       ) : (
-        <div className="flex flex-col gap-3 border-b border-stone-200 pb-6">
+        <div className="flex flex-col gap-3 border-b border-border pb-6">
           <Eyebrow>{nodeType}</Eyebrow>
           {isTitleEditing ? (
             <Input
@@ -229,7 +217,6 @@ export function EditorPrototype({
             className="min-h-0 resize-none overflow-hidden text-base font-medium text-muted-foreground md:text-base"
             onChange={(event) => onSubtitleChange?.(event.target.value)}
             placeholder="Add a short description"
-            ref={subtitleRef}
             rows={1}
             variant="ghost"
             value={subtitle ?? ""}

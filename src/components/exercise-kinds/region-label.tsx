@@ -32,6 +32,7 @@ function AnswerComponent({
   exercise,
   index: exerciseIndex,
   onAnswerChange,
+  size,
   value,
 }: AnswerComponentProps<RegionLabelCourseExercise>) {
   const { t } = useTranslation();
@@ -85,6 +86,7 @@ function AnswerComponent({
                   ),
                 )
               }
+              size={size}
               value={answers[regionIndex] ?? ""}
             />
           </li>

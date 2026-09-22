@@ -33,6 +33,11 @@ export type AnswerComponentProps<TCourse extends CourseExercise> = {
   index: number;
   instance: ExerciseInstance;
   onAnswerChange: (value: string) => void;
+  // Only consumed by kinds that render `Input` (numeric, missing-word,
+  // region-label). Both real student-facing player surfaces
+  // (`CourseTestContent` and `InteractiveTestPlayer`) pass `"lg"`; absent
+  // (e.g. a kind's own `ExampleComponent` preview) means the default size.
+  size?: "default" | "lg";
   value: string;
 };
 

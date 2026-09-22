@@ -6,11 +6,11 @@ const markdownComponents: Components = {
   a: ({ node: _node, ...props }) => (
     <a
       {...props}
-      className="text-foreground underline decoration-stone-300 underline-offset-4"
+      className="text-foreground underline decoration-border underline-offset-4"
     />
   ),
   blockquote: ({ node: _node, ...props }) => (
-    <blockquote {...props} className="border-l-2 border-stone-300 pl-4 italic text-foreground" />
+    <blockquote {...props} className="border-l-2 border-border pl-4 italic text-foreground" />
   ),
   code: ({ className, children, ...props }) => {
     const isInlineCode = !className;
@@ -19,7 +19,7 @@ const markdownComponents: Components = {
       return (
         <code
           {...props}
-          className="rounded-sm bg-stone-100 px-1.5 py-0.5 font-mono text-[0.95em] text-foreground"
+          className="rounded-sm bg-muted px-1.5 py-0.5 font-mono text-[0.95em] text-foreground"
         >
           {children}
         </code>
@@ -29,6 +29,7 @@ const markdownComponents: Components = {
     return (
       <code
         {...props}
+        // eslint-disable-next-line shadcn/no-raw-colors -- fenced code blocks stay dark regardless of page theme, the common convention for syntax-highlighted code
         className="block overflow-x-auto rounded-xl bg-stone-950 p-4 font-mono text-sm text-stone-100"
       >
         {children}

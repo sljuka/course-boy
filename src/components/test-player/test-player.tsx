@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { AlertInteractiveMode } from "@/components/test-player/alert-interactive-mode";
+import { InteractiveTestPlayer } from "@/components/test-player/interactive-test-player";
 import { TestPlayerPrintHint } from "@/components/test-player/test-player-print-hint";
 import { useTestPlayerState } from "@/components/test-player/use-test-player-state";
 import { defaultTestPrintOptions } from "@/lib/print-options";
@@ -55,12 +56,15 @@ export function TestPlayerView({
     exerciseAnswers,
     exerciseResults,
     isInteractiveHintVisible,
+    isInteractiveMode,
     isPrintHintVisible,
     isTestPassed,
     refreshExercises,
     setIsInteractiveHintVisible,
+    setIsInteractiveMode,
     setIsPrintHintVisible,
     submitExercise,
+    submitSingleExercise,
     testFeedback,
     updateExerciseAnswer,
   } = useTestPlayerState(activeItem);
@@ -107,66 +111,86 @@ export function TestPlayerView({
         }
         right={
           <CoursePlayerActions
-            isRefreshingAvailable={activeTestExercises.length > 0}
+            isRefreshingAvailable={!isInteractiveMode && activeTestExercises.length > 0}
             onClose={playerState.exitPlayer}
             onRefreshExercise={refreshExercises}
             printControl={
-              <div className="flex items-center gap-2">
-                <PrintOptionsMenu
-                  mode="test"
-                  onPrint={() => window.print()}
-                  onPrintOptionsChange={setPrintOptions}
-                  printOptions={printOptions}
-                >
+              isInteractiveMode ? null : (
+                <div className="flex items-center gap-2">
+                  <PrintOptionsMenu
+                    mode="test"
+                    onPrint={() => window.print()}
+                    onPrintOptionsChange={setPrintOptions}
+                    printOptions={printOptions}
+                  >
+                    <Button
+                      aria-label={t("courseDetails.printCourse")}
+                      shape="circle"
+                      size="icon"
+                      variant="secondary"
+                    >
+                      <Printer aria-hidden="true" className="h-5 w-5" />
+                    </Button>
+                  </PrintOptionsMenu>
                   <Button
-                    aria-label={t("courseDetails.printCourse")}
+                    aria-label={t("courseDetails.interactiveHintTitle")}
+                    onClick={() => setIsInteractiveMode(true)}
                     shape="circle"
                     size="icon"
                     variant="secondary"
                   >
-                    <Printer aria-hidden="true" className="h-5 w-5" />
+                    <Play aria-hidden="true" className="h-5 w-5 fill-success text-success" />
                   </Button>
-                </PrintOptionsMenu>
-                <Button
-                  aria-label={t("courseDetails.interactiveHintTitle")}
-                  shape="circle"
-                  size="icon"
-                  variant="secondary"
-                >
-                  <Play aria-hidden="true" className="h-5 w-5 fill-success text-success" />
-                </Button>
-              </div>
+                </div>
+              )
             }
           />
         }
       />
       <div>
-        {isPrintHintVisible && (
-          <TestPlayerPrintHint
-            onDismiss={() => setIsPrintHintVisible(false)}
-            onPrintOptionsChange={setPrintOptions}
-            printOptions={printOptions}
+        {isInteractiveMode ? (
+          <InteractiveTestPlayer
+            activeTestExercises={activeTestExercises}
+            activeTestInstances={activeTestInstances}
+            exerciseAnswers={exerciseAnswers}
+            exerciseResults={exerciseResults}
+            onContinueAfterExercise={playerState.moveToNextStep}
+            onExit={() => setIsInteractiveMode(false)}
+            onSubmitExercise={submitSingleExercise}
+            onUpdateExerciseAnswer={updateExerciseAnswer}
+            strictAdvancement={activeItem.test?.strictAdvancement ?? true}
           />
+        ) : (
+          <>
+            {isPrintHintVisible && (
+              <TestPlayerPrintHint
+                onDismiss={() => setIsPrintHintVisible(false)}
+                onPrintOptionsChange={setPrintOptions}
+                printOptions={printOptions}
+              />
+            )}
+            {isInteractiveHintVisible && (
+              <AlertInteractiveMode
+                onDismiss={() => setIsInteractiveHintVisible(false)}
+                onStart={() => setIsInteractiveMode(true)}
+              />
+            )}
+            <CourseTestContent
+              activeTestExercises={activeTestExercises}
+              activeTestInstances={activeTestInstances}
+              exerciseAnswers={exerciseAnswers}
+              exerciseResults={exerciseResults}
+              isTestPassed={isTestPassed}
+              onContinueAfterExercise={playerState.moveToNextStep}
+              onSubmitExercise={submitExercise}
+              onUpdateExerciseAnswer={updateExerciseAnswer}
+              printAnswerStyle={printOptions.answerStyle}
+              printExerciseHintStyle={printOptions.exerciseHintStyle}
+              showPrintTestSeparators={printOptions.showTestSeparators}
+              testFeedback={testFeedback}
+            />
+          </>
         )}
-        {isInteractiveHintVisible && (
-          <AlertInteractiveMode
-            onDismiss={() => setIsInteractiveHintVisible(false)}
-          />
-        )}
-        <CourseTestContent
-          activeTestExercises={activeTestExercises}
-          activeTestInstances={activeTestInstances}
-          exerciseAnswers={exerciseAnswers}
-          exerciseResults={exerciseResults}
-          isTestPassed={isTestPassed}
-          onContinueAfterExercise={playerState.moveToNextStep}
-          onSubmitExercise={submitExercise}
-          onUpdateExerciseAnswer={updateExerciseAnswer}
-          printAnswerStyle={printOptions.answerStyle}
-          printExerciseHintStyle={printOptions.exerciseHintStyle}
-          showPrintTestSeparators={printOptions.showTestSeparators}
-          testFeedback={testFeedback}
-        />
       </div>
     </>
   );

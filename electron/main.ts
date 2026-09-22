@@ -11,6 +11,9 @@ import {
   createLocalCourseSection,
   createLocalCourseSectionTest,
   cutLocalCourseVersion,
+  deleteLocalCourseLesson,
+  deleteLocalCourseSection,
+  deleteLocalCourseSectionTest,
   ensureLocalCoursesRoot,
   getLocalCourseLessonTestDraft,
   getLocalCourseSectionTestDraft,
@@ -31,6 +34,9 @@ import type {
   CreateCourseSectionInput,
   CreateCourseSectionTestInput,
   CutCourseVersionInput,
+  DeleteCourseLessonInput,
+  DeleteCourseSectionInput,
+  DeleteCourseSectionTestInput,
   GetLessonTestDraftInput,
   GetSectionTestDraftInput,
   PublishCourseVersionInput,
@@ -64,6 +70,7 @@ protocol.registerSchemesAsPrivileged([
 type Category = 'pre-school' | 'elementary-school' | 'high-school' | 'other'
 type UserRole = 'student' | 'teacher'
 type Persona = 'course-boy' | 'course-girl' | 'course-bot' | 'course-monster'
+type Theme = 'light' | 'dark'
 type UserPreferences = {
   category?: Category
   hasAcknowledgedCreatorKey?: boolean
@@ -71,6 +78,7 @@ type UserPreferences = {
   nickname?: string
   persona?: Persona
   role?: UserRole
+  theme?: Theme
 }
 
 const preferencesStore = new Store<UserPreferences>()
@@ -122,6 +130,10 @@ ipcMain.handle(
 
     if (typeof preferences.persona === 'string') {
       preferencesStore.set('persona', preferences.persona)
+    }
+
+    if (typeof preferences.theme === 'string') {
+      preferencesStore.set('theme', preferences.theme)
     }
 
     if (typeof preferences.hasAcknowledgedCreatorKey === 'boolean') {
@@ -190,6 +202,18 @@ ipcMain.handle('courses:save-section-test', (_event, input: SaveSectionTestInput
 
 ipcMain.handle('courses:get-section-test-draft', (_event, input: GetSectionTestDraftInput) => {
   return getLocalCourseSectionTestDraft(input)
+})
+
+ipcMain.handle('courses:delete-section', (_event, input: DeleteCourseSectionInput) => {
+  return deleteLocalCourseSection(input)
+})
+
+ipcMain.handle('courses:delete-lesson', (_event, input: DeleteCourseLessonInput) => {
+  return deleteLocalCourseLesson(input)
+})
+
+ipcMain.handle('courses:delete-section-test', (_event, input: DeleteCourseSectionTestInput) => {
+  return deleteLocalCourseSectionTest(input)
 })
 
 ipcMain.handle(

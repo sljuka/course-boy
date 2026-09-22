@@ -16,6 +16,9 @@ import type {
   CreateCourseSectionTestResult,
   CutCourseVersionInput,
   CutCourseVersionResult,
+  DeleteCourseLessonInput,
+  DeleteCourseSectionInput,
+  DeleteCourseSectionTestInput,
   GetLessonTestDraftInput,
   GetSectionTestDraftInput,
   PublishCourseVersionInput,
@@ -161,6 +164,39 @@ export function useSectionTestDraftQuery(input: GetSectionTestDraftInput | null)
     enabled: input !== null,
     queryKey: ["courses", "section-test-draft", input?.courseId, input?.testId],
     queryFn: () => window.courses.getSectionTestDraft(input!),
+  });
+}
+
+export function useDeleteCourseSectionMutation() {
+  return useMutation<void, Error, DeleteCourseSectionInput>({
+    mutationFn: (input) => window.courses.deleteSection(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
+export function useDeleteCourseLessonMutation() {
+  return useMutation<void, Error, DeleteCourseLessonInput>({
+    mutationFn: (input) => window.courses.deleteLesson(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
+export function useDeleteCourseSectionTestMutation() {
+  return useMutation<void, Error, DeleteCourseSectionTestInput>({
+    mutationFn: (input) => window.courses.deleteSectionTest(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
   });
 }
 

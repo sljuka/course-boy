@@ -18,11 +18,11 @@ export function EditorStatusBar({
   status,
 }: EditorStatusBarProps) {
   return (
-    <div className="border-t border-stone-200 bg-white">
+    <div className="border-t border-border bg-background">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 lg:px-6">
         <div className="flex min-w-0 items-center gap-2">
           {status === "error" ? (
-            <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0 text-red-600" />
+            <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0 text-destructive" />
           ) : status === "saving" ? (
             <LoaderCircle
               aria-hidden="true"
@@ -31,7 +31,7 @@ export function EditorStatusBar({
           ) : status === "dirty" ? (
             <span
               aria-hidden="true"
-              className="h-2 w-2 shrink-0 rounded-full bg-stone-400"
+              className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground"
             />
           ) : (
             <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -39,7 +39,7 @@ export function EditorStatusBar({
           <span
             className={cn(
               "text-sm text-muted-foreground",
-              status === "error" && "text-red-700",
+              status === "error" && "text-destructive",
             )}
           >
             {message}

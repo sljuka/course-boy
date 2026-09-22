@@ -293,7 +293,7 @@ export function ExercisePromptCard({
                   </Tag>
                 ))}
                 <button
-                  className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground underline decoration-stone-300 underline-offset-4 transition-colors hover:text-foreground"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();

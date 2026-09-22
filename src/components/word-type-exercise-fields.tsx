@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { Check, Plus, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -145,8 +145,6 @@ export function WordTypeExerciseFields({
   locale,
   onChange,
 }: FieldsComponentProps<WordTypeTestExercise>) {
-  const promptRef = useRef<HTMLTextAreaElement | null>(null);
-  const textRef = useRef<HTMLTextAreaElement | null>(null);
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const text = exercise.locales[locale]?.text ?? "";
   const validation = validate(exercise, locale);
@@ -183,28 +181,6 @@ export function WordTypeExerciseFields({
     [previewTokens],
   );
 
-  useEffect(() => {
-    const textarea = promptRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [prompt]);
-
-  useEffect(() => {
-    const textarea = textRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [text]);
-
   return (
     <>
       <Field>
@@ -218,7 +194,6 @@ export function WordTypeExerciseFields({
             onChange((currentExercise) => updatePrompt(currentExercise, locale, event.target.value))
           }
           placeholder="Mark the nouns and verbs"
-          ref={promptRef}
           rows={2}
           value={prompt}
         />
@@ -299,7 +274,6 @@ export function WordTypeExerciseFields({
             onChange((currentExercise) => updateText(currentExercise, locale, event.target.value))
           }
           placeholder="Mike{{n}} is jumping{{v}} over the fence{{n}}."
-          ref={textRef}
           rows={3}
           value={text}
         />

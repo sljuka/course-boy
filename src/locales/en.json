@@ -16,6 +16,20 @@
   },
   "back": "Back",
   "continue": "Continue",
+  "explorer": {
+    "cancelRemove": "Cancel",
+    "confirmRemove": "Remove",
+    "removeDocument": "Remove document",
+    "removeDocumentDescription": "This permanently deletes \"{{title}}\". This can't be undone.",
+    "removeDocumentTitle": "Remove this document?",
+    "removeSection": "Remove section",
+    "removeSectionDescription": "This deletes \"{{title}}\" and everything inside it — its documents and tests. This can't be undone.",
+    "removeSectionTitle": "Remove this section?",
+    "removeTest": "Remove test",
+    "removeTestDescription": "This permanently deletes \"{{title}}\". This can't be undone.",
+    "removeTestTitle": "Remove this test?",
+    "removing": "Removing…"
+  },
   "courseSearch": {
     "courseMenuLabel": "Course actions for {{title}}",
     "cancelRemove": "Cancel",
@@ -56,11 +70,16 @@
     "correctAnswer": "Correct. You can continue to the next lesson.",
     "enterAnswer": "Enter a valid answer before continuing.",
     "error": "Course details could not be loaded right now.",
+    "exerciseCorrect": "Correct!",
+    "exerciseProgress": "Exercise {{current}} of {{total}}",
+    "exitInteractiveMode": "Exit interactive mode",
     "interactiveHintBody": "In interactive mode, you solve exercises one by one and get the answer after submitting each exercise. It is a nicer way to take the test.",
     "interactiveHintTitle": "Try interactive mode",
     "incorrectAnswer": "That answer is not correct yet.",
     "incorrectAnswerWithHint": "That answer is not correct yet. Hint: {{hint}}",
     "dismissPrintHint": "Dismiss print hint",
+    "nextExercise": "Next",
+    "previousExercise": "Previous",
     "progress": "Lesson {{current}} of {{total}}",
     "printHintBody": "You can print this test, solve it with pen and paper, and then enter the answers here to check whether they are correct.",
     "printHintTitle": "Prefer paper? Print this test first.",
@@ -399,6 +418,10 @@
     "teaching": "Teaching",
     "home": "Home",
     "title": "Teacher workspace"
+  },
+  "theme": {
+    "switchToDark": "Switch to dark theme",
+    "switchToLight": "Switch to light theme"
   },
   "welcomeSubtitle": "Matko is an open platform for creating and attending courses. Tests and documents that make up the courses are adjusted to be print-friendly. The focus is on making learning and teaching an enjoyable experience 😊",
   "welcomeTitle": "Welcome! 😊"

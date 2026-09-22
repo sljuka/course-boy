@@ -166,7 +166,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       />
       {resolvedCourse.sections.map((section) => (
         <Card
-          className="overflow-hidden border-stone-200/80 bg-stone-50/80 shadow-none"
+          className="overflow-hidden border-border bg-muted/80 shadow-none"
           id={section.id}
           key={section.id}
         >

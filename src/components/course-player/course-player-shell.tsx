@@ -32,7 +32,7 @@ export function CoursePlayerShell({
       <Card className="overflow-hidden">
         <CardContent className="flex flex-col items-start gap-4 py-10">
           <CardDescription>{t("courseDetails.missing")}</CardDescription>
-          <Button render={<Link to="/" />} size="sm" variant="secondary">
+          <Button nativeButton={false} render={<Link to="/" />} size="sm" variant="secondary">
             {t("courseDetails.missingBackToHome")}
           </Button>
         </CardContent>

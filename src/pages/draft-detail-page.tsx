@@ -647,6 +647,7 @@ export function DraftDetailPage() {
     const courseActionButtons = (
       <>
         <Button
+          nativeButton={false}
           render={<Link to={`/courses/${courseId}`} />}
           size="sm"
           variant="secondary"

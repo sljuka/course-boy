@@ -16,6 +16,20 @@
   },
   "back": "Nazad",
   "continue": "Nastavi",
+  "explorer": {
+    "cancelRemove": "Otkaži",
+    "confirmRemove": "Ukloni",
+    "removeDocument": "Ukloni dokument",
+    "removeDocumentDescription": "Ovim se trajno briše \"{{title}}\". Ovo se ne može poništiti.",
+    "removeDocumentTitle": "Ukloniti ovaj dokument?",
+    "removeSection": "Ukloni sekciju",
+    "removeSectionDescription": "Ovim se briše \"{{title}}\" i sve što se u njoj nalazi — njeni dokumenti i testovi. Ovo se ne može poništiti.",
+    "removeSectionTitle": "Ukloniti ovu sekciju?",
+    "removeTest": "Ukloni test",
+    "removeTestDescription": "Ovim se trajno briše \"{{title}}\". Ovo se ne može poništiti.",
+    "removeTestTitle": "Ukloniti ovaj test?",
+    "removing": "Uklanjanje…"
+  },
   "courseSearch": {
     "courseMenuLabel": "Radnje za kurs {{title}}",
     "cancelRemove": "Otkaži",
@@ -56,11 +70,16 @@
     "correctAnswer": "Tačno. Možeš da nastaviš na sledeću lekciju.",
     "enterAnswer": "Unesi ispravan odgovor pre nastavka.",
     "error": "Detalji kursa trenutno ne mogu da se učitaju.",
+    "exerciseCorrect": "Tačno!",
+    "exerciseProgress": "Zadatak {{current}} od {{total}}",
+    "exitInteractiveMode": "Izađi iz interaktivnog režima",
     "interactiveHintBody": "U interaktivnom režimu rešavaš zadatke jedan po jedan i dobijaš odgovor nakon svakog slanja. To je malo prijatniji način da radiš test.",
     "interactiveHintTitle": "Probaj interaktivni režim",
     "incorrectAnswer": "Taj odgovor još nije tačan.",
     "incorrectAnswerWithHint": "Taj odgovor još nije tačan. Pomoć: {{hint}}",
     "dismissPrintHint": "Zatvori savet za štampu",
+    "nextExercise": "Sledeće",
+    "previousExercise": "Prethodno",
     "progress": "Lekcija {{current}} od {{total}}",
     "printHintBody": "Možeš da odštampaš ovaj test, rešiš ga olovkom na papiru, pa zatim ovde uneseš odgovore da proveriš da li su tačni.",
     "printHintTitle": "Više ti odgovara papir? Prvo odštampaj test.",
@@ -399,6 +418,10 @@
     "teaching": "Nastava",
     "home": "Početna",
     "title": "Nastavnički radni prostor"
+  },
+  "theme": {
+    "switchToDark": "Prebaci na tamnu temu",
+    "switchToLight": "Prebaci na svetlu temu"
   },
   "welcomeSubtitle": "Matko je otvorena platforma za kreiranje i pohađanje kurseva. Testovi i dokumenti od kojih su kursevi sastavljeni prilagođeni su za štampanje. Fokus je na tome da učenje i podučavanje budu prijatno iskustvo 😊",
   "welcomeTitle": "Dobrodošli! 😊"

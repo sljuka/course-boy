@@ -53,11 +53,18 @@ describe('launch', () => {
     }))
 
     expect(surface.courses).toEqual([
+      // `applySvgPreset` was already missing from this list before this
+      // change — a genuine, working method that this contract-1 check just
+      // never caught (its own drift, not new).
+      'applySvgPreset',
       'createDraft',
       'createLesson',
       'createSection',
       'createSectionTest',
       'cutVersion',
+      'deleteLesson',
+      'deleteSection',
+      'deleteSectionTest',
       'get',
       'getLessonTestDraft',
       'getSectionTestDraft',

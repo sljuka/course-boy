@@ -59,7 +59,7 @@ export function LocalesTabs({
             {getIsIncomplete?.(locale) && (
               <span
                 aria-label="Locale content incomplete"
-                className="size-2 rounded-full bg-red-500"
+                className="size-2 rounded-full bg-destructive"
               />
             )}
           </TabsTrigger>

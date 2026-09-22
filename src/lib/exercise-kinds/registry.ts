@@ -97,6 +97,7 @@ export function resolveSharedTestForPlayer(
       });
     }),
     id: testId,
+    strictAdvancement: sharedTest.strictAdvancement ?? true,
     structure: sharedTest.structure,
   };
 }

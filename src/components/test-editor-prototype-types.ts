@@ -179,6 +179,7 @@ type TestEditorState = {
   exercises: TestExercise[];
   selectedAdvancedSections: string[];
   selectedLocale: Locale;
+  strictAdvancement: boolean;
   title: string;
   useBlueprint: boolean;
 };

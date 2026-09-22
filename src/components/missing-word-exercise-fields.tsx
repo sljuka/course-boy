@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription } from "@/components/ui/card";
@@ -36,8 +36,6 @@ export function MissingWordExerciseFields({
   locale,
   onChange,
 }: FieldsComponentProps<MissingWordTestExercise>) {
-  const promptRef = useRef<HTMLTextAreaElement | null>(null);
-  const textRef = useRef<HTMLTextAreaElement | null>(null);
   const content = exercise.locales[locale];
   const prompt = content?.prompt ?? "";
   const text = content?.text ?? "";
@@ -46,28 +44,6 @@ export function MissingWordExerciseFields({
 
   const previewSegments = useMemo(() => parseMissingWordMarkup(text), [text]);
   const variablesByName = new Map(variables.map((variable) => [variable.name, variable]));
-
-  useEffect(() => {
-    const textarea = promptRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [prompt]);
-
-  useEffect(() => {
-    const textarea = textRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [text]);
 
   return (
     <>
@@ -82,7 +58,6 @@ export function MissingWordExerciseFields({
             onChange((currentExercise) => updatePrompt(currentExercise, locale, event.target.value))
           }
           placeholder="Fill in the missing words"
-          ref={promptRef}
           rows={2}
           value={prompt}
         />
@@ -97,7 +72,6 @@ export function MissingWordExerciseFields({
             onChange((currentExercise) => updateText(currentExercise, locale, event.target.value))
           }
           placeholder="The capital of France is {{c1}}. Capital of Serbia is {{c2}}."
-          ref={textRef}
           rows={2}
           value={text}
         />

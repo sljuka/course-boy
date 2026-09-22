@@ -10,6 +10,8 @@ export type UserRole = 'student' | 'teacher'
 
 export type Persona = 'course-boy' | 'course-girl' | 'course-bot' | 'course-monster'
 
+export type Theme = 'light' | 'dark'
+
 export type UserPreferences = {
   category?: Category
   hasAcknowledgedCreatorKey?: boolean
@@ -17,4 +19,5 @@ export type UserPreferences = {
   nickname?: string
   persona?: Persona
   role?: UserRole
+  theme?: Theme
 }

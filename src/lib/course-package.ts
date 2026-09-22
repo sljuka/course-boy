@@ -248,6 +248,10 @@ export type CourseTestStructureRule = {
 export type CourseTest = {
   exercises: CourseExercise[];
   id: string;
+  // Whether interactive mode requires a correct answer before advancing to
+  // the next exercise. Undefined (e.g. a test saved before this setting
+  // existed) means strict — see `resolveSharedTestForPlayer`.
+  strictAdvancement?: boolean;
   structure?: CourseTestStructureRule[];
 };
 
@@ -347,6 +351,7 @@ export type SharedTestExerciseDefinition =
 
 export type SharedTestDefinition = {
   exercises: SharedTestExerciseDefinition[];
+  strictAdvancement?: boolean;
   structure?: CourseTestStructureRule[];
   template: string;
 };
@@ -492,6 +497,23 @@ export type SaveSectionTestInput = {
 };
 
 export type GetSectionTestDraftInput = {
+  courseId: string;
+  sectionId: string;
+  testId: string;
+};
+
+export type DeleteCourseSectionInput = {
+  courseId: string;
+  sectionId: string;
+};
+
+export type DeleteCourseLessonInput = {
+  courseId: string;
+  lessonId: string;
+  sectionId: string;
+};
+
+export type DeleteCourseSectionTestInput = {
   courseId: string;
   sectionId: string;
   testId: string;

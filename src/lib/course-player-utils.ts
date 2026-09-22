@@ -28,6 +28,23 @@ export function buildExerciseInstance(exercise: CourseExercise): ExerciseInstanc
   return getExerciseKindRuntime(exercise.kind).buildInstance(exercise);
 }
 
+// A numeric exercise's prompt is a template with `{{variable}}` placeholders
+// filled from its instance's randomized values; every other kind's prompt is
+// shown as-is. Shared by the all-at-once and interactive test views so both
+// render numeric prompts identically.
+export function getExercisePromptSource(
+  exercise: CourseExercise,
+  instance: ExerciseInstance,
+): string {
+  if (exercise.kind === "numeric" && instance.kind === "numeric") {
+    return interpolateTemplate(exercise.prompt, instance.variables, {
+      emphasizeValues: true,
+    });
+  }
+
+  return exercise.prompt;
+}
+
 function shuffleExercises(exercises: CourseExercise[]): CourseExercise[] {
   const nextExercises = [...exercises];
 

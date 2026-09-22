@@ -15,9 +15,17 @@ const inputVariants = cva(
         // focus ring of its own; the page controls typography and sizing.
         ghost: "h-auto rounded-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0",
       },
+      size: {
+        default: "",
+        // A more prominent answer field for the student-facing test player
+        // (both the all-at-once and interactive views) — same component,
+        // just roomier.
+        lg: "h-12 px-4 py-2.5 text-lg md:text-lg",
+      },
     },
     defaultVariants: {
       variant: "default",
+      size: "default",
     },
   }
 )
@@ -26,13 +34,14 @@ function Input({
   className,
   type,
   variant = "default",
+  size = "default",
   ...props
-}: React.ComponentProps<"input"> & VariantProps<typeof inputVariants>) {
+}: Omit<React.ComponentProps<"input">, "size"> & VariantProps<typeof inputVariants>) {
   return (
     <InputPrimitive
       type={type}
       data-slot="input"
-      className={cn(inputVariants({ variant }), className)}
+      className={cn(inputVariants({ variant, size }), className)}
       {...props}
     />
   )

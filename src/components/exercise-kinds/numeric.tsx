@@ -34,6 +34,7 @@ function AnswerComponent({
   exercise,
   index,
   onAnswerChange,
+  size,
   value,
 }: AnswerComponentProps<NumericCourseExercise>) {
   const { t } = useTranslation();
@@ -44,6 +45,7 @@ function AnswerComponent({
         id={`course-exercise-answer-${index}`}
         onChange={(event) => onAnswerChange(event.target.value)}
         placeholder={exercise.answerPlaceholder || t("courseDetails.answerPlaceholder")}
+        size={size}
         value={value}
       />
     </div>

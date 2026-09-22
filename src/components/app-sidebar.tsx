@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router-dom";
 
 import { AppMenu } from "@/components/app-menu";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -33,7 +34,7 @@ const sidebarGroups = [
 function AppSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
-  const { locale, persona, setLocale } = useAppState();
+  const { locale, persona, setLocale, setTheme, theme } = useAppState();
   const personaLabelKey =
     PERSONAS.find((option) => option.id === persona)?.labelKey ??
     PERSONAS.find((option) => option.id === DEFAULT_PERSONA)!.labelKey;
@@ -41,13 +42,16 @@ function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="space-y-4 border-b px-4 py-5">
-        <Link
-          className="flex items-center gap-2 text-base font-bold text-foreground transition-colors hover:text-foreground/80"
-          to="/"
-        >
-          <img alt="" className="h-7 w-7 shrink-0 rounded-full" src={getPersonaImageUrl(persona)} />
-          <span>{t(personaLabelKey)}</span>
-        </Link>
+        <div className="flex items-center justify-between gap-2">
+          <Link
+            className="flex items-center gap-2 text-base font-bold text-foreground transition-colors hover:text-foreground/80"
+            to="/"
+          >
+            <img alt="" className="h-7 w-7 shrink-0 rounded-full" src={getPersonaImageUrl(persona)} />
+            <span>{t(personaLabelKey)}</span>
+          </Link>
+          <ThemeToggle onThemeChange={setTheme} theme={theme} />
+        </div>
         <LanguageSwitcher locale={locale} onLocaleChange={setLocale} />
       </SidebarHeader>
       <SidebarContent className="px-3 py-4">

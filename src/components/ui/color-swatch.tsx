@@ -9,7 +9,7 @@ function ColorSwatch({
   return (
     <span
       aria-hidden="true"
-      className={cn("block size-4 shrink-0 rounded-full border border-stone-300", className)}
+      className={cn("block size-4 shrink-0 rounded-full border border-border", className)}
       style={{ backgroundColor: color }}
       {...props}
     />

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, TriangleAlert, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -53,8 +53,6 @@ export function NumericExerciseFields({
   const [constraintType, setConstraintType] =
     useState<VariableConstraintType>("min-value");
   const [constraintValue, setConstraintValue] = useState("5");
-  const promptRef = useRef<HTMLTextAreaElement | null>(null);
-  const solutionRef = useRef<HTMLTextAreaElement | null>(null);
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const answerPlaceholder = exercise.locales[locale]?.answerPlaceholder ?? "";
   const usedVariableNames = useMemo(
@@ -65,28 +63,6 @@ export function NumericExerciseFields({
     () => validate(exercise, locale),
     [exercise, locale],
   );
-
-  useEffect(() => {
-    const textarea = promptRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [prompt]);
-
-  useEffect(() => {
-    const textarea = solutionRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [exercise.solution]);
 
   function submitConstraint(variableId: string) {
     const nextValue =
@@ -124,7 +100,6 @@ export function NumericExerciseFields({
             )
           }
           placeholder="Mary had {{ apple_number }} apples..."
-          ref={promptRef}
           rows={2}
           value={prompt}
         />
@@ -248,7 +223,6 @@ export function NumericExerciseFields({
             }))
           }
           placeholder="apple_number + 42"
-          ref={solutionRef}
           rows={2}
           value={exercise.solution}
         />

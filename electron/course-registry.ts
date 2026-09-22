@@ -320,6 +320,13 @@ export function isSharedTestDefinition(
     return false;
   }
 
+  if (
+    typeof test.strictAdvancement !== "undefined" &&
+    typeof test.strictAdvancement !== "boolean"
+  ) {
+    return false;
+  }
+
   if (typeof test.structure === "undefined") {
     return true;
   }

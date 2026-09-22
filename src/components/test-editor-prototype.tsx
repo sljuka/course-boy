@@ -63,7 +63,6 @@ export function TestEditorPrototype({
   onStateChange,
   supportedLocales,
 }: TestEditorPrototypeProps) {
-  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [draftExerciseKind, setDraftExerciseKind] = useState<ExerciseKind>("numeric");
@@ -109,17 +108,6 @@ export function TestEditorPrototype({
       }));
     }
   }, [state.activeExerciseId, state.exercises]);
-
-  useEffect(() => {
-    const textarea = descriptionRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [state.description]);
 
   useEffect(() => {
     if (descriptiveTags.length === 0) {
@@ -201,6 +189,13 @@ export function TestEditorPrototype({
     setState((currentState) => ({
       ...currentState,
       useBlueprint: !currentState.useBlueprint,
+    }));
+  }
+
+  function toggleStrictAdvancement() {
+    setState((currentState) => ({
+      ...currentState,
+      strictAdvancement: !currentState.strictAdvancement,
     }));
   }
 
@@ -310,7 +305,6 @@ export function TestEditorPrototype({
               className="min-h-0 resize-none overflow-hidden text-base font-medium text-muted-foreground md:text-base"
               onChange={(event) => setDescription(event.target.value)}
               placeholder="No description"
-              ref={descriptionRef}
               rows={1}
               value={state.description}
               variant="ghost"
@@ -443,6 +437,21 @@ export function TestEditorPrototype({
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+
+        <div className="flex items-center gap-2">
+          <Label>
+            <Checkbox
+              checked={state.strictAdvancement}
+              onCheckedChange={toggleStrictAdvancement}
+            />
+            Require a correct answer before moving on in interactive mode
+          </Label>
+          <InfoTooltip>
+            When on, a student must answer each exercise correctly before
+            interactive mode lets them move to the next one. When off, they
+            can move on regardless and come back to fix answers later.
+          </InfoTooltip>
+        </div>
 
         <Separator />
 

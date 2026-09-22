@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { Plus, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -40,21 +39,9 @@ export function MultipleChoiceExerciseFields({
   locale,
   onChange,
 }: FieldsComponentProps<MultipleChoiceTestExercise>) {
-  const promptRef = useRef<HTMLTextAreaElement | null>(null);
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const options = exercise.locales[locale]?.options ?? [];
   const validation = validate(exercise, locale);
-
-  useEffect(() => {
-    const textarea = promptRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [prompt]);
 
   return (
     <>
@@ -69,7 +56,6 @@ export function MultipleChoiceExerciseFields({
             onChange((currentExercise) => updatePrompt(currentExercise, locale, event.target.value))
           }
           placeholder="What is the capital of France?"
-          ref={promptRef}
           rows={2}
           value={prompt}
         />

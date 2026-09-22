@@ -22,6 +22,7 @@ function AnswerComponent({
   exercise,
   index,
   onAnswerChange,
+  size,
   value,
 }: AnswerComponentProps<MissingWordCourseExercise>) {
   const { t } = useTranslation();
@@ -34,7 +35,7 @@ function AnswerComponent({
         renderBlank={(blankIndex) => (
           <Input
             aria-label={t("courseDetails.answerPlaceholder")}
-            className="inline-block w-32"
+            className={size === "lg" ? "inline-block w-40" : "inline-block w-32"}
             id={`course-exercise-answer-${index}-${blankIndex}`}
             onChange={(event) =>
               onAnswerChange(
@@ -45,6 +46,7 @@ function AnswerComponent({
                 ),
               )
             }
+            size={size}
             value={answers[blankIndex] ?? ""}
           />
         )}

@@ -14,6 +14,9 @@ import type {
   CourseManifest,
   CutCourseVersionInput,
   CutCourseVersionResult,
+  DeleteCourseLessonInput,
+  DeleteCourseSectionInput,
+  DeleteCourseSectionTestInput,
   GetLessonTestDraftInput,
   GetSectionTestDraftInput,
   PublishCourseVersionInput,
@@ -1400,6 +1403,124 @@ export async function getLocalCourseSectionTestDraft(
   }
 
   return parsedValue;
+}
+
+export async function deleteLocalCourseSection(
+  input: DeleteCourseSectionInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+
+  try {
+    await fs.access(path.join(sectionDirectoryPath, "section.json"));
+  } catch {
+    throw new Error(`Section "${input.sectionId}" does not exist`);
+  }
+
+  // Removes every lesson and test the section contains along with it — the
+  // explorer's confirmation dialog is what makes this an informed choice,
+  // not this function.
+  await fs.rm(sectionDirectoryPath, { force: true, recursive: true });
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function deleteLocalCourseLesson(
+  input: DeleteCourseLessonInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+  const lessonDefinitionPath = path.join(sectionDirectoryPath, `${input.lessonId}.json`);
+
+  try {
+    await fs.access(lessonDefinitionPath);
+  } catch {
+    throw new Error(`Lesson "${input.lessonId}" does not exist`);
+  }
+
+  await fs.rm(lessonDefinitionPath, { force: true });
+
+  await Promise.all(
+    manifest.supportedLocales.map((locale) =>
+      fs.rm(path.join(sectionDirectoryPath, "locales", locale, `${input.lessonId}.md`), {
+        force: true,
+      }),
+    ),
+  );
+
+  // A lesson-attached test (if this lesson ever had one) lives right next to
+  // it under the resolved test id — best-effort, most lessons don't have one.
+  const lessonTestId = resolveTestIdForLesson(input.lessonId);
+
+  await fs.rm(path.join(sectionDirectoryPath, `${lessonTestId}.json`), { force: true });
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function deleteLocalCourseSectionTest(
+  input: DeleteCourseSectionTestInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+  const testDefinitionPath = path.join(sectionDirectoryPath, `${input.testId}.json`);
+
+  try {
+    await fs.access(testDefinitionPath);
+  } catch {
+    throw new Error(`Test "${input.testId}" does not exist`);
+  }
+
+  await fs.rm(testDefinitionPath, { force: true });
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export async function updateLocalCourseDraftMetadata(

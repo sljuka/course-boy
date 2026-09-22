@@ -29,6 +29,7 @@ function createInitialState(locales: Locale[], title: string): TestEditorState {
     exercises: [],
     selectedAdvancedSections: [],
     selectedLocale: locales[0] ?? "en",
+    strictAdvancement: true,
     title,
     useBlueprint: false,
   };
@@ -201,6 +202,10 @@ function normalizeDraftTestData(
           selectedAdvancedSections: Array.isArray(draftState.selectedAdvancedSections)
             ? draftState.selectedAdvancedSections
             : [],
+          strictAdvancement:
+            typeof draftState.strictAdvancement === "boolean"
+              ? draftState.strictAdvancement
+              : true,
         } satisfies TestEditorState,
       ];
     }),

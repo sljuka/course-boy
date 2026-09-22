@@ -335,7 +335,7 @@ function CourseCreate() {
                 <Field orientation="horizontal">
                   <input
                     checked={deriveSrCyrlFromSr}
-                    className="mt-0.5 h-4 w-4 rounded border-stone-300 text-amber-600 focus:ring-amber-500"
+                    className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
                     id="course-create-derive-sr-cyrl"
                     onChange={(event) =>
                       setDeriveSrCyrlFromSr(event.target.checked)

@@ -162,7 +162,7 @@ export function EditorPrototypeBlockCard({
   );
 
   return (
-    <section className="group relative flex flex-col gap-2 border-l-2 border-l-transparent pl-3 transition-colors hover:border-l-indigo-200">
+    <section className="group relative flex flex-col gap-2 border-l-2 border-l-transparent pl-3 transition-colors hover:border-l-primary/40">
       <div className="pointer-events-none absolute top-0 right-0 left-0 z-10 flex -translate-y-full items-center justify-end gap-3 opacity-0 transition-opacity group-hover:opacity-100">
         <div className="pointer-events-auto">
           {block.type === "heading"
@@ -251,7 +251,7 @@ function MarkdownBlockFields({
 
   if (!isEditing) {
     return (
-      <div className="rounded-2xl transition-colors hover:bg-stone-50">
+      <div className="rounded-2xl transition-colors hover:bg-muted">
         <MarkdownBlockPreview block={block} />
       </div>
     );
@@ -264,6 +264,7 @@ function MarkdownBlockFields({
         onBlur={() => {
           onEditingChange(false);
         }}
+        // eslint-disable-next-line shadcn/no-raw-colors -- the one deliberate dark code-editor surface (see the Textarea contract note in eslint.config.mjs), not themed
         className="min-h-0 resize-none overflow-hidden border-0 bg-stone-900 font-mono text-sm leading-6 text-stone-100 shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
         onChange={(event) =>
           onChange({
@@ -276,7 +277,7 @@ function MarkdownBlockFields({
         rows={1}
         value={block.source}
       />
-      <div className="border-t border-stone-200 pt-3">
+      <div className="border-t border-border pt-3">
         <MarkdownBlockPreview block={block} />
       </div>
     </div>

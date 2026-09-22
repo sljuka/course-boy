@@ -11,7 +11,7 @@ export const CourseCompleted = ({
   const { t } = useTranslation();
 
   return (
-    <Card className="flex flex-1 items-center justify-center overflow-hidden border-stone-200/80 bg-white/90 shadow-none">
+    <Card className="flex flex-1 items-center justify-center overflow-hidden border-border bg-card/90 shadow-none">
       <CardContent className="max-w-2xl items-center justify-center py-16 text-center">
         <h3 className="text-3xl font-semibold text-foreground">
           {t("courseDetails.completedTitle")}

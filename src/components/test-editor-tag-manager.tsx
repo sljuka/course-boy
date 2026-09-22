@@ -113,7 +113,7 @@ export function TestEditorTagManager({
       className={
         unstyled
           ? "flex flex-col gap-4"
-          : "flex flex-col gap-4 rounded-3xl border border-stone-200 bg-stone-50/80 p-4"
+          : "flex flex-col gap-4 rounded-3xl border border-border bg-muted/80 p-4"
       }
     >
       {!hideHeader && (
@@ -187,7 +187,7 @@ export function TestEditorTagManager({
       )}
 
       <button
-        className="inline-flex items-center gap-1 self-start text-sm font-medium text-muted-foreground underline decoration-stone-300 underline-offset-4 transition-colors hover:text-foreground"
+        className="inline-flex items-center gap-1 self-start text-sm font-medium text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
         onClick={handleCreateTag}
         type="button"
       >
