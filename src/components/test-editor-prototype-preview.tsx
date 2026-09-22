@@ -45,7 +45,7 @@ export function TestPreviewPlayer({
       activeStep: {
         item: {
           body: "",
-          description: "",
+          description: testState.description,
           iconUrl: null,
           id: "preview",
           test,
@@ -56,10 +56,11 @@ export function TestPreviewPlayer({
       courseId: "preview",
       courseTitle: testState.title || "Test",
       exitPlayer: onClose,
+      isPreview: true,
       moveToNextStep: onClose,
       progressCurrent: 1,
       progressTotal: 1,
-      sectionTitle: "Preview",
+      sectionTitle: "",
       status: "ready",
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `supportedLocales.join` keys on content, not the array's (possibly re-created every render) identity

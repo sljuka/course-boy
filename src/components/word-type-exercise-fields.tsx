@@ -288,7 +288,8 @@ export function WordTypeExerciseFields({
         {previewTokens.length > 0 && (
           // overflow-visible: the preview's floating word-type icons are
           // deliberately positioned outside normal flow and must not be
-          // clipped by the Card's default overflow-hidden.
+          // clipped by the Card's default overflow-hidden — `WordTypeTokens`
+          // itself reserves headroom for them when any word type has an icon.
           <Card className="overflow-visible p-3">
             <WordTypeTokens
               selections={previewSelections}

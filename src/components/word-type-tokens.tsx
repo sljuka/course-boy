@@ -1,6 +1,7 @@
 import { Tag } from "@/components/ui/tag";
 import { WordMarker } from "@/components/ui/word-marker";
 import type { WordTypeToken } from "@/lib/course-package";
+import { cn } from "@/lib/utils";
 
 export type WordTypeLegendEntry = {
   color: string;
@@ -39,14 +40,25 @@ export function WordTypeTokens({
   wordTypes: WordTypeLegendEntry[];
 }) {
   const wordTypesById = new Map(wordTypes.map((wordType) => [wordType.id, wordType]));
+  const hasIcons = wordTypes.some((wordType) => wordType.icon);
   let markedWordIndex = -1;
 
   return (
-    // pt-2: the floating icon above a marked word in the first line has no
-    // line above it to make room, so the container needs a little headroom
-    // of its own. Whatever wraps this must not clip (overflow-hidden) — see
-    // the Card override in word-type-exercise-fields.tsx.
-    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-3 pt-2 leading-6 text-foreground">
+    <p
+      className={cn(
+        "flex flex-wrap items-center gap-x-1.5 leading-6 text-foreground",
+        hasIcons
+          ? // pt-6 gives the first line's floating icon headroom above the
+            // container itself (nothing to clip into there); gap-y-6 gives
+            // every wrapped line the same headroom above the line before it
+            // — a smaller gap left an icon on line 2+ overlapping line 1's
+            // text. Whatever wraps this must not clip (overflow-hidden) —
+            // see the Card override in word-type-exercise-fields.tsx. Only
+            // needed when some word type actually has an icon to float.
+            "gap-y-6 pt-6"
+          : "gap-y-3",
+      )}
+    >
       {tokens.map((token, tokenIndex) => {
         if (token.kind === "text") {
           return <span key={tokenIndex}>{token.value}</span>;

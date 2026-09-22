@@ -28,7 +28,10 @@ function AnswerComponent({
   const selections = decodeWordTypeSelections(value, markedWordCount);
 
   return (
-    <div className="flex flex-col gap-3 print:hidden">
+    // mt-3 on top of the prompt/answer gap every kind already gets — the
+    // legend chips sit close enough to the prompt text otherwise that it
+    // reads as one run-on block instead of a separate answer area.
+    <div className="mt-3 flex flex-col gap-3 print:hidden">
       <WordTypeLegend wordTypes={exercise.wordTypes} />
       <WordTypeTokens
         onWordClick={(markedWordIndex) =>

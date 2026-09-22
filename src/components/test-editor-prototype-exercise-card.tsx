@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Ellipsis, Plus, Tag as TagIcon, Trash2, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 
@@ -68,6 +69,7 @@ export function ExercisePromptCard({
   /** Position within the test ("1", "2", ...), or "–" when exercise randomization picks at random. */
   orderLabel: string;
 }) {
+  const { t } = useTranslation();
   const collapsedPromptPreviewMaxLength = 50;
   // Every exercise starts collapsed — uncontrolled, entirely local to this
   // card. Nothing outside ever needs to force a specific card open or
@@ -304,7 +306,7 @@ export function ExercisePromptCard({
                   <Plus aria-hidden="true" className="h-3.5 w-3.5" />
                   Add tag
                 </button>
-                <InfoTooltip>Tags are configured in the course root.</InfoTooltip>
+                <InfoTooltip>{t("testEditor.tagsTooltip")}</InfoTooltip>
               </div>
             </div>
           </AccordionContent>

@@ -12,6 +12,12 @@ import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
 
 export type ExerciseResult = {
   feedback: string | null;
+  // The exercise's raw hint, only when this result is a wrong-but-answered
+  // attempt on an exercise that actually has one — `feedback` already has it
+  // baked in (for consumers like `CourseTestContent` that always show it),
+  // but `InteractiveTestPlayer` uses this to gate it behind a "Show hint"
+  // button instead of revealing it immediately.
+  hint: string | null;
   isCorrect: boolean;
 };
 
@@ -24,17 +30,18 @@ function deriveExerciseResult(
   const result = getExerciseKindRuntime(exercise.kind).grade(exercise, instance, rawAnswer);
 
   if (result.isCorrect) {
-    return { feedback: null, isCorrect: true };
+    return { feedback: null, hint: null, isCorrect: true };
   }
 
   if (!result.isAnswered) {
-    return { feedback: t(result.noAnswerMessageKey), isCorrect: false };
+    return { feedback: t(result.noAnswerMessageKey), hint: null, isCorrect: false };
   }
 
   return {
     feedback: exercise.hint
       ? t("courseDetails.incorrectAnswerWithHint", { hint: exercise.hint })
       : t("courseDetails.incorrectAnswer"),
+    hint: exercise.hint ?? null,
     isCorrect: false,
   };
 }
@@ -42,6 +49,7 @@ function deriveExerciseResult(
 function createEmptyResults(exercises: CourseExercise[]) {
   return exercises.map(() => ({
     feedback: null,
+    hint: null,
     isCorrect: false,
   }));
 }
@@ -108,7 +116,7 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     );
     setExerciseResults((currentResults) =>
       currentResults.map((result, resultIndex) =>
-        resultIndex === index ? { feedback: null, isCorrect: false } : result,
+        resultIndex === index ? { feedback: null, hint: null, isCorrect: false } : result,
       ),
     );
     setTestFeedback(null);

@@ -4,6 +4,7 @@ import { Plus, TriangleAlert, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ export function NumericExerciseFields({
   const [constraintValue, setConstraintValue] = useState("5");
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const answerPlaceholder = exercise.locales[locale]?.answerPlaceholder ?? "";
+  const hint = exercise.locales[locale]?.hint ?? "";
   const usedVariableNames = useMemo(
     () => new Set(extractPromptVariables(prompt)),
     [prompt],
@@ -240,32 +242,71 @@ export function NumericExerciseFields({
         )}
       </Field>
 
-      <Field>
-        <FieldLabel htmlFor={`exercise-answer-placeholder-${exercise.id}-${locale}`}>
-          Result input placeholder
-        </FieldLabel>
-        <Input
-          id={`exercise-answer-placeholder-${exercise.id}-${locale}`}
-          onChange={(event) =>
-            onChange((currentExercise) => ({
-              ...currentExercise,
-              locales: {
-                ...currentExercise.locales,
-                [locale]: {
-                  ...(currentExercise.locales[locale] ?? {
-                    answerPlaceholder: "",
-                    hint: "",
-                    prompt: "",
-                  }),
-                  answerPlaceholder: event.target.value,
-                },
-              },
-            }))
-          }
-          placeholder="Enter your result here"
-          value={answerPlaceholder}
-        />
-      </Field>
+      <Collapsible>
+        <CollapsibleTrigger>Show more options</CollapsibleTrigger>
+        <CollapsibleContent>
+          <Field>
+            <FieldLabel htmlFor={`exercise-answer-placeholder-${exercise.id}-${locale}`}>
+              Result input placeholder
+            </FieldLabel>
+            <Input
+              id={`exercise-answer-placeholder-${exercise.id}-${locale}`}
+              onChange={(event) =>
+                onChange((currentExercise) => ({
+                  ...currentExercise,
+                  locales: {
+                    ...currentExercise.locales,
+                    [locale]: {
+                      ...(currentExercise.locales[locale] ?? {
+                        answerPlaceholder: "",
+                        hint: "",
+                        prompt: "",
+                      }),
+                      answerPlaceholder: event.target.value,
+                    },
+                  },
+                }))
+              }
+              placeholder="Enter your result here"
+              value={answerPlaceholder}
+            />
+          </Field>
+
+          <Field>
+            <div className="flex items-center gap-1">
+              <FieldLabel htmlFor={`exercise-hint-${exercise.id}-${locale}`}>
+                Hint
+              </FieldLabel>
+              <InfoTooltip>
+                Shown to a student on request after an incorrect answer, in interactive mode.
+              </InfoTooltip>
+            </div>
+            <Textarea
+              className="min-h-0 resize-none overflow-hidden"
+              id={`exercise-hint-${exercise.id}-${locale}`}
+              onChange={(event) =>
+                onChange((currentExercise) => ({
+                  ...currentExercise,
+                  locales: {
+                    ...currentExercise.locales,
+                    [locale]: {
+                      ...(currentExercise.locales[locale] ?? {
+                        answerPlaceholder: "",
+                        hint: "",
+                        prompt: "",
+                      }),
+                      hint: event.target.value,
+                    },
+                  },
+                }))
+              }
+              placeholder="Try breaking the problem into smaller steps."
+              rows={2}
+              value={hint}
+            />
+          </Field>
+        </CollapsibleContent>
+      </Collapsible>
     </>
   );
 }

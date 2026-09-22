@@ -10,9 +10,11 @@ import { CourseTestContent } from "@/components/course-player/course-test-conten
 import { PrintDocumentHeader } from "@/components/course-player/print-document-header";
 import { useCoursePlayer, type CoursePlayerReadyState } from "@/components/course-player/use-course-player";
 import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { AlertInteractiveMode } from "@/components/test-player/alert-interactive-mode";
+import { ExerciseStepper } from "@/components/test-player/exercise-stepper";
 import { InteractiveTestPlayer } from "@/components/test-player/interactive-test-player";
 import { TestPlayerPrintHint } from "@/components/test-player/test-player-print-hint";
 import { useTestPlayerState } from "@/components/test-player/use-test-player-state";
@@ -49,6 +51,10 @@ export function TestPlayerView({
 }) {
   const { t } = useTranslation();
   const [printOptions, setPrintOptions] = useState(defaultTestPrintOptions);
+  // Lifted up from `InteractiveTestPlayer` so the stepper can be rendered in
+  // this component's own header row (same height as the close button)
+  // instead of inside the player's centered content.
+  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const activeItem = playerState.activeStep.item;
   const {
     activeTestExercises,
@@ -68,6 +74,11 @@ export function TestPlayerView({
     testFeedback,
     updateExerciseAnswer,
   } = useTestPlayerState(activeItem);
+
+  function startInteractiveMode() {
+    setCurrentExerciseIndex(0);
+    setIsInteractiveMode(true);
+  }
 
   if (!activeItem.test || activeItem.test.exercises.length === 0) {
     // A lesson-attached test with nothing to show falls back to its own
@@ -94,28 +105,65 @@ export function TestPlayerView({
         sectionTitle={playerState.sectionTitle}
         title={activeItem.title}
       />
-      <PageHeader
-        title={
-          <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
-        }
-        className="print:hidden"
-        subtitle={
-          <CardDescription className="text-base">
-            {playerState.sectionTitle}
-            {" · "}
-            {t("courseDetails.progress", {
-              current: playerState.progressCurrent,
-              total: playerState.progressTotal,
-            })}
-          </CardDescription>
-        }
-        right={
-          <CoursePlayerActions
-            isRefreshingAvailable={!isInteractiveMode && activeTestExercises.length > 0}
-            onClose={playerState.exitPlayer}
-            onRefreshExercise={refreshExercises}
-            printControl={
-              isInteractiveMode ? null : (
+      {isInteractiveMode ? (
+        // A dedicated header instead of `PageHeader`: the stepper needs to
+        // sit at the same height as the close button, centered across the
+        // full row, which `PageHeader`'s title/subtitle-vs-right split
+        // (plus `right`'s own `hidden lg:flex`) isn't set up for.
+        <div className="flex items-center justify-between gap-3 print:hidden">
+          <div className="flex-1" />
+          <ExerciseStepper
+            currentIndex={currentExerciseIndex}
+            onSelectStep={setCurrentExerciseIndex}
+            total={activeTestExercises.length}
+          />
+          <div className="flex flex-1 justify-end">
+            <CoursePlayerActions
+              isRefreshingAvailable={false}
+              onClose={() => setIsInteractiveMode(false)}
+              onRefreshExercise={refreshExercises}
+              printControl={null}
+            />
+          </div>
+        </div>
+      ) : (
+        <PageHeader
+          title={
+            <div className="flex items-center gap-2">
+              <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
+              {playerState.isPreview && (
+                <Badge variant="secondary">{t("courseDetails.previewBadge")}</Badge>
+              )}
+            </div>
+          }
+          className="print:hidden"
+          subtitle={
+            <div className="flex flex-col gap-1">
+              {activeItem.description && (
+                <CardDescription className="text-base">
+                  {activeItem.description}
+                </CardDescription>
+              )}
+              {/* The section/progress line is synthetic in preview (a single
+                  fake "Preview" section, always "1 of 1") — skip it there. */}
+              {!playerState.isPreview && (
+                <CardDescription className="text-base">
+                  {playerState.sectionTitle}
+                  {" · "}
+                  {t("courseDetails.progress", {
+                    current: playerState.progressCurrent,
+                    total: playerState.progressTotal,
+                  })}
+                </CardDescription>
+              )}
+            </div>
+          }
+          right={
+            <CoursePlayerActions
+              isRefreshingAvailable={activeTestExercises.length > 0}
+              onClose={playerState.exitPlayer}
+              onRefreshExercise={refreshExercises}
+              printControl={
                 <div className="flex items-center gap-2">
                   <PrintOptionsMenu
                     mode="test"
@@ -134,7 +182,7 @@ export function TestPlayerView({
                   </PrintOptionsMenu>
                   <Button
                     aria-label={t("courseDetails.interactiveHintTitle")}
-                    onClick={() => setIsInteractiveMode(true)}
+                    onClick={startInteractiveMode}
                     shape="circle"
                     size="icon"
                     variant="secondary"
@@ -142,20 +190,21 @@ export function TestPlayerView({
                     <Play aria-hidden="true" className="h-5 w-5 fill-success text-success" />
                   </Button>
                 </div>
-              )
-            }
-          />
-        }
-      />
+              }
+            />
+          }
+        />
+      )}
       <div>
         {isInteractiveMode ? (
           <InteractiveTestPlayer
             activeTestExercises={activeTestExercises}
             activeTestInstances={activeTestInstances}
+            currentIndex={currentExerciseIndex}
             exerciseAnswers={exerciseAnswers}
             exerciseResults={exerciseResults}
             onContinueAfterExercise={playerState.moveToNextStep}
-            onExit={() => setIsInteractiveMode(false)}
+            onIndexChange={setCurrentExerciseIndex}
             onSubmitExercise={submitSingleExercise}
             onUpdateExerciseAnswer={updateExerciseAnswer}
             strictAdvancement={activeItem.test?.strictAdvancement ?? true}
@@ -172,7 +221,7 @@ export function TestPlayerView({
             {isInteractiveHintVisible && (
               <AlertInteractiveMode
                 onDismiss={() => setIsInteractiveHintVisible(false)}
-                onStart={() => setIsInteractiveMode(true)}
+                onStart={startInteractiveMode}
               />
             )}
             <CourseTestContent

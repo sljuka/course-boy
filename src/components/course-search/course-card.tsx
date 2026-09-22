@@ -89,7 +89,7 @@ export function CourseCard({ course, href, onRemove }: CourseCardProps) {
                   </Badge>
                 }
               />
-              <TooltipContent>
+              <TooltipContent side="bottom">
                 {course.versionBadge.kind === "draft"
                   ? t("courseSearch.draftBadgeTooltip")
                   : t("courseSearch.versionTooltip")}

@@ -730,7 +730,12 @@ export function RegionPickerCanvas({
           opacity: 0.65;
         }
       `}</style>
-      <div className="relative overflow-hidden">
+      {/* min-w so a small container (or a container with no max-width of
+          its own) doesn't shrink the diagram past the point individual
+          shapes are still clickable — the SVG itself scales to 100% width
+          (see the stylesheet above), so without a floor here a narrow
+          window makes small regions like Poland nearly impossible to hit. */}
+      <div className="relative min-w-[32rem] overflow-hidden">
         <div
           data-adjusting-view={isAdjustingView}
           data-region-picker-canvas=""

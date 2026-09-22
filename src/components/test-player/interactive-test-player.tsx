@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
 import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import type { ExerciseResult } from "@/components/test-player/use-test-player-state";
 import type { CourseExercise } from "@/lib/course-package";
 import { getExercisePromptSource, type ExerciseInstance } from "@/lib/course-player-utils";
@@ -18,31 +16,36 @@ import { cn } from "@/lib/utils";
  * Reuses the exact same shared `exerciseAnswers`/`exerciseResults` state and
  * `getExerciseKindEditor(kind).AnswerComponent` as the all-at-once view, so
  * switching between the two modes mid-test never loses progress.
+ * `currentIndex` is controlled by the parent (rather than local state) so it
+ * can also drive the `ExerciseStepper` rendered in `TestPlayerView`'s own
+ * header, alongside the close button.
  */
 export function InteractiveTestPlayer({
   activeTestExercises,
   activeTestInstances,
+  currentIndex,
   exerciseAnswers,
   exerciseResults,
   onContinueAfterExercise,
-  onExit,
+  onIndexChange,
   onSubmitExercise,
   onUpdateExerciseAnswer,
   strictAdvancement,
 }: {
   activeTestExercises: CourseExercise[];
   activeTestInstances: ExerciseInstance[];
+  currentIndex: number;
   exerciseAnswers: string[];
   exerciseResults: ExerciseResult[];
   onContinueAfterExercise: () => void;
-  onExit: () => void;
+  onIndexChange: (index: number) => void;
   onSubmitExercise: (index: number) => void;
   onUpdateExerciseAnswer: (index: number, value: string) => void;
   strictAdvancement: boolean;
 }) {
   const { t } = useTranslation();
-  const [currentIndex, setCurrentIndex] = useState(0);
   const answerContainerRef = useRef<HTMLDivElement>(null);
+  const [isHintRevealed, setIsHintRevealed] = useState(false);
 
   // Focuses the current exercise's first input so a student can start typing
   // (and submit with Enter) right away — kind-agnostic on purpose, since
@@ -56,6 +59,7 @@ export function InteractiveTestPlayer({
     const firstField = container?.querySelector<HTMLElement>("input, textarea, select");
 
     (firstField ?? container)?.focus();
+    setIsHintRevealed(false);
   }, [currentIndex]);
 
   const total = activeTestExercises.length;
@@ -78,7 +82,7 @@ export function InteractiveTestPlayer({
       return;
     }
 
-    setCurrentIndex((index) => index + 1);
+    onIndexChange(currentIndex + 1);
   }
 
   if (!exercise || !instance || !result) {
@@ -87,10 +91,19 @@ export function InteractiveTestPlayer({
 
   const { AnswerComponent } = getExerciseKindEditor(exercise.kind);
   const promptSource = getExercisePromptSource(exercise, instance);
+  // The region-* kinds render an SVG diagram that scales to its container's
+  // full width — the default max width leaves it cramped and hard to click
+  // into precisely, so those kinds get no cap at all (the canvas itself
+  // enforces a min-width instead, so it stops shrinking rather than
+  // stretching this container back out — see `RegionPickerCanvas`).
+  const isRegionExercise = exercise.kind.startsWith("region-");
 
   return (
     <form
-      className="flex flex-col gap-4 print:hidden"
+      className={cn(
+        "mx-auto flex min-h-[calc(100vh-8rem)] w-full flex-col items-center justify-center gap-6 py-6 print:hidden",
+        isRegionExercise ? "max-w-none" : "max-w-2xl",
+      )}
       onKeyDown={(event) => {
         // Lets a student press Enter after answering instead of reaching for
         // the mouse. Handled directly here rather than relying on the
@@ -116,22 +129,9 @@ export function InteractiveTestPlayer({
         handlePrimaryAction();
       }}
     >
-      <div className="flex items-center justify-between gap-3">
-        <Button onClick={onExit} size="sm" type="button" variant="ghost">
-          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-          {t("courseDetails.exitInteractiveMode")}
-        </Button>
-        <span className="text-sm font-medium text-muted-foreground">
-          {t("courseDetails.exerciseProgress", {
-            current: currentIndex + 1,
-            total,
-          })}
-        </span>
-      </div>
-      <Progress value={((currentIndex + 1) / total) * 100} />
       <div
         className={cn(
-          "flex flex-col gap-3 rounded-lg border p-6 outline-none transition-[border-color,box-shadow] duration-300",
+          "flex w-full flex-col gap-3 rounded-lg border p-6 outline-none transition-[border-color,box-shadow] duration-300",
           !hasSubmitted && "border-border",
           hasSubmitted &&
             (result.isCorrect
@@ -153,7 +153,11 @@ export function InteractiveTestPlayer({
         ref={answerContainerRef}
         tabIndex={-1}
       >
-        <ExercisePromptHeader index={currentIndex} promptSource={promptSource} />
+        <ExercisePromptHeader
+          index={currentIndex}
+          promptSource={promptSource}
+          showIndex={false}
+        />
         <AnswerComponent
           exercise={exercise}
           index={currentIndex}
@@ -162,36 +166,43 @@ export function InteractiveTestPlayer({
           size="lg"
           value={exerciseAnswers[currentIndex] ?? ""}
         />
-        {hasSubmitted && (
-          <Alert variant={result.isCorrect ? "success" : "warning"}>
+        {/* Correct answers already get enough feedback from the card's
+            success border/glow and the green "Continue" button below —
+            only incorrect ones need an explanatory message here. A hint (if
+            the exercise has one) stays hidden behind its own button instead
+            of showing right away, so a student who wants to keep trying
+            isn't handed the answer unasked. */}
+        {hasSubmitted && !result.isCorrect && (
+          <Alert variant="warning">
             <AlertDescription>
-              {result.isCorrect ? t("courseDetails.exerciseCorrect") : result.feedback}
+              {result.hint && !isHintRevealed ? (
+                <span className="flex flex-wrap items-center gap-2">
+                  {t("courseDetails.incorrectAnswer")}
+                  <Button
+                    onClick={() => setIsHintRevealed(true)}
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                  >
+                    {t("courseDetails.showHint")}
+                  </Button>
+                </span>
+              ) : (
+                result.feedback
+              )}
             </AlertDescription>
           </Alert>
         )}
       </div>
-      <div className="flex items-center justify-between gap-3">
-        <Button
-          disabled={currentIndex === 0}
-          onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
-          size="lg"
-          type="button"
-          variant="secondary"
-        >
-          {t("courseDetails.previousExercise")}
-        </Button>
+      <div className="flex w-full items-center justify-end gap-3">
         <Button
           disabled={isPrimaryActionDisabled}
           onClick={handlePrimaryAction}
           size="lg"
           type="button"
-          variant={hasSubmitted ? "default" : "secondary"}
+          variant={result.isCorrect ? "success" : "secondary"}
         >
-          {!hasSubmitted
-            ? t("courseDetails.checkAnswer")
-            : isLast
-              ? t("continue")
-              : t("courseDetails.nextExercise")}
+          {result.isCorrect ? t("continue") : t("courseDetails.checkAnswer")}
         </Button>
       </div>
     </form>
