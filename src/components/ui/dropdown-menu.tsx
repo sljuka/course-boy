@@ -33,7 +33,14 @@ function DropdownMenuContent({
   return (
     <MenuPrimitive.Portal>
       <MenuPrimitive.Positioner
-        className="isolate z-50 outline-none"
+        // print:hidden: this positioner (and the popup it wraps) is portaled
+        // straight to `document.body`, escaping any `print:hidden` an
+        // ancestor like `PageHeader` puts on the trigger — without this, a
+        // menu still open (or mid-close-animation) when `window.print()`
+        // fires renders its own `position: fixed`, `overflow-y-auto` panel
+        // into the print output, repeated on every physical page at the
+        // same on-screen coordinates, complete with a baked-in scrollbar.
+        className="isolate z-50 outline-none print:hidden"
         align={align}
         alignOffset={alignOffset}
         side={side}

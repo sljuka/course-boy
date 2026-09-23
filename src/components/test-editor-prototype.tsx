@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Check, Play, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,10 +28,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
-import { TestPreviewPlayer } from "@/components/test-editor-prototype-preview";
 import { PageActions } from "@/components/page-actions";
 import { PageContent } from "@/components/page-content";
 import { getExerciseKindEditor, listExerciseKindEditors } from "@/components/exercise-kinds/registry";
+import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import {
   countMatchingExercises,
   createInitialState,
@@ -43,6 +44,7 @@ import type {
   TestExercise,
 } from "@/components/test-editor-prototype-types";
 import type { ExerciseKind } from "@/lib/course-package";
+import { buildDraftTestPreviewPath } from "@/lib/course-utils";
 import type { Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 
@@ -52,6 +54,11 @@ type TestEditorPrototypeProps = {
   initialState?: TestEditorState;
   initialTitle: string;
   onStateChange?: (state: TestEditorState) => void;
+  // The tree node currently selected in the draft explorer — forwarded to
+  // the preview route so closing it can land back on this same test instead
+  // of resetting to the course root (see `CourseLayout`'s `selectedNode`
+  // initializer, which reads it back from `location.state`).
+  selectedNode: StructureSelection;
   supportedLocales: Locale[];
 };
 
@@ -61,9 +68,10 @@ export function TestEditorPrototype({
   initialState,
   initialTitle,
   onStateChange,
+  selectedNode,
   supportedLocales,
 }: TestEditorPrototypeProps) {
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const navigate = useNavigate();
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [draftExerciseKind, setDraftExerciseKind] = useState<ExerciseKind>("numeric");
   const [draftExercise, setDraftExercise] = useState<TestExercise | null>(null);
@@ -272,7 +280,11 @@ export function TestEditorPrototype({
         <TooltipTrigger render={<span className="inline-flex" />}>
           <Button
             disabled={!hasExercises}
-            onClick={() => setIsPreviewOpen(true)}
+            onClick={() =>
+              navigate(buildDraftTestPreviewPath(courseId), {
+                state: { selectedNode, supportedLocales, testState: state },
+              })
+            }
             variant="secondary"
           >
             <Play aria-hidden="true" className="h-4 w-4" />
@@ -632,13 +644,6 @@ export function TestEditorPrototype({
           ))}
         </Tabs>
       </div>
-      <TestPreviewPlayer
-        courseId={courseId}
-        onClose={() => setIsPreviewOpen(false)}
-        open={isPreviewOpen}
-        supportedLocales={supportedLocales}
-        testState={state}
-      />
     </PageContent>
   );
 }

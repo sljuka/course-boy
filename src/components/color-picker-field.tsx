@@ -11,14 +11,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LIGHT_COLOR_OPTIONS } from "@/lib/color-options";
 
-/** A dropdown offering the shared light-color palette plus a native color input, opened by whatever `trigger` element is passed in. */
+/** A dropdown offering a color palette (the shared light one by default) plus a native color input, opened by whatever `trigger` element is passed in. */
 export function ColorPickerField({
   children,
+  colorOptions = LIGHT_COLOR_OPTIONS,
   onChange,
   trigger,
   value,
 }: {
   children: ReactNode;
+  // Defaults to the pastel palette (text-background use — word types,
+  // exercise variables). A caller coloring something painted onto a diagram
+  // instead (region-picker's marker, ...) passes `STRONG_COLOR_OPTIONS`.
+  colorOptions?: { hex: string; name: string }[];
   onChange: (color: string) => void;
   trigger: ReactElement;
   value: string;
@@ -27,7 +32,7 @@ export function ColorPickerField({
     <DropdownMenu>
       <DropdownMenuTrigger render={trigger}>{children}</DropdownMenuTrigger>
       <DropdownMenuContent>
-        {LIGHT_COLOR_OPTIONS.map((option) => (
+        {colorOptions.map((option) => (
           <DropdownMenuItem key={option.hex} onClick={() => onChange(option.hex)}>
             <ColorSwatch color={option.hex} />
             <span>{option.name}</span>

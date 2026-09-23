@@ -17,7 +17,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { DEFAULT_PERSONA, PERSONAS, getPersonaImageUrl } from "@/lib/personas";
+import { DEFAULT_PERSONA, PERSONAS, getPersonaIconUrl } from "@/lib/personas";
 import { useAppState } from "@/lib/use-app-state";
 
 const sidebarGroups = [
@@ -47,7 +47,7 @@ function AppSidebar() {
             className="flex items-center gap-2 text-base font-bold text-foreground transition-colors hover:text-foreground/80"
             to="/"
           >
-            <img alt="" className="h-7 w-7 shrink-0 rounded-full" src={getPersonaImageUrl(persona)} />
+            <img alt="" className="h-7 w-7 shrink-0 rounded-full" src={getPersonaIconUrl(persona)} />
             <span>{t(personaLabelKey)}</span>
           </Link>
           <ThemeToggle onThemeChange={setTheme} theme={theme} />

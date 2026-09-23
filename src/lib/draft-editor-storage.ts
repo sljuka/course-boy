@@ -12,6 +12,7 @@ import type { CourseSectionPreview, LocalizedCourseMetadata } from "@/lib/course
 import type { Locale } from "@/lib/i18n";
 import { blocksToMarkdown } from "@/lib/lesson-content-markdown";
 import { normalizeCourseTagLabel } from "@/lib/course-tags";
+import { queryClient } from "@/lib/query-client";
 
 type LegacyDraftEditorSnapshot = {
   contentRating: DraftEditorSnapshot["contentRating"];
@@ -307,36 +308,53 @@ export async function saveDraftEditorRecord(
     ...diffAndDispatch<TestEditorState>(
       previousTestDrafts,
       snapshot.testDrafts,
-      (lessonId, testState) => {
+      async (lessonId, testState) => {
         const sectionId = sectionIdByLessonId.get(lessonId);
 
         if (!sectionId || !hasSavableExercises(testState)) {
           return;
         }
 
-        return window.courses.saveLessonTest({
+        await window.courses.saveLessonTest({
           courseId: snapshot.courseId,
           lessonId,
           sectionId,
           test: toSharedTestDefinition(testState),
+        });
+
+        // Without this, a fresh mount of the draft editor (e.g. returning
+        // from the "Preview test" route, which unmounts and remounts it)
+        // falls back to whatever this query cached the *first* time it was
+        // read — which can predate exercises just autosaved here — instead
+        // of the content this exact call just wrote to disk. React Query
+        // never invalidates this on its own: this is a plain async function,
+        // not a mutation hook wired to it, and `saveDraftEditorRecord` is
+        // the only path that writes a test file at all.
+        await queryClient.invalidateQueries({
+          queryKey: ["courses", "lesson-test-draft", snapshot.courseId, lessonId],
         });
       },
     ),
     ...diffAndDispatch<TestEditorState>(
       previousSectionTestDrafts,
       snapshot.sectionTestDrafts,
-      (testId, testState) => {
+      async (testId, testState) => {
         const sectionId = sectionIdBySectionTestId.get(testId);
 
         if (!sectionId || !hasSavableExercises(testState)) {
           return;
         }
 
-        return window.courses.saveSectionTest({
+        await window.courses.saveSectionTest({
           courseId: snapshot.courseId,
           sectionId,
           test: toSharedTestDefinition(testState),
           testId,
+        });
+
+        // See the matching comment in the lesson-test branch above.
+        await queryClient.invalidateQueries({
+          queryKey: ["courses", "section-test-draft", snapshot.courseId, testId],
         });
       },
     ),

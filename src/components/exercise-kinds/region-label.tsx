@@ -57,7 +57,12 @@ function AnswerComponent({
   );
 
   return (
-    <div className="flex flex-col gap-3 print:hidden">
+    // The diagram prints as-is (it's the point of the exercise), but the
+    // numbered list below swaps its live `<Input>`s for plain blank lines —
+    // consistent with every other kind's print answer area, and unlike
+    // those kinds this needs no size control: one short line per region is
+    // always enough for a typed-in country name.
+    <div className="flex flex-col gap-3">
       <RegionPickerCanvas
         onToggleShape={() => {
           // Not click-driven for the student — they type into the numbered
@@ -69,7 +74,7 @@ function AnswerComponent({
         svgUrl={exercise.svgAssetUrl}
         viewBox={exercise.viewBox}
       />
-      <ol className="flex flex-col gap-2">
+      <ol className="flex flex-col gap-2 print:hidden">
         {exercise.regions.map((region, regionIndex) => (
           <li className="flex items-center gap-2" key={region.id}>
             <Tag color={region.color}>{regionIndex + 1}</Tag>
@@ -89,6 +94,15 @@ function AnswerComponent({
               size={size}
               value={answers[regionIndex] ?? ""}
             />
+          </li>
+        ))}
+      </ol>
+      <ol className="hidden flex-col gap-2 print:flex">
+        {exercise.regions.map((region, regionIndex) => (
+          <li className="flex items-center gap-2" key={region.id}>
+            <Tag color={region.color}>{regionIndex + 1}</Tag>
+            {/* eslint-disable-next-line shadcn/no-raw-colors -- print-only (hidden except print:flex above), stays literal for paper regardless of app theme */}
+            <span className="h-6 w-48 border-b border-stone-500" />
           </li>
         ))}
       </ol>

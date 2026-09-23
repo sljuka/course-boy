@@ -233,6 +233,32 @@ precision at the registry boundary itself (an eslint-disable comment marks each 
 Each kind's own module still gets full type safety internally; only code that looks a
 kind up generically (rather than importing it directly) sees the erased type.
 
+## Third-party extensions (not yet built)
+
+Raised as a "could we do a VSCode-style extension model?" question, not yet designed or
+built. The cheapest real entry point is contract 8 above: the exercise-kind registries
+are already shaped like an internal plugin system (a fixed `ExerciseKindRuntime` /
+`ExerciseKindEditor` interface, dispatched by kind rather than hand-written
+`if`/`else`), so the first extension point worth building is letting a kind be
+registered from outside the app bundle instead of only from a file compiled into it —
+**not** a general VSCode-style contribution-point API surface (commands, views,
+languages, ...) across the whole app.
+
+The blocking design question is trust, not mechanism: `ExerciseKindRuntime` is
+explicitly meant to be safe to import from Electron main (contract 8 again — "pure, no
+React, no filesystem"), and `ExerciseKindEditor` renders directly into the app's own
+renderer process with no sandboxing today. A third-party kind is arbitrary code
+running with at least renderer-level trust, which is a materially bigger surface than
+the one deliberate exception to "no untrusted content execution" that already exists
+(`region-picker-canvas.tsx`'s DOMPurify-sanitized inline SVG, see the CLAUDE.md rough
+edges list) — and it gets more important once P2P course import
+([pear-integration-notes.md](pear-integration-notes.md:1)) means a course (and
+conceivably the extension it depends on) can arrive from a peer instead of a local
+install. Any real design here needs to answer where an extension actually runs
+(sandboxed renderer context? a separate process, mirroring VSCode's Extension Host?)
+and what it's allowed to touch (just its own exercise kind's grading/UI, or course
+files, or more) before any loader code gets written.
+
 ## Not yet contracts
 
 The Pear/Bare boundaries (worker spawn argv order, FramedStream pipe strings, the

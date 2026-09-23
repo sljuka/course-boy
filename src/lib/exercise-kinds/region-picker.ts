@@ -15,6 +15,16 @@ import {
 
 const VIEW_BOX_PATTERN = /^-?\d+(\.\d+)?(\s+-?\d+(\.\d+)?){3}$/;
 
+// Strong Red, from `STRONG_COLOR_OPTIONS` (`src/lib/color-options.ts`) — the
+// default for an exercise saved before `markerColor` existed, and for a
+// freshly created one (see `region-picker-logic.ts`'s `createExercise`).
+// Deliberately not `--primary` (this app's default theme accent is a
+// brown/amber tone that reads poorly as a map highlight) and deliberately
+// not a blue: most bundled/preset diagrams render water as a pale blue, so
+// even a *bold* blue marker risks reading as "part of the ocean" at a
+// glance — red has no such collision with typical map fills.
+export const DEFAULT_REGION_PICKER_MARKER_COLOR = "#ef4444";
+
 function isValid(
   exercise: Record<string, unknown>,
 ): exercise is SharedRegionPickerTestExerciseDefinition {
@@ -32,6 +42,13 @@ function isValid(
   if (
     typeof exercise.viewBox !== "undefined" &&
     (typeof exercise.viewBox !== "string" || !VIEW_BOX_PATTERN.test(exercise.viewBox))
+  ) {
+    return false;
+  }
+
+  if (
+    typeof exercise.markerColor !== "undefined" &&
+    (typeof exercise.markerColor !== "string" || exercise.markerColor.length === 0)
   ) {
     return false;
   }
@@ -71,6 +88,7 @@ function resolveForPlayer(
     hint: context.hint,
     id: context.id,
     kind: "region-picker",
+    markerColor: shared.markerColor ?? DEFAULT_REGION_PICKER_MARKER_COLOR,
     prompt: context.prompt,
     svgAssetUrl: matkoAssetUrl(context.courseId, shared.svgAssetFilename),
     tags: shared.tags,

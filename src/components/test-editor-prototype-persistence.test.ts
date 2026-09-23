@@ -97,6 +97,7 @@ describe("exercise kind persistence", () => {
       id: "ex_num",
       locales: { en: { answerPlaceholder: "", hint: "", prompt: "{{a}} + {{b}}" } },
       solution: "a + b",
+      solutionSpace: "sm",
       tagIds: ["easy"],
       variables: [
         {
@@ -160,6 +161,7 @@ describe("exercise kind persistence", () => {
       id: "ex_rp",
       kind: "region-picker",
       locales: { en: { hint: "Think peninsula", prompt: "Mark Scandinavia" } },
+      markerColor: "#bae6fd",
       svgAssetFilename: "europe-abc123.svg",
       tagIds: ["geography"],
     }

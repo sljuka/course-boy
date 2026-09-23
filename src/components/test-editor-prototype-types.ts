@@ -37,11 +37,14 @@ type PromptVariable = {
   name: string;
 };
 
+type NumericSolutionSpace = "sm" | "md" | "lg" | "xl";
+
 type NumericTestExercise = {
   kind: "numeric";
   id: string;
   locales: Record<string, ExerciseLocaleContent>;
   solution: string;
+  solutionSpace: NumericSolutionSpace;
   tagIds: string[];
   variables: PromptVariable[];
 };
@@ -111,6 +114,7 @@ type RegionPickerTestExercise = {
   correctShapeIds: string[];
   id: string;
   locales: Record<string, RegionPickerExerciseLocaleContent>;
+  markerColor: string;
   svgAssetFilename: string;
   tagIds: string[];
   viewBox?: string;
@@ -202,6 +206,7 @@ export type {
   MissingWordVariableDraft,
   MultipleChoiceExerciseLocaleContent,
   MultipleChoiceTestExercise,
+  NumericSolutionSpace,
   NumericTestExercise,
   PromptVariable,
   RegionLabelExerciseLocaleContent,

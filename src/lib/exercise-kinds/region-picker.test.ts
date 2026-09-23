@@ -153,6 +153,7 @@ describe("region-picker grade", () => {
     correctShapeIds: ["Norway", "Sweden"],
     id: "ex_1",
     kind: "region-picker",
+    markerColor: "#bae6fd",
     prompt: "Mark Scandinavia",
     svgAssetUrl: "matko-asset://course/map.svg",
     tags: [],

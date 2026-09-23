@@ -5,6 +5,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
+import { ColorPickerField } from "@/components/color-picker-field";
+import { ColorSwatch } from "@/components/ui/color-swatch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,10 +22,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { RegionPickerCanvas } from "@/components/region-picker-canvas";
 import { useApplySvgPresetMutation, useUploadCourseAssetMutation } from "@/lib/course-queries";
 import { matkoAssetUrl } from "@/lib/course-assets";
+import { STRONG_COLOR_OPTIONS } from "@/lib/color-options";
 import { regionPickerSvgPresets } from "@/lib/region-picker-svg-presets";
 import type { RegionPickerTestExercise } from "@/components/test-editor-prototype-types";
 import {
   clearSvgAsset,
+  setMarkerColor,
   setSvgAsset,
   setViewBox,
   toggleCorrectShape,
@@ -40,6 +45,25 @@ function getValidationLabel(status: "error" | "valid" | "warning") {
     case "valid":
       return "Valid";
   }
+}
+
+function RegionPickerMarkerColorField({
+  onChange,
+  value,
+}: {
+  onChange: (color: string) => void;
+  value: string;
+}) {
+  return (
+    <ColorPickerField
+      colorOptions={STRONG_COLOR_OPTIONS}
+      onChange={onChange}
+      trigger={<Button aria-label="Choose color" className="h-8 w-8" size="icon" variant="ghost" />}
+      value={value}
+    >
+      <ColorSwatch className="size-5" color={value} />
+    </ColorPickerField>
+  );
 }
 
 export function RegionPickerExerciseFields({
@@ -192,6 +216,7 @@ export function RegionPickerExerciseFields({
                 onChange((currentExercise) => toggleCorrectShape(currentExercise, shapeId))
               }
               onViewBoxChange={handleViewBoxChange}
+              selectedFillColor={exercise.markerColor}
               selectedShapeIds={exercise.correctShapeIds}
               svgUrl={matkoAssetUrl(courseId, exercise.svgAssetFilename)}
               viewBox={exercise.viewBox}
@@ -216,6 +241,23 @@ export function RegionPickerExerciseFields({
           </div>
         )}
       </Field>
+
+      <Collapsible>
+        <CollapsibleTrigger>Show more options</CollapsibleTrigger>
+        <CollapsibleContent>
+          <Field>
+            <div className="flex items-center gap-2">
+              <FieldLabel>Marker color</FieldLabel>
+              <RegionPickerMarkerColorField
+                onChange={(color) =>
+                  onChange((currentExercise) => setMarkerColor(currentExercise, color))
+                }
+                value={exercise.markerColor}
+              />
+            </div>
+          </Field>
+        </CollapsibleContent>
+      </Collapsible>
     </>
   );
 }

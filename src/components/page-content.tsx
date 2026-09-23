@@ -21,7 +21,7 @@ export const PageContent = ({
 }: PageContentProps) => {
   return (
     <div className="flex w-full flex-col">
-      <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-2 lg:hidden">
+      <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-background px-4 py-2 lg:hidden print:hidden">
         <RoleGuard roles="teacher">
           <SidebarTrigger className="h-10! w-10!" shape="circle" size="icon" variant="outline" />
         </RoleGuard>

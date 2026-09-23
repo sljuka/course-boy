@@ -10,6 +10,7 @@ import type {
 import type { Locale } from "@/lib/i18n";
 
 import type {
+  NumericSolutionSpace,
   NumericTestExercise,
   PromptVariable,
   SolutionValidationResult,
@@ -56,9 +57,17 @@ export function createExercise(locales: Locale[]): NumericTestExercise {
     id: createId("ex"),
     locales: createExerciseLocaleMap(locales),
     solution: "",
+    solutionSpace: "sm",
     tagIds: [],
     variables: [],
   };
+}
+
+// The shared/on-disk `space` field also allows an arbitrary line-count
+// `number` (used nowhere in the UI today), which the draft editor's `Select`
+// has no representation for — fall back to "sm" rather than crash on it.
+function normalizeSolutionSpace(space: unknown): NumericSolutionSpace {
+  return space === "sm" || space === "md" || space === "lg" || space === "xl" ? space : "sm";
 }
 
 export function extractPromptVariables(prompt: string) {
@@ -376,6 +385,7 @@ export function toShared(exercise: NumericTestExercise): SharedNumericTestExerci
     solution: {
       formula: exercise.solution,
       precision: DEFAULT_SOLUTION_PRECISION,
+      space: exercise.solutionSpace,
     },
     tags: exercise.tagIds,
     variables: Object.fromEntries(
@@ -399,6 +409,7 @@ export function fromShared(definition: SharedNumericTestExerciseDefinition): Num
       ]),
     ),
     solution: definition.solution.formula,
+    solutionSpace: normalizeSolutionSpace(definition.solution.space),
     tagIds: definition.tags,
     variables: Object.entries(definition.variables).map(([name, variableDefinition]) =>
       fromCourseExerciseVariable(name, variableDefinition),

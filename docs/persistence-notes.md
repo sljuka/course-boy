@@ -61,10 +61,20 @@ user-visible action (it changes what's distributed to students) and should
 never be a side effect of "let me just check this."
 
 The "Preview test" button in the test editor
-(`src/components/test-editor-prototype.tsx`) opens
-`TestPreviewPlayer` (`src/components/test-editor-prototype-preview.tsx`) as a
-full-screen overlay — the same page a student sees, not a scaled-down modal
-summary of it. It:
+(`src/components/test-editor-prototype.tsx`) navigates to a dedicated route,
+`DraftTestPreviewPage` (`src/pages/draft-test-preview-page.tsx`, mounted at
+`/drafts/:courseId/preview-test`) — the same page a student sees, not a
+scaled-down modal summary of it, and not an overlay stacked on top of the
+editor either (an earlier version was exactly that: a `fixed` full-screen
+`<div>` sitting over the still-mounted editor form. It needed its own
+print-specific CSS to behave, because a positioned overlay doesn't paginate —
+Chromium clips it to one viewport-height box and bakes a scrollbar into the
+print output instead of flowing content across physical pages. A real route
+sidesteps that whole class of bug for free). The in-memory draft
+(`TestEditorState`) and the tree node that was selected in the explorer
+travel to the route via React Router's `navigate(path, { state })`, never
+serialized to disk or a URL param — see `DraftTestPreviewLocationState` in
+that file. It:
 
 1. Converts the in-memory draft (`TestEditorState`) to a `SharedTestDefinition`
    via the same `toSharedTestDefinition` the real save path uses — no new
@@ -87,8 +97,13 @@ summary of it. It:
 
 `CoursePlayerReadyState.exitPlayer` (normally "navigate to `/courses/:id`")
 and `moveToNextLesson` (normally "go to the next lesson") both point at the
-same "close the preview, back to the draft" callback here — there is no
-course or next lesson to navigate to. `CoursePlayerActions`'s close button
+same "navigate back to `/drafts/:courseId`" callback here — there is no
+course or next lesson to navigate to. That callback forwards the selected
+tree node back through `navigate(path, { state })` too, so `CourseLayout`'s
+`selectedNode` (see its own initializer) can restore it instead of resetting
+to the course root — a real route means this whole layout actually unmounts
+while the preview is open, unlike the old overlay, which just sat on top of
+it without ever unmounting anything. `CoursePlayerActions`'s close button
 takes that callback directly (`onClose`) rather than building a
 `/courses/:id` link itself, which is what makes this substitution possible
 without an `if (isPreview)` branch anywhere in the player.

@@ -101,7 +101,11 @@ export function InteractiveTestPlayer({
   return (
     <form
       className={cn(
-        "mx-auto flex min-h-[calc(100vh-8rem)] w-full flex-col items-center justify-center gap-6 py-6 print:hidden",
+        // page-fade-in here plays once, when this form itself mounts (i.e.
+        // entering interactive mode) — it doesn't retrigger on its own for
+        // a step change, since the form's own identity/class list never
+        // changes between steps. The per-step fade below is separate.
+        "page-fade-in mx-auto flex min-h-[calc(100vh-8rem)] w-full flex-col items-center justify-center gap-6 py-6 print:hidden",
         isRegionExercise ? "max-w-none" : "max-w-2xl",
       )}
       onKeyDown={(event) => {
@@ -131,13 +135,18 @@ export function InteractiveTestPlayer({
     >
       <div
         className={cn(
-          "flex w-full flex-col gap-3 rounded-lg border p-6 outline-none transition-[border-color,box-shadow] duration-300",
+          // page-fade-in re-triggers on every step because of `key`
+          // below — React tears down and remounts this div (a fresh DOM
+          // node) rather than patching the existing one in place, which is
+          // what actually restarts a CSS animation.
+          "page-fade-in flex w-full flex-col gap-3 rounded-lg border p-6 outline-none transition-[border-color,box-shadow] duration-300",
           !hasSubmitted && "border-border",
           hasSubmitted &&
             (result.isCorrect
               ? "border-success ring-4 ring-success/15"
               : "border-warning ring-4 ring-warning/15"),
         )}
+        key={currentIndex}
         onMouseDown={(event) => {
           // A click on a non-focusable answer control (e.g. an SVG region in
           // region-picker) would otherwise blur focus out to <body> by

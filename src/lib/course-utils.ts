@@ -35,3 +35,7 @@ export function buildLessonPath(courseId: string, lessonId: string) {
 export function buildLessonTestPath(courseId: string, lessonId: string) {
   return `${buildLessonPath(courseId, lessonId)}/test`;
 }
+
+export function buildDraftTestPreviewPath(courseId: string) {
+  return `/drafts/${courseId}/preview-test`;
+}

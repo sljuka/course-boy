@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type {
+  NumericSolutionSpace,
   NumericTestExercise,
   VariableConstraintType,
 } from "@/components/test-editor-prototype-types";
@@ -31,6 +32,13 @@ import {
   validate,
 } from "@/components/exercise-kinds/numeric-logic";
 import type { FieldsComponentProps } from "@/components/exercise-kinds/types";
+
+const SOLUTION_SPACE_LABELS: Record<NumericSolutionSpace, string> = {
+  sm: "Small (1 line)",
+  md: "Medium (3 lines)",
+  lg: "Large (5 lines)",
+  xl: "Extra large (8 lines)",
+};
 
 function getValidationLabel(status: "error" | "valid" | "warning") {
   switch (status) {
@@ -270,6 +278,38 @@ export function NumericExerciseFields({
               placeholder="Enter your result here"
               value={answerPlaceholder}
             />
+          </Field>
+
+          <Field>
+            <div className="flex items-center gap-1">
+              <FieldLabel htmlFor={`exercise-solution-space-${exercise.id}`}>
+                Solution area size
+              </FieldLabel>
+              <InfoTooltip>
+                How much blank space to leave for the answer when this test is printed.
+              </InfoTooltip>
+            </div>
+            <Select
+              onValueChange={(value) =>
+                onChange((currentExercise) => ({
+                  ...currentExercise,
+                  solutionSpace: value as NumericSolutionSpace,
+                }))
+              }
+              value={exercise.solutionSpace}
+            >
+              <SelectTrigger className="w-full sm:w-64" id={`exercise-solution-space-${exercise.id}`}>
+                <SelectValue>
+                  {(value: NumericSolutionSpace) => SOLUTION_SPACE_LABELS[value]}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sm">{SOLUTION_SPACE_LABELS.sm}</SelectItem>
+                <SelectItem value="md">{SOLUTION_SPACE_LABELS.md}</SelectItem>
+                <SelectItem value="lg">{SOLUTION_SPACE_LABELS.lg}</SelectItem>
+                <SelectItem value="xl">{SOLUTION_SPACE_LABELS.xl}</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
 
           <Field>

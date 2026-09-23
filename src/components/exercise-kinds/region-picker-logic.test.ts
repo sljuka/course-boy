@@ -17,6 +17,7 @@ function baseExercise(): RegionPickerTestExercise {
     id: "ex_1",
     kind: "region-picker",
     locales: { en: { hint: "", prompt: "" } },
+    markerColor: "#bae6fd",
     svgAssetFilename: "",
     tagIds: [],
   };
@@ -103,6 +104,7 @@ describe("toShared / fromShared round trip", () => {
       id: "ex_1",
       kind: "region-picker",
       locales: { en: { hint: "Think peninsula", prompt: "Mark Scandinavia" } },
+      markerColor: "#bae6fd",
       svgAssetFilename: "europe-abc123.svg",
       tagIds: ["geography"],
     };

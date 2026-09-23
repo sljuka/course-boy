@@ -23,7 +23,9 @@ export function PrintDocumentHeader({
       <h1 className="mt-1.5 text-2xl font-semibold tracking-tight text-foreground">
         {courseTitle}
       </h1>
-      <div className="mt-0.5 text-xs text-muted-foreground">{sectionTitle}</div>
+      {sectionTitle && (
+        <div className="mt-0.5 text-xs text-muted-foreground">{sectionTitle}</div>
+      )}
       <div className="mt-2 text-base font-medium text-foreground">{title}</div>
     </header>
   );

@@ -887,7 +887,17 @@ export function DraftDetailPage() {
   if (selectedNode.type === "test" && isSelectedTestStandalone) {
     const existingDraft = sectionTestDrafts[selectedNode.id];
 
-    if (!existingDraft && sectionTestDraftQuery.isLoading) {
+    // `isFetching` (not just `isLoading`) matters here: a fresh mount of
+    // this page (e.g. returning from the "Preview test" route) can find
+    // this query already cached from earlier in the session but stale —
+    // invalidated once its own autosave landed (see `saveDraftEditorRecord`
+    // in draft-editor-storage.ts) — which serves the *old* cached value
+    // instantly while a refetch runs in the background. Waiting on that
+    // refetch too avoids handing `TestEditorPrototype` a stale/empty
+    // `initialState` for the one render before the real data arrives, which
+    // it would otherwise treat as "no draft exists yet" and bootstrap a
+    // blank test from.
+    if (!existingDraft && (sectionTestDraftQuery.isLoading || sectionTestDraftQuery.isFetching)) {
       return <PageContent>{null}</PageContent>;
     }
 
@@ -908,6 +918,7 @@ export function DraftDetailPage() {
         initialState={existingDraft ?? hydratedState}
         initialTitle={selectedNode.title}
         onStateChange={handleTestStateChange}
+        selectedNode={selectedNode}
         supportedLocales={supportedLocales}
       />
     );
@@ -917,7 +928,8 @@ export function DraftDetailPage() {
     const lessonId = resolveLessonIdForTest(selectedNode.id);
     const existingDraft = testDrafts[lessonId];
 
-    if (!existingDraft && lessonTestDraftQuery.isLoading) {
+    // See the matching comment in the standalone-test branch above.
+    if (!existingDraft && (lessonTestDraftQuery.isLoading || lessonTestDraftQuery.isFetching)) {
       return <PageContent>{null}</PageContent>;
     }
 
@@ -933,6 +945,7 @@ export function DraftDetailPage() {
         initialState={existingDraft ?? hydratedState}
         initialTitle="Test"
         onStateChange={handleTestStateChange}
+        selectedNode={selectedNode}
         supportedLocales={supportedLocales}
       />
     );

@@ -13,6 +13,7 @@ import { CourseLessonPlayerPage } from "@/pages/course-lesson-player-page";
 import { CourseStructurePrototypePage } from "@/pages/course-structure-prototype-page";
 import { CourseTestPlayerPage } from "@/pages/course-test-player-page";
 import { DraftDetailPage } from "@/pages/draft-detail-page";
+import { DraftTestPreviewPage } from "@/pages/draft-test-preview-page";
 import { EditorPrototypePage } from "@/pages/editor-prototype-page";
 import { HomePage } from "@/pages/home-page";
 import { MyCoursesPage } from "@/pages/my-courses-page";
@@ -59,6 +60,7 @@ const AppRoutes = () => {
           element={<CourseTestPlayerPage />}
           path="/courses/:courseId/lessons/:lessonId/test"
         />
+        <Route element={<DraftTestPreviewPage />} path="/drafts/:courseId/preview-test" />
       </Route>
       <Route element={<OnboardingLayout />}>
         <Route element={<WelcomePage />} path="/onboarding" />

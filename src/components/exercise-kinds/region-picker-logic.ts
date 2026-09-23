@@ -1,4 +1,5 @@
 import type { SharedRegionPickerTestExerciseDefinition } from "@/lib/course-package";
+import { DEFAULT_REGION_PICKER_MARKER_COLOR } from "@/lib/exercise-kinds/region-picker";
 import type { Locale } from "@/lib/i18n";
 
 import type {
@@ -17,15 +18,29 @@ function createExerciseLocaleMap(locales: Locale[]) {
   );
 }
 
+function normalizeMarkerColor(color: unknown): string {
+  return typeof color === "string" && color.length > 0
+    ? color
+    : DEFAULT_REGION_PICKER_MARKER_COLOR;
+}
+
 export function createExercise(locales: Locale[]): RegionPickerTestExercise {
   return {
     correctShapeIds: [],
     kind: "region-picker",
     id: createId("ex"),
     locales: createExerciseLocaleMap(locales),
+    markerColor: DEFAULT_REGION_PICKER_MARKER_COLOR,
     svgAssetFilename: "",
     tagIds: [],
   };
+}
+
+export function setMarkerColor(
+  exercise: RegionPickerTestExercise,
+  markerColor: string,
+): RegionPickerTestExercise {
+  return { ...exercise, markerColor };
 }
 
 export function updatePrompt(
@@ -131,6 +146,7 @@ export function toShared(
     correctShapeIds: exercise.correctShapeIds,
     kind: "region-picker",
     locales: filterValidLocaleEntries(exercise.locales),
+    markerColor: exercise.markerColor,
     svgAssetFilename: exercise.svgAssetFilename,
     tags: exercise.tagIds,
     viewBox: exercise.viewBox,
@@ -150,6 +166,7 @@ export function fromShared(
         { hint: content?.hint ?? "", prompt: content?.prompt ?? "" },
       ]),
     ),
+    markerColor: normalizeMarkerColor(definition.markerColor),
     svgAssetFilename: definition.svgAssetFilename,
     tagIds: definition.tags,
     viewBox: definition.viewBox,

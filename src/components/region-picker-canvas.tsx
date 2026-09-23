@@ -97,6 +97,7 @@ export function RegionPickerCanvas({
   onSelectedShapesOutOfView,
   onToggleShape,
   onViewBoxChange,
+  selectedFillColor,
   selectedShapeIds = [],
   shapeColors,
   shapeLabelOffsets,
@@ -111,6 +112,11 @@ export function RegionPickerCanvas({
   onSelectedShapesOutOfView?: (updater: (current: string[]) => string[]) => void;
   onToggleShape: (shapeId: string) => void;
   onViewBoxChange?: (viewBox: string) => void;
+  // The fill color for a `selectedShapeIds` highlight — region-picker's own
+  // teacher-configurable marker color. Falls back to `--primary` (the CSS
+  // rule below) when omitted, so a caller that doesn't care (or hasn't been
+  // migrated) keeps the old look.
+  selectedFillColor?: string;
   // The boolean "is this shape marked" highlight region-picker uses.
   selectedShapeIds?: string[];
   // A per-shape arbitrary fill color (shape id -> hex) — region-marker uses
@@ -724,9 +730,11 @@ export function RegionPickerCanvas({
         [data-region-picker-canvas][data-adjusting-view="true"] [id] { cursor: grab; }
         /* !important: a shape commonly sets its own fill via an inline
            style="fill:...", which otherwise always outranks a stylesheet
-           rule regardless of selector specificity. */
+           rule regardless of selector specificity. Falls back to --primary
+           when the caller doesn't set --region-selected-fill (see the
+           wrapper div's style below). */
         [data-region-picker-canvas] [id][data-region-selected="true"] {
-          fill: var(--primary) !important;
+          fill: var(--region-selected-fill, var(--primary)) !important;
           opacity: 0.65;
         }
       `}</style>
@@ -735,7 +743,14 @@ export function RegionPickerCanvas({
           shapes are still clickable — the SVG itself scales to 100% width
           (see the stylesheet above), so without a floor here a narrow
           window makes small regions like Poland nearly impossible to hit. */}
-      <div className="relative min-w-[32rem] overflow-hidden">
+      <div
+        className="relative min-w-[32rem] overflow-hidden"
+        style={
+          selectedFillColor
+            ? ({ "--region-selected-fill": selectedFillColor } as React.CSSProperties)
+            : undefined
+        }
+      >
         <div
           data-adjusting-view={isAdjustingView}
           data-region-picker-canvas=""

@@ -55,6 +55,34 @@ import type {
   ShareCourseResult,
 } from '../src/lib/sharing'
 
+// Two windows against the same userData directory raced their own
+// autosave writes with no conflict detection (see "Previewing a draft
+// test" / draft persistence notes in docs/persistence-notes.md) — each one
+// periodically PUTs its own full in-memory snapshot of a course's draft,
+// diffed only against what it last saved itself, so a stale second window
+// silently overwrote a teacher's freshly-added exercises. Refusing a
+// second instance closes that off at the source. The lock is scoped to
+// the userData directory (the same mechanism separate `--user-data-dir`
+// profiles already rely on for the run-desktop driver, or for testing
+// multiple P2P peer identities side by side), so it only blocks a second
+// window sharing the *same* profile — never two instances pointed at
+// different ones.
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+
+if (!gotSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (win) {
+      if (win.isMinimized()) {
+        win.restore()
+      }
+
+      win.focus()
+    }
+  })
+}
+
 protocol.registerSchemesAsPrivileged([
   {
     privileges: {
@@ -362,6 +390,10 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) {
+    return
+  }
+
   protocol.handle('matko-asset', handleCourseAssetRequest)
   createWindow()
   spawnBareWorker()

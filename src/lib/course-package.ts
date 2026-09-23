@@ -168,6 +168,15 @@ export type RegionPickerCourseExercise = {
   // `viewBox` attribute format) — absent means show the file's own native
   // viewBox. Not localized, same as the diagram itself.
   viewBox?: string;
+  // The fill color a correctly/currently-marked shape is highlighted with —
+  // a hex value from the shared light-color palette (or a custom one), same
+  // convention as `RegionMarkerRegionDefinition.color`. Always resolved to a
+  // concrete value by `resolveForPlayer` (`src/lib/exercise-kinds/region-picker.ts`),
+  // which is the only place this type is constructed for real player use —
+  // see `SharedRegionPickerTestExerciseDefinition.markerColor`, which is the
+  // one that's actually optional (an exercise saved before this field
+  // existed).
+  markerColor: string;
 };
 
 export type RegionMarkerRegionDefinition = {
@@ -315,6 +324,7 @@ export type SharedRegionPickerTestExerciseDefinition = {
   svgAssetFilename: string;
   correctShapeIds: string[];
   viewBox?: string;
+  markerColor?: string;
   tags: string[];
 };
 

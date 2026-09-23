@@ -77,8 +77,40 @@ export const CourseTestContent = ({
     ];
   });
 
+  function handlePrimaryAction() {
+    if (isTestPassed) {
+      onContinueAfterExercise();
+    } else {
+      onSubmitExercise();
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-4 print:min-h-[240mm]">
+    <div
+      className="flex flex-col gap-4 print:min-h-[240mm]"
+      onKeyDown={(event) => {
+        // Lets a student press Enter to check answers instead of reaching
+        // for the mouse, same as `InteractiveTestPlayer`'s Enter-to-submit —
+        // this view isn't a `<form>` (every exercise renders inline, not
+        // one at a time), so there's no native submit behavior to piggyback
+        // on; the keydown just bubbles up from whichever answer field is
+        // focused.
+        if (event.key !== "Enter") {
+          return;
+        }
+
+        // Let a focused button/link keep its own native Enter-to-activate
+        // behavior, and let a textarea keep inserting a newline.
+        const targetTagName = (event.target as HTMLElement).tagName;
+
+        if (targetTagName === "BUTTON" || targetTagName === "A" || targetTagName === "TEXTAREA") {
+          return;
+        }
+
+        event.preventDefault();
+        handlePrimaryAction();
+      }}
+    >
       <div className="flex flex-col gap-4">
         {activeTestExercises.map((exercise, index) => {
           const exerciseInstance = activeTestInstances[index];
@@ -142,9 +174,7 @@ export const CourseTestContent = ({
         )}
         <div className="flex justify-end gap-3 print:hidden">
           <Button
-            onClick={() =>
-              isTestPassed ? onContinueAfterExercise() : onSubmitExercise()
-            }
+            onClick={handlePrimaryAction}
             size="lg"
           >
             {isTestPassed ? t("continue") : t("courseDetails.checkAnswer")}

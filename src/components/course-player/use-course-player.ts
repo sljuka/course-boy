@@ -18,10 +18,10 @@ export type CoursePlayerReadyState = {
   courseId: string;
   courseTitle: string;
   exitPlayer: () => void;
-  // True only for the draft editor's "Preview test" overlay (see
-  // `TestPreviewPlayer`) — lets `TestPlayerView` show a "Preview" badge and
-  // skip the section/progress line, which is synthetic there (a single fake
-  // "Preview" section, always "1 of 1").
+  // True only for the draft editor's "Preview test" route (see
+  // `DraftTestPreviewPage`) — lets `TestPlayerView` show a "Preview" badge
+  // and skip the section/progress line, which is synthetic there (a single
+  // fake "Preview" section, always "1 of 1").
   isPreview: boolean;
   moveToNextStep: () => void;
   progressCurrent: number;

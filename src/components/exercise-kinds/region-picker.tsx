@@ -9,6 +9,7 @@ import type {
 } from "@/lib/course-package";
 import {
   decodeRegionPickerSelection,
+  DEFAULT_REGION_PICKER_MARKER_COLOR,
   encodeRegionPickerSelection,
 } from "@/lib/exercise-kinds/region-picker";
 
@@ -36,7 +37,11 @@ function AnswerComponent({
   const selectedShapeIds = decodeRegionPickerSelection(value);
 
   return (
-    <div className="print:hidden">
+    // The diagram itself IS the printable answer area — a student marks it
+    // by hand on paper, so unlike other kinds' `<Input>`-based answers this
+    // has nothing to swap out for print; only the interactive click
+    // wiring (harmless on paper) stays.
+    <div>
       <RegionPickerCanvas
         onToggleShape={(shapeId) =>
           onAnswerChange(
@@ -47,6 +52,7 @@ function AnswerComponent({
             ),
           )
         }
+        selectedFillColor={exercise.markerColor}
         selectedShapeIds={selectedShapeIds}
         svgUrl={exercise.svgAssetUrl}
         viewBox={exercise.viewBox}
@@ -63,6 +69,7 @@ const EXAMPLE_EXERCISE: RegionPickerCourseExercise = {
   correctShapeIds: ["Norway", "Sweden"],
   id: "example",
   kind: "region-picker",
+  markerColor: DEFAULT_REGION_PICKER_MARKER_COLOR,
   prompt: "Mark the countries of the Scandinavian peninsula.",
   svgAssetUrl: exampleSvgUrl,
   tags: [],

@@ -196,6 +196,18 @@ const COMMANDS = {
     console.log('reloaded:', harness.page.url())
   },
 
+  // Toggles the page's emulated media type so a screenshot reflects real
+  // `@media print` rules (print:hidden, print:block, etc.) without needing
+  // an actual print dialog or printToPDF (which runs in a sandboxed main-
+  // process context with no fs/require access). `printmedia off` restores
+  // normal screen rendering.
+  async printmedia(arg) {
+    if (!need()) return
+    const media = arg === 'off' ? 'screen' : 'print'
+    await harness.page.emulateMedia({ media })
+    console.log('emulating media:', media)
+  },
+
   async wait(ms) {
     await sleep(Number(ms) || 1000)
     console.log('waited', ms || 1000)

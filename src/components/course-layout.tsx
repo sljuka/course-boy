@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 
@@ -135,6 +135,7 @@ export const CourseLayout = () => {
 
 const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) => {
   const { locale } = useAppState();
+  const location = useLocation();
   const [contentRating, setContentRating] = useState<ContentRating>("all-ages");
   const [defaultLocale, setDefaultLocale] = useState<Locale>(locale);
   const [localizedCourse, setLocalizedCourseState] = useState<
@@ -146,11 +147,27 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   );
   const [editorStatusAction, setEditorStatusAction] = useState<ReactNode | null>(null);
   const hasHydratedInitialDraftRef = useRef(false);
-  const [selectedNode, setSelectedNode] = useState<StructureSelection>({
-    id: courseRootId,
-    title: "Course",
-    type: "course",
-  });
+  // Restored from `location.state` when we're arriving back from the
+  // "Preview test" route (`DraftTestPreviewPage`), which round-trips the
+  // node that was selected before preview opened — otherwise this remount
+  // (navigating to preview and back is a real route change, so this whole
+  // layout unmounts and remounts) would silently reset the explorer back to
+  // the course root instead of the test the teacher was just editing. Kept
+  // in a ref (not just read once into `useState`) so the hydration effects
+  // below — which otherwise unconditionally set `selectedNode` back to the
+  // course root once query data resolves — know to leave a restored
+  // selection alone.
+  const restoredSelectedNodeRef = useRef(
+    (location.state as { selectedNode?: StructureSelection } | null)?.selectedNode ?? null,
+  );
+  const [selectedNode, setSelectedNode] = useState<StructureSelection>(
+    () =>
+      restoredSelectedNodeRef.current ?? {
+        id: courseRootId,
+        title: "Course",
+        type: "course",
+      },
+  );
   const courseDetailsQuery = useCourseDetailsQuery(courseId, locale);
   const draftEditorRecordQuery = useDraftEditorRecordQuery(courseId);
   const initialDraftSnapshot = draftEditorRecordQuery.data?.snapshot ?? null;
@@ -223,11 +240,15 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
     setDefaultLocale(resolvedDefaultLocale);
     setLocalizedCourseState(resolvedLocalizedCourse);
     setSupportedLocales(resolvedSupportedLocales);
-    setSelectedNode({
-      id: courseRootId,
-      title: resolvedCourseTitle,
-      type: "course",
-    });
+
+    if (!restoredSelectedNodeRef.current) {
+      setSelectedNode({
+        id: courseRootId,
+        title: resolvedCourseTitle,
+        type: "course",
+      });
+    }
+
     hasHydratedInitialDraftRef.current = true;
   }, [
     courseDetailsQuery.data?.contentRating,
@@ -260,11 +281,15 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
       ),
     );
     setSupportedLocales(courseDetailsQuery.data.supportedLocales);
-    setSelectedNode({
-      id: courseRootId,
-      title: courseDetailsQuery.data.title || "Course",
-      type: "course",
-    });
+
+    if (!restoredSelectedNodeRef.current) {
+      setSelectedNode({
+        id: courseRootId,
+        title: courseDetailsQuery.data.title || "Course",
+        type: "course",
+      });
+    }
+
     hasHydratedInitialDraftRef.current = true;
   }, [
     courseDetailsQuery.data,
@@ -370,7 +395,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
               }
             />
           </div>
-          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20">
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 print:hidden">
             <div className="pointer-events-auto md:pl-(--sidebar-width)">
               <EditorStatusBar
                 action={editorStatusAction}
@@ -425,7 +450,7 @@ function ExplorerSidebar({
   }
 
   return (
-    <Sidebar collapsible="offcanvas">
+    <Sidebar className="print:hidden" collapsible="offcanvas">
       <SidebarHeader className="border-b px-4 py-4">
         <Link
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"

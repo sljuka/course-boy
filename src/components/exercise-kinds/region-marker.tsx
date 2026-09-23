@@ -49,7 +49,10 @@ function AnswerComponent({
   const shapeColors = decodeRegionMarkerSelections(value);
 
   return (
-    <div className="flex flex-col gap-3 print:hidden">
+    // The diagram and its color legend print as-is — a student colors the
+    // diagram by hand on paper, so there's no separate print-only answer
+    // area to swap in the way an `<Input>`-based kind needs one.
+    <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         {exercise.regions.map((region) => (
           <Tag color={region.color} key={region.id}>
