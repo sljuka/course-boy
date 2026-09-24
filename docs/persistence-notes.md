@@ -131,32 +131,37 @@ practical way to exercise a new exercise kind's player-side behavior (answer
 UI, grading) during development without publishing a throwaway course
 version just to click through it as a "student."
 
-## Inline quiz blocks (not yet built)
+## Inline exercise blocks
 
-Today there are two ways to get a test: attached to a lesson (derived id,
-reached via that lesson's "Continue" button — see docs/contracts.md) or
+**Implemented**, as a narrower thing than the "inline quiz block" this
+section originally proposed. Today there are three ways to get a gradable
+exercise in front of a student: attached to a lesson (a whole test, derived
+id, reached via that lesson's "Continue" button — see docs/contracts.md),
 standalone (`CourseSectionTest`, its own section item, independent identity —
-also docs/contracts.md). The plan is to add a third, different thing: a quiz
-*block* inside a document's own content flow (alongside markdown blocks in
-`src/components/editor-prototype/editor-prototype-types.ts`), so a test can
-live embedded in the middle of a lesson's content rather than as a jump to a
-separate page. The student would choose interactive mode or print mode for it
-the same way they already do for a standalone test in
-`src/components/test-player/`.
+also docs/contracts.md), and now a single **exercise block** embedded
+directly in a document's own content flow, alongside its other blocks (see
+"BlockNote is an editing surface, not the format" in docs/contracts.md §4).
+A document can hold any number of these, interleaved with prose, images, etc.
 
-This is expected to make the lesson-attached form largely redundant once it
-exists: "a quiz right after this content" is exactly what an inline quiz
-block is for, done directly instead of via a page jump. The "test follows a
-document" sequencing that lesson-attached tests provide today can already be
-had without them — just place a standalone test node after the document node
-in the section's explorer tree. So the "Add test" action on a document node
-in the explorer (`src/components/course-structure-prototype/course-structure-prototype.tsx`)
-is a reasonable removal candidate *once inline quiz blocks land*, not before —
-today it's still the only way to attach a quiz directly to a specific
-document.
+What actually got built is one exercise at a time, not a whole embedded
+*test*: no blueprint/randomization, no strict-advancement setting, no
+print mode, no "interactive vs. all-at-once" choice — a student just answers
+it and checks it, right there in the document
+(`src/components/editor-prototype/exercise-block.tsx`'s read-only branch).
+It reuses each exercise kind's own `FieldsComponent`/`AnswerComponent`/
+`grade()` unchanged, and persists via the same
+`toSharedTestExerciseDefinition`/`fromSharedTestExerciseDefinition` a test's
+exercises already use, inside its own `[matko-block]: <> (exercise)` marker
+in the lesson's markdown (docs/contracts.md §4).
 
-Not being built now. Recorded here so the tradeoff above has a written answer
-next time it comes up.
+Because it's a single exercise rather than a whole test, it does **not**
+make the lesson-attached test form redundant the way originally predicted —
+a lesson-attached test's blueprint/randomization and multi-exercise flow are
+still the only way to get those. The "test follows a document" sequencing
+lesson-attached tests provide can still be had without them today, by
+placing a standalone test node after the document node in the section's
+explorer tree; that observation from the original note still stands, just
+not as a reason this block type replaces anything.
 
 ## Previewing and committing a course from its draft editor
 

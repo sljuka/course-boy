@@ -1,56 +1,38 @@
-import type { EditorPrototypeBlock } from "@/components/editor-prototype/editor-prototype-types";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
-import { matkoAssetUrl } from "@/lib/course-assets";
+import { BlockNoteView } from "@blocknote/shadcn";
+import "@blocknote/shadcn/style.css";
+import { useCreateBlockNote } from "@blocknote/react";
+
+import { documentEditorSchema } from "@/components/editor-prototype/blocknote-schema";
+import { DocumentEditorContextProvider } from "@/components/editor-prototype/document-editor-context";
+import { editorPrototypeBlocksToBlockNote } from "@/components/editor-prototype/blocknote-translation";
 import { markdownToBlocks } from "@/lib/lesson-content-markdown";
 
+/**
+ * The student-facing counterpart to the draft document editor
+ * (`draft-details/draft-document-editor.tsx`) — the same BlockNote view, in
+ * read-only mode, so a lesson looks and behaves identically for the
+ * teacher and the student. The inline exercise block is the one part that
+ * stays fully interactive even here: it renders its own live "answer it and
+ * check" UI when `editor.isEditable` is false (see `exercise-block.tsx`).
+ */
 export function LessonBlocks({ courseId, source }: { courseId: string; source: string }) {
-  const blocks = markdownToBlocks(source);
+  // Recreated whenever the lesson's own content changes (source or the
+  // course it belongs to) — this component isn't necessarily remounted when
+  // the student navigates to a different lesson, so `initialContent` (only
+  // read once by `useCreateBlockNote`) needs deps to stay in sync.
+  const editor = useCreateBlockNote(
+    {
+      initialContent: editorPrototypeBlocksToBlockNote(markdownToBlocks(source), courseId),
+      schema: documentEditorSchema,
+    },
+    [courseId, source],
+  );
 
   return (
     <div className="typeset typeset-course">
-      {blocks.map((block) => (
-        <LessonBlock block={block} courseId={courseId} key={block.id} />
-      ))}
+      <DocumentEditorContextProvider courseId={courseId} supportedLocales={[]}>
+        <BlockNoteView editable={false} editor={editor} />
+      </DocumentEditorContextProvider>
     </div>
   );
-}
-
-function LessonBlock({
-  block,
-  courseId,
-}: {
-  block: EditorPrototypeBlock;
-  courseId: string;
-}) {
-  switch (block.type) {
-    case "heading":
-      return <MarkdownRenderer source={`## ${block.text}`} />;
-    case "markdown":
-      return <MarkdownRenderer source={block.source} />;
-    case "image":
-      return (
-        <figure>
-          <img
-            alt={block.alt}
-            className="max-w-full"
-            src={matkoAssetUrl(courseId, block.path)}
-          />
-          {block.caption && <figcaption>{block.caption}</figcaption>}
-        </figure>
-      );
-    case "video":
-      return (
-        <figure>
-          <video className="max-w-full" controls src={matkoAssetUrl(courseId, block.path)} />
-          {block.caption && <figcaption>{block.caption}</figcaption>}
-        </figure>
-      );
-    case "audio":
-      return (
-        <figure>
-          <audio className="max-w-full" controls src={matkoAssetUrl(courseId, block.path)} />
-          {block.caption && <figcaption>{block.caption}</figcaption>}
-        </figure>
-      );
-  }
 }

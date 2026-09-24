@@ -110,4 +110,40 @@ describe("blocksToMarkdown / markdownToBlocks", () => {
       { caption: "Narration", path: "narration-ab12cd34.mp3", type: "audio" },
     ])
   })
+
+  it("round-trips an exercise block", () => {
+    const blocks: EditorPrototypeBlock[] = [
+      {
+        exercise: {
+          id: "ex-1",
+          kind: "numeric",
+          locales: { en: { answerPlaceholder: "", hint: "", prompt: "2 + 2 = ?" } },
+          solution: "4",
+          solutionSpace: "md",
+          tagIds: [],
+          variables: [],
+        },
+        id: "1",
+        type: "exercise",
+      },
+    ]
+
+    const roundTripped = markdownToBlocks(blocksToMarkdown(blocks))
+
+    // `fromSharedTestExerciseDefinition` mints a fresh exercise id, same as
+    // every block here gets a fresh block id — only the content is checked.
+    expect(roundTripped).toMatchObject([
+      {
+        exercise: {
+          kind: "numeric",
+          locales: { en: { answerPlaceholder: "", hint: "", prompt: "2 + 2 = ?" } },
+          solution: "4",
+          solutionSpace: "md",
+          tagIds: [],
+          variables: [],
+        },
+        type: "exercise",
+      },
+    ])
+  })
 })

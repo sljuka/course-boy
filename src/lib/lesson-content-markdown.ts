@@ -2,8 +2,18 @@ import type {
   EditorPrototypeBlock,
   EditorPrototypeBlockType,
 } from "@/components/editor-prototype/editor-prototype-types";
+import {
+  fromSharedTestExerciseDefinition,
+  toSharedTestExerciseDefinition,
+} from "@/components/test-editor-prototype-persistence";
 
-const blockMarkerPattern = /^\[matko-block\]: <> \((heading|markdown|image|video|audio)\)$/;
+// Keep in sync with `EditorPrototypeBlockType` — see "Lesson block markers
+// are a hand-maintained allowlist, not a type" in docs/contracts.md: this
+// regex isn't checked against the union, so a new block type that isn't
+// added here silently collapses the *entire* lesson body into one opaque
+// markdown block on read, with no compile error.
+const blockMarkerPattern =
+  /^\[matko-block\]: <> \((heading|markdown|image|video|audio|exercise)\)$/;
 const imageBlockContentPattern = /^!\[([^\]]*)\]\(([^\s)]+)(?:\s+"([^"]*)")?\)$/;
 const linkBlockContentPattern = /^\[([^\]]*)\]\(([^\s)]+)\)$/;
 
@@ -23,6 +33,8 @@ function serializeBlock(block: EditorPrototypeBlock): string {
     case "video":
     case "audio":
       return `${marker}\n[${block.caption}](${block.path})`;
+    case "exercise":
+      return `${marker}\n${JSON.stringify(toSharedTestExerciseDefinition(block.exercise))}`;
   }
 }
 
@@ -64,6 +76,12 @@ function parseBlockContent(
         type,
       };
     }
+    case "exercise":
+      return {
+        exercise: fromSharedTestExerciseDefinition(JSON.parse(trimmedContent)),
+        id,
+        type,
+      };
   }
 }
 

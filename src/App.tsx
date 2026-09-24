@@ -14,7 +14,6 @@ import { CourseStructurePrototypePage } from "@/pages/course-structure-prototype
 import { CourseTestPlayerPage } from "@/pages/course-test-player-page";
 import { DraftDetailPage } from "@/pages/draft-detail-page";
 import { DraftTestPreviewPage } from "@/pages/draft-test-preview-page";
-import { EditorPrototypePage } from "@/pages/editor-prototype-page";
 import { HomePage } from "@/pages/home-page";
 import { MyCoursesPage } from "@/pages/my-courses-page";
 import { PersonaPage } from "@/pages/persona-page";
@@ -35,7 +34,6 @@ const AppRoutes = () => {
         <Route element={<HomePage />} path="/" />
         <Route element={<MyCoursesPage />} path="/my-courses" />
         <Route element={<CourseCreatePage />} path="/courses/new" />
-        <Route element={<EditorPrototypePage />} path="/courses/prototype" />
         <Route
           element={<CourseStructurePrototypePage />}
           path="/courses/prototype-2"

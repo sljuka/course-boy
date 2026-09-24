@@ -1,4 +1,9 @@
-import type { CourseTest, ExerciseKind, SharedTestDefinition } from "../course-package";
+import type {
+  CourseTest,
+  ExerciseKind,
+  SharedTestDefinition,
+  SharedTestExerciseDefinition,
+} from "../course-package";
 import type { Locale } from "../i18n";
 
 import { missingWordExerciseRuntime } from "./missing-word";
@@ -58,6 +63,47 @@ export function getExerciseKindRuntime(kind: ExerciseKind) {
  * editor's preview so both produce the exact same shape — see
  * "Previewing a draft test" in docs/persistence-notes.md.
  */
+/**
+ * The single-exercise half of `resolveSharedTestForPlayer` — also used
+ * directly by the inline exercise block (`src/components/editor-prototype/`),
+ * which resolves one exercise for the player without a wrapping test.
+ */
+export function resolveSharedExerciseForPlayer(
+  exercise: SharedTestExerciseDefinition,
+  id: string,
+  requestedLocales: Locale[],
+  courseId: string,
+) {
+  const hint = requestedLocales
+    .map((locale) => exercise.locales[locale]?.hint)
+    .find((hintCandidate) => typeof hintCandidate === "string");
+  const prompt =
+    requestedLocales
+      .map((locale) => exercise.locales[locale]?.prompt)
+      .find((promptCandidate) => typeof promptCandidate === "string") ?? "";
+  const answerPlaceholder = requestedLocales
+    .map(
+      (locale) =>
+        (exercise.locales[locale] as { answerPlaceholder?: string } | undefined)
+          ?.answerPlaceholder,
+    )
+    .find((placeholderCandidate) => typeof placeholderCandidate === "string");
+  const kind = normalizeExerciseKind(exercise.kind);
+
+  if (!kind) {
+    throw new Error(`Unresolvable exercise kind "${String(exercise.kind)}" in "${id}"`);
+  }
+
+  return getExerciseKindRuntime(kind).resolveForPlayer(exercise, {
+    answerPlaceholder,
+    courseId,
+    hint,
+    id,
+    prompt,
+    requestedLocales,
+  });
+}
+
 export function resolveSharedTestForPlayer(
   sharedTest: SharedTestDefinition,
   requestedLocales: Locale[],
@@ -65,37 +111,14 @@ export function resolveSharedTestForPlayer(
   courseId: string,
 ): CourseTest {
   return {
-    exercises: sharedTest.exercises.map((exercise, index) => {
-      const id = `${testId}#${index + 1}`;
-      const hint = requestedLocales
-        .map((locale) => exercise.locales[locale]?.hint)
-        .find((hintCandidate) => typeof hintCandidate === "string");
-      const prompt =
-        requestedLocales
-          .map((locale) => exercise.locales[locale]?.prompt)
-          .find((promptCandidate) => typeof promptCandidate === "string") ?? "";
-      const answerPlaceholder = requestedLocales
-        .map(
-          (locale) =>
-            (exercise.locales[locale] as { answerPlaceholder?: string } | undefined)
-              ?.answerPlaceholder,
-        )
-        .find((placeholderCandidate) => typeof placeholderCandidate === "string");
-      const kind = normalizeExerciseKind(exercise.kind);
-
-      if (!kind) {
-        throw new Error(`Unresolvable exercise kind "${String(exercise.kind)}" in "${testId}"`);
-      }
-
-      return getExerciseKindRuntime(kind).resolveForPlayer(exercise, {
-        answerPlaceholder,
-        courseId,
-        hint,
-        id,
-        prompt,
+    exercises: sharedTest.exercises.map((exercise, index) =>
+      resolveSharedExerciseForPlayer(
+        exercise,
+        `${testId}#${index + 1}`,
         requestedLocales,
-      });
-    }),
+        courseId,
+      ),
+    ),
     id: testId,
     strictAdvancement: sharedTest.strictAdvancement ?? true,
     structure: sharedTest.structure,

@@ -69,20 +69,60 @@ line followed by the block's body, and `markdownToBlocks` parses a lesson's stor
 markdown back into blocks by matching that marker against `blockMarkerPattern`:
 
 ```ts
-const blockMarkerPattern = /^\[matko-block\]: <> \((heading|markdown|image|video|audio)\)$/;
+const blockMarkerPattern =
+  /^\[matko-block\]: <> \((heading|markdown|image|video|audio|exercise)\)$/;
 ```
 
-`createPrototypeBlock`'s switch over `EditorPrototypeBlockType` has no `default` case, so
-TypeScript forces every block type to be handled there — but `blockMarkerPattern` is a
-plain regex string, and [editor-prototype.tsx](../src/components/editor-prototype/editor-prototype.tsx:1)'s
-`blockTypes` array (which drives the insert menu) is a plain array literal. Neither is
-checked against the `EditorPrototypeBlockType` union. Add a new block type, forget to add
-its name to `blockMarkerPattern`'s alternation, and there is no compile error: the marker
-line for that block simply never matches, `markdownToBlocks` falls through to its
-"no markers found" fallback, and the entire lesson body — every block, not just the new
-one — collapses into a single opaque markdown block. `npm run typecheck` and `npm run
-lint` both pass; only `src/lib/lesson-content-markdown.test.ts`'s round-trip tests catch
-it, so extend those tests in the same commit that adds a block type.
+This `EditorPrototypeBlock[]` model (not BlockNote's own block JSON) is still the
+canonical, on-disk representation of a lesson's content — see "BlockNote is an editing
+surface, not the format" below. `serializeBlock`/`parseBlockContent`'s switches over
+`EditorPrototypeBlockType` have no `default` case, so TypeScript forces every block type
+to be handled there — but `blockMarkerPattern` is a plain regex string, not checked
+against the union. Add a new block type, forget to add its name to `blockMarkerPattern`'s
+alternation, and there is no compile error: the marker line for that block simply never
+matches, `markdownToBlocks` falls through to its "no markers found" fallback, and the
+entire lesson body — every block, not just the new one — collapses into a single opaque
+markdown block. `npm run typecheck` and `npm run lint` both pass; only
+`src/lib/lesson-content-markdown.test.ts`'s round-trip tests catch it, so extend those
+tests in the same commit that adds a block type. The same is true, separately, of
+`blockNoteBlocksToEditorPrototype`'s if-chain in
+[blocknote-translation.ts](../src/components/editor-prototype/blocknote-translation.ts:1)
+— its "everything else becomes a markdown run" fallback means a forgotten case there
+degrades silently too, rather than failing to compile.
+
+### BlockNote is an editing surface, not the format
+
+[BlockNote](https://www.blocknotejs.org) is the document editor's UI (both for authoring,
+`src/components/draft-details/draft-document-editor.tsx`, and for the student-facing
+lesson view, `src/components/course-player/lesson-blocks.tsx` — the same component,
+`editable={true}` vs `editable={false}`). It is never used for persistence: BlockNote's
+own markdown import/export was tested and found to flatten a custom block (the exercise
+block below) into unrecoverable plain text on export, so
+[blocknote-translation.ts](../src/components/editor-prototype/blocknote-translation.ts:1)
+translates directly between BlockNote's block JSON and `EditorPrototypeBlock[]` — the
+`markdown` block type is the one exception, using BlockNote's own conversion as a purely
+local, in-memory shape-conversion helper for a contiguous run of "everything that isn't
+one of our other structurally-recognized types," never touching disk in that form.
+
+A custom block registered in
+[blocknote-schema.ts](../src/components/editor-prototype/blocknote-schema.ts:1) does not
+automatically get a slash-menu entry or appear as a valid `render` prop shape the way the
+docs imply — see the `exercise` block
+([exercise-block.tsx](../src/components/editor-prototype/exercise-block.tsx:1)) for the
+two gotchas found building it: `render` must be defined via `createReactBlockSpec` (from
+`@blocknote/react`), not `createBlockSpec` (from `@blocknote/core`, which expects a raw
+DOM-node-returning function, not JSX) — and the editor instance is obtained via the
+`useBlockNoteEditor()` hook from inside the rendered component, not passed as a `render`
+prop, despite what the hosted docs suggest. Its own slash-menu item is appended manually
+in `draft-document-editor.tsx` via `SuggestionMenuController`.
+
+The exercise block ([docs/persistence-notes.md](persistence-notes.md:1)'s "Inline
+exercise blocks" section) reuses the exact `TestExercise` shape and
+`toSharedTestExerciseDefinition`/`fromSharedTestExerciseDefinition` a test's own exercises
+already use — see "Adding an exercise kind" below for that machinery — so it inherits
+every kind's `FieldsComponent`/`AnswerComponent`/`grade()` unchanged. It branches its own
+rendering on `useBlockNoteEditor().isEditable` rather than being a genuinely different
+component per role.
 
 ## 5. Course packages on disk are a format, not an implementation detail
 

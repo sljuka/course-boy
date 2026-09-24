@@ -69,6 +69,7 @@
     "completedTitle": "Kurs je završen",
     "correctAnswer": "Tačno. Možeš da nastaviš na sledeću lekciju.",
     "enterAnswer": "Unesi ispravan odgovor pre nastavka.",
+    "inlineExerciseCorrect": "Tačno!",
     "error": "Detalji kursa trenutno ne mogu da se učitaju.",
     "exerciseProgress": "Zadatak {{current}} od {{total}}",
     "interactiveHintBody": "U interaktivnom režimu rešavaš zadatke jedan po jedan i dobijaš odgovor nakon svakog slanja. To je malo prijatniji način da radiš test.",

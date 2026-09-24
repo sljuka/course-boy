@@ -169,6 +169,24 @@ export default [
     },
   },
   {
+    // Same shape, same reason as the exercise-kinds override above:
+    // `exercise-block.tsx` co-exports a `createReactBlockSpec(...)` result
+    // (BlockNote's own registry-entry shape, not a component) alongside the
+    // small authoring/player components it wires into that spec's `render`,
+    // and `document-editor-context.tsx` co-exports a context Provider
+    // component with its `useDocumentEditorContext` hook — a pairing the
+    // codebase already treats as one unit (see `use-app-state.ts`/its own
+    // Provider). Splitting either apart just for fast-refresh granularity
+    // would hurt readability for no real benefit.
+    files: [
+      "src/components/editor-prototype/exercise-block.tsx",
+      "src/components/editor-prototype/document-editor-context.tsx",
+    ],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
+  {
     // Tag's whole point is a fixed palette of named, user-chosen swatches
     // (amber/emerald/rose/sky/stone/teal) defined inside a `cva()` variant
     // map — deliberately raw colors, not theme tokens that should track the

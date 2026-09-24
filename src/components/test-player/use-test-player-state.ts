@@ -21,7 +21,10 @@ export type ExerciseResult = {
   isCorrect: boolean;
 };
 
-function deriveExerciseResult(
+// Exported for reuse by the inline exercise block
+// (`src/components/editor-prototype/exercise-block.tsx`), which grades a
+// single exercise outside of any "test" wrapper.
+export function deriveExerciseResult(
   exercise: CourseExercise,
   instance: ExerciseInstance,
   rawAnswer: string,
