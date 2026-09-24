@@ -41,6 +41,10 @@ function isUploadedBlockType(type: EditorPrototypeBlockType): type is DocumentAs
 
 export function EditorPrototype({
   activeLocale,
+  // Focuses the document's heading block on mount — set by the caller only
+  // for a genuinely new, still-blank document, so the author can start
+  // typing its title immediately without an extra click.
+  autoFocusInitialHeading,
   blocks,
   courseId,
   nodeType,
@@ -53,6 +57,7 @@ export function EditorPrototype({
   title,
 }: {
   activeLocale?: Locale;
+  autoFocusInitialHeading?: boolean;
   blocks?: EditorPrototypeBlock[];
   courseId?: string;
   nodeType: string;
@@ -67,7 +72,9 @@ export function EditorPrototype({
   const [internalBlocks, setInternalBlocks] = useState<EditorPrototypeBlock[]>(
     nodeType === "document" ? createInitialDocumentBlocks() : initialPrototypeBlocks,
   );
-  const [autoFocusBlockId, setAutoFocusBlockId] = useState<string | null>(null);
+  const [autoFocusBlockId, setAutoFocusBlockId] = useState<string | null>(() =>
+    autoFocusInitialHeading ? ((blocks ?? internalBlocks)[0]?.id ?? null) : null,
+  );
   const [isTitleEditing, setIsTitleEditing] = useState(false);
   const titleRef = useRef<HTMLInputElement | null>(null);
   const uploadAssetMutation = useUploadCourseAssetMutation();
