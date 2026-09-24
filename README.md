@@ -1,6 +1,6 @@
 # Matko
 
-**Matko is a local-first course authoring and sharing app, built for freedom, privacy, and learning together.**
+**Matko is a local-first course making, sharing and taking app, built in a way so that learning can never be offline**
 
 Matko is designed to work without a cloud account or a central course-hosting service: course files live on your device, and teachers can share them directly with students over a peer-to-peer network, pen drives or on paper.
 
@@ -41,15 +41,16 @@ Tests are consisted out of exercises. There are couple of exercise types: `numer
 Tests have randomization baked in. For instance in template exercises, variables can have different value every time a test is started. Teacher defines constraints for each variable (min/max value, odd/even number). Based on this random value is used every time.
 Exercises within a test can also be tagged for instance (easy/medium/hard). Teacher defines that test consists of 3 easy, 2 med and 2 hard exercises. Every time student starts a test it would choose exercises randomly (from a pool of all exercises for that test) basesd on the tags.
 
+Teachers can update their courses. Courses use semver versioning.
+
 ## Future plan
 
-- AI, make MCP that shares the course schema. Agent can then help teachers in creating new courses by knowing how the courses are structured. This was tried locally by Claude. Agent now is creating new couses whenever it runs e2e tests. It's not planned to provide agents to students, at least not by default. Perhaps an extension can be used for this purpose.
-- Animated mascot, create optional animated mascots that can potentially inspire and make the exerience fun (similar like Briliant, but 3d instead). Do this with react-three-fiber and great [wawa-sensei's tutorial](https://youtu.be/2W_VR92Pqgs?si=644IrANWVlb-ZFJn). This can be gamified, for example unlock new characters by solving a course or having a big spree of positive answers on test.
+- AI, make MCP that shares the course schema. Agent (not provided by the app) can use this to help teachers in creating new courses by knowing how the courses are structured. This was tried locally by Claude. Agent now is creating new couses whenever it runs e2e tests. It's not planned to provide agents to students within the app, at least not by default. Perhaps an extension can be used for this purpose.
+- Animated mascot, create optional animated mascots that can potentially inspire and make the exerience more interesting (similar like Briliant, but 3d instead). Do this with react-three-fiber and great [wawa-sensei's tutorial](https://youtu.be/2W_VR92Pqgs?si=644IrANWVlb-ZFJn). This can be gamified, for example unlock new characters by solving a course or having a big spree of positive answers from exercises to unlock new content.
 - Integrate bitcoin donations to teachers. Detect if teacher has left any bitcoin info like bolt12 or btc address in his course and suggest to donate when course is finished.
 - More exercise types (draw shapes 3d figures with react-three-fiber, calculate area, circuverence, support math latex notation)
 - Try to make a p2p course indexer (perhaps using Autobus), not using centralized services
-- Try to make p2p teacher pages where student can open Teacher's page and see all the courses he has authored
-- Add support for local stuff like finished courses, started courses
+- Try to make p2p teacher pages where student can open Teacher's page and see all the courses he has authored, also without any centralized services
 - React with emoji on course, perhaps also give feedback on course (I'm not sure feedback is possible, it would probably open teacher's email or alterantive contact in case teacher provided it)
 - UX for forking existing courses
 
