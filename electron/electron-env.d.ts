@@ -30,6 +30,9 @@ interface Window {
     createSection: (
       input: import('../src/lib/course-package').CreateCourseSectionInput,
     ) => Promise<import('../src/lib/course-package').CreateCourseSectionResult>
+    updateSection: (
+      input: import('../src/lib/course-package').UpdateCourseSectionInput,
+    ) => Promise<void>
     createLesson: (
       input: import('../src/lib/course-package').CreateCourseLessonInput,
     ) => Promise<import('../src/lib/course-package').CreateCourseLessonResult>

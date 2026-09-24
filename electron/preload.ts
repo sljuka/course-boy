@@ -26,6 +26,7 @@ import type {
   SaveSectionTestInput,
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
+  UpdateCourseSectionInput,
   UpdateLessonContentInput,
   UploadCourseAssetInput,
   UploadCourseAssetResult,
@@ -57,6 +58,9 @@ contextBridge.exposeInMainWorld('courses', {
   },
   createSection(input: CreateCourseSectionInput) {
     return ipcRenderer.invoke('courses:create-section', input) as Promise<CreateCourseSectionResult>
+  },
+  updateSection(input: UpdateCourseSectionInput) {
+    return ipcRenderer.invoke('courses:update-section', input) as Promise<void>
   },
   createLesson(input: CreateCourseLessonInput) {
     return ipcRenderer.invoke('courses:create-lesson', input) as Promise<CreateCourseLessonResult>

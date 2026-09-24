@@ -72,6 +72,34 @@ type PendingCreate =
 
 const courseRootTitle = "Course";
 
+// Defaults a new standalone test's name to the section's last document's
+// title (see `startAddTest`) — but only when that name isn't already taken
+// by another test in the section (case-insensitive, matching the duplicate
+// check on confirm below); a colliding default would either silently fail
+// to save or force the teacher to notice and fix it themselves before they
+// even get to typing. Falls back to the existing "Test N" numbering,
+// itself skipping past any "Test N" that's already in use.
+function pickDefaultTestTitle(
+  section: CourseSectionPreview | undefined,
+  lastDocumentTitle: string | undefined,
+): string {
+  const existingTitles = new Set(
+    (section?.tests ?? []).map((test) => test.title.trim().toLowerCase()),
+  );
+
+  if (lastDocumentTitle && !existingTitles.has(lastDocumentTitle.trim().toLowerCase())) {
+    return lastDocumentTitle;
+  }
+
+  let index = (section?.tests.length ?? 0) + 1;
+
+  while (existingTitles.has(`Test ${index}`.toLowerCase())) {
+    index += 1;
+  }
+
+  return `Test ${index}`;
+}
+
 export function CourseStructurePrototype({
   compact = false,
   courseId,
@@ -149,9 +177,17 @@ export function CourseStructurePrototype({
 
   function startAddTest(sectionId: string) {
     const section = sections.find((candidate) => candidate.id === sectionId);
+    // A standalone test always renders after every document in its section
+    // (see `sectionNodes` above: lessons first, then tests) — so a new one
+    // visually "follows" the last document there. Defaulting its name to
+    // that document's title (rather than a generic "Test N") makes the
+    // pairing obvious, e.g. a "Photosynthesis" lesson followed by a
+    // "Photosynthesis" test instead of "Test 1". Only applies when the
+    // section actually has a document to follow.
+    const lastDocumentTitle = section?.lessons.at(-1)?.title;
 
     setPendingCreate({ sectionId, type: "test" });
-    setPendingTitle(`Test ${(section?.tests.length ?? 0) + 1}`);
+    setPendingTitle(pickDefaultTestTitle(section, lastDocumentTitle));
     setPendingError(null);
     setCollapsedSectionIds((currentIds) => currentIds.filter((id) => id !== sectionId));
   }

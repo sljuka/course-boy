@@ -25,6 +25,7 @@ import type {
   SaveSectionTestInput,
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
+  UpdateCourseSectionInput,
   UpdateLessonContentInput,
   UploadCourseAssetInput,
   UploadCourseAssetResult,
@@ -35,9 +36,13 @@ import {
   createAssetFilename,
 } from "../src/lib/course-asset-id";
 import { regionPickerSvgPresets } from "../src/lib/region-picker-svg-presets";
-import { assertCoursePackageIsPublishable, isSharedTestDefinition } from "./course-registry";
+import {
+  assertCoursePackageIsPublishable,
+  isDraftSharedTestDefinition,
+  isLocalizedSectionMetadata,
+} from "./course-registry";
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
-import { locales, type Locale } from "../src/lib/i18n";
+import { isLocale, locales, type Locale } from "../src/lib/i18n";
 import {
   bumpCourseVersion,
   compareCourseVersions,
@@ -1017,6 +1022,68 @@ export async function createLocalCourseSection(
   return { sectionId };
 }
 
+export async function updateLocalCourseSection(
+  input: UpdateCourseSectionInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+  const sectionDefinitionPath = path.join(sectionDirectoryPath, "section.json");
+
+  let existingFileContents: string;
+
+  try {
+    existingFileContents = await fs.readFile(sectionDefinitionPath, "utf8");
+  } catch {
+    throw new Error(`Section "${input.sectionId}" does not exist`);
+  }
+
+  const localesAreValid = Object.entries(input.locales).every(
+    ([locale, metadata]) => isLocale(locale) && isLocalizedSectionMetadata(metadata),
+  );
+
+  if (!localesAreValid) {
+    throw new Error("Section data is invalid");
+  }
+
+  // Like a test file, a section's own identity (id/slug) is preserved —
+  // only the locale content is ever replaced.
+  const existingIdentity = JSON.parse(existingFileContents) as {
+    id: string;
+    slug: string;
+  };
+
+  await writeFileAtomic(
+    sectionDefinitionPath,
+    JSON.stringify(
+      {
+        id: existingIdentity.id,
+        slug: existingIdentity.slug,
+        locales: input.locales,
+      },
+      null,
+      2,
+    ),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 export async function createLocalCourseLesson(
   input: CreateCourseLessonInput,
 ): Promise<{ lessonId: string }> {
@@ -1183,7 +1250,7 @@ export async function updateLocalCourseLessonTest(
     throw new Error(`Lesson "${input.lessonId}" does not exist`);
   }
 
-  if (!isSharedTestDefinition(input.test)) {
+  if (!isDraftSharedTestDefinition(input.test)) {
     throw new Error("Test data is invalid");
   }
 
@@ -1225,7 +1292,7 @@ export async function getLocalCourseLessonTestDraft(
 
   const parsedValue = JSON.parse(fileContents) as unknown;
 
-  if (!isSharedTestDefinition(parsedValue)) {
+  if (!isDraftSharedTestDefinition(parsedValue)) {
     throw new Error(`Invalid JSON structure in ${testDefinitionPath}`);
   }
 
@@ -1337,7 +1404,7 @@ export async function updateLocalCourseSectionTest(
     throw new Error(`Test "${input.testId}" does not exist`);
   }
 
-  if (!isSharedTestDefinition(input.test)) {
+  if (!isDraftSharedTestDefinition(input.test)) {
     throw new Error("Test data is invalid");
   }
 
@@ -1398,7 +1465,7 @@ export async function getLocalCourseSectionTestDraft(
   // title), before any content is saved — unlike a lesson-attached test file,
   // whose mere existence already implies valid content. So a shape mismatch
   // here means "no exercises saved yet," not corruption.
-  if (!isSharedTestDefinition(parsedValue)) {
+  if (!isDraftSharedTestDefinition(parsedValue)) {
     return null;
   }
 

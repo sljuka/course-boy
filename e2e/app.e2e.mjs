@@ -77,6 +77,7 @@ describe('launch', () => {
       'saveSectionTest',
       'updateDraftMetadata',
       'updateLessonContent',
+      'updateSection',
       'uploadAsset',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])

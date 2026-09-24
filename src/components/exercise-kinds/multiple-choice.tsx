@@ -27,6 +27,35 @@ import {
   toShared,
   validate,
 } from "@/components/exercise-kinds/multiple-choice-logic";
+import { cn } from "@/lib/utils";
+
+// Print: a plain option list with a blank check/radio mark next to each one
+// — a circle for single-answer (matching the on-screen radio buttons), a
+// square for multi-answer (matching the checkboxes) — for a student to fill
+// in by hand. Shared by both selection modes below rather than duplicated.
+function PrintOptionList({
+  exercise,
+  optionOrder,
+}: {
+  exercise: MultipleChoiceCourseExercise;
+  optionOrder: number[];
+}) {
+  return (
+    <div className="hidden flex-col gap-2 print:flex">
+      {optionOrder.map((optionIndex) => (
+        <div className="flex items-center gap-2" key={optionIndex}>
+          <span
+            className={cn(
+              "inline-block h-3.5 w-3.5 shrink-0 border border-foreground",
+              exercise.selectionMode === "single" ? "rounded-full" : "rounded-sm",
+            )}
+          />
+          <span>{exercise.options[optionIndex]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function AnswerComponent({
   exercise,
@@ -43,51 +72,57 @@ function AnswerComponent({
 
   if (exercise.selectionMode === "single") {
     return (
-      <RadioGroup
-        className="max-w-md print:hidden"
-        onValueChange={(nextValue) =>
-          onAnswerChange(encodeMultipleChoiceSelection([Number(nextValue)]))
-        }
-        value={selectedIndexes.length > 0 ? String(selectedIndexes[0]) : null}
-      >
+      <>
+        <RadioGroup
+          className="max-w-md print:hidden"
+          onValueChange={(nextValue) =>
+            onAnswerChange(encodeMultipleChoiceSelection([Number(nextValue)]))
+          }
+          value={selectedIndexes.length > 0 ? String(selectedIndexes[0]) : null}
+        >
+          {instance.optionOrder.map((optionIndex) => (
+            <div className="flex items-center gap-2" key={optionIndex}>
+              <RadioGroupItem
+                id={`course-exercise-answer-${index}-${optionIndex}`}
+                value={String(optionIndex)}
+              />
+              <Label htmlFor={`course-exercise-answer-${index}-${optionIndex}`}>
+                {exercise.options[optionIndex]}
+              </Label>
+            </div>
+          ))}
+        </RadioGroup>
+        <PrintOptionList exercise={exercise} optionOrder={instance.optionOrder} />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex max-w-md flex-col gap-2 print:hidden">
         {instance.optionOrder.map((optionIndex) => (
           <div className="flex items-center gap-2" key={optionIndex}>
-            <RadioGroupItem
+            <Checkbox
+              checked={selectedIndexes.includes(optionIndex)}
               id={`course-exercise-answer-${index}-${optionIndex}`}
-              value={String(optionIndex)}
+              onCheckedChange={() =>
+                onAnswerChange(
+                  encodeMultipleChoiceSelection(
+                    selectedIndexes.includes(optionIndex)
+                      ? selectedIndexes.filter((selectedIndex) => selectedIndex !== optionIndex)
+                      : [...selectedIndexes, optionIndex],
+                  ),
+                )
+              }
             />
             <Label htmlFor={`course-exercise-answer-${index}-${optionIndex}`}>
               {exercise.options[optionIndex]}
             </Label>
           </div>
         ))}
-      </RadioGroup>
-    );
-  }
-
-  return (
-    <div className="flex max-w-md flex-col gap-2 print:hidden">
-      {instance.optionOrder.map((optionIndex) => (
-        <div className="flex items-center gap-2" key={optionIndex}>
-          <Checkbox
-            checked={selectedIndexes.includes(optionIndex)}
-            id={`course-exercise-answer-${index}-${optionIndex}`}
-            onCheckedChange={() =>
-              onAnswerChange(
-                encodeMultipleChoiceSelection(
-                  selectedIndexes.includes(optionIndex)
-                    ? selectedIndexes.filter((selectedIndex) => selectedIndex !== optionIndex)
-                    : [...selectedIndexes, optionIndex],
-                ),
-              )
-            }
-          />
-          <Label htmlFor={`course-exercise-answer-${index}-${optionIndex}`}>
-            {exercise.options[optionIndex]}
-          </Label>
-        </div>
-      ))}
-    </div>
+      </div>
+      <PrintOptionList exercise={exercise} optionOrder={instance.optionOrder} />
+    </>
   );
 }
 

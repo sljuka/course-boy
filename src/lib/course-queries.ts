@@ -26,12 +26,22 @@ import type {
   SaveLessonTestInput,
   SaveSectionTestInput,
   SharedTestDefinition,
+  UpdateCourseDraftMetadataInput,
+  UpdateCourseSectionInput,
   UpdateLessonContentInput,
   UploadCourseAssetInput,
   UploadCourseAssetResult,
 } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { queryClient } from "@/lib/query-client";
+
+// Shared by every mutation that autosaves one draft entity's content (course
+// metadata, a section, a document, a test) — never anything else (course
+// creation/deletion, version cutting, asset uploads, ...). A single
+// `useIsMutating({ mutationKey: courseContentSaveMutationKey })` call is what
+// drives the draft editor's whole "Saving… / All changes saved" status bar,
+// so every entity's own save must tag itself with this same key to be seen.
+export const courseContentSaveMutationKey = ["courses", "save"] as const;
 
 export function useCoursesQuery(
   locale: Locale,
@@ -96,6 +106,35 @@ export function useCreateCourseSectionMutation() {
   });
 }
 
+export function useUpdateSectionMutation() {
+  return useMutation<void, Error, UpdateCourseSectionInput>({
+    mutationFn: (input) => window.courses.updateSection(input),
+    mutationKey: courseContentSaveMutationKey,
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
+export function useUpdateDraftMetadataMutation() {
+  return useMutation<void, Error, UpdateCourseDraftMetadataInput>({
+    mutationFn: (input) => window.courses.updateDraftMetadata(input),
+    mutationKey: courseContentSaveMutationKey,
+    onSuccess: async (_result, input) => {
+      // Also refreshes "My courses" — a title/description/rating edit here
+      // is visible there too.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["courses", "list"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["courses", "detail", input.courseId],
+        }),
+      ]);
+    },
+  });
+}
+
 export function useCreateCourseLessonMutation() {
   return useMutation<CreateCourseLessonResult, Error, CreateCourseLessonInput>({
     mutationFn: (input) => window.courses.createLesson(input),
@@ -110,6 +149,7 @@ export function useCreateCourseLessonMutation() {
 export function useUpdateLessonContentMutation() {
   return useMutation<void, Error, UpdateLessonContentInput>({
     mutationFn: (input) => window.courses.updateLessonContent(input),
+    mutationKey: courseContentSaveMutationKey,
     onSuccess: async (_result, input) => {
       await queryClient.invalidateQueries({
         queryKey: ["courses", "detail", input.courseId],
@@ -121,9 +161,13 @@ export function useUpdateLessonContentMutation() {
 export function useSaveLessonTestMutation() {
   return useMutation<void, Error, SaveLessonTestInput>({
     mutationFn: (input) => window.courses.saveLessonTest(input),
+    mutationKey: courseContentSaveMutationKey,
     onSuccess: async (_result, input) => {
       await queryClient.invalidateQueries({
         queryKey: ["courses", "detail", input.courseId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "lesson-test-draft", input.courseId, input.lessonId],
       });
     },
   });
@@ -151,9 +195,13 @@ export function useCreateCourseSectionTestMutation() {
 export function useSaveSectionTestMutation() {
   return useMutation<void, Error, SaveSectionTestInput>({
     mutationFn: (input) => window.courses.saveSectionTest(input),
+    mutationKey: courseContentSaveMutationKey,
     onSuccess: async (_result, input) => {
       await queryClient.invalidateQueries({
         queryKey: ["courses", "detail", input.courseId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "section-test-draft", input.courseId, input.testId],
       });
     },
   });

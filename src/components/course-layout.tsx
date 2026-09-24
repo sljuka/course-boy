@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useIsMutating } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
@@ -21,18 +22,14 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import type { CourseTagDefinition } from "@/lib/course-tags";
-import { useCourseDetailsQuery } from "@/lib/course-queries";
-import { useDraftEditorRecordQuery } from "@/lib/draft-editor-queries";
+import { courseContentSaveMutationKey, useCourseDetailsQuery } from "@/lib/course-queries";
 import type {
   ContentRating,
-  DraftEditorSnapshot,
-} from "@/lib/draft-editor-types";
-import type {
   CourseSectionPreview,
   CourseVersionBadge,
   LocalizedCourseMetadata,
 } from "@/lib/course-package";
-import { useDraftEditorAutosave } from "@/lib/use-draft-editor-autosave";
+import type { EntityAutosaveStatus } from "@/lib/use-entity-autosave";
 import { useAppState } from "@/lib/use-app-state";
 import type { Locale } from "@/lib/i18n";
 
@@ -43,52 +40,21 @@ type CourseLayoutOutletContext = {
   courseSections: CourseSectionPreview[];
   courseTitle: string;
   defaultLocale: Locale;
-  initialDraftSnapshot: DraftEditorSnapshot | null;
-  initialDraftSnapshotLoaded: boolean;
+  isCourseDetailsLoading: boolean;
   localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>;
-  setDraftSnapshot: (snapshot: DraftEditorSnapshot) => void;
-  setEditorStatusAction: (action: ReactNode | null) => void;
-  selectedNode: StructureSelection;
-  setContentRating: (contentRating: ContentRating) => void;
-  setDefaultLocale: (locale: Locale) => void;
-  setLocalizedCourse: (
-    value:
-      | Partial<Record<Locale, LocalizedCourseMetadata>>
-      | ((
-          currentLocalizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>,
-        ) => Partial<Record<Locale, LocalizedCourseMetadata>>),
+  reportAutosaveStatus: (
+    status: EntityAutosaveStatus | null,
+    errorMessage: string | null,
+    retry?: () => void,
   ) => void;
+  selectedNode: StructureSelection;
+  setEditorStatusAction: (action: ReactNode | null) => void;
   setSelectedNode: (selection: StructureSelection) => void;
-  setSupportedLocales: (locales: Locale[]) => void;
   supportedLocales: Locale[];
   versionBadge: CourseVersionBadge | undefined;
 };
 
 export type { ContentRating, CourseLayoutOutletContext };
-
-function createEmptyLocalizedCourse(): LocalizedCourseMetadata {
-  return {
-    description: "",
-    title: "",
-  };
-}
-
-function normalizeLocalizedCourse(
-  localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>,
-  supportedLocales: Locale[],
-  defaultLocale: Locale,
-) {
-  const nextLocalizedCourse = { ...localizedCourse };
-
-  for (const locale of supportedLocales) {
-    nextLocalizedCourse[locale] ??=
-      locale === defaultLocale
-        ? localizedCourse[defaultLocale] ?? createEmptyLocalizedCourse()
-        : createEmptyLocalizedCourse();
-  }
-
-  return nextLocalizedCourse;
-}
 
 function getCourseTitle(
   localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>,
@@ -104,29 +70,6 @@ function getCourseDescription(
   return localizedCourse[defaultLocale]?.description || "";
 }
 
-function resolveHydratedSupportedLocales(
-  snapshotLocales: Locale[],
-  courseLocales: Locale[] | undefined,
-) {
-  if (
-    snapshotLocales.length === 1 &&
-    snapshotLocales[0] === "en" &&
-    courseLocales &&
-    courseLocales.length > 0
-  ) {
-    return courseLocales;
-  }
-
-  return snapshotLocales.length > 0 ? snapshotLocales : (courseLocales ?? []);
-}
-
-function resolveHydratedContentRating(
-  snapshotContentRating: ContentRating | undefined,
-  courseContentRating: ContentRating | undefined,
-) {
-  return snapshotContentRating ?? courseContentRating ?? "all-ages";
-}
-
 export const CourseLayout = () => {
   const { courseId } = useParams<{ courseId: string }>();
 
@@ -136,17 +79,12 @@ export const CourseLayout = () => {
 const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) => {
   const { locale } = useAppState();
   const location = useLocation();
-  const [contentRating, setContentRating] = useState<ContentRating>("all-ages");
-  const [defaultLocale, setDefaultLocale] = useState<Locale>(locale);
-  const [localizedCourse, setLocalizedCourseState] = useState<
-    Partial<Record<Locale, LocalizedCourseMetadata>>
-  >({});
-  const [supportedLocales, setSupportedLocales] = useState<Locale[]>([locale]);
-  const [draftSnapshot, setDraftSnapshotState] = useState<DraftEditorSnapshot | null>(
-    null,
-  );
   const [editorStatusAction, setEditorStatusAction] = useState<ReactNode | null>(null);
-  const hasHydratedInitialDraftRef = useRef(false);
+  const [forwardedAutosave, setForwardedAutosave] = useState<{
+    errorMessage: string | null;
+    retry: (() => void) | null;
+    status: EntityAutosaveStatus | null;
+  }>({ errorMessage: null, retry: null, status: null });
   // Restored from `location.state` when we're arriving back from the
   // "Preview test" route (`DraftTestPreviewPage`), which round-trips the
   // node that was selected before preview opened — otherwise this remount
@@ -169,152 +107,27 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
       },
   );
   const courseDetailsQuery = useCourseDetailsQuery(courseId, locale);
-  const draftEditorRecordQuery = useDraftEditorRecordQuery(courseId);
-  const initialDraftSnapshot = draftEditorRecordQuery.data?.snapshot ?? null;
-  const initialDraftSnapshotLoaded = draftEditorRecordQuery.isSuccess;
-  const autosave = useDraftEditorAutosave({
-    courseId,
-    courseSections: courseDetailsQuery.data?.sections ?? [],
-    initialRecord: draftEditorRecordQuery.data,
-    isReady: initialDraftSnapshotLoaded && draftSnapshot !== null,
-    snapshot: draftSnapshot,
-  });
+  // Course metadata now hydrates directly from the course-details query —
+  // there is no aggregate draft snapshot to reconcile it against. Each
+  // consuming editor (the course-root branch in `DraftDetailPage`) seeds its
+  // own local edit state from these persisted values and autosaves changes
+  // straight back through `useUpdateDraftMetadataMutation`.
+  const contentRating: ContentRating = courseDetailsQuery.data?.contentRating ?? "all-ages";
+  const defaultLocale: Locale = courseDetailsQuery.data?.defaultLocale ?? locale;
+  const localizedCourse = courseDetailsQuery.data?.locales ?? {};
+  const supportedLocales = courseDetailsQuery.data?.supportedLocales ?? [locale];
   const courseTitle = getCourseTitle(localizedCourse, defaultLocale);
   const courseDescription = getCourseDescription(localizedCourse, defaultLocale);
+  // "Saving…" reflects any in-flight entity-content mutation, anywhere in
+  // the app — no need to plumb a per-entity boolean up through context.
+  const isSavingAnyEntity = useIsMutating({ mutationKey: courseContentSaveMutationKey }) > 0;
 
-  const setLocalizedCourse = useCallback(
-    (
-      value:
-        | Partial<Record<Locale, LocalizedCourseMetadata>>
-        | ((
-            currentLocalizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>,
-          ) => Partial<Record<Locale, LocalizedCourseMetadata>>),
-    ) => {
-      setLocalizedCourseState((currentLocalizedCourse) => {
-        const nextLocalizedCourse =
-          typeof value === "function" ? value(currentLocalizedCourse) : value;
-
-        return normalizeLocalizedCourse(
-          nextLocalizedCourse,
-          supportedLocales,
-          defaultLocale,
-        );
-      });
+  const reportAutosaveStatus = useCallback(
+    (status: EntityAutosaveStatus | null, errorMessage: string | null, retry?: () => void) => {
+      setForwardedAutosave({ errorMessage, retry: retry ?? null, status });
     },
-    [defaultLocale, supportedLocales],
+    [],
   );
-
-  useEffect(() => {
-    if (
-      hasHydratedInitialDraftRef.current ||
-      !initialDraftSnapshotLoaded ||
-      !initialDraftSnapshot
-    ) {
-      return;
-    }
-
-    const resolvedDefaultLocale =
-      initialDraftSnapshot.defaultLocale ?? courseDetailsQuery.data?.defaultLocale ?? locale;
-    const resolvedSupportedLocales = resolveHydratedSupportedLocales(
-      initialDraftSnapshot.supportedLocales,
-      courseDetailsQuery.data?.supportedLocales,
-    );
-    const resolvedContentRating = resolveHydratedContentRating(
-      initialDraftSnapshot.contentRating,
-      courseDetailsQuery.data?.contentRating,
-    );
-    const resolvedLocalizedCourse = normalizeLocalizedCourse(
-      {
-        ...(courseDetailsQuery.data?.locales ?? {}),
-        ...initialDraftSnapshot.localizedCourse,
-      },
-      resolvedSupportedLocales,
-      resolvedDefaultLocale,
-    );
-    const resolvedCourseTitle = getCourseTitle(
-      resolvedLocalizedCourse,
-      resolvedDefaultLocale,
-    );
-
-    setContentRating(resolvedContentRating);
-    setDefaultLocale(resolvedDefaultLocale);
-    setLocalizedCourseState(resolvedLocalizedCourse);
-    setSupportedLocales(resolvedSupportedLocales);
-
-    if (!restoredSelectedNodeRef.current) {
-      setSelectedNode({
-        id: courseRootId,
-        title: resolvedCourseTitle,
-        type: "course",
-      });
-    }
-
-    hasHydratedInitialDraftRef.current = true;
-  }, [
-    courseDetailsQuery.data?.contentRating,
-    courseDetailsQuery.data?.defaultLocale,
-    courseDetailsQuery.data?.locales,
-    courseDetailsQuery.data?.supportedLocales,
-    initialDraftSnapshot,
-    initialDraftSnapshotLoaded,
-    locale,
-  ]);
-
-  useEffect(() => {
-    if (
-      hasHydratedInitialDraftRef.current ||
-      !initialDraftSnapshotLoaded ||
-      initialDraftSnapshot ||
-      courseDetailsQuery.isLoading ||
-      !courseDetailsQuery.data
-    ) {
-      return;
-    }
-
-    setContentRating(courseDetailsQuery.data.contentRating);
-    setDefaultLocale(courseDetailsQuery.data.defaultLocale);
-    setLocalizedCourseState(
-      normalizeLocalizedCourse(
-        courseDetailsQuery.data.locales,
-        courseDetailsQuery.data.supportedLocales,
-        courseDetailsQuery.data.defaultLocale,
-      ),
-    );
-    setSupportedLocales(courseDetailsQuery.data.supportedLocales);
-
-    if (!restoredSelectedNodeRef.current) {
-      setSelectedNode({
-        id: courseRootId,
-        title: courseDetailsQuery.data.title || "Course",
-        type: "course",
-      });
-    }
-
-    hasHydratedInitialDraftRef.current = true;
-  }, [
-    courseDetailsQuery.data,
-    courseDetailsQuery.isLoading,
-    initialDraftSnapshot,
-    initialDraftSnapshotLoaded,
-  ]);
-
-  useEffect(() => {
-    setLocalizedCourseState((currentLocalizedCourse) =>
-      normalizeLocalizedCourse(
-        currentLocalizedCourse,
-        supportedLocales,
-        defaultLocale,
-      ),
-    );
-  }, [defaultLocale, supportedLocales]);
-
-  useEffect(() => {
-    if (supportedLocales.includes(defaultLocale)) {
-      return;
-    }
-
-    setDefaultLocale(supportedLocales[0] ?? locale);
-  }, [defaultLocale, locale, supportedLocales]);
 
   useEffect(() => {
     setSelectedNode((currentSelection) =>
@@ -329,29 +142,8 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
 
   useEffect(() => {
     setEditorStatusAction(null);
+    setForwardedAutosave({ errorMessage: null, retry: null, status: null });
   }, [selectedNode.id]);
-
-  const saveNowRef = useRef(autosave.saveNow);
-
-  useEffect(() => {
-    saveNowRef.current = autosave.saveNow;
-  }, [autosave.saveNow]);
-
-  useEffect(() => {
-    return () => {
-      saveNowRef.current();
-    };
-  }, []);
-
-  const setDraftSnapshot = useCallback((snapshot: DraftEditorSnapshot) => {
-    setDraftSnapshotState((currentSnapshot) => {
-      if (JSON.stringify(currentSnapshot) === JSON.stringify(snapshot)) {
-        return currentSnapshot;
-      }
-
-      return snapshot;
-    });
-  }, []);
 
   return (
     <OnboardingGuard>
@@ -378,17 +170,12 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
                   courseSections: courseDetailsQuery.data?.sections ?? [],
                   courseTitle,
                   defaultLocale,
-                  initialDraftSnapshot,
-                  initialDraftSnapshotLoaded,
+                  isCourseDetailsLoading: courseDetailsQuery.isLoading,
                   localizedCourse,
+                  reportAutosaveStatus,
                   selectedNode,
-                  setContentRating,
-                  setDefaultLocale,
-                  setLocalizedCourse,
-                  setDraftSnapshot,
                   setEditorStatusAction,
                   setSelectedNode,
-                  setSupportedLocales,
                   supportedLocales,
                   versionBadge: courseDetailsQuery.data?.versionBadge,
                 } satisfies CourseLayoutOutletContext
@@ -400,25 +187,27 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
               <EditorStatusBar
                 action={editorStatusAction}
                 message={
-                  draftEditorRecordQuery.isLoading
-                    ? "Loading draft…"
-                    : autosave.status === "dirty"
-                      ? "Saving soon…"
-                      : autosave.status === "saving"
+                  courseDetailsQuery.isLoading
+                    ? "Loading…"
+                    : forwardedAutosave.status === "error"
+                      ? forwardedAutosave.errorMessage ?? "Save failed"
+                      : isSavingAnyEntity
                         ? "Saving…"
-                        : autosave.status === "error"
-                          ? autosave.errorMessage ?? "Save failed"
+                        : forwardedAutosave.status === "dirty"
+                          ? "Saving soon…"
                           : "All changes saved"
                 }
-                onRetry={autosave.status === "error" ? autosave.saveNow : undefined}
+                onRetry={forwardedAutosave.status === "error" ? forwardedAutosave.retry ?? undefined : undefined}
                 status={
-                  draftEditorRecordQuery.isLoading || autosave.status === "saving"
+                  courseDetailsQuery.isLoading
                     ? "saving"
-                    : autosave.status === "dirty"
-                      ? "dirty"
-                      : autosave.status === "error"
+                    : forwardedAutosave.status === "error"
                       ? "error"
-                      : "saved"
+                      : isSavingAnyEntity
+                        ? "saving"
+                        : forwardedAutosave.status === "dirty"
+                          ? "dirty"
+                          : "saved"
                 }
               />
             </div>

@@ -454,6 +454,12 @@ export type CreateCourseSectionInput = {
   title: string;
 };
 
+export type UpdateCourseSectionInput = {
+  courseId: string;
+  locales: Partial<Record<Locale, LocalizedSectionMetadata>>;
+  sectionId: string;
+};
+
 export type CreateCourseSectionResult = {
   sectionId: string;
 };

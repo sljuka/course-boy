@@ -100,6 +100,7 @@ export function TestPlayerView({
     <>
       <PrintDocumentHeader
         courseTitle={playerState.courseTitle}
+        description={activeItem.description}
         label={t("courseDetails.testLabel")}
         show={printOptions.showHeader}
         sectionTitle={playerState.sectionTitle}

@@ -1,24 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Eye, History, Info } from "lucide-react";
-import {
-  Link,
-  Navigate,
-  useLocation,
-  useOutletContext,
-  useParams,
-} from "react-router-dom";
+import { Link, Navigate, useOutletContext, useParams } from "react-router-dom";
 
 import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
 import { EditorPrototype } from "@/components/editor-prototype/editor-prototype";
-import { createInitialDocumentBlocks } from "@/components/editor-prototype/editor-prototype-types";
+import {
+  createInitialDocumentBlocks,
+  type EditorPrototypeBlock,
+} from "@/components/editor-prototype/editor-prototype-types";
 import { LocalesTabs } from "@/components/locales-tabs";
 import { PageActions } from "@/components/page-actions";
 import { PageContent } from "@/components/page-content";
 import { TestEditorPrototype } from "@/components/test-editor-prototype";
 import { TestEditorTagManager } from "@/components/test-editor-tag-manager";
 import type { TestEditorState } from "@/components/test-editor-prototype-types";
-import { normalizeDraftTestData } from "@/components/test-editor-prototype-logic";
-import { fromSharedTestDefinition } from "@/components/test-editor-prototype-persistence";
+import { createInitialState } from "@/components/test-editor-prototype-logic";
+import {
+  fromSharedTestDefinition,
+  toSharedTestDefinition,
+} from "@/components/test-editor-prototype-persistence";
 import {
   Accordion,
   AccordionContent,
@@ -61,14 +61,21 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useComboboxAnchor } from "@/components/ui/use-combobox-anchor";
 import { Button } from "@/components/ui/button";
 import { courseRootId } from "@/components/course-structure-prototype/course-structure-prototype-types";
+import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import type {
   ContentRating,
   CourseLayoutOutletContext,
 } from "@/components/course-layout";
 import type {
-  CourseDetails,
-  CourseSummary,
+  CourseLesson,
+  CourseSectionPreview,
   LocalizedCourseMetadata,
+  LocalizedSectionMetadata,
+  SaveLessonTestInput,
+  SaveSectionTestInput,
+  SharedTestDefinition,
+  UpdateCourseSectionInput,
+  UpdateLessonContentInput,
 } from "@/lib/course-package";
 import {
   createCourseTagDefinition,
@@ -78,19 +85,34 @@ import {
 import { getContentRatingLabelKey } from "@/lib/course-utils";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
-import { queryClient } from "@/lib/query-client";
-import { useLessonTestDraftQuery, useSectionTestDraftQuery } from "@/lib/course-queries";
+import { blocksToMarkdown, markdownToBlocks } from "@/lib/lesson-content-markdown";
+import {
+  useLessonTestDraftQuery,
+  useSaveLessonTestMutation,
+  useSaveSectionTestMutation,
+  useSectionTestDraftQuery,
+  useUpdateDraftMetadataMutation,
+  useUpdateLessonContentMutation,
+  useUpdateSectionMutation,
+} from "@/lib/course-queries";
 import { resolveLessonIdForTest } from "@/lib/course-test-id";
+import { useEntityAutosave, useForwardAutosaveStatus } from "@/lib/use-entity-autosave";
+import { useAppState } from "@/lib/use-app-state";
 import { useTranslation } from "react-i18next";
-
-type DocumentDraftLocaleValue = {
-  blocks: ReturnType<typeof createInitialDocumentBlocks>;
-};
 
 type SectionDraftLocaleValue = {
   description: string;
   title: string;
 };
+
+type CourseMetadataDraft = {
+  contentRating: ContentRating;
+  descriptiveTags: CourseTagDefinition[];
+  localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>;
+  supportedLocales: Locale[];
+};
+
+type DocumentLocaleDraft = Partial<Record<Locale, EditorPrototypeBlock[]>>;
 
 function getInitialSectionTitle(locale: Locale) {
   switch (locale) {
@@ -153,296 +175,239 @@ function getLocaleLabel(locale: Locale, t: (key: string) => string) {
   return t("language.english");
 }
 
-function buildPersistedDraftSnapshot({
-  contentRating,
-  courseId,
-  defaultLocale,
-  descriptiveTags,
-  documentDrafts,
-  localizedCourse,
-  sectionDrafts,
-  sectionTestDrafts,
-  supportedLocales,
-  testDrafts,
-}: {
-  contentRating: ContentRating;
-  courseId: string;
-  defaultLocale: Locale;
-  descriptiveTags: CourseTagDefinition[];
-  documentDrafts: Record<
-    string,
-    { locales: Partial<Record<Locale, DocumentDraftLocaleValue>> }
-  >;
-  localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>;
-  sectionDrafts: Record<
-    string,
-    { locales: Partial<Record<Locale, SectionDraftLocaleValue>> }
-  >;
-  sectionTestDrafts: Record<string, TestEditorState>;
-  supportedLocales: Locale[];
-  testDrafts: Record<string, TestEditorState>;
-}) {
-  const persistedDescriptiveTags = descriptiveTags.filter(
-    (tag) => normalizeCourseTagLabel(tag.label).length > 0,
+// A registered tag is one that shows up in the "Add tag" combobox — an
+// exercise or blueprint rule referencing anything else (typically a tag
+// deleted from another session, or set by hand via a direct IPC call) is
+// stripped at save time. See the "known rough edge" note in CLAUDE.md.
+function toPersistableSharedTestDefinition(
+  state: TestEditorState,
+  descriptiveTags: CourseTagDefinition[],
+): SharedTestDefinition {
+  const registeredTagIds = new Set(
+    descriptiveTags
+      .filter((tag) => normalizeCourseTagLabel(tag.label).length > 0)
+      .map((tag) => tag.id),
   );
-  const persistedTagIds = new Set(
-    persistedDescriptiveTags.map((tag) => tag.id),
-  );
-  function persistTestDrafts(rawTestDrafts: Record<string, TestEditorState>) {
-    return Object.fromEntries(
-      Object.entries(rawTestDrafts).map(([draftId, draftState]) => [
-        draftId,
-        {
-          ...draftState,
-          blueprint: draftState.blueprint.filter((rule) =>
-            persistedTagIds.has(rule.tagId),
-          ),
-          exercises: draftState.exercises.map((exercise) => ({
-            ...exercise,
-            tagIds: exercise.tagIds.filter((tagId) => persistedTagIds.has(tagId)),
-          })),
-        },
-      ]),
-    ) satisfies Record<string, TestEditorState>;
-  }
-
-  const persistedTestDrafts = persistTestDrafts(testDrafts);
-  const persistedSectionTestDrafts = persistTestDrafts(sectionTestDrafts);
-  const persistedSectionDrafts = Object.fromEntries(
-    Object.entries(sectionDrafts)
-      .map(([sectionId, sectionDraft]) => {
-        const persistedLocales = Object.fromEntries(
-          Object.entries(sectionDraft.locales).filter(([, localeDraft]) =>
-            isSectionTitleValid(localeDraft?.title),
-          ),
-        ) as Partial<Record<Locale, SectionDraftLocaleValue>>;
-
-        return [sectionId, { ...sectionDraft, locales: persistedLocales }] as const;
-      })
-      .filter(([, sectionDraft]) => Object.keys(sectionDraft.locales).length > 0),
-  ) as typeof sectionDrafts;
+  const shared = toSharedTestDefinition(state);
 
   return {
-    contentRating,
-    courseId,
-    defaultLocale,
-    descriptiveTags: persistedDescriptiveTags,
-    documentDrafts,
-    localizedCourse: Object.fromEntries(
-      supportedLocales.map((locale) => [
-        locale,
-        localizedCourse[locale] ?? {
-          description: "",
-          title: "",
-        },
-      ]),
-    ) as Partial<Record<Locale, LocalizedCourseMetadata>>,
-    sectionDrafts: persistedSectionDrafts,
-    sectionTestDrafts: persistedSectionTestDrafts,
-    supportedLocales,
-    testDrafts: persistedTestDrafts,
-    version: 2 as const,
+    ...shared,
+    exercises: shared.exercises.map((exercise) => ({
+      ...exercise,
+      tags: exercise.tags.filter((tagId) => registeredTagIds.has(tagId)),
+    })),
+    ...(shared.structure
+      ? { structure: shared.structure.filter((rule) => registeredTagIds.has(rule.tag)) }
+      : {}),
+  };
+}
+
+function buildSectionLocales(
+  section: CourseSectionPreview | undefined,
+): Partial<Record<Locale, SectionDraftLocaleValue>> {
+  if (!section) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(section.locales).map(([locale, metadata]) => [
+      locale,
+      { description: metadata.description ?? "", title: metadata.title },
+    ]),
+  );
+}
+
+function buildDocumentSeed(
+  lessonBody: string | undefined,
+  appLocale: Locale,
+): DocumentLocaleDraft {
+  const hasRealContent = Boolean(lessonBody && lessonBody.trim().length > 0);
+
+  return {
+    [appLocale]: hasRealContent
+      ? markdownToBlocks(lessonBody!)
+      : createInitialDocumentBlocks(undefined, appLocale),
   };
 }
 
 export function DraftDetailPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const location = useLocation();
-  const { t, i18n } = useTranslation();
-  const supportedLocalesAnchor = useComboboxAnchor();
-  const courseTitleRef = useRef<HTMLInputElement | null>(null);
-  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
+  const { locale: appLocale } = useAppState();
   const {
     contentRating,
     courseDescriptiveTags,
-    courseDescription,
     courseSections,
-    courseTitle,
     defaultLocale,
-    initialDraftSnapshot,
-    initialDraftSnapshotLoaded,
+    isCourseDetailsLoading,
     localizedCourse,
+    reportAutosaveStatus,
     selectedNode,
-    setContentRating,
-    setLocalizedCourse,
-    setDraftSnapshot,
     setEditorStatusAction,
     setSelectedNode,
-    setSupportedLocales,
     supportedLocales,
     versionBadge,
   } = useOutletContext<CourseLayoutOutletContext>();
-  const [activeCourseLocale, setActiveCourseLocale] =
-    useState<Locale>(defaultLocale);
-  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
-  const canCommitNewVersion = versionBadge?.kind === "draft";
-  const [documentDrafts, setDocumentDrafts] = useState<
-    Record<
-      string,
-      {
-        locales: Partial<Record<Locale, DocumentDraftLocaleValue>>;
-      }
-    >
-  >({});
-  const [sectionDrafts, setSectionDrafts] = useState<
-    Record<
-      string,
-      {
-        locales: Partial<Record<Locale, SectionDraftLocaleValue>>;
-      }
-    >
-  >({});
-  const [descriptiveTags, setDescriptiveTags] = useState<CourseTagDefinition[]>(
-    [],
-  );
-  const [testDrafts, setTestDrafts] = useState<Record<string, TestEditorState>>(
-    {},
-  );
-  const [sectionTestDrafts, setSectionTestDrafts] = useState<
-    Record<string, TestEditorState>
-  >({});
-  const [hasHydratedLocalDrafts, setHasHydratedLocalDrafts] = useState(false);
-  const shouldAutoFocusCourseTitle =
-    (location.state as { focusCourseTitle?: boolean } | null)
-      ?.focusCourseTitle === true;
-  const serializedDraftSnapshot = useMemo(
-    () =>
-      courseId && initialDraftSnapshotLoaded && hasHydratedLocalDrafts
-        ? JSON.stringify(
-            buildPersistedDraftSnapshot({
-              contentRating,
-              courseId,
-              defaultLocale,
-              descriptiveTags,
-              documentDrafts,
-              localizedCourse,
-              sectionDrafts,
-              sectionTestDrafts,
-              supportedLocales,
-              testDrafts,
-            }),
-          )
-        : null,
-    [
-      contentRating,
-      courseId,
-      defaultLocale,
-      descriptiveTags,
-      documentDrafts,
-      hasHydratedLocalDrafts,
-      initialDraftSnapshotLoaded,
-      localizedCourse,
-      sectionDrafts,
-      sectionTestDrafts,
-      supportedLocales,
-      testDrafts,
-    ],
-  );
 
   useEffect(() => {
     setEditorStatusAction(null);
   }, [setEditorStatusAction]);
 
-  useEffect(() => {
-    if (!initialDraftSnapshotLoaded || hasHydratedLocalDrafts) {
-      return;
-    }
+  if (!courseId) {
+    return <Navigate replace to="/my-courses" />;
+  }
 
-    const normalizedDraftTests = normalizeDraftTestData(
-      initialDraftSnapshot?.testDrafts ?? {},
-      initialDraftSnapshot?.descriptiveTags ?? courseDescriptiveTags,
+  if (isCourseDetailsLoading) {
+    return <PageContent>{null}</PageContent>;
+  }
+
+  if (selectedNode.id === courseRootId) {
+    return (
+      <CourseMetadataEditor
+        contentRating={contentRating}
+        courseId={courseId}
+        courseSections={courseSections}
+        defaultLocale={defaultLocale}
+        descriptiveTags={courseDescriptiveTags}
+        localizedCourse={localizedCourse}
+        reportAutosaveStatus={reportAutosaveStatus}
+        supportedLocales={supportedLocales}
+        versionBadge={versionBadge}
+      />
     );
-    // Chained onto the first call's already-normalized tags, rather than the
-    // raw list, so a tag implied by either draft set only gets registered
-    // once.
-    const normalizedSectionTestDrafts = normalizeDraftTestData(
-      initialDraftSnapshot?.sectionTestDrafts ?? {},
-      normalizedDraftTests.descriptiveTags,
+  }
+
+  if (selectedNode.type === "test") {
+    return (
+      <DraftTestEditor
+        key={selectedNode.id}
+        courseId={courseId}
+        courseSections={courseSections}
+        descriptiveTags={courseDescriptiveTags}
+        reportAutosaveStatus={reportAutosaveStatus}
+        selectedNode={selectedNode}
+        supportedLocales={supportedLocales}
+      />
     );
+  }
 
-    setDescriptiveTags(normalizedSectionTestDrafts.descriptiveTags);
-    setDocumentDrafts(initialDraftSnapshot?.documentDrafts ?? {});
-    setSectionDrafts(initialDraftSnapshot?.sectionDrafts ?? {});
-    setTestDrafts(normalizedDraftTests.testDrafts);
-    setSectionTestDrafts(normalizedSectionTestDrafts.testDrafts);
-    setHasHydratedLocalDrafts(true);
-  }, [
-    courseDescriptiveTags,
-    hasHydratedLocalDrafts,
-    initialDraftSnapshot,
-    initialDraftSnapshotLoaded,
-  ]);
+  if (selectedNode.type === "section") {
+    const section = courseSections.find((candidate) => candidate.id === selectedNode.id);
 
-  useEffect(() => {
-    if (!shouldAutoFocusCourseTitle || selectedNode.id !== courseRootId) {
-      return;
-    }
+    return (
+      <DraftSectionEditor
+        key={selectedNode.id}
+        courseId={courseId}
+        defaultLocale={defaultLocale}
+        reportAutosaveStatus={reportAutosaveStatus}
+        section={section}
+        selectedNode={selectedNode}
+        setSelectedNode={setSelectedNode}
+        supportedLocales={supportedLocales}
+      />
+    );
+  }
 
-    courseTitleRef.current?.focus();
-    courseTitleRef.current?.select();
-  }, [selectedNode.id, shouldAutoFocusCourseTitle]);
-
-  useEffect(() => {
-    if (supportedLocales.includes(activeCourseLocale)) {
-      return;
-    }
-
-    setActiveCourseLocale(defaultLocale);
-  }, [activeCourseLocale, defaultLocale, supportedLocales]);
-
-  const [activeDocumentLocale, setActiveDocumentLocale] =
-    useState<Locale>(defaultLocale);
-
-  useEffect(() => {
-    if (supportedLocales.includes(activeDocumentLocale)) {
-      return;
-    }
-
-    setActiveDocumentLocale(defaultLocale);
-  }, [activeDocumentLocale, defaultLocale, supportedLocales]);
-
-  const [activeSectionLocale, setActiveSectionLocale] =
-    useState<Locale>(defaultLocale);
-
-  useEffect(() => {
-    if (supportedLocales.includes(activeSectionLocale)) {
-      return;
-    }
-
-    setActiveSectionLocale(defaultLocale);
-  }, [activeSectionLocale, defaultLocale, supportedLocales]);
-
-  // A selected "test" node is either a standalone CourseSectionTest (its id
-  // is found directly in some section's `tests`) or a lesson-attached test
-  // (its id is derived from a lesson id via resolveLessonIdForTest) — these
-  // are two different persisted things with different save/draft plumbing.
-  const selectedSectionTestSectionId =
-    selectedNode.type === "test"
-      ? (courseSections.find((section) =>
-          section.tests.some((test) => test.id === selectedNode.id),
-        )?.id ?? null)
-      : null;
-  const isSelectedTestStandalone = selectedSectionTestSectionId !== null;
-
-  const selectedTestLessonId =
-    selectedNode.type === "test" && !isSelectedTestStandalone
-      ? resolveLessonIdForTest(selectedNode.id)
-      : null;
-  const selectedTestSectionId = selectedTestLessonId
-    ? (courseSections.find((section) =>
-        section.lessons.some((lesson) => lesson.id === selectedTestLessonId),
-      )?.id ?? null)
-    : null;
-  const lessonTestDraftQuery = useLessonTestDraftQuery(
-    courseId && selectedTestLessonId && selectedTestSectionId
-      ? { courseId, lessonId: selectedTestLessonId, sectionId: selectedTestSectionId }
-      : null,
+  const documentSection = courseSections.find((section) =>
+    section.lessons.some((lesson) => lesson.id === selectedNode.id),
   );
-  const sectionTestDraftQuery = useSectionTestDraftQuery(
-    courseId && isSelectedTestStandalone && selectedSectionTestSectionId
-      ? { courseId, sectionId: selectedSectionTestSectionId, testId: selectedNode.id }
-      : null,
+  const lesson = documentSection?.lessons.find((candidate) => candidate.id === selectedNode.id);
+
+  if (!documentSection || !lesson) {
+    return <PageContent>{null}</PageContent>;
+  }
+
+  return (
+    <DraftDocumentEditor
+      key={selectedNode.id}
+      appLocale={appLocale}
+      courseId={courseId}
+      lesson={lesson}
+      reportAutosaveStatus={reportAutosaveStatus}
+      sectionId={documentSection.id}
+      selectedNode={selectedNode}
+      supportedLocales={supportedLocales}
+    />
   );
+}
+
+function CourseMetadataEditor({
+  contentRating,
+  courseId,
+  courseSections,
+  defaultLocale,
+  descriptiveTags,
+  localizedCourse,
+  reportAutosaveStatus,
+  supportedLocales,
+  versionBadge,
+}: {
+  contentRating: ContentRating;
+  courseId: string;
+  courseSections: CourseSectionPreview[];
+  defaultLocale: Locale;
+  descriptiveTags: CourseTagDefinition[];
+  localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>;
+  reportAutosaveStatus: CourseLayoutOutletContext["reportAutosaveStatus"];
+  supportedLocales: Locale[];
+  versionBadge: CourseLayoutOutletContext["versionBadge"];
+}) {
+  const { t, i18n } = useTranslation();
+  const supportedLocalesAnchor = useComboboxAnchor();
+  const courseTitleRef = useRef<HTMLInputElement | null>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
+  const [seed] = useState<CourseMetadataDraft>(() => ({
+    contentRating,
+    descriptiveTags,
+    localizedCourse,
+    supportedLocales,
+  }));
+  const [draft, setDraft] = useState<CourseMetadataDraft>(seed);
+  const [activeCourseLocale, setActiveCourseLocale] = useState<Locale>(defaultLocale);
+  const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const canCommitNewVersion = versionBadge?.kind === "draft";
+  const updateDraftMetadataMutation = useUpdateDraftMetadataMutation();
+
+  const effectiveDefaultLocale = draft.supportedLocales.includes(defaultLocale)
+    ? defaultLocale
+    : (draft.supportedLocales[0] ?? defaultLocale);
+
+  const buildInput = useCallback(
+    (value: CourseMetadataDraft) => ({
+      contentRating: value.contentRating,
+      courseId,
+      defaultLocale: value.supportedLocales.includes(defaultLocale)
+        ? defaultLocale
+        : (value.supportedLocales[0] ?? defaultLocale),
+      descriptiveTags: value.descriptiveTags.filter(
+        (tag) => normalizeCourseTagLabel(tag.label).length > 0,
+      ),
+      locales: Object.fromEntries(
+        value.supportedLocales.map((locale) => [
+          locale,
+          value.localizedCourse[locale] ?? { description: "", title: "" },
+        ]),
+      ),
+      supportedLocales: value.supportedLocales,
+    }),
+    [courseId, defaultLocale],
+  );
+
+  const autosave = useEntityAutosave({
+    buildInput,
+    initialValue: seed,
+    mutation: updateDraftMetadataMutation,
+    value: draft,
+  });
+
+  useForwardAutosaveStatus(reportAutosaveStatus, autosave);
+
+  useEffect(() => {
+    if (draft.supportedLocales.includes(activeCourseLocale)) {
+      return;
+    }
+
+    setActiveCourseLocale(effectiveDefaultLocale);
+  }, [activeCourseLocale, draft.supportedLocales, effectiveDefaultLocale]);
 
   useEffect(() => {
     const textarea = descriptionRef.current;
@@ -453,130 +418,30 @@ export function DraftDetailPage() {
 
     textarea.style.height = "0px";
     textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [activeCourseLocale, localizedCourse]);
-
-  useEffect(() => {
-    if (!serializedDraftSnapshot) {
-      return;
-    }
-
-    setDraftSnapshot(JSON.parse(serializedDraftSnapshot));
-  }, [serializedDraftSnapshot, setDraftSnapshot]);
-
-  useEffect(() => {
-    if (!courseId || !hasHydratedLocalDrafts) {
-      return;
-    }
-
-    queryClient.setQueriesData<CourseSummary[] | undefined>(
-      { queryKey: ["courses", "list"] },
-      (currentCourses) => {
-        if (!currentCourses) {
-          return currentCourses;
-        }
-
-        return currentCourses.map((course) =>
-          course.id === courseId
-            ? {
-                ...course,
-                contentRating,
-                description: courseDescription,
-                defaultLocale,
-                supportedLocales,
-                title: courseTitle || "Course",
-              }
-            : course,
-        );
-      },
-    );
-
-    queryClient.setQueriesData<CourseDetails | null | undefined>(
-      { queryKey: ["courses", "detail", courseId] },
-      (currentCourse) => {
-        if (!currentCourse) {
-          return currentCourse;
-        }
-
-        return {
-          ...currentCourse,
-          contentRating,
-          description: courseDescription,
-          defaultLocale,
-          locales: {
-            ...currentCourse.locales,
-            ...localizedCourse,
-          },
-          supportedLocales,
-          title: courseTitle || "Course",
-        };
-      },
-    );
-  }, [
-    contentRating,
-    courseDescription,
-    courseId,
-    courseTitle,
-    defaultLocale,
-    hasHydratedLocalDrafts,
-    localizedCourse,
-    supportedLocales,
-  ]);
+  }, [activeCourseLocale, draft.localizedCourse]);
 
   function updateLocalizedCourseField(
     locale: Locale,
     field: keyof LocalizedCourseMetadata,
     value: string,
   ) {
-    setLocalizedCourse((currentLocalizedCourse) => ({
-      ...currentLocalizedCourse,
-      [locale]: {
-        description: currentLocalizedCourse[locale]?.description ?? "",
-        title: currentLocalizedCourse[locale]?.title ?? "",
-        [field]: value,
+    setDraft((current) => ({
+      ...current,
+      localizedCourse: {
+        ...current.localizedCourse,
+        [locale]: {
+          description: current.localizedCourse[locale]?.description ?? "",
+          title: current.localizedCourse[locale]?.title ?? "",
+          [field]: value,
+        },
       },
     }));
   }
 
-  const handleTestStateChange = useCallback(
-    (state: TestEditorState) => {
-      if (isSelectedTestStandalone) {
-        const testId = selectedNode.id;
-
-        setSectionTestDrafts((currentDrafts) => {
-          if (currentDrafts[testId] === state) {
-            return currentDrafts;
-          }
-
-          return {
-            ...currentDrafts,
-            [testId]: state,
-          };
-        });
-        return;
-      }
-
-      const lessonId = resolveLessonIdForTest(selectedNode.id);
-
-      setTestDrafts((currentDrafts) => {
-        if (currentDrafts[lessonId] === state) {
-          return currentDrafts;
-        }
-
-        return {
-          ...currentDrafts,
-          [lessonId]: state,
-        };
-      });
-    },
-    [isSelectedTestStandalone, selectedNode.id],
-  );
-
-  function updateDescriptiveTag(
-    tagId: string,
-    patch: Partial<CourseTagDefinition>,
-  ) {
-    setDescriptiveTags((currentTags) =>
-      currentTags.map((tag) => {
+  function updateDescriptiveTag(tagId: string, patch: Partial<CourseTagDefinition>) {
+    setDraft((current) => ({
+      ...current,
+      descriptiveTags: current.descriptiveTags.map((tag) => {
         if (tag.id !== tagId) {
           return tag;
         }
@@ -590,527 +455,626 @@ export function DraftDetailPage() {
               : tag.label,
         };
       }),
-    );
+    }));
   }
 
   function createDescriptiveTag() {
     let nextTagId = "";
 
-    setDescriptiveTags((currentTags) => {
-      const nextTag = createCourseTagDefinition("", "sky", currentTags);
+    setDraft((current) => {
+      const nextTag = createCourseTagDefinition("", "sky", current.descriptiveTags);
       nextTagId = nextTag.id;
 
-      return [...currentTags, nextTag];
+      return { ...current, descriptiveTags: [...current.descriptiveTags, nextTag] };
     });
 
     return nextTagId;
   }
 
   function deleteDescriptiveTag(tagId: string) {
-    const remainingTags = descriptiveTags.filter((tag) => tag.id !== tagId);
-
-    setDescriptiveTags(remainingTags);
-    setTestDrafts((currentDrafts) =>
-      Object.fromEntries(
-        Object.entries(currentDrafts).map(([draftId, draftState]) => [
-          draftId,
-          {
-            ...draftState,
-            blueprint: draftState.blueprint.map((rule) => ({
-              ...rule,
-              tagId:
-                rule.tagId === tagId
-                  ? (remainingTags[0]?.id ?? "")
-                  : rule.tagId,
-            })),
-            exercises: draftState.exercises.map((exercise) => ({
-              ...exercise,
-              tagIds: exercise.tagIds.filter(
-                (currentTagId) => currentTagId !== tagId,
-              ),
-            })),
-          },
-        ]),
-      ),
-    );
+    setDraft((current) => ({
+      ...current,
+      descriptiveTags: current.descriptiveTags.filter((tag) => tag.id !== tagId),
+    }));
   }
 
-  if (!courseId) {
-    return <Navigate replace to="/my-courses" />;
-  }
+  const courseActionButtons = (
+    <>
+      <Button
+        nativeButton={false}
+        render={<Link to={`/courses/${courseId}`} />}
+        size="sm"
+        variant="secondary"
+      >
+        <Eye aria-hidden="true" className="h-4 w-4" />
+        {t("courseVersions.previewCourse")}
+      </Button>
+      <Tooltip>
+        <TooltipTrigger render={<span className="inline-flex" />}>
+          <Button
+            disabled={!canCommitNewVersion}
+            onClick={() => setIsVersionHistoryOpen(true)}
+            size="sm"
+            variant="secondary"
+          >
+            <History aria-hidden="true" className="h-4 w-4" />
+            {t("courseVersions.commitButton")}
+          </Button>
+        </TooltipTrigger>
+        {!canCommitNewVersion && (
+          <TooltipContent>{t("courseVersions.noChangesTooltip")}</TooltipContent>
+        )}
+      </Tooltip>
+    </>
+  );
 
-  if (!initialDraftSnapshotLoaded || !hasHydratedLocalDrafts) {
+  return (
+    <PageContent actions={<PageActions>{courseActionButtons}</PageActions>}>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <Eyebrow>Course</Eyebrow>
+          <PageActions className="hidden lg:flex">{courseActionButtons}</PageActions>
+        </div>
+        <FieldSet>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="draft-course-supported-locales">
+                <span className="flex items-center gap-3">
+                  <span>Supported languages</span>
+                  <Badge shape="circle" variant="secondary">
+                    {draft.supportedLocales.length}
+                  </Badge>
+                </span>
+              </FieldLabel>
+              <Combobox
+                items={locales}
+                multiple
+                onValueChange={(nextLocales) =>
+                  setDraft((current) => ({
+                    ...current,
+                    supportedLocales: normalizeSupportedLocales(
+                      nextLocales as string[],
+                      i18n.language as Locale,
+                    ),
+                  }))
+                }
+                value={draft.supportedLocales}
+              >
+                <ComboboxChips id="draft-course-supported-locales" ref={supportedLocalesAnchor}>
+                  <ComboboxValue>
+                    {draft.supportedLocales.map((locale) => (
+                      <ComboboxChip key={locale} showRemove>
+                        <span className="text-base leading-none">{getLocaleFlag(locale)}</span>
+                        <span>{getLocaleLabel(locale, t)}</span>
+                      </ComboboxChip>
+                    ))}
+                  </ComboboxValue>
+                  <ComboboxChipsInput placeholder="Add supported languages" />
+                </ComboboxChips>
+                <ComboboxContent anchor={supportedLocalesAnchor}>
+                  <ComboboxEmpty>No languages found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {locales.map((locale) => (
+                      <ComboboxItem key={locale} value={locale}>
+                        <span className="text-base leading-none">{getLocaleFlag(locale)}</span>
+                        <span>{getLocaleLabel(locale, t)}</span>
+                      </ComboboxItem>
+                    ))}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </Field>
+          </FieldGroup>
+        </FieldSet>
+        <LocalesTabs
+          activeLocale={activeCourseLocale}
+          getIsIncomplete={(locale) =>
+            (draft.localizedCourse[locale]?.title ?? "").trim().length === 0
+          }
+          className="pt-1"
+          locales={draft.supportedLocales}
+          onActiveLocaleChange={setActiveCourseLocale}
+          renderContent={(locale) => (
+            <FieldSet className="pt-2">
+              <FieldLegend className="sr-only">{getLocaleLabel(locale, t)}</FieldLegend>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor={`draft-course-title-${locale}`}>Course title</FieldLabel>
+                  <Input
+                    className="h-9 text-base"
+                    id={`draft-course-title-${locale}`}
+                    onChange={(event) =>
+                      updateLocalizedCourseField(locale, "title", event.target.value)
+                    }
+                    placeholder="Course"
+                    ref={locale === activeCourseLocale ? courseTitleRef : undefined}
+                    value={draft.localizedCourse[locale]?.title ?? ""}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor={`draft-course-description-${locale}`}>
+                    Description
+                  </FieldLabel>
+                  <Textarea
+                    id={`draft-course-description-${locale}`}
+                    onChange={(event) =>
+                      updateLocalizedCourseField(locale, "description", event.target.value)
+                    }
+                    placeholder="Add a short course description"
+                    ref={locale === activeCourseLocale ? descriptionRef : undefined}
+                    rows={3}
+                    value={draft.localizedCourse[locale]?.description ?? ""}
+                  />
+                </Field>
+              </FieldGroup>
+            </FieldSet>
+          )}
+        />
+        <FieldSet>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="draft-course-content-rating">
+                {t("contentRating.label")}
+              </FieldLabel>
+              <Select
+                onValueChange={(value) =>
+                  setDraft((current) => ({ ...current, contentRating: value as ContentRating }))
+                }
+                value={draft.contentRating}
+              >
+                <SelectTrigger className="w-full max-w-sm" id="draft-course-content-rating">
+                  <SelectValue>
+                    {t(`contentRating.${getContentRatingLabelKey(draft.contentRating)}`)}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-ages">{t("contentRating.allAges")}</SelectItem>
+                  <SelectItem value="mature-themes">{t("contentRating.matureThemes")}</SelectItem>
+                  <SelectItem value="explicit">{t("contentRating.explicit")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Accordion>
+              <AccordionItem value="descriptive-tags">
+                <div className="flex items-center gap-1">
+                  <AccordionTrigger className="flex-none">Manage tags</AccordionTrigger>
+                  <InfoTooltip aria-label={t("courseTags.helpTooltip")}>
+                    {t("courseTags.helpTooltip")}
+                  </InfoTooltip>
+                </div>
+                <AccordionContent>
+                  <TestEditorTagManager
+                    hideHeader
+                    onCreateTag={createDescriptiveTag}
+                    onDeleteTag={deleteDescriptiveTag}
+                    onUpdateTag={updateDescriptiveTag}
+                    tags={draft.descriptiveTags}
+                    unstyled
+                  />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </FieldGroup>
+        </FieldSet>
+        {courseSections.length === 0 && (
+          <Alert variant="info">
+            <Info aria-hidden="true" className="size-4" />
+            <AlertTitle>{t("courseDetails.noSectionsTitle")}</AlertTitle>
+            <AlertDescription>{t("courseDetails.noSectionsHint")}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+      <VersionHistoryDialog
+        courseId={courseId}
+        mode="editor"
+        onOpenChange={setIsVersionHistoryOpen}
+        open={isVersionHistoryOpen}
+      />
+    </PageContent>
+  );
+}
+
+// A selected "test" node is either a standalone CourseSectionTest (its id is
+// found directly in some section's `tests`) or a lesson-attached test (its
+// id is derived from a lesson id via resolveLessonIdForTest) — these are two
+// different persisted things with different save/draft plumbing.
+function DraftTestEditor({
+  courseId,
+  courseSections,
+  descriptiveTags,
+  reportAutosaveStatus,
+  selectedNode,
+  supportedLocales,
+}: {
+  courseId: string;
+  courseSections: CourseSectionPreview[];
+  descriptiveTags: CourseTagDefinition[];
+  reportAutosaveStatus: CourseLayoutOutletContext["reportAutosaveStatus"];
+  selectedNode: StructureSelection;
+  supportedLocales: Locale[];
+}) {
+  const standaloneSectionId =
+    courseSections.find((section) => section.tests.some((test) => test.id === selectedNode.id))
+      ?.id ?? null;
+  const isStandalone = standaloneSectionId !== null;
+  const lessonId = isStandalone ? null : resolveLessonIdForTest(selectedNode.id);
+  const lessonSectionId = lessonId
+    ? (courseSections.find((section) => section.lessons.some((lesson) => lesson.id === lessonId))
+        ?.id ?? null)
+    : null;
+
+  const lessonTestDraftQuery = useLessonTestDraftQuery(
+    !isStandalone && lessonId && lessonSectionId
+      ? { courseId, lessonId, sectionId: lessonSectionId }
+      : null,
+  );
+  const sectionTestDraftQuery = useSectionTestDraftQuery(
+    isStandalone && standaloneSectionId
+      ? { courseId, sectionId: standaloneSectionId, testId: selectedNode.id }
+      : null,
+  );
+  const activeQuery = isStandalone ? sectionTestDraftQuery : lessonTestDraftQuery;
+
+  // `isFetching` (not just `isLoading`) matters here: a fresh mount of this
+  // page (e.g. returning from the "Preview test" route) can find this query
+  // already cached from earlier in the session but stale — invalidated once
+  // this test's own autosave landed — which would otherwise serve the *old*
+  // cached value instantly while a refetch runs in the background.
+  if (activeQuery.isLoading || activeQuery.isFetching) {
     return <PageContent>{null}</PageContent>;
   }
 
-  if (selectedNode.id === courseRootId) {
-    const courseActionButtons = (
-      <>
-        <Button
-          nativeButton={false}
-          render={<Link to={`/courses/${courseId}`} />}
-          size="sm"
-          variant="secondary"
-        >
-          <Eye aria-hidden="true" className="h-4 w-4" />
-          {t("courseVersions.previewCourse")}
-        </Button>
-        <Tooltip>
-          <TooltipTrigger render={<span className="inline-flex" />}>
-            <Button
-              disabled={!canCommitNewVersion}
-              onClick={() => setIsVersionHistoryOpen(true)}
-              size="sm"
-              variant="secondary"
-            >
-              <History aria-hidden="true" className="h-4 w-4" />
-              {t("courseVersions.commitButton")}
-            </Button>
-          </TooltipTrigger>
-          {!canCommitNewVersion && (
-            <TooltipContent>
-              {t("courseVersions.noChangesTooltip")}
-            </TooltipContent>
-          )}
-        </Tooltip>
-      </>
-    );
-
+  if (isStandalone) {
     return (
-      <PageContent actions={<PageActions>{courseActionButtons}</PageActions>}>
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <Eyebrow>Course</Eyebrow>
-            <PageActions className="hidden lg:flex">
-              {courseActionButtons}
-            </PageActions>
-          </div>
-          <FieldSet>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="draft-course-supported-locales">
-                  <span className="flex items-center gap-3">
-                    <span>Supported languages</span>
-                    <Badge shape="circle" variant="secondary">
-                      {supportedLocales.length}
-                    </Badge>
-                  </span>
-                </FieldLabel>
-                <Combobox
-                  items={locales}
-                  multiple
-                  onValueChange={(nextLocales) =>
-                    setSupportedLocales(
-                      normalizeSupportedLocales(
-                        nextLocales as string[],
-                        i18n.language as Locale,
-                      ),
-                    )
-                  }
-                  value={supportedLocales}
-                >
-                  <ComboboxChips
-                    id="draft-course-supported-locales"
-                    ref={supportedLocalesAnchor}
-                  >
-                    <ComboboxValue>
-                      {supportedLocales.map((locale) => (
-                        <ComboboxChip key={locale} showRemove>
-                          <span className="text-base leading-none">
-                            {getLocaleFlag(locale)}
-                          </span>
-                          <span>{getLocaleLabel(locale, t)}</span>
-                        </ComboboxChip>
-                      ))}
-                    </ComboboxValue>
-                    <ComboboxChipsInput placeholder="Add supported languages" />
-                  </ComboboxChips>
-                  <ComboboxContent anchor={supportedLocalesAnchor}>
-                    <ComboboxEmpty>No languages found.</ComboboxEmpty>
-                    <ComboboxList>
-                      {locales.map((locale) => (
-                        <ComboboxItem key={locale} value={locale}>
-                          <span className="text-base leading-none">
-                            {getLocaleFlag(locale)}
-                          </span>
-                          <span>{getLocaleLabel(locale, t)}</span>
-                        </ComboboxItem>
-                      ))}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-              </Field>
-            </FieldGroup>
-          </FieldSet>
+      <DraftStandaloneTestEditor
+        courseId={courseId}
+        descriptiveTags={descriptiveTags}
+        initialSharedTest={sectionTestDraftQuery.data ?? null}
+        reportAutosaveStatus={reportAutosaveStatus}
+        sectionId={standaloneSectionId!}
+        selectedNode={selectedNode}
+        supportedLocales={supportedLocales}
+      />
+    );
+  }
+
+  // This test is attached to (follows) its own lesson document — default its
+  // name to that document's title rather than the generic "Test", for the
+  // same reason a standalone test defaults to the section's last document's
+  // title (see `startAddTest` in course-structure-prototype.tsx).
+  const lessonTitle = courseSections
+    .flatMap((section) => section.lessons)
+    .find((lesson) => lesson.id === lessonId)?.title;
+
+  return (
+    <DraftLessonTestEditor
+      courseId={courseId}
+      descriptiveTags={descriptiveTags}
+      initialSharedTest={lessonTestDraftQuery.data ?? null}
+      initialTitle={lessonTitle || "Test"}
+      lessonId={lessonId!}
+      reportAutosaveStatus={reportAutosaveStatus}
+      sectionId={lessonSectionId!}
+      selectedNode={selectedNode}
+      supportedLocales={supportedLocales}
+    />
+  );
+}
+
+function DraftStandaloneTestEditor({
+  courseId,
+  descriptiveTags,
+  initialSharedTest,
+  reportAutosaveStatus,
+  sectionId,
+  selectedNode,
+  supportedLocales,
+}: {
+  courseId: string;
+  descriptiveTags: CourseTagDefinition[];
+  initialSharedTest: SharedTestDefinition | null;
+  reportAutosaveStatus: CourseLayoutOutletContext["reportAutosaveStatus"];
+  sectionId: string;
+  selectedNode: StructureSelection;
+  supportedLocales: Locale[];
+}) {
+  const [seed] = useState<TestEditorState>(() =>
+    initialSharedTest
+      ? fromSharedTestDefinition(initialSharedTest, supportedLocales)
+      : createInitialState(supportedLocales, selectedNode.title),
+  );
+  const [testState, setTestState] = useState<TestEditorState>(seed);
+  const saveSectionTestMutation = useSaveSectionTestMutation();
+
+  const buildInput = useCallback(
+    (state: TestEditorState): SaveSectionTestInput => ({
+      courseId,
+      sectionId,
+      test: toPersistableSharedTestDefinition(state, descriptiveTags),
+      testId: selectedNode.id,
+    }),
+    [courseId, descriptiveTags, sectionId, selectedNode.id],
+  );
+
+  const autosave = useEntityAutosave({
+    buildInput,
+    initialValue: seed,
+    mutation: saveSectionTestMutation,
+    value: testState,
+  });
+
+  useForwardAutosaveStatus(reportAutosaveStatus, autosave);
+
+  // Unlike a lesson-attached test, a standalone test's own file does carry a
+  // real title (selectedNode.title, sourced from CourseSectionTest) — but
+  // SharedTestDefinition still has no title field, so an edit made inside
+  // TestEditorPrototype's own title input doesn't round-trip on save any
+  // more than it does for a lesson-attached test today.
+  return (
+    <TestEditorPrototype
+      courseId={courseId}
+      descriptiveTags={descriptiveTags}
+      initialState={testState}
+      initialTitle={selectedNode.title}
+      onStateChange={setTestState}
+      selectedNode={selectedNode}
+      supportedLocales={supportedLocales}
+    />
+  );
+}
+
+function DraftLessonTestEditor({
+  courseId,
+  descriptiveTags,
+  initialSharedTest,
+  initialTitle,
+  lessonId,
+  reportAutosaveStatus,
+  sectionId,
+  selectedNode,
+  supportedLocales,
+}: {
+  courseId: string;
+  descriptiveTags: CourseTagDefinition[];
+  initialSharedTest: SharedTestDefinition | null;
+  initialTitle: string;
+  lessonId: string;
+  reportAutosaveStatus: CourseLayoutOutletContext["reportAutosaveStatus"];
+  sectionId: string;
+  selectedNode: StructureSelection;
+  supportedLocales: Locale[];
+}) {
+  const [seed] = useState<TestEditorState>(() =>
+    initialSharedTest
+      ? fromSharedTestDefinition(initialSharedTest, supportedLocales)
+      : createInitialState(supportedLocales, initialTitle),
+  );
+  const [testState, setTestState] = useState<TestEditorState>(seed);
+  const saveLessonTestMutation = useSaveLessonTestMutation();
+
+  const buildInput = useCallback(
+    (state: TestEditorState): SaveLessonTestInput => ({
+      courseId,
+      lessonId,
+      sectionId,
+      test: toPersistableSharedTestDefinition(state, descriptiveTags),
+    }),
+    [courseId, descriptiveTags, lessonId, sectionId],
+  );
+
+  const autosave = useEntityAutosave({
+    buildInput,
+    initialValue: seed,
+    mutation: saveLessonTestMutation,
+    value: testState,
+  });
+
+  useForwardAutosaveStatus(reportAutosaveStatus, autosave);
+
+  return (
+    <TestEditorPrototype
+      courseId={courseId}
+      descriptiveTags={descriptiveTags}
+      initialState={testState}
+      initialTitle={initialTitle}
+      onStateChange={setTestState}
+      selectedNode={selectedNode}
+      supportedLocales={supportedLocales}
+    />
+  );
+}
+
+function DraftSectionEditor({
+  courseId,
+  defaultLocale,
+  reportAutosaveStatus,
+  section,
+  selectedNode,
+  setSelectedNode,
+  supportedLocales,
+}: {
+  courseId: string;
+  defaultLocale: Locale;
+  reportAutosaveStatus: CourseLayoutOutletContext["reportAutosaveStatus"];
+  section: CourseSectionPreview | undefined;
+  selectedNode: StructureSelection;
+  setSelectedNode: (selection: StructureSelection) => void;
+  supportedLocales: Locale[];
+}) {
+  const { t } = useTranslation();
+  const [seed] = useState(() => buildSectionLocales(section));
+  const [locales, setLocales] = useState(seed);
+  const [activeSectionLocale, setActiveSectionLocale] = useState<Locale>(defaultLocale);
+  const updateSectionMutation = useUpdateSectionMutation();
+
+  useEffect(() => {
+    if (supportedLocales.includes(activeSectionLocale)) {
+      return;
+    }
+
+    setActiveSectionLocale(defaultLocale);
+  }, [activeSectionLocale, defaultLocale, supportedLocales]);
+
+  const buildInput = useCallback(
+    (value: typeof seed): UpdateCourseSectionInput => ({
+      courseId,
+      locales: value as Partial<Record<Locale, LocalizedSectionMetadata>>,
+      sectionId: selectedNode.id,
+    }),
+    [courseId, selectedNode.id],
+  );
+
+  const autosave = useEntityAutosave({
+    buildInput,
+    initialValue: seed,
+    mutation: updateSectionMutation,
+    value: locales,
+  });
+
+  useForwardAutosaveStatus(reportAutosaveStatus, autosave);
+
+  function updateLocale(locale: Locale, patch: Partial<SectionDraftLocaleValue>) {
+    setLocales((current) => ({
+      ...current,
+      [locale]: {
+        description: current[locale]?.description ?? "",
+        title: current[locale]?.title ?? "",
+        ...patch,
+      },
+    }));
+
+    if (patch.title !== undefined && locale === defaultLocale) {
+      setSelectedNode({ ...selectedNode, title: patch.title });
+    }
+  }
+
+  return (
+    <PageContent>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <Eyebrow>Section</Eyebrow>
           <LocalesTabs
-            activeLocale={activeCourseLocale}
-            getIsIncomplete={(locale) =>
-              (localizedCourse[locale]?.title ?? "").trim().length === 0
-            }
-            className="pt-1"
+            activeLocale={activeSectionLocale}
+            getIsIncomplete={(locale) => !isSectionTitleValid(locales[locale]?.title)}
             locales={supportedLocales}
-            onActiveLocaleChange={setActiveCourseLocale}
+            onActiveLocaleChange={setActiveSectionLocale}
             renderContent={(locale) => (
               <FieldSet className="pt-2">
-                <FieldLegend className="sr-only">
-                  {getLocaleLabel(locale, t)}
-                </FieldLegend>
+                <FieldLegend className="sr-only">{getLocaleLabel(locale, t)}</FieldLegend>
                 <FieldGroup>
                   <Field>
-                    <FieldLabel htmlFor={`draft-course-title-${locale}`}>
-                      Course title
+                    <FieldLabel htmlFor={`draft-section-title-${locale}`}>
+                      Section title
+                      <span aria-hidden="true" className="text-destructive">
+                        *
+                      </span>
                     </FieldLabel>
                     <Input
-                      className="h-9 text-base"
-                      id={`draft-course-title-${locale}`}
-                      onChange={(event) =>
-                        updateLocalizedCourseField(
-                          locale,
-                          "title",
-                          event.target.value,
-                        )
-                      }
-                      placeholder="Course"
-                      ref={
-                        locale === activeCourseLocale
-                          ? courseTitleRef
-                          : undefined
-                      }
-                      value={localizedCourse[locale]?.title ?? ""}
+                      aria-invalid={!isSectionTitleValid(locales[locale]?.title)}
+                      id={`draft-section-title-${locale}`}
+                      onChange={(event) => updateLocale(locale, { title: event.target.value })}
+                      placeholder={getInitialSectionTitle(locale)}
+                      value={locales[locale]?.title ?? ""}
                     />
+                    {getSectionTitleValidationMessage(locale, locales[locale]?.title) && (
+                      <FieldDescription variant="destructive">
+                        {getSectionTitleValidationMessage(locale, locales[locale]?.title)}
+                      </FieldDescription>
+                    )}
                   </Field>
                   <Field>
-                    <FieldLabel htmlFor={`draft-course-description-${locale}`}>
+                    <FieldLabel htmlFor={`draft-section-description-${locale}`}>
                       Description
                     </FieldLabel>
                     <Textarea
-                      id={`draft-course-description-${locale}`}
+                      id={`draft-section-description-${locale}`}
                       onChange={(event) =>
-                        updateLocalizedCourseField(
-                          locale,
-                          "description",
-                          event.target.value,
-                        )
+                        updateLocale(locale, { description: event.target.value })
                       }
-                      placeholder="Add a short course description"
-                      ref={
-                        locale === activeCourseLocale
-                          ? descriptionRef
-                          : undefined
-                      }
+                      placeholder="Add a short section description"
                       rows={3}
-                      value={localizedCourse[locale]?.description ?? ""}
+                      value={locales[locale]?.description ?? ""}
                     />
                   </Field>
                 </FieldGroup>
               </FieldSet>
             )}
           />
-          <FieldSet>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="draft-course-content-rating">
-                  {t("contentRating.label")}
-                </FieldLabel>
-                <Select
-                  onValueChange={(value) =>
-                    setContentRating(value as ContentRating)
-                  }
-                  value={contentRating}
-                >
-                  <SelectTrigger
-                    className="w-full max-w-sm"
-                    id="draft-course-content-rating"
-                  >
-                    <SelectValue>
-                      {t(`contentRating.${getContentRatingLabelKey(contentRating)}`)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-ages">
-                      {t("contentRating.allAges")}
-                    </SelectItem>
-                    <SelectItem value="mature-themes">
-                      {t("contentRating.matureThemes")}
-                    </SelectItem>
-                    <SelectItem value="explicit">
-                      {t("contentRating.explicit")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-
-              <Accordion>
-                <AccordionItem value="descriptive-tags">
-                  <div className="flex items-center gap-1">
-                    <AccordionTrigger className="flex-none">
-                      Manage tags
-                    </AccordionTrigger>
-                    <InfoTooltip aria-label={t("courseTags.helpTooltip")}>
-                      {t("courseTags.helpTooltip")}
-                    </InfoTooltip>
-                  </div>
-                  <AccordionContent>
-                    <TestEditorTagManager
-                      hideHeader
-                      onCreateTag={createDescriptiveTag}
-                      onDeleteTag={deleteDescriptiveTag}
-                      onUpdateTag={updateDescriptiveTag}
-                      tags={descriptiveTags}
-                      unstyled
-                    />
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </FieldGroup>
-          </FieldSet>
-          {courseSections.length === 0 && (
-            <Alert variant="info">
-              <Info aria-hidden="true" className="size-4" />
-              <AlertTitle>{t("courseDetails.noSectionsTitle")}</AlertTitle>
-              <AlertDescription>
-                {t("courseDetails.noSectionsHint")}
-              </AlertDescription>
-            </Alert>
-          )}
         </div>
-        <VersionHistoryDialog
-          courseId={courseId}
-          mode="editor"
-          onOpenChange={setIsVersionHistoryOpen}
-          open={isVersionHistoryOpen}
-        />
-      </PageContent>
-    );
-  }
+      </div>
+    </PageContent>
+  );
+}
 
-  if (selectedNode.type === "test" && isSelectedTestStandalone) {
-    const existingDraft = sectionTestDrafts[selectedNode.id];
+function DraftDocumentEditor({
+  appLocale,
+  courseId,
+  lesson,
+  reportAutosaveStatus,
+  sectionId,
+  selectedNode,
+  supportedLocales,
+}: {
+  appLocale: Locale;
+  courseId: string;
+  lesson: CourseLesson;
+  reportAutosaveStatus: CourseLayoutOutletContext["reportAutosaveStatus"];
+  sectionId: string;
+  selectedNode: StructureSelection;
+  supportedLocales: Locale[];
+}) {
+  const [seed] = useState<DocumentLocaleDraft>(() => buildDocumentSeed(lesson.body, appLocale));
+  const [draft, setDraft] = useState<DocumentLocaleDraft>(seed);
+  const [activeDocumentLocale, setActiveDocumentLocale] = useState<Locale>(appLocale);
+  const updateLessonContentMutation = useUpdateLessonContentMutation();
 
-    // `isFetching` (not just `isLoading`) matters here: a fresh mount of
-    // this page (e.g. returning from the "Preview test" route) can find
-    // this query already cached from earlier in the session but stale —
-    // invalidated once its own autosave landed (see `saveDraftEditorRecord`
-    // in draft-editor-storage.ts) — which serves the *old* cached value
-    // instantly while a refetch runs in the background. Waiting on that
-    // refetch too avoids handing `TestEditorPrototype` a stale/empty
-    // `initialState` for the one render before the real data arrives, which
-    // it would otherwise treat as "no draft exists yet" and bootstrap a
-    // blank test from.
-    if (!existingDraft && (sectionTestDraftQuery.isLoading || sectionTestDraftQuery.isFetching)) {
-      return <PageContent>{null}</PageContent>;
+  useEffect(() => {
+    if (supportedLocales.includes(activeDocumentLocale)) {
+      return;
     }
 
-    const hydratedState =
-      !existingDraft && sectionTestDraftQuery.data
-        ? fromSharedTestDefinition(sectionTestDraftQuery.data, supportedLocales)
-        : undefined;
+    setActiveDocumentLocale(supportedLocales[0] ?? appLocale);
+  }, [activeDocumentLocale, appLocale, supportedLocales]);
 
-    // Unlike a lesson-attached test, a standalone test's own file does carry
-    // a real title (selectedNode.title, sourced from CourseSectionTest) — but
-    // SharedTestDefinition still has no title field, so an edit made inside
-    // TestEditorPrototype's own title input doesn't round-trip on save any
-    // more than it does for a lesson-attached test today.
-    return (
-      <TestEditorPrototype
-        courseId={courseId}
-        descriptiveTags={descriptiveTags}
-        initialState={existingDraft ?? hydratedState}
-        initialTitle={selectedNode.title}
-        onStateChange={handleTestStateChange}
-        selectedNode={selectedNode}
-        supportedLocales={supportedLocales}
-      />
-    );
-  }
+  const buildInput = useCallback(
+    (value: DocumentLocaleDraft): UpdateLessonContentInput => ({
+      courseId,
+      lessonId: selectedNode.id,
+      locales: Object.fromEntries(
+        Object.entries(value).map(([locale, blocks]) => [
+          locale,
+          { body: blocksToMarkdown(blocks!) },
+        ]),
+      ),
+      sectionId,
+    }),
+    [courseId, sectionId, selectedNode.id],
+  );
 
-  if (selectedNode.type === "test") {
-    const lessonId = resolveLessonIdForTest(selectedNode.id);
-    const existingDraft = testDrafts[lessonId];
+  const autosave = useEntityAutosave({
+    buildInput,
+    initialValue: seed,
+    mutation: updateLessonContentMutation,
+    value: draft,
+  });
 
-    // See the matching comment in the standalone-test branch above.
-    if (!existingDraft && (lessonTestDraftQuery.isLoading || lessonTestDraftQuery.isFetching)) {
-      return <PageContent>{null}</PageContent>;
-    }
+  useForwardAutosaveStatus(reportAutosaveStatus, autosave);
 
-    const hydratedState =
-      !existingDraft && lessonTestDraftQuery.data
-        ? fromSharedTestDefinition(lessonTestDraftQuery.data, supportedLocales)
-        : undefined;
-
-    return (
-      <TestEditorPrototype
-        courseId={courseId}
-        descriptiveTags={descriptiveTags}
-        initialState={existingDraft ?? hydratedState}
-        initialTitle="Test"
-        onStateChange={handleTestStateChange}
-        selectedNode={selectedNode}
-        supportedLocales={supportedLocales}
-      />
-    );
-  }
-
-  if (selectedNode.type === "section") {
-    const realSection = courseSections.find(
-      (section) => section.id === selectedNode.id,
-    );
-    const fallbackSectionLocales = realSection
-      ? (Object.fromEntries(
-          Object.entries(realSection.locales).map(([locale, metadata]) => [
-            locale,
-            { description: metadata.description ?? "", title: metadata.title },
-          ]),
-        ) as Partial<Record<Locale, SectionDraftLocaleValue>>)
-      : {};
-    const activeSectionDraft = sectionDrafts[selectedNode.id] ?? {
-      locales: fallbackSectionLocales,
-    };
-
-    return (
-      <PageContent>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Eyebrow>Section</Eyebrow>
-            <LocalesTabs
-              activeLocale={activeSectionLocale}
-              getIsIncomplete={(locale) =>
-                !isSectionTitleValid(activeSectionDraft.locales[locale]?.title)
-              }
-              locales={supportedLocales}
-              onActiveLocaleChange={setActiveSectionLocale}
-              renderContent={(locale) => (
-                <FieldSet className="pt-2">
-                  <FieldLegend className="sr-only">
-                    {getLocaleLabel(locale, t)}
-                  </FieldLegend>
-                  <FieldGroup>
-                    <Field>
-                      <FieldLabel htmlFor={`draft-section-title-${locale}`}>
-                        Section title
-                        <span aria-hidden="true" className="text-destructive">
-                          *
-                        </span>
-                      </FieldLabel>
-                      <Input
-                        aria-invalid={
-                          !isSectionTitleValid(activeSectionDraft.locales[locale]?.title)
-                        }
-                        id={`draft-section-title-${locale}`}
-                        onChange={(event) => {
-                          const title = event.target.value;
-
-                          setSectionDrafts((currentDrafts) => ({
-                            ...currentDrafts,
-                            [selectedNode.id]: {
-                              ...activeSectionDraft,
-                              locales: {
-                                ...activeSectionDraft.locales,
-                                [locale]: {
-                                  description:
-                                    activeSectionDraft.locales[locale]
-                                      ?.description ?? "",
-                                  title,
-                                },
-                              },
-                            },
-                          }));
-
-                          if (locale === defaultLocale) {
-                            setSelectedNode({
-                              ...selectedNode,
-                              title,
-                            });
-                          }
-                        }}
-                        placeholder={getInitialSectionTitle(locale)}
-                        value={
-                          activeSectionDraft.locales[locale]?.title ?? ""
-                        }
-                      />
-                      {getSectionTitleValidationMessage(
-                        locale,
-                        activeSectionDraft.locales[locale]?.title,
-                      ) && (
-                        <FieldDescription variant="destructive">
-                          {getSectionTitleValidationMessage(
-                            locale,
-                            activeSectionDraft.locales[locale]?.title,
-                          )}
-                        </FieldDescription>
-                      )}
-                    </Field>
-                    <Field>
-                      <FieldLabel
-                        htmlFor={`draft-section-description-${locale}`}
-                      >
-                        Description
-                      </FieldLabel>
-                      <Textarea
-                        id={`draft-section-description-${locale}`}
-                        onChange={(event) =>
-                          setSectionDrafts((currentDrafts) => ({
-                            ...currentDrafts,
-                            [selectedNode.id]: {
-                              ...activeSectionDraft,
-                              locales: {
-                                ...activeSectionDraft.locales,
-                                [locale]: {
-                                  description: event.target.value,
-                                  title: activeSectionDraft.locales[locale]?.title ?? "",
-                                },
-                              },
-                            },
-                          }))
-                        }
-                        placeholder="Add a short section description"
-                        rows={3}
-                        value={
-                          activeSectionDraft.locales[locale]?.description ?? ""
-                        }
-                      />
-                    </Field>
-                  </FieldGroup>
-                </FieldSet>
-              )}
-            />
-          </div>
-        </div>
-      </PageContent>
-    );
-  }
-
-  const activeDocumentDraft = documentDrafts[selectedNode.id] ?? {
-    locales: {},
-  };
-  const activeLocalizedDocumentDraft = activeDocumentDraft.locales[
-    activeDocumentLocale
-  ] ?? {
-    blocks: createInitialDocumentBlocks(undefined, activeDocumentLocale),
-  };
+  const activeBlocks =
+    draft[activeDocumentLocale] ?? createInitialDocumentBlocks(undefined, activeDocumentLocale);
 
   return (
     <PageContent fullBleed>
       <EditorPrototype
         activeLocale={activeDocumentLocale}
-        blocks={activeLocalizedDocumentDraft.blocks}
+        blocks={activeBlocks}
         courseId={courseId}
         nodeType={selectedNode.type}
-        onBlocksChange={(blocks) =>
-          setDocumentDrafts((currentDrafts) => ({
-            ...currentDrafts,
-            [selectedNode.id]: {
-              ...activeDocumentDraft,
-              locales: {
-                ...activeDocumentDraft.locales,
-                [activeDocumentLocale]: {
-                  blocks,
-                },
-              },
-            },
-          }))
-        }
         onActiveLocaleChange={setActiveDocumentLocale}
+        onBlocksChange={(blocks) =>
+          setDraft((current) => ({ ...current, [activeDocumentLocale]: blocks }))
+        }
         supportedLocales={supportedLocales}
       />
     </PageContent>

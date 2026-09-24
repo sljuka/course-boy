@@ -203,7 +203,7 @@ function isLocalizedLessonMetadata(
   );
 }
 
-function isLocalizedSectionMetadata(
+export function isLocalizedSectionMetadata(
   value: unknown,
 ): value is LocalizedSectionMetadata {
   if (!value || typeof value !== "object") {
@@ -281,8 +281,35 @@ function isStoredSectionTestDefinition(
   );
 }
 
+// Requires at least one exercise — this is what keeps an empty test
+// invisible to a student (see its call site in `resolveSharedSectionTest`
+// below: a shape mismatch resolves `test` to `null`, same as "no test
+// exists yet"). Used for anything a player might actually read: published
+// content, and a draft's own preview. `isDraftSharedTestDefinition` below
+// is the version used for *saving* a draft, which doesn't need this.
 export function isSharedTestDefinition(
   value: unknown,
+): value is SharedTestDefinition {
+  return isSharedTestDefinitionShape(value, { requireExercises: true });
+}
+
+// A draft test file is allowed to exist with zero exercises — a teacher can
+// save a test-in-progress before it has any content, the same way a lesson
+// document can be thin or incomplete without blocking a save. Used only by
+// the draft read/write paths in course-paths.ts; every real read of course
+// content (a student's or a preview's) still goes through the stricter
+// `isSharedTestDefinition` above, so an empty test never actually becomes
+// playable. Cutting a version doesn't re-check this either — a test left
+// empty just publishes as "no test," same as if it were `null`.
+export function isDraftSharedTestDefinition(
+  value: unknown,
+): value is SharedTestDefinition {
+  return isSharedTestDefinitionShape(value, { requireExercises: false });
+}
+
+function isSharedTestDefinitionShape(
+  value: unknown,
+  { requireExercises }: { requireExercises: boolean },
 ): value is SharedTestDefinition {
   if (!value || typeof value !== "object") {
     return false;
@@ -293,7 +320,7 @@ export function isSharedTestDefinition(
   if (
     typeof test.template !== "string" ||
     !Array.isArray(test.exercises) ||
-    test.exercises.length === 0
+    (requireExercises && test.exercises.length === 0)
   ) {
     return false;
   }

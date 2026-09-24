@@ -53,6 +53,23 @@ Instead:
 - track draft status and local metadata in the database
 - use the database to support UI and workflow state around those files
 
+**Implementation.** The draft editor (`src/pages/draft-detail-page.tsx`) has no
+aggregate in-memory or `localStorage` snapshot of the whole course draft. Each
+editable entity — course metadata, one section, one document, one test —
+reads directly from its own React Query cache entry (`useCourseDetailsQuery`
+for course metadata/sections/documents, `useLessonTestDraftQuery`/
+`useSectionTestDraftQuery` for tests) and autosaves itself independently via
+`useEntityAutosave` (`src/lib/use-entity-autosave.ts`), a small
+debounced-save-then-reconcile hook wrapping that entity's own IPC mutation
+(`useUpdateDraftMetadataMutation`, `useUpdateSectionMutation`,
+`useUpdateLessonContentMutation`, `useSaveLessonTestMutation`/
+`useSaveSectionTestMutation`). There is no reconciliation step between
+entities, because there is nothing to reconcile — the query *is* the draft.
+The editor status bar reflects this: "Saving…" comes from a single
+`useIsMutating({ mutationKey: courseContentSaveMutationKey })` call in
+`CourseLayout`, and the dirty/error half is forwarded up from whichever
+entity is currently mounted via `useForwardAutosaveStatus`.
+
 ## Previewing a draft test
 
 **Implemented.** A teacher must be able to verify a test behaves correctly for a

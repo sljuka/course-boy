@@ -2,7 +2,12 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { getCourseDetails, isSharedTestDefinition, listCourses } from "./course-registry";
+import {
+  getCourseDetails,
+  isDraftSharedTestDefinition,
+  isSharedTestDefinition,
+  listCourses,
+} from "./course-registry";
 
 const coursesRoot = path.resolve(process.cwd(), "courses");
 
@@ -568,5 +573,27 @@ describe("isSharedTestDefinition", () => {
     };
 
     expect(isSharedTestDefinition({ exercises: [validExercise], template: "" })).toBe(true);
+  });
+
+  it("rejects an empty exercises array — this is what keeps an empty test invisible to a player", () => {
+    expect(isSharedTestDefinition({ exercises: [], template: "" })).toBe(false);
+  });
+});
+
+describe("isDraftSharedTestDefinition", () => {
+  it("accepts an empty exercises array — a draft may be saved before it has any content", () => {
+    expect(isDraftSharedTestDefinition({ exercises: [], template: "" })).toBe(true);
+  });
+
+  it("still rejects a malformed exercise, same as isSharedTestDefinition", () => {
+    const invalidExercise = { kind: "numeric", tags: ["easy"] };
+
+    expect(
+      isDraftSharedTestDefinition({ exercises: [invalidExercise], template: "" }),
+    ).toBe(false);
+  });
+
+  it("still rejects a missing `template` field", () => {
+    expect(isDraftSharedTestDefinition({ exercises: [] })).toBe(false);
   });
 });

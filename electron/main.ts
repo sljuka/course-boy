@@ -23,6 +23,7 @@ import {
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
   updateLocalCourseLessonTest,
+  updateLocalCourseSection,
   updateLocalCourseSectionTest,
   uploadLocalCourseAsset,
 } from './course-paths'
@@ -44,6 +45,7 @@ import type {
   SaveLessonTestInput,
   SaveSectionTestInput,
   UpdateCourseDraftMetadataInput,
+  UpdateCourseSectionInput,
   UpdateLessonContentInput,
   UploadCourseAssetInput,
 } from '../src/lib/course-package'
@@ -202,6 +204,10 @@ ipcMain.handle('courses:create-draft', (_event, input: CreateCourseDraftInput) =
 
 ipcMain.handle('courses:create-section', (_event, input: CreateCourseSectionInput) => {
   return createLocalCourseSection(input)
+})
+
+ipcMain.handle('courses:update-section', (_event, input: UpdateCourseSectionInput) => {
+  return updateLocalCourseSection(input)
 })
 
 ipcMain.handle('courses:create-lesson', (_event, input: CreateCourseLessonInput) => {
