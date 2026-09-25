@@ -13,18 +13,14 @@ import type {
   TestExercise,
 } from "@/components/test-editor-prototype-types";
 
-function createId(prefix: string) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
 function createInitialState(locales: Locale[], title: string): TestEditorState {
   return {
     activeExerciseId: "",
-    blueprint: [
-      { count: 3, id: createId("rule"), tagId: "easy" },
-      { count: 2, id: createId("rule"), tagId: "medium" },
-      { count: 1, id: createId("rule"), tagId: "challenging" },
-    ] satisfies BlueprintRule[],
+    // A teacher fills these in themselves (see `addBlueprintRule`) — this
+    // used to hardcode one rule per the course's *default* descriptive tags
+    // ("easy"/"medium"/"challenging"), which silently referenced nothing at
+    // all for any course whose tags had been renamed or replaced.
+    blueprint: [] satisfies BlueprintRule[],
     description: "",
     exercises: [],
     selectedAdvancedSections: [],

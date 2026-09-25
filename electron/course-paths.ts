@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { app, dialog } from "electron";
+import { app, dialog, shell } from "electron";
 import type {
   ApplyCourseSvgPresetInput,
   ApplyCourseSvgPresetResult,
@@ -27,6 +27,8 @@ import type {
   UpdateCourseDraftMetadataInput,
   UpdateCourseSectionInput,
   UpdateLessonContentInput,
+  UploadCourseAssetBytesInput,
+  UploadCourseAssetBytesResult,
   UploadCourseAssetInput,
   UploadCourseAssetResult,
 } from "../src/lib/course-package";
@@ -255,6 +257,19 @@ function resolveCourseDirectoryPath(
   }
 
   return resolvedCourseDirectoryPath;
+}
+
+// Reveals the draft's directory in the OS file manager (Finder on macOS) —
+// the draft, not the published copy, since this is only ever reachable from
+// the draft explorer's own context menu.
+export async function openCourseDirectoryInFileSystem(courseId: string): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(localCoursesRoot, courseId);
+  const errorMessage = await shell.openPath(courseDirectoryPath);
+
+  if (errorMessage) {
+    throw new Error(errorMessage);
+  }
 }
 
 function resolveCourseRootPath(localCoursesRoot: string, courseId: string): string {
@@ -1696,12 +1711,73 @@ export async function uploadLocalCourseAsset(
   return { mimeType, path: filename };
 }
 
+// Sibling to `uploadLocalCourseAsset` above for a file the renderer already has
+// bytes for (BlockNote's own "Upload from device" file input, not our own native
+// dialog) — see the doc comment on `UploadCourseAssetBytesInput` for why this
+// can't just reuse `uploadLocalCourseAsset`.
+export async function uploadCourseAssetFromBytes(
+  input: UploadCourseAssetBytesInput,
+): Promise<UploadCourseAssetBytesResult> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const allowedExtensions = assetExtensionsByKind[input.kind];
+  const extension = path.extname(input.filename).toLowerCase();
+  const mimeType = allowedExtensions.has(extension)
+    ? assetMimeTypesByExtension[extension]
+    : undefined;
+
+  if (!mimeType) {
+    throw new Error(`Unsupported file type "${extension}"`);
+  }
+
+  const assetsDirectoryPath = path.join(courseDirectoryPath, "assets");
+
+  await fs.mkdir(assetsDirectoryPath, { recursive: true });
+
+  const filename = createAssetFilename(path.basename(input.filename));
+  const targetPath = path.join(assetsDirectoryPath, filename);
+  const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}`;
+
+  await fs.writeFile(tmpPath, Buffer.from(input.data));
+  await fs.rename(tmpPath, targetPath);
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+
+  return { mimeType, path: filename };
+}
+
 // Same shape as `uploadLocalCourseAsset` above, minus the native file dialog:
 // the source is one of the app's own bundled maps (`regionPickerSvgPresets`)
 // rather than a file the teacher picks, but the result — a copy landing in
 // the course's own `assets/` directory — is identical, so the exercise ends
 // up referencing a real course asset like any upload and the course stays
 // portable.
+//
+// Unlike `createAssetFilename`'s random suffix (right for a teacher's own
+// upload, where two files are two distinct choices even if identically
+// named), the filename here is content-addressed —
+// `preset-<presetId>-<contentHash>.svg` — rather than keyed on `presetId`
+// alone. Two exercises applying "Europe" while the bundled file hasn't
+// changed resolve to the same hash and share the one copy, same as keying
+// on `presetId` alone would give. The difference shows up once a future app
+// release ships an edited `europe.svg`: the hash changes, so an exercise
+// that applies the preset *after* upgrading gets a new file rather than
+// silently inheriting whatever stale copy an older app version left
+// behind — while every exercise (in this course or any other) still
+// pointing at the old hash keeps working unchanged, exactly as a course
+// that isn't touched again after an app upgrade should.
 export async function applyCourseSvgPreset(
   input: ApplyCourseSvgPresetInput,
 ): Promise<ApplyCourseSvgPresetResult> {
@@ -1722,9 +1798,13 @@ export async function applyCourseSvgPreset(
 
   await fs.mkdir(assetsDirectoryPath, { recursive: true });
 
-  const filename = createAssetFilename(path.basename(sourcePath));
+  const contentHash = (await hashFileContents(sourcePath)).slice(0, 8);
+  const filename = `preset-${input.presetId}-${contentHash}.svg`;
+  const targetPath = path.join(assetsDirectoryPath, filename);
 
-  await copyFileAtomic(sourcePath, path.join(assetsDirectoryPath, filename));
+  if (!(await pathExists(targetPath))) {
+    await copyFileAtomic(sourcePath, targetPath);
+  }
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,

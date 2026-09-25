@@ -554,6 +554,26 @@ export type UploadCourseAssetResult = {
   path: string;
 } | null;
 
+// Sibling to `UploadCourseAssetInput`/`Result` above, for a file BlockNote's own
+// "Upload from device" file input already picked in the renderer (a real `File`,
+// not a path) — the main process has nothing to open its own dialog for here, it
+// just writes the bytes it's handed into the course's `assets/` directory. See
+// `uploadAsset` vs this method's very different call sites: the dialog-based one
+// is for "add a new local file" UI (region-based exercise diagrams); this one is
+// for BlockNote's image/video/audio blocks, which already collected a `File`
+// themselves before the editor's `uploadFile` callback ever runs.
+export type UploadCourseAssetBytesInput = {
+  courseId: string;
+  data: ArrayBuffer;
+  filename: string;
+  kind: CourseAssetKind;
+};
+
+export type UploadCourseAssetBytesResult = {
+  mimeType: string;
+  path: string;
+};
+
 export type ApplyCourseSvgPresetInput = {
   courseId: string;
   presetId: string;

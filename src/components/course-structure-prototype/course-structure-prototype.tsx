@@ -8,6 +8,7 @@ import {
   FileText,
   FlaskConical,
   Folder,
+  FolderOpen,
   FolderPlus,
   PanelRightOpen,
   Trash2,
@@ -20,7 +21,6 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -322,6 +322,9 @@ export function CourseStructurePrototype({
               onInsertSection={startAddSection}
               onMoveDown={() => {}}
               onMoveUp={() => {}}
+              onOpenInFileSystem={() => {
+                void window.courses.openInFileSystem(courseId);
+              }}
               onToggle={() => setIsCourseRootExpanded((current) => !current)}
               title={courseTitle}
             />
@@ -627,6 +630,7 @@ function ExplorerRow({
   onMoveDown,
   onMoveUp,
   onOpen,
+  onOpenInFileSystem,
   onSelect,
   onToggle,
   title,
@@ -650,6 +654,7 @@ function ExplorerRow({
   onMoveDown: () => void;
   onMoveUp: () => void;
   onOpen?: () => void;
+  onOpenInFileSystem?: () => void;
   onSelect?: () => void;
   onToggle?: () => void;
   title: string;
@@ -804,16 +809,18 @@ function ExplorerRow({
             <span>Add section</span>
           </ContextMenuItem>
         )}
-        {(onInsertDocument || onInsertTest || onInsertSection) && (
-          <ContextMenuSeparator />
-        )}
         {onOpen && (
           <ContextMenuItem onClick={onOpen}>
             <PanelRightOpen aria-hidden="true" />
             <span>Open</span>
           </ContextMenuItem>
         )}
-        {onOpen && <ContextMenuSeparator />}
+        {onOpenInFileSystem && (
+          <ContextMenuItem onClick={onOpenInFileSystem}>
+            <FolderOpen aria-hidden="true" />
+            <span>Open in file system</span>
+          </ContextMenuItem>
+        )}
         {!isFixed && (
           <ContextMenuItem disabled={!canMoveUp} onClick={onMoveUp}>
             <ArrowUp aria-hidden="true" />
@@ -826,7 +833,6 @@ function ExplorerRow({
             <span>Move down</span>
           </ContextMenuItem>
         )}
-        {onDelete && <ContextMenuSeparator />}
         {onDelete && (
           <ContextMenuItem onClick={onDelete} variant="destructive">
             <Trash2 aria-hidden="true" />

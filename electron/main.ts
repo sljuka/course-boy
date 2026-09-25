@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, net, protocol } from 'electron'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { open as openFile, stat as statFile } from 'node:fs/promises'
 import path from 'node:path'
 import Store from 'electron-store'
 import { getCreatorKey, importCourse, publishCourse, spawnBareWorker } from './bare-worker'
@@ -17,6 +18,7 @@ import {
   ensureLocalCoursesRoot,
   getLocalCourseLessonTestDraft,
   getLocalCourseSectionTestDraft,
+  openCourseDirectoryInFileSystem,
   publishLocalCourseVersion,
   removeLocalCourse,
   revertLocalCourseDraftToVersion,
@@ -25,6 +27,7 @@ import {
   updateLocalCourseLessonTest,
   updateLocalCourseSection,
   updateLocalCourseSectionTest,
+  uploadCourseAssetFromBytes,
   uploadLocalCourseAsset,
 } from './course-paths'
 import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
@@ -47,6 +50,7 @@ import type {
   UpdateCourseDraftMetadataInput,
   UpdateCourseSectionInput,
   UpdateLessonContentInput,
+  UploadCourseAssetBytesInput,
   UploadCourseAssetInput,
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
@@ -261,8 +265,16 @@ ipcMain.handle('courses:remove', (_event, courseId: string) => {
   return removeLocalCourse(courseId)
 })
 
+ipcMain.handle('courses:open-in-file-system', (_event, courseId: string) => {
+  return openCourseDirectoryInFileSystem(courseId)
+})
+
 ipcMain.handle('courses:upload-asset', (_event, input: UploadCourseAssetInput) => {
   return uploadLocalCourseAsset(input)
+})
+
+ipcMain.handle('courses:upload-asset-bytes', (_event, input: UploadCourseAssetBytesInput) => {
+  return uploadCourseAssetFromBytes(input)
 })
 
 ipcMain.handle('courses:apply-svg-preset', (_event, input: ApplyCourseSvgPresetInput) => {
@@ -340,6 +352,48 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
         continue
       }
 
+      // A `.mov` (or any container whose `moov` atom lands after `mdat`,
+      // which is the common case for an unedited screen recording, not
+      // just an edge case) needs its player to read an arbitrary byte
+      // range to find that atom before it can play at all. `net.fetch`
+      // does honor a `Range` header for a `file://` URL by quietly slicing
+      // the body, but it answers with a plain `200` and no `Content-Range`
+      // — Chromium's `<video>` element treats that as the server ignoring
+      // the range request and fails outright with a MEDIA_ELEMENT_ERROR
+      // "Format error" rather than falling back to the full body. So a
+      // real `Range` request is served by hand here, with the `206` status
+      // and headers a video element actually requires; only a plain,
+      // rangeless request still goes through `net.fetch` below.
+      const rangeHeader = request.headers.get('Range')
+      const rangeMatch = rangeHeader ? /^bytes=(\d*)-(\d*)$/.exec(rangeHeader) : null
+
+      if (rangeMatch) {
+        const totalSize = (await statFile(resolvedAssetPath)).size
+        const start = rangeMatch[1] ? Number(rangeMatch[1]) : 0
+        const end = rangeMatch[2] ? Math.min(Number(rangeMatch[2]), totalSize - 1) : totalSize - 1
+        const chunkSize = end - start + 1
+
+        const fileHandle = await openFile(resolvedAssetPath, 'r')
+
+        try {
+          const buffer = Buffer.alloc(chunkSize)
+
+          await fileHandle.read(buffer, 0, chunkSize, start)
+
+          return new Response(buffer, {
+            headers: {
+              'Accept-Ranges': 'bytes',
+              'Content-Length': String(chunkSize),
+              'Content-Range': `bytes ${start}-${end}/${totalSize}`,
+              'Content-Type': mimeType,
+            },
+            status: 206,
+          })
+        } finally {
+          await fileHandle.close()
+        }
+      }
+
       const fileResponse = await net.fetch(pathToFileURL(resolvedAssetPath).toString())
 
       if (!fileResponse.ok) {
@@ -348,6 +402,7 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
 
       const responseHeaders = new Headers(fileResponse.headers)
       responseHeaders.set('Content-Type', mimeType)
+      responseHeaders.set('Accept-Ranges', 'bytes')
 
       return new Response(fileResponse.body, {
         headers: responseHeaders,

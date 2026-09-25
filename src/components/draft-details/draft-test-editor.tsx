@@ -195,7 +195,6 @@ function DraftStandaloneTestEditor({
       courseId={courseId}
       descriptiveTags={descriptiveTags}
       initialState={testState}
-      initialTitle={selectedNode.title}
       onStateChange={setTestState}
       selectedNode={selectedNode}
       supportedLocales={supportedLocales}
@@ -256,7 +255,6 @@ function DraftLessonTestEditor({
       courseId={courseId}
       descriptiveTags={descriptiveTags}
       initialState={testState}
-      initialTitle={initialTitle}
       onStateChange={setTestState}
       selectedNode={selectedNode}
       supportedLocales={supportedLocales}

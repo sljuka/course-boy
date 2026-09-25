@@ -29,6 +29,8 @@ import type {
   UpdateCourseDraftMetadataInput,
   UpdateCourseSectionInput,
   UpdateLessonContentInput,
+  UploadCourseAssetBytesInput,
+  UploadCourseAssetBytesResult,
   UploadCourseAssetInput,
   UploadCourseAssetResult,
 } from "@/lib/course-package";
@@ -251,6 +253,12 @@ export function useDeleteCourseSectionTestMutation() {
 export function useUploadCourseAssetMutation() {
   return useMutation<UploadCourseAssetResult, Error, UploadCourseAssetInput>({
     mutationFn: (input) => window.courses.uploadAsset(input),
+  });
+}
+
+export function useUploadCourseAssetBytesMutation() {
+  return useMutation<UploadCourseAssetBytesResult, Error, UploadCourseAssetBytesInput>({
+    mutationFn: (input) => window.courses.uploadAssetBytes(input),
   });
 }
 

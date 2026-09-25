@@ -23,13 +23,34 @@ import {
 } from "@/components/editor-prototype/blocknote-translation";
 import { LocalesTabs } from "@/components/locales-tabs";
 import { PageContent } from "@/components/page-content";
+import type { CourseAssetKind } from "@/lib/course-asset-id";
+import { matkoAssetUrl } from "@/lib/course-assets";
 import type { CourseLesson, UpdateLessonContentInput } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { blocksToMarkdown, markdownToBlocks } from "@/lib/lesson-content-markdown";
-import { useUpdateLessonContentMutation } from "@/lib/course-queries";
+import {
+  useUpdateLessonContentMutation,
+  useUploadCourseAssetBytesMutation,
+} from "@/lib/course-queries";
 import { useEntityAutosave, useForwardAutosaveStatus } from "@/lib/use-entity-autosave";
+import { useAppState } from "@/lib/use-app-state";
 
 type DocumentLocaleDraft = Partial<Record<Locale, EditorPrototypeBlock[]>>;
+
+// BlockNote's own "Upload from device" file input already restricts the OS
+// picker to each block's accepted mime types (image/video/audio), so this
+// only needs to pick between our three non-SVG asset kinds.
+function assetKindForFile(file: File): CourseAssetKind {
+  if (file.type.startsWith("video/")) {
+    return "video";
+  }
+
+  if (file.type.startsWith("audio/")) {
+    return "audio";
+  }
+
+  return "image";
+}
 
 function buildDocumentSeed(
   lessonBody: string | undefined,
@@ -57,7 +78,26 @@ function DocumentBlockNoteEditor({
   courseId: string;
   onChange: (blocks: EditorPrototypeBlock[]) => void;
 }) {
+  const { theme } = useAppState();
   const hasAutoFocusedRef = useRef(false);
+  // `mutateAsync` itself is stable across renders — depending on the whole
+  // mutation object here instead would recreate `uploadFile` (and, via
+  // `useCreateBlockNote`, silently go stale) on every unrelated re-render.
+  const { mutateAsync: uploadAssetBytes } = useUploadCourseAssetBytesMutation();
+  const uploadFile = useCallback(
+    async (file: File) => {
+      const data = await file.arrayBuffer();
+      const result = await uploadAssetBytes({
+        courseId,
+        data,
+        filename: file.name,
+        kind: assetKindForFile(file),
+      });
+
+      return matkoAssetUrl(courseId, result.path);
+    },
+    [courseId, uploadAssetBytes],
+  );
   // Recreated (not just re-rendered) whenever the active locale changes —
   // each locale's content is a fully separate BlockNote document, so a new
   // `activeLocale` needs a fresh editor instance seeded from that locale's
@@ -66,6 +106,7 @@ function DocumentBlockNoteEditor({
     {
       initialContent: editorPrototypeBlocksToBlockNote(blocks, courseId),
       schema: documentEditorSchema,
+      uploadFile,
     },
     [activeLocale],
   );
@@ -83,6 +124,7 @@ function DocumentBlockNoteEditor({
       editor={editor}
       onChange={() => onChange(blockNoteBlocksToEditorPrototype(editor.document))}
       slashMenu={false}
+      theme={theme}
     >
       <SuggestionMenuController
         getItems={async (query) =>

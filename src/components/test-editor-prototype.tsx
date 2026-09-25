@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Check, Play, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -34,7 +34,6 @@ import { getExerciseKindEditor, listExerciseKindEditors } from "@/components/exe
 import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import {
   countMatchingExercises,
-  createInitialState,
   toggleExerciseTag,
 } from "@/components/test-editor-prototype-logic";
 import type {
@@ -51,9 +50,12 @@ import { getLocaleFlag } from "@/lib/locale-flags";
 type TestEditorPrototypeProps = {
   courseId: string;
   descriptiveTags: CourseTagDefinition[];
-  initialState?: TestEditorState;
-  initialTitle: string;
-  onStateChange?: (state: TestEditorState) => void;
+  // Always provided by the single current caller (draft-test-editor.tsx),
+  // which owns the persisted state and only ever mounts this component once
+  // its own query has resolved — so this never arrives late, and there's no
+  // separate "uncontrolled" mode to support.
+  initialState: TestEditorState;
+  onStateChange: (state: TestEditorState) => void;
   // The tree node currently selected in the draft explorer — forwarded to
   // the preview route so closing it can land back on this same test instead
   // of resetting to the course root (see `CourseLayout`'s `selectedNode`
@@ -66,7 +68,6 @@ export function TestEditorPrototype({
   courseId,
   descriptiveTags,
   initialState,
-  initialTitle,
   onStateChange,
   selectedNode,
   supportedLocales,
@@ -75,71 +76,27 @@ export function TestEditorPrototype({
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [draftExerciseKind, setDraftExerciseKind] = useState<ExerciseKind>("numeric");
   const [draftExercise, setDraftExercise] = useState<TestExercise | null>(null);
-  const [state, setState] = useState<TestEditorState>(() =>
-    initialState ?? createInitialState(supportedLocales, initialTitle),
-  );
-  const hasInitializedExternalStateRef = useRef(false);
+  // `initialState` is only ever read here, at mount — the single caller
+  // (draft-test-editor.tsx) owns the persisted value and re-mounts this
+  // component (via a fresh `key`, through its own loading-state gate)
+  // whenever it has a genuinely different one to seed from, rather than
+  // this component watching for it to change under it.
+  const [state, setState] = useState<TestEditorState>(initialState);
+
+  // A teacher fills in a randomization rule per tag themselves (see
+  // `addBlueprintRule`) — this used to auto-populate one per descriptive tag
+  // the moment any existed, whether or not randomization was ever turned on.
+  // That caused a real infinite loop: `toSharedTestDefinition` only persists
+  // `blueprint` when `useBlueprint` is true, so the auto-populated blueprint
+  // was invisible to the save it triggered; the entity still looked dirty to
+  // `useEntityAutosave`, which saved (rewriting equivalent content),
+  // invalidated this test's own query, and — because `DraftTestEditor`
+  // unmounts this whole subtree while its query is refetching — remounted
+  // this component from scratch with the blueprint empty again, repeating
+  // forever.
 
   useEffect(() => {
-    if (!initialState || hasInitializedExternalStateRef.current) {
-      return;
-    }
-
-    setState(initialState);
-    hasInitializedExternalStateRef.current = true;
-  }, [initialState]);
-
-  useEffect(() => {
-    if (initialState) {
-      return;
-    }
-
-    const nextState = createInitialState(supportedLocales, initialTitle);
-    const firstExerciseId = nextState.exercises[0]?.id ?? "";
-    setState({
-      ...nextState,
-      activeExerciseId: firstExerciseId,
-    });
-  }, [initialState, initialTitle, supportedLocales]);
-
-  useEffect(() => {
-    if (state.activeExerciseId) {
-      return;
-    }
-
-    const firstExerciseId = state.exercises[0]?.id ?? "";
-
-    if (firstExerciseId) {
-      setState((currentState) => ({
-        ...currentState,
-        activeExerciseId: firstExerciseId,
-      }));
-    }
-  }, [state.activeExerciseId, state.exercises]);
-
-  useEffect(() => {
-    if (descriptiveTags.length === 0) {
-      return;
-    }
-
-    setState((currentState) => {
-      if (currentState.blueprint.length > 0) {
-        return currentState;
-      }
-
-      return {
-        ...currentState,
-        blueprint: descriptiveTags.map((tag) => ({
-          count: 1,
-          id: `rule_${Math.random().toString(36).slice(2, 8)}`,
-          tagId: tag.id,
-        })),
-      };
-    });
-  }, [descriptiveTags]);
-
-  useEffect(() => {
-    onStateChange?.(state);
+    onStateChange(state);
   }, [onStateChange, state]);
 
   function updateExercise(

@@ -70,6 +70,7 @@ describe('launch', () => {
       'getSectionTestDraft',
       'getVersionHistory',
       'list',
+      'openInFileSystem',
       'publishVersion',
       'remove',
       'revertToVersion',
@@ -79,6 +80,7 @@ describe('launch', () => {
       'updateLessonContent',
       'updateSection',
       'uploadAsset',
+      'uploadAssetBytes',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
   })

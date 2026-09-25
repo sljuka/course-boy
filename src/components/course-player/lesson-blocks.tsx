@@ -6,6 +6,7 @@ import { documentEditorSchema } from "@/components/editor-prototype/blocknote-sc
 import { DocumentEditorContextProvider } from "@/components/editor-prototype/document-editor-context";
 import { editorPrototypeBlocksToBlockNote } from "@/components/editor-prototype/blocknote-translation";
 import { markdownToBlocks } from "@/lib/lesson-content-markdown";
+import { useAppState } from "@/lib/use-app-state";
 
 /**
  * The student-facing counterpart to the draft document editor
@@ -16,6 +17,7 @@ import { markdownToBlocks } from "@/lib/lesson-content-markdown";
  * check" UI when `editor.isEditable` is false (see `exercise-block.tsx`).
  */
 export function LessonBlocks({ courseId, source }: { courseId: string; source: string }) {
+  const { theme } = useAppState();
   // Recreated whenever the lesson's own content changes (source or the
   // course it belongs to) — this component isn't necessarily remounted when
   // the student navigates to a different lesson, so `initialContent` (only
@@ -31,7 +33,7 @@ export function LessonBlocks({ courseId, source }: { courseId: string; source: s
   return (
     <div className="typeset typeset-course">
       <DocumentEditorContextProvider courseId={courseId} supportedLocales={[]}>
-        <BlockNoteView editable={false} editor={editor} />
+        <BlockNoteView editable={false} editor={editor} theme={theme} />
       </DocumentEditorContextProvider>
     </div>
   );

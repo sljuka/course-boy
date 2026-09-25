@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { BlockNoteEditor } from "@blocknote/core";
 import { createReactBlockSpec, useBlockNoteEditor } from "@blocknote/react";
+import { FlaskConical } from "lucide-react";
 
 import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
 import { useDocumentEditorContext } from "@/components/editor-prototype/document-editor-context";
@@ -81,10 +82,15 @@ function ExerciseAuthoringCard({
   const FieldsComponent = getExerciseKindEditor(exercise.kind).FieldsComponent;
 
   return (
-    <div className="flex w-full flex-col gap-3 rounded-lg border border-dashed border-border p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Exercise · {getExerciseKindEditor(exercise.kind).label}
-      </p>
+    // gap-4, not gap-3 — matches `ExercisePromptCard`'s own accordion content
+    // spacing (test-editor-prototype-exercise-card.tsx) so a `FieldsComponent`
+    // looks identical whether it's editing a test's exercise or this inline
+    // one. No "Exercise · <kind>" header here either, unlike that reasoning
+    // might suggest matching further — the surrounding block chrome (the
+    // slash-menu item, the drag handle, the dashed border below) already say
+    // "this is an exercise block"; the test card's own header exists because
+    // an exercise there is one row in an otherwise unlabeled list.
+    <div className="flex w-full flex-col gap-4 rounded-lg border border-dashed border-border p-4">
       <LocalesTabs
         activeLocale={activeLocale}
         locales={supportedLocales}
@@ -235,6 +241,9 @@ export function createExerciseSlashMenuItem(editor: BlockNoteEditor<any, any, an
     // item (Table) produces a duplicate group header once the built-in item
     // gets filtered out of a narrowed query but the group name doesn't.
     group: "Course",
+    // Same icon as a test's row in the explorer (course-structure-prototype.tsx)
+    // — both represent the same underlying concept, a gradable exercise.
+    icon: <FlaskConical size={18} />,
     onItemClick: () => {
       const currentBlock = editor.getTextCursorPosition().block;
 

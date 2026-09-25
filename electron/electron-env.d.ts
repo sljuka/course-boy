@@ -74,9 +74,13 @@ interface Window {
       locale?: import('../src/lib/i18n').Locale,
     ) => Promise<import('../src/lib/course-package').CourseSummary[]>
     remove: (courseId: string) => Promise<void>
+    openInFileSystem: (courseId: string) => Promise<void>
     uploadAsset: (
       input: import('../src/lib/course-package').UploadCourseAssetInput,
     ) => Promise<import('../src/lib/course-package').UploadCourseAssetResult>
+    uploadAssetBytes: (
+      input: import('../src/lib/course-package').UploadCourseAssetBytesInput,
+    ) => Promise<import('../src/lib/course-package').UploadCourseAssetBytesResult>
     applySvgPreset: (
       input: import('../src/lib/course-package').ApplyCourseSvgPresetInput,
     ) => Promise<import('../src/lib/course-package').ApplyCourseSvgPresetResult>

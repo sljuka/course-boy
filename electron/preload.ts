@@ -28,6 +28,8 @@ import type {
   UpdateCourseDraftMetadataInput,
   UpdateCourseSectionInput,
   UpdateLessonContentInput,
+  UploadCourseAssetBytesInput,
+  UploadCourseAssetBytesResult,
   UploadCourseAssetInput,
   UploadCourseAssetResult,
 } from '../src/lib/course-package'
@@ -104,8 +106,14 @@ contextBridge.exposeInMainWorld('courses', {
   remove(courseId: string) {
     return ipcRenderer.invoke('courses:remove', courseId) as Promise<void>
   },
+  openInFileSystem(courseId: string) {
+    return ipcRenderer.invoke('courses:open-in-file-system', courseId) as Promise<void>
+  },
   uploadAsset(input: UploadCourseAssetInput) {
     return ipcRenderer.invoke('courses:upload-asset', input) as Promise<UploadCourseAssetResult>
+  },
+  uploadAssetBytes(input: UploadCourseAssetBytesInput) {
+    return ipcRenderer.invoke('courses:upload-asset-bytes', input) as Promise<UploadCourseAssetBytesResult>
   },
   applySvgPreset(input: ApplyCourseSvgPresetInput) {
     return ipcRenderer.invoke('courses:apply-svg-preset', input) as Promise<ApplyCourseSvgPresetResult>

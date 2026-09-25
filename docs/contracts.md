@@ -151,7 +151,10 @@ courses/<course-id>/draft/assets/<filename>
 
 `assets/` holds uploaded images/video/audio at the course level (not per-lesson/section) —
 `uploadLocalCourseAsset` in `course-paths.ts` only ever writes under `draft/assets/`, since
-writers require `status === "draft"`. Reads have to go through
+writers require `status === "draft"`. `uploadCourseAssetFromBytes` is the sibling used for
+BlockNote's own "Upload from device" file input in the document editor (a `File` the
+renderer already has, not a path for the main process to open its own dialog for) — same
+validation, same `draft/assets/` destination, different entry point. Reads have to go through
 `resolvePackageDirectoryCandidates()` (the same draft-then-published fallback used for
 manifests) because the *player* can be viewing a published course while the *editor* only
 ever needs the draft. Blocks store the filename only — no `assets/` prefix — and the
@@ -160,6 +163,17 @@ protocol registered in `electron/main.ts` resolves and streams the file, rejecti
 filename containing `/`, `\`, or `..` via `resolveAssetFilename()` in
 [src/lib/course-asset-id.ts](../src/lib/course-asset-id.ts:1) before it ever reaches the
 filesystem.
+
+That handler must answer a `Range` request with a real `206 Partial Content` (status,
+`Content-Range`, `Content-Length`, read via `fs/promises`' `open`/`read` at the requested
+offset) rather than the plain `200` `net.fetch(pathToFileURL(...))` returns on its own —
+`net.fetch` does quietly honor an incoming `Range` header for a `file://` URL by slicing
+the body, but without relabeling the response as `206`, and a `<video>` element then
+throws `MEDIA_ELEMENT_ERROR: Format error` and refuses to play at all, rather than falling
+back to reading the mislabeled body as a whole file. This isn't a rare edge case: an
+unedited screen recording (`.mov`) routinely has its `moov` atom written after `mdat`, so
+the player needs a real byte-range read to find it before it can play anything, not just
+to support seeking within an already-playing video.
 
 A test file is a sibling of the lesson it belongs to, in the same section directory, with
 its filename fully derived from the lesson's: `lesson-01-foo.json` pairs with
