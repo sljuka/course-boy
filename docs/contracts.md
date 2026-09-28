@@ -335,30 +335,47 @@ precision at the registry boundary itself (an eslint-disable comment marks each 
 Each kind's own module still gets full type safety internally; only code that looks a
 kind up generically (rather than importing it directly) sees the erased type.
 
-## 9. The window title bar is drawn by the renderer
+## 9. The app frame: title bar, sidebar, status bar, and the page card
 
 The native title bar is hidden (`titleBarStyle: 'hidden'` in
-[electron/main.ts](../electron/main.ts:1)); `AppTitleBar`
-([src/components/app-title-bar/app-title-bar.tsx](../src/components/app-title-bar/app-title-bar.tsx:1))
-draws a fixed 42px strip instead. Three things have to stay in sync by hand:
+[electron/main.ts](../electron/main.ts:1)). The window is one fixed-height frame,
+`AppShell` ([src/components/ui/app-shell.tsx](../src/components/ui/app-shell.tsx:1)):
+title bar row (`AppTitleBar`) → main row (the route layout) → status bar row
+(`AppFrameStatusBar`), all on the sidebar background. The route layout puts the page in a
+rounded card, `PagePanel` ([src/components/ui/page-panel.tsx](../src/components/ui/page-panel.tsx:1)),
+and **only the page's `PageBody` scrolls** — the window never does. Rules that span files:
 
-- **Height.** `titleBarOverlay.height` (Windows/Linux) and `trafficLightPosition`
+- **Title bar height.** `titleBarOverlay.height` (Windows/Linux) and `trafficLightPosition`
   (macOS, centred in the bar) in `main.ts` must match `--app-titlebar-height` in
-  [src/index.css](../src/index.css:1).
-- **Full-height layouts use `--app-content-height`, not `100vh`.** `#root` is padded by
-  the bar's height, so a `min-h-screen`/`h-svh` layout overflows by the bar's height and scrolls for
-  no reason. The fixed sidebar container starts at `top-(--app-titlebar-height)`, and
-  sticky headers stick at that offset rather than `top-0`.
-- **Anything drawn over the bar must opt out of dragging.** The bar is a
+  [src/index.css](../src/index.css:1). The desktop sidebar container is `fixed` between
+  `--app-titlebar-height` and `--app-statusbar-height`, so both variables must stay the
+  real heights of those rows.
+- **Pages render inside `PagePanel` and scroll only through `PageBody`.** Use `<Page>`
+  ([src/components/page/page.tsx](../src/components/page/page.tsx:1)), which adds the
+  toolbar and the `PageBody`. Nothing should size itself to `100vh`/`min-h-screen` or use
+  `position: sticky` against the window: the window doesn't scroll, so those do nothing
+  or overflow. Full height inside the main row is `min-h-0 flex-1`.
+- **Printing undoes all of it.** `html/body/#root` are only clamped to the window height
+  under `@media screen`; `AppShell`, `PagePanel`, `PageBody` and `Page`'s column carry
+  `print:` resets (no fixed height, no overflow clipping, no margins/radius/border/
+  background, no width cap), and the title bar, status bar and page toolbar are
+  `print:hidden`. A new wrapper between the shell and the content needs the same resets,
+  or printing outputs only what fits in the card. Checked by printing a long lesson and a
+  test to PDF (`webContents.printToPDF`) and comparing page counts.
+- **Anything drawn over the title bar must opt out of dragging.** The bar is a
   `-webkit-app-region: drag` region, and Electron gives drag regions priority over
   overlapping elements, so clicks in the top 42px of an overlay would move the window
   instead. `ui/dialog.tsx` and `ui/sheet.tsx` carry `[-webkit-app-region:no-drag]` on
   their overlays and popups; a new full-screen overlay needs the same. Clickable
   controls inside the bar go in `WindowTitleBarGroup`, which does this for them.
-
-The sidebar toggle reaches whichever layout's `SidebarProvider` is mounted through
-`RegisterTitleBarSidebarToggle` (see `src/lib/use-title-bar-sidebar.ts`) — a new layout
-with a sidebar must render it inside its provider, or the button stays disabled there.
+- **Frame slots filled from inside a layout.** The title bar and status bar sit outside
+  every route layout. The sidebar toggle reaches the mounted layout's `SidebarProvider`
+  through `RegisterTitleBarSidebarToggle` (`src/lib/use-title-bar-sidebar.ts`) — a new
+  layout with a sidebar must render it inside its provider, or the button stays disabled.
+  A layout puts content at the end of the status bar with `AppStatusBarEnd` (a portal;
+  `src/lib/use-app-status-bar.ts`), as `CourseLayout` does for the editor's save status.
+- **Dark mode.** The frame (`--sidebar`) is darker than the page card (`--background`),
+  like Linear; flipping them back would draw a light frame around a dark card.
 
 ## Third-party extensions (not yet built)
 

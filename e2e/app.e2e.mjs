@@ -340,6 +340,28 @@ describe('course version badge', () => {
   })
 })
 
+describe('page breadcrumbs', () => {
+  it('shows the editor trail in the page toolbar and navigates from it', async () => {
+    await harness.page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, probeCourseId)
+    await waitForText(harness.page, 'E2E Probe Course')
+
+    const trail = await harness.page.evaluate(() =>
+      [...document.querySelectorAll('[data-slot=breadcrumb-item]')].map((item) => item.textContent),
+    )
+    expect(trail).toEqual(['My courses', 'E2E Probe Course'])
+
+    await harness.page.evaluate(() =>
+      [...document.querySelectorAll('[data-slot=breadcrumb-link]')]
+        .find((link) => link.textContent === 'My courses')
+        .click(),
+    )
+    await waitForUrl(harness.page, '#/my-courses')
+    expect(harness.page.url()).toContain('#/my-courses')
+  })
+})
+
 describe('learner flow: attend a course and complete its test', () => {
   let attendCourseId
   let sectionId

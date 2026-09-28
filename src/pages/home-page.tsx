@@ -1,4 +1,4 @@
-import { Download } from "lucide-react";
+import { Download, Home as HomeIcon } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -28,6 +28,7 @@ export const HomePage = () => {
   return (
     <PageContent
       actions={actions}
+      breadcrumbs={[{ icon: HomeIcon, label: t("sidebar.home") }]}
       pageHero={
         <div className="flex flex-col gap-1">
           <CardTitle size="lg">{t("courseSearch.title")}</CardTitle>

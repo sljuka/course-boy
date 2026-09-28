@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { BookOpen, Plus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -32,6 +32,7 @@ export function MyCoursesPage() {
   return (
     <PageContent
       actions={<CreateCourseAction />}
+      breadcrumbs={[{ icon: BookOpen, label: t("sidebar.myCourses") }]}
       pageHero={
         <div className="flex flex-col gap-1">
           <CardTitle size="lg">{t("myCourses.title")}</CardTitle>

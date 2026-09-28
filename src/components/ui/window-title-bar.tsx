@@ -3,8 +3,8 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// The app-drawn window title bar: a fixed strip across the top of the window
-// (the native one is hidden — see `titleBarStyle` in electron/main.ts). It
+// The app-drawn window title bar: the top row of the app frame (`AppShell`;
+// the native one is hidden — see `titleBarStyle` in electron/main.ts). It
 // shares the sidebar's background and has no bottom border, so bar and sidebar
 // read as one continuous surface (the sidebar container has no top border
 // either, for the same reason). The
@@ -17,7 +17,7 @@ function WindowTitleBar({ className, ...props }: React.ComponentProps<"header">)
     <header
       data-slot="window-title-bar"
       className={cn(
-        "fixed inset-x-0 top-0 z-40 flex h-(--app-titlebar-height) items-center justify-between gap-2 bg-sidebar pr-[max(var(--app-titlebar-inset-right),--spacing(2))] pl-[max(var(--app-titlebar-inset-left),--spacing(2))] text-sidebar-foreground select-none [-webkit-app-region:drag] print:hidden",
+        "relative z-40 flex h-(--app-titlebar-height) shrink-0 items-center justify-between gap-2 bg-sidebar pr-[max(var(--app-titlebar-inset-right),--spacing(2))] pl-[max(var(--app-titlebar-inset-left),--spacing(2))] text-sidebar-foreground select-none [-webkit-app-region:drag] print:hidden",
         className,
       )}
       {...props}

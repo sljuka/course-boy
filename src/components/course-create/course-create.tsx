@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BookOpen, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate } from "react-router-dom";
 
@@ -222,6 +223,10 @@ function CourseCreate() {
 
   return (
     <PageContent
+      breadcrumbs={[
+        { icon: BookOpen, label: t("sidebar.myCourses"), to: "/my-courses" },
+        { icon: Plus, label: t("courseCreate.title") },
+      ]}
       pageHero={
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">

@@ -9,6 +9,8 @@ import { CoursePlayerShell } from "@/components/course-player/course-player-shel
 import { CourseTestContent } from "@/components/course-player/course-test-content";
 import { PrintDocumentHeader } from "@/components/course-player/print-document-header";
 import { useCoursePlayer, type CoursePlayerReadyState } from "@/components/course-player/use-course-player";
+import { buildPlayerBreadcrumbs } from "@/components/course-player/player-breadcrumbs";
+import { Page } from "@/components/page/page";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -96,8 +98,105 @@ export function TestPlayerView({
     );
   }
 
+  const toolbarActions = isInteractiveMode ? (
+    <CoursePlayerActions
+      isRefreshingAvailable={false}
+      onClose={() => setIsInteractiveMode(false)}
+      onRefreshExercise={refreshExercises}
+      printControl={null}
+    />
+  ) : (
+    <CoursePlayerActions
+      isRefreshingAvailable={activeTestExercises.length > 0}
+      onClose={playerState.exitPlayer}
+      onRefreshExercise={refreshExercises}
+      printControl={
+        <div className="flex items-center gap-2">
+          <PrintOptionsMenu
+            mode="test"
+            onPrint={() => window.print()}
+            onPrintOptionsChange={setPrintOptions}
+            printOptions={printOptions}
+          >
+            <Button
+              aria-label={t("courseDetails.printCourse")}
+              shape="circle"
+              size="icon"
+              variant="secondary"
+            >
+              <Printer aria-hidden="true" className="h-5 w-5" />
+            </Button>
+          </PrintOptionsMenu>
+          <Button
+            aria-label={t("courseDetails.interactiveHintTitle")}
+            onClick={startInteractiveMode}
+            shape="circle"
+            size="icon"
+            variant="secondary"
+          >
+            <Play aria-hidden="true" className="h-5 w-5 fill-success text-success" />
+          </Button>
+        </div>
+      }
+    />
+  );
+
   return (
-    <>
+    <Page
+      breadcrumbs={buildPlayerBreadcrumbs(
+        playerState,
+        activeItem.title,
+        playerState.activeStep.kind === "lesson" ? t("explorer.testLabel") : undefined,
+      )}
+      header={
+        !isInteractiveMode && (
+          <PageHeader
+            className="print:hidden"
+            title={
+              <div className="flex items-center gap-2">
+                <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
+                {playerState.isPreview && (
+                  <Badge variant="secondary">{t("courseDetails.previewBadge")}</Badge>
+                )}
+              </div>
+            }
+            subtitle={
+              <div className="flex flex-col gap-1">
+                {activeItem.description && (
+                  <CardDescription className="text-base">
+                    {activeItem.description}
+                  </CardDescription>
+                )}
+                {/* The section/progress line is synthetic in preview (a single
+                    fake "Preview" section, always "1 of 1") — skip it there. */}
+                {!playerState.isPreview && (
+                  <CardDescription className="text-base">
+                    {playerState.sectionTitle}
+                    {" · "}
+                    {t("courseDetails.progress", {
+                      current: playerState.progressCurrent,
+                      total: playerState.progressTotal,
+                    })}
+                  </CardDescription>
+                )}
+              </div>
+            }
+          />
+        )
+      }
+      toolbarActions={toolbarActions}
+      // Interactive mode steps through one exercise at a time; its stepper
+      // sits centred in the page toolbar.
+      toolbarCenter={
+        isInteractiveMode && (
+          <ExerciseStepper
+            currentIndex={currentExerciseIndex}
+            onSelectStep={setCurrentExerciseIndex}
+            total={activeTestExercises.length}
+          />
+        )
+      }
+    >
       <PrintDocumentHeader
         courseTitle={playerState.courseTitle}
         description={activeItem.description}
@@ -106,96 +205,6 @@ export function TestPlayerView({
         sectionTitle={playerState.sectionTitle}
         title={activeItem.title}
       />
-      {isInteractiveMode ? (
-        // A dedicated header instead of `PageHeader`: the stepper needs to
-        // sit at the same height as the close button, centered across the
-        // full row, which `PageHeader`'s title/subtitle-vs-right split
-        // (plus `right`'s own `hidden lg:flex`) isn't set up for.
-        <div className="flex items-center justify-between gap-3 print:hidden">
-          <div className="flex-1" />
-          <ExerciseStepper
-            currentIndex={currentExerciseIndex}
-            onSelectStep={setCurrentExerciseIndex}
-            total={activeTestExercises.length}
-          />
-          <div className="flex flex-1 justify-end">
-            <CoursePlayerActions
-              isRefreshingAvailable={false}
-              onClose={() => setIsInteractiveMode(false)}
-              onRefreshExercise={refreshExercises}
-              printControl={null}
-            />
-          </div>
-        </div>
-      ) : (
-        <PageHeader
-          title={
-            <div className="flex items-center gap-2">
-              <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
-              {playerState.isPreview && (
-                <Badge variant="secondary">{t("courseDetails.previewBadge")}</Badge>
-              )}
-            </div>
-          }
-          className="print:hidden"
-          subtitle={
-            <div className="flex flex-col gap-1">
-              {activeItem.description && (
-                <CardDescription className="text-base">
-                  {activeItem.description}
-                </CardDescription>
-              )}
-              {/* The section/progress line is synthetic in preview (a single
-                  fake "Preview" section, always "1 of 1") — skip it there. */}
-              {!playerState.isPreview && (
-                <CardDescription className="text-base">
-                  {playerState.sectionTitle}
-                  {" · "}
-                  {t("courseDetails.progress", {
-                    current: playerState.progressCurrent,
-                    total: playerState.progressTotal,
-                  })}
-                </CardDescription>
-              )}
-            </div>
-          }
-          right={
-            <CoursePlayerActions
-              isRefreshingAvailable={activeTestExercises.length > 0}
-              onClose={playerState.exitPlayer}
-              onRefreshExercise={refreshExercises}
-              printControl={
-                <div className="flex items-center gap-2">
-                  <PrintOptionsMenu
-                    mode="test"
-                    onPrint={() => window.print()}
-                    onPrintOptionsChange={setPrintOptions}
-                    printOptions={printOptions}
-                  >
-                    <Button
-                      aria-label={t("courseDetails.printCourse")}
-                      shape="circle"
-                      size="icon"
-                      variant="secondary"
-                    >
-                      <Printer aria-hidden="true" className="h-5 w-5" />
-                    </Button>
-                  </PrintOptionsMenu>
-                  <Button
-                    aria-label={t("courseDetails.interactiveHintTitle")}
-                    onClick={startInteractiveMode}
-                    shape="circle"
-                    size="icon"
-                    variant="secondary"
-                  >
-                    <Play aria-hidden="true" className="h-5 w-5 fill-success text-success" />
-                  </Button>
-                </div>
-              }
-            />
-          }
-        />
-      )}
       <div>
         {isInteractiveMode ? (
           <InteractiveTestPlayer
@@ -242,6 +251,6 @@ export function TestPlayerView({
           </>
         )}
       </div>
-    </>
+    </Page>
   );
 }

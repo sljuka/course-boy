@@ -135,9 +135,9 @@ Not blockers, but do not mistake them for patterns to copy:
   between locale files. The vendored `SidebarTrigger`/`SidebarRail` in
   `src/components/ui/sidebar.tsx` still contain a literal "Toggle Sidebar" but are no
   longer rendered (the toggle moved to the window title bar); `e2e/app.e2e.mjs` asserts
-  the string never reappears on screen. `course-layout.tsx`'s "Back to my courses" and
-  "Explorer" are live examples. An `i18next/no-literal-string` eslint rule would catch
-  the whole class.
+  the string never reappears on screen. Several remain in the `*-prototype`
+  components (e.g. the explorer's "Test" node label). An `i18next/no-literal-string`
+  eslint rule would catch the whole class.
 - No Content-Security-Policy is set, so Electron logs a warning on every launch. Exposure
   is still low for most content — `react-markdown` runs without `rehype-raw` — but the
   `region-picker` exercise kind (`src/components/region-picker-canvas.tsx`) is now a real

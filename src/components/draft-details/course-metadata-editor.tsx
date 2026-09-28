@@ -31,7 +31,6 @@ import {
   ComboboxList,
   ComboboxValue,
 } from "@/components/ui/combobox";
-import { Eyebrow } from "@/components/ui/eyebrow";
 import {
   Field,
   FieldGroup,
@@ -278,7 +277,6 @@ export function CourseMetadataEditor({
   return (
     <PageContent
       actions={courseActionButtons}
-      pageHero={<Eyebrow>Course</Eyebrow>}
     >
       <div className="flex flex-col gap-6">
         <FieldSet>

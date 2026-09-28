@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import { Outlet, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 
@@ -11,14 +11,15 @@ import {
   courseRootId,
   type StructureSelection,
 } from "@/components/course-structure-prototype/course-structure-prototype-types";
+import { AppStatusBarEnd } from "@/components/app-frame/app-status-bar-end";
+import { buildEditorBreadcrumbs } from "@/components/draft-details/editor-breadcrumbs";
 import { OnboardingGuard } from "@/components/onboarding-guard";
+import { PagePanel } from "@/components/ui/page-panel";
 import { EditorStatusBar } from "@/components/ui/editor-status-bar";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import {
   Sidebar,
   SidebarContent,
-  SidebarHeader,
-  SidebarInset,
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -32,6 +33,7 @@ import type {
 } from "@/lib/course-package";
 import type { EntityAutosaveStatus } from "@/lib/use-entity-autosave";
 import { useAppState } from "@/lib/use-app-state";
+import { LayoutBreadcrumbsContext } from "@/lib/use-layout-breadcrumbs";
 import type { Locale } from "@/lib/i18n";
 
 type CourseLayoutOutletContext = {
@@ -79,6 +81,7 @@ export const CourseLayout = () => {
 
 const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) => {
   const { locale } = useAppState();
+  const { t } = useTranslation();
   const location = useLocation();
   const [editorStatusAction, setEditorStatusAction] = useState<ReactNode | null>(null);
   const [forwardedAutosave, setForwardedAutosave] = useState<{
@@ -123,6 +126,19 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   // the app — no need to plumb a per-entity boolean up through context.
   const isSavingAnyEntity = useIsMutating({ mutationKey: courseContentSaveMutationKey }) > 0;
 
+  const breadcrumbs = useMemo(
+    () =>
+      buildEditorBreadcrumbs({
+        courseTitle,
+        myCoursesLabel: t("sidebar.myCourses"),
+        onSelect: setSelectedNode,
+        sections: courseDetailsQuery.data?.sections ?? [],
+        selectedNode,
+        testLabel: t("explorer.testLabel"),
+      }),
+    [courseDetailsQuery.data?.sections, courseTitle, selectedNode, t],
+  );
+
   const reportAutosaveStatus = useCallback(
     (status: EntityAutosaveStatus | null, errorMessage: string | null, retry?: () => void) => {
       setForwardedAutosave({ errorMessage, retry: retry ?? null, status });
@@ -149,7 +165,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   return (
     <OnboardingGuard>
       <SidebarProvider
-        className="page-fade-in bg-background"
+        className="page-fade-in"
         style={{ "--sidebar-width": "22rem" } as React.CSSProperties}
       >
         <RegisterTitleBarSidebarToggle />
@@ -160,8 +176,9 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
           sections={courseDetailsQuery.data?.sections ?? []}
           selectedNodeId={selectedNode.id}
         />
-        <SidebarInset>
-          <div className="min-h-0 flex-1 overflow-auto pb-20">
+        <LayoutBreadcrumbsContext.Provider value={breadcrumbs}>
+        <PagePanel>
+          <div className="flex min-h-0 flex-1 flex-col">
             <Outlet
               context={
                 {
@@ -184,37 +201,37 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
               }
             />
           </div>
-          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 print:hidden">
-            <div className="pointer-events-auto md:pl-(--sidebar-width)">
-              <EditorStatusBar
-                action={editorStatusAction}
-                message={
-                  courseDetailsQuery.isLoading
-                    ? "Loading…"
-                    : forwardedAutosave.status === "error"
-                      ? forwardedAutosave.errorMessage ?? "Save failed"
-                      : isSavingAnyEntity
-                        ? "Saving…"
-                        : forwardedAutosave.status === "dirty"
-                          ? "Saving soon…"
-                          : "All changes saved"
-                }
-                onRetry={forwardedAutosave.status === "error" ? forwardedAutosave.retry ?? undefined : undefined}
-                status={
-                  courseDetailsQuery.isLoading
-                    ? "saving"
-                    : forwardedAutosave.status === "error"
-                      ? "error"
-                      : isSavingAnyEntity
-                        ? "saving"
-                        : forwardedAutosave.status === "dirty"
-                          ? "dirty"
-                          : "saved"
-                }
-              />
-            </div>
-          </div>
-        </SidebarInset>
+          <AppStatusBarEnd>
+            <EditorStatusBar
+              action={editorStatusAction}
+              message={
+                courseDetailsQuery.isLoading
+                  ? t("editorStatus.loading")
+                  : forwardedAutosave.status === "error"
+                    ? forwardedAutosave.errorMessage ?? t("editorStatus.saveFailed")
+                    : isSavingAnyEntity
+                      ? t("editorStatus.saving")
+                      : forwardedAutosave.status === "dirty"
+                        ? t("editorStatus.savingSoon")
+                        : t("editorStatus.saved")
+              }
+              onRetry={forwardedAutosave.status === "error" ? forwardedAutosave.retry ?? undefined : undefined}
+              retryLabel={t("editorStatus.retry")}
+              status={
+                courseDetailsQuery.isLoading
+                  ? "saving"
+                  : forwardedAutosave.status === "error"
+                    ? "error"
+                    : isSavingAnyEntity
+                      ? "saving"
+                      : forwardedAutosave.status === "dirty"
+                        ? "dirty"
+                        : "saved"
+              }
+            />
+          </AppStatusBarEnd>
+        </PagePanel>
+        </LayoutBreadcrumbsContext.Provider>
       </SidebarProvider>
     </OnboardingGuard>
   );
@@ -234,6 +251,7 @@ function ExplorerSidebar({
   selectedNodeId: string;
 }) {
   const { setOpenMobile } = useSidebar();
+  const { t } = useTranslation();
 
   function handleSelectionChange(selection: StructureSelection) {
     onSelectionChange(selection);
@@ -242,18 +260,9 @@ function ExplorerSidebar({
 
   return (
     <Sidebar className="print:hidden" collapsible="offcanvas">
-      <SidebarHeader className="border-b px-4 py-4">
-        <Link
-          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          to="/my-courses"
-        >
-          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-          <span>Back to my courses</span>
-        </Link>
-      </SidebarHeader>
       <SidebarContent className="p-3">
         <Eyebrow className="px-1 pb-3" size="small">
-          Explorer
+          {t("explorer.title")}
         </Eyebrow>
         <CourseStructurePrototype
           compact

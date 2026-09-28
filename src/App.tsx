@@ -1,5 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 
+import { AppFrameStatusBar } from "@/components/app-frame/app-frame-status-bar";
+import { AppStatusBarProvider } from "@/components/app-frame/app-status-bar-provider";
 import { AppTitleBar } from "@/components/app-title-bar/app-title-bar";
 import { TitleBarSidebarProvider } from "@/components/app-title-bar/title-bar-sidebar-provider";
 import { BlankLayout } from "@/components/blank-layout";
@@ -7,6 +9,7 @@ import { CourseLayout } from "@/components/course-layout";
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
 import { SidebarLayout } from "@/components/sidebar-layout";
+import { AppShell, AppShellMain } from "@/components/ui/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppStateProvider } from "@/lib/app-state";
 import { useTrackRecentlyViewed } from "@/lib/recently-viewed-queries";
@@ -85,9 +88,16 @@ export const App = () => {
     <AppStateProvider>
       <TooltipProvider>
         <TitleBarSidebarProvider>
-          <AppTitleBar />
-          <RecentlyViewedTracker />
-          <AppRoutes />
+          <AppStatusBarProvider>
+            <RecentlyViewedTracker />
+            <AppShell>
+              <AppTitleBar />
+              <AppShellMain>
+                <AppRoutes />
+              </AppShellMain>
+              <AppFrameStatusBar />
+            </AppShell>
+          </AppStatusBarProvider>
         </TitleBarSidebarProvider>
       </TooltipProvider>
     </AppStateProvider>

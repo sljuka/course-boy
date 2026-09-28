@@ -16,17 +16,17 @@ export function CoursePlayerPageLayout({
   const { t } = useTranslation();
 
   return (
-    <main className="min-h-(--app-content-height) bg-background print:min-h-0 print:bg-white">
-      <div className="mx-auto flex min-h-(--app-content-height) w-full max-w-7xl flex-col px-4 py-4 print:min-h-0 print:max-w-none print:px-0 print:py-0">
+    // Players render their own `<Page>` (toolbar + scrolling body) inside the
+    // layout's panel; this only adds the error boundary and fade-in.
+    <main className="flex min-h-0 flex-1 flex-col print:block">
         <ErrorBoundary
           fallback={<CourseErrorCard message={t("courseDetails.error")} />}
           key={`${playerKey}-${locale}`}
         >
-          <div className="page-fade-in flex flex-col gap-4 print:block">
+          <div className="page-fade-in flex min-h-0 flex-1 flex-col print:block">
             {children}
           </div>
         </ErrorBoundary>
-      </div>
     </main>
   );
 }

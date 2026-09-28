@@ -8,6 +8,8 @@ type EditorStatusBarProps = {
   action?: ReactNode;
   message: string;
   onRetry?: () => void;
+  // Translated by the caller: ui components hold no copy of their own.
+  retryLabel: string;
   status: "dirty" | "error" | "saved" | "saving";
 };
 
@@ -15,18 +17,20 @@ export function EditorStatusBar({
   action,
   message,
   onRetry,
+  retryLabel,
   status,
 }: EditorStatusBarProps) {
+  // Content for the app frame's status bar (see `AppStatusBarEnd`): no
+  // background or border of its own, sized to the bar's text.
   return (
-    <div className="border-t border-border bg-background">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 lg:px-6">
-        <div className="flex min-w-0 items-center gap-2">
+    <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-1.5">
           {status === "error" ? (
-            <AlertCircle aria-hidden="true" className="h-4 w-4 shrink-0 text-destructive" />
+            <AlertCircle aria-hidden="true" className="size-3.5 shrink-0 text-destructive" />
           ) : status === "saving" ? (
             <LoaderCircle
               aria-hidden="true"
-              className="h-4 w-4 shrink-0 animate-spin text-muted-foreground"
+              className="size-3.5 shrink-0 animate-spin text-muted-foreground"
             />
           ) : status === "dirty" ? (
             <span
@@ -34,26 +38,20 @@ export function EditorStatusBar({
               className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground"
             />
           ) : (
-            <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-success" />
+            <Check aria-hidden="true" className="size-3.5 shrink-0 text-success" />
           )}
-          <span
-            className={cn(
-              "text-sm text-muted-foreground",
-              status === "error" && "text-destructive",
-            )}
-          >
+          <span className={cn("truncate", status === "error" && "text-destructive")}>
             {message}
           </span>
         </div>
         <div className="flex items-center gap-2">
           {status === "error" && onRetry && (
-            <Button onClick={onRetry} size="sm" variant="secondary">
-              Retry save
+            <Button onClick={onRetry} size="xs" variant="secondary">
+              {retryLabel}
             </Button>
           )}
           {action}
         </div>
-      </div>
     </div>
   );
 }

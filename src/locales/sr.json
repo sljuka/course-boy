@@ -28,7 +28,9 @@
     "removeTest": "Ukloni test",
     "removeTestDescription": "Ovim se trajno briše \"{{title}}\". Ovo se ne može poništiti.",
     "removeTestTitle": "Ukloniti ovaj test?",
-    "removing": "Uklanjanje…"
+    "removing": "Uklanjanje…",
+    "title": "Pregled",
+    "testLabel": "Test"
   },
   "courseSearch": {
     "courseMenuLabel": "Radnje za kurs {{title}}",
@@ -58,8 +60,6 @@
     "serbianElementarySchoolDescription": "Teme iz matematike za prvi razred usklađene sa nastavom srpske osnovne škole."
   },
   "courseDetails": {
-    "back": "Nazad na kurseve",
-    "backToEditor": "Nazad na uređivač",
     "answerLabel": "Tvoj odgovor",
     "answerPlaceholder": "Unesi rezultat",
     "checkAnswer": "Proveri odgovor",
@@ -441,5 +441,16 @@
     "recentlyViewed": "Nedavno pregledano",
     "recentlyViewedEmpty": "Još ništa nije pregledano",
     "toggleSidebar": "Prikaži ili sakrij bočnu traku"
+  },
+  "page": {
+    "breadcrumbs": "Putanja"
+  },
+  "editorStatus": {
+    "loading": "Učitavanje…",
+    "retry": "Pokušaj ponovo",
+    "saveFailed": "Čuvanje nije uspelo",
+    "saved": "Sve izmene su sačuvane",
+    "saving": "Čuvanje…",
+    "savingSoon": "Uskoro čuvanje…"
   }
 }

@@ -138,7 +138,7 @@ function SidebarProvider({
           } as React.CSSProperties
         }
         className={cn(
-          "group/sidebar-wrapper flex min-h-(--app-content-height) w-full has-data-[variant=inset]:bg-sidebar",
+          "group/sidebar-wrapper flex h-full min-h-0 w-full has-data-[variant=inset]:bg-sidebar print:block print:h-auto",
           className
         )}
         {...props}
@@ -230,11 +230,13 @@ function Sidebar({
         data-slot="sidebar-container"
         data-side={side}
         className={cn(
-          "fixed top-(--app-titlebar-height) bottom-0 z-10 hidden w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
+          "fixed top-(--app-titlebar-height) bottom-(--app-statusbar-height) z-10 hidden w-(--sidebar-width) transition-[left,right,width] duration-200 ease-linear data-[side=left]:left-0 data-[side=left]:group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)] data-[side=right]:right-0 data-[side=right]:group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)] md:flex",
           // Adjust the padding for floating and inset variants.
           variant === "floating" || variant === "inset"
             ? "p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]"
-            : "border-sidebar-border shadow-[0_20px_48px_-28px_rgba(41,37,36,0.18)] group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-b group-data-[side=left]:border-l group-data-[side=right]:border-b group-data-[side=right]:border-r",
+            // No borders or shadow: the sidebar is part of the app frame, one
+            // continuous surface with the title bar and status bar.
+            : "group-data-[collapsible=icon]:w-(--sidebar-width-icon)",
           className
         )}
         {...props}

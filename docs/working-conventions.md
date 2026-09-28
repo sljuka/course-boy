@@ -17,3 +17,23 @@
 - Prefer React composition over monolithic components.
 - Prefer hooks to extract stateful or repeated behavior.
 - When a component starts mixing multiple responsibilities, split it into smaller components or hooks.
+
+## Page structure
+
+Every page (except onboarding) is a `<Page>` ([src/components/page/page.tsx](../src/components/page/page.tsx:1)) rendered inside its route layout's `PagePanel`:
+
+```
+<Page
+  breadcrumbs={[{ label: t("sidebar.myCourses"), to: "/my-courses" }, { label: course.title }]}
+  toolbarActions={<Button …>…</Button>}   // end of the page toolbar
+  toolbarCenter={…}                        // optional, e.g. the test stepper
+  header={<CardTitle …/>}                  // heading block at the top of the scrolling body
+>
+  …page content…
+</Page>
+```
+
+- **Breadcrumbs** say where the page is; the last crumb is the page itself. Earlier crumbs navigate (`to`) or select in place (`onSelect`). Pages pass them explicitly; the course editor's layout supplies its trail through `LayoutBreadcrumbsContext` because its "pages" are explorer selections.
+- **Page actions go in the toolbar** (`toolbarActions`), not in the page body.
+- **Don't add scroll containers or full-height sizing** — `Page` owns the only scroll area. See docs/contracts.md §9 for the frame and the print rules.
+- `PageContent` is the same thing under older prop names (`pageHero`, `actions`); prefer `Page` for new pages.

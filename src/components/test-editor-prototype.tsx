@@ -290,7 +290,7 @@ export function TestEditorPrototype({
   );
 
   return (
-    <PageContent actions={testActionButtons} pageHero={<Eyebrow>Test</Eyebrow>}>
+    <PageContent actions={testActionButtons}>
       <div className="flex flex-col gap-4">
         {titleEditor}
 

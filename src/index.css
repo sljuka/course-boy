@@ -88,17 +88,17 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* The app draws its own window title bar (`WindowTitleBar`), fixed across the
-   top; everything else lays out below it. `--app-content-height` replaces
-   `100vh`/`min-h-screen` for full-height layouts so they don't overflow by the
-   bar's height. The height must match `titleBarOverlay.height` in
-   electron/main.ts. The insets keep the bar's own controls clear of the OS
-   window controls: macOS traffic lights on the left, the Windows/Linux
-   overlay on the right (reported through the Window Controls Overlay
-   `titlebar-area-*` env vars, 0 when absent). */
+/* The app is a fixed-height frame (`AppShell`): title bar on top, status bar
+   at the bottom, sidebar on the left — all on the sidebar background — with
+   the page as a rounded card inside, and only that card scrolls (see
+   docs/contracts.md §9). The title bar height must match
+   `titleBarOverlay.height` in electron/main.ts. The insets keep the bar's own
+   controls clear of the OS window controls: macOS traffic lights on the left,
+   the Windows/Linux overlay on the right (reported through the Window Controls
+   Overlay `titlebar-area-*` env vars, 0 when absent). */
 :root {
   --app-titlebar-height: 42px;
-  --app-content-height: calc(100svh - var(--app-titlebar-height));
+  --app-statusbar-height: 2rem;
   --app-titlebar-inset-left: 0px;
   --app-titlebar-inset-right: calc(
     100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)
@@ -113,15 +113,23 @@ button:disabled {
   --app-titlebar-inset-right: 0px;
 }
 
-@media print {
-  :root {
-    --app-titlebar-height: 0px;
+/* On screen the window never scrolls — the page card does. Printing needs the
+   opposite: every fixed height and overflow clip off, so a long lesson flows
+   across paper pages instead of printing only what fits in the card. */
+@media screen {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
   }
 }
 
-#root {
-  min-height: 100vh;
-  padding-top: var(--app-titlebar-height);
+@media print {
+  :root {
+    --app-titlebar-height: 0px;
+    --app-statusbar-height: 0px;
+  }
 }
 
 @keyframes page-fade-in {
@@ -222,7 +230,8 @@ button:disabled {
 }
 
 .dark {
-  --background: oklch(0.147 0.004 49.3);
+  /* The page card is slightly lighter than the frame around it (--sidebar). */
+  --background: oklch(0.185 0.006 46);
   --foreground: oklch(0.986 0.002 67.8);
   --card: oklch(0.214 0.009 43.1);
   --card-foreground: oklch(0.986 0.002 67.8);
@@ -248,7 +257,7 @@ button:disabled {
   --chart-3: oklch(0.438 0.017 39.3);
   --chart-4: oklch(0.367 0.016 35.7);
   --chart-5: oklch(0.268 0.011 36.5);
-  --sidebar: oklch(0.214 0.009 43.1);
+  --sidebar: oklch(0.147 0.004 49.3);
   --sidebar-foreground: oklch(0.986 0.002 67.8);
   --sidebar-primary: oklch(0.769 0.188 70.08);
   --sidebar-primary-foreground: oklch(0.279 0.077 45.635);

@@ -9,6 +9,8 @@ import { PrintOptionsMenu } from "@/components/course-player/print-options-menu"
 import { CoursePlayerShell } from "@/components/course-player/course-player-shell";
 import { PrintDocumentHeader } from "@/components/course-player/print-document-header";
 import { useCoursePlayer, type CoursePlayerReadyState } from "@/components/course-player/use-course-player";
+import { buildPlayerBreadcrumbs } from "@/components/course-player/player-breadcrumbs";
+import { Page } from "@/components/page/page";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,17 +81,37 @@ export function LessonPlayerView({
   const [printOptions, setPrintOptions] = useState(defaultLessonPrintOptions);
   const activeLesson = playerState.activeStep.item;
 
+  const playerActions = (
+    <CoursePlayerActions
+      isRefreshingAvailable={false}
+      onClose={playerState.exitPlayer}
+      onRefreshExercise={() => {}}
+      printControl={
+        <PrintOptionsMenu
+          mode="lesson"
+          onPrint={() => window.print()}
+          onPrintOptionsChange={setPrintOptions}
+          printOptions={printOptions}
+        >
+          <Button
+            aria-label={t("courseDetails.printCourse")}
+            shape="circle"
+            size="icon"
+            variant="secondary"
+          >
+            <Printer aria-hidden="true" className="h-5 w-5" />
+          </Button>
+        </PrintOptionsMenu>
+      }
+    />
+  );
+
   return (
-    <>
-      <PrintDocumentHeader
-        courseTitle={playerState.courseTitle}
-        label={t("courseDetails.lessonLabel")}
-        show={printOptions.showHeader}
-        sectionTitle={playerState.sectionTitle}
-        title={activeLesson.title}
-      />
-      <div className="print:hidden">
+    <Page
+      breadcrumbs={buildPlayerBreadcrumbs(playerState, activeLesson.title)}
+      header={
         <PageHeader
+          className="print:hidden"
           title={
             <div className="flex items-center gap-2">
               <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
@@ -113,32 +135,17 @@ export function LessonPlayerView({
               </CardDescription>
             )
           }
-          right={
-            <CoursePlayerActions
-              isRefreshingAvailable={false}
-              onClose={playerState.exitPlayer}
-              onRefreshExercise={() => {}}
-              printControl={
-                <PrintOptionsMenu
-                  mode="lesson"
-                  onPrint={() => window.print()}
-                  onPrintOptionsChange={setPrintOptions}
-                  printOptions={printOptions}
-                >
-                  <Button
-                    aria-label={t("courseDetails.printCourse")}
-                    shape="circle"
-                    size="icon"
-                    variant="secondary"
-                  >
-                    <Printer aria-hidden="true" className="h-5 w-5" />
-                  </Button>
-                </PrintOptionsMenu>
-              }
-            />
-          }
         />
-      </div>
+      }
+      toolbarActions={playerActions}
+    >
+      <PrintDocumentHeader
+        courseTitle={playerState.courseTitle}
+        label={t("courseDetails.lessonLabel")}
+        show={printOptions.showHeader}
+        sectionTitle={playerState.sectionTitle}
+        title={activeLesson.title}
+      />
       <CourseLessonContent
         activeLesson={activeLesson}
         courseId={playerState.courseId}
@@ -151,6 +158,6 @@ export function LessonPlayerView({
           navigate(buildLessonTestPath(playerState.courseId, lesson.id));
         }}
       />
-    </>
+    </Page>
   );
 }

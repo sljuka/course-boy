@@ -6,7 +6,6 @@ import type { StructureSelection } from "@/components/course-structure-prototype
 import type { CourseLayoutOutletContext } from "@/components/course-layout";
 import { LocalesTabs } from "@/components/locales-tabs";
 import { PageContent } from "@/components/page-content";
-import { Eyebrow } from "@/components/ui/eyebrow";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -126,7 +125,7 @@ export function DraftSectionEditor({
   }
 
   return (
-    <PageContent pageHero={<Eyebrow>Section</Eyebrow>}>
+    <PageContent>
       <LocalesTabs
         activeLocale={activeSectionLocale}
         getIsIncomplete={(locale) => !isSectionTitleValid(locales[locale]?.title)}

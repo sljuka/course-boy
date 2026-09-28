@@ -28,7 +28,9 @@
     "removeTest": "Remove test",
     "removeTestDescription": "This permanently deletes \"{{title}}\". This can't be undone.",
     "removeTestTitle": "Remove this test?",
-    "removing": "Removing…"
+    "removing": "Removing…",
+    "title": "Explorer",
+    "testLabel": "Test"
   },
   "courseSearch": {
     "courseMenuLabel": "Course actions for {{title}}",
@@ -58,8 +60,6 @@
     "serbianElementarySchoolDescription": "First-grade math topics aligned with the Serbian elementary-school curriculum."
   },
   "courseDetails": {
-    "back": "Back to courses",
-    "backToEditor": "Back to editor",
     "answerLabel": "Your answer",
     "answerPlaceholder": "Type the result",
     "checkAnswer": "Check answer",
@@ -441,5 +441,16 @@
     "recentlyViewed": "Recently viewed",
     "recentlyViewedEmpty": "Nothing viewed yet",
     "toggleSidebar": "Toggle sidebar"
+  },
+  "page": {
+    "breadcrumbs": "Breadcrumbs"
+  },
+  "editorStatus": {
+    "loading": "Loading…",
+    "retry": "Retry save",
+    "saveFailed": "Save failed",
+    "saved": "All changes saved",
+    "saving": "Saving…",
+    "savingSoon": "Saving soon…"
   }
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { ArrowLeft, History, Share2, Star } from "lucide-react";
+import { BookOpen, Folder, History, Home, Share2, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import { CourseLoadingCard } from "@/components/course-loading-card";
 import {
@@ -107,23 +107,20 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
     </>
   );
 
+  // Your own course sits under My courses; the bundled and imported ones under Home.
+  const breadcrumbs =
+    resolvedCourse.distribution === "local"
+      ? [
+          { icon: BookOpen, label: t("sidebar.myCourses"), to: "/my-courses" },
+          { icon: Folder, label: resolvedCourse.title },
+        ]
+      : [
+          { icon: Home, label: t("sidebar.home"), to: "/" },
+          { icon: Folder, label: resolvedCourse.title },
+        ];
+
   const pageHero = (
     <div className="flex flex-col gap-2">
-      <Link
-        className="inline-flex w-fit items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        to={
-          resolvedCourse.distribution === "local"
-            ? `/drafts/${courseId}`
-            : "/"
-        }
-      >
-        <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-        {t(
-          resolvedCourse.distribution === "local"
-            ? "courseDetails.backToEditor"
-            : "courseDetails.back",
-        )}
-      </Link>
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <CardTitle size="lg">{resolvedCourse.title}</CardTitle>
@@ -156,7 +153,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   );
 
   return (
-    <PageContent actions={actions} pageHero={pageHero}>
+    <PageContent actions={actions} breadcrumbs={breadcrumbs} pageHero={pageHero}>
       {resolvedCourse.sections.map((section) => (
         <Card
           className="overflow-hidden border-border bg-muted/80 shadow-none"
