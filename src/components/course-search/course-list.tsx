@@ -10,12 +10,13 @@ import { useCoursesQuery } from "@/lib/course-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 export const CourseList = ({
-  distribution,
+  distributions,
   emptyMessage,
   query,
   routeBuilder = (courseId) => `/courses/${courseId}`,
 }: {
-  distribution?: CourseDistribution;
+  // Which kinds of course to show (see `CourseDistribution`); all when omitted.
+  distributions?: readonly CourseDistribution[];
   emptyMessage?: string;
   query: string;
   routeBuilder?: (courseId: string) => string;
@@ -31,9 +32,9 @@ export const CourseList = ({
   const filteredCourses = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const distributionFilteredCourses =
-      typeof distribution === "undefined"
+      typeof distributions === "undefined"
         ? courses
-        : courses.filter((course) => course.distribution === distribution);
+        : courses.filter((course) => distributions.includes(course.distribution));
 
     if (!normalizedQuery) {
       return distributionFilteredCourses;
@@ -44,7 +45,7 @@ export const CourseList = ({
         value.toLowerCase().includes(normalizedQuery),
       );
     });
-  }, [courses, distribution, query]);
+  }, [courses, distributions, query]);
 
   if (isLoading) {
     return <CourseLoadingCard message={t("courseSearch.loading")} />;

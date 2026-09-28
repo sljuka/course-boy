@@ -11,6 +11,9 @@ import { PageContent } from "@/components/page-content";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 
+// Only courses you author (they have a draft).
+const authoredDistributions = ["local"] as const;
+
 export const CreateCourseAction = () => {
   const { t } = useTranslation();
 
@@ -45,7 +48,7 @@ export function MyCoursesPage() {
           value={query}
         />
         <CourseList
-          distribution="local"
+          distributions={authoredDistributions}
           emptyMessage={t("myCourses.empty")}
           query={query}
           routeBuilder={(courseId) => `/drafts/${courseId}`}

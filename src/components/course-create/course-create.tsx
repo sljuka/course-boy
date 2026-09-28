@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, useNavigate } from "react-router-dom";
-import { Info } from "lucide-react";
 
 import { PageContent } from "@/components/page-content";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -44,7 +43,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useComboboxAnchor } from "@/components/ui/use-combobox-anchor";
 import type { ContentRating, LocalizedCourseMetadata } from "@/lib/course-package";
 import { useCreateCourseDraftMutation } from "@/lib/course-queries";
-import { slugifyCourseName } from "@/lib/course-slug";
 import { getContentRatingLabelKey } from "@/lib/course-utils";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
@@ -192,12 +190,6 @@ function CourseCreate() {
   }, [supportedLocales]);
 
   const defaultLocale = resolveDefaultLocale(supportedLocales);
-  const defaultLocaleTitle =
-    (defaultLocale ? localizedCourse[defaultLocale]?.title : "") ?? "";
-  const folderNamePreview =
-    slugifyCourseName(defaultLocaleTitle.trim()) || "untitled-course";
-  const shouldShowFolderPreview =
-    defaultLocaleTitle.trim().length >= minimumCourseTitleLength;
   const getTitleValidationMessage = (locale: Locale): string | null => {
     const title = localizedCourse[locale]?.title;
 
@@ -457,17 +449,6 @@ function CourseCreate() {
             </Field>
           </FieldGroup>
         </FieldSet>
-        {shouldShowFolderPreview && (
-          <Alert variant="info">
-            <Info className="size-4" />
-            <AlertTitle>{t("courseCreate.folderNamePreviewLabel")}</AlertTitle>
-            <AlertDescription className="mt-1.5">
-              {t("courseCreate.folderNameConvention", {
-                folderName: folderNamePreview,
-              })}
-            </AlertDescription>
-          </Alert>
-        )}
         {createDraftMutation.isError && (
           <Alert variant="destructive">
             <AlertTitle>{t("courseCreate.errorTitle")}</AlertTitle>

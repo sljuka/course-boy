@@ -159,11 +159,17 @@ describe('onboarding', () => {
   })
 })
 
+// Course ids are opaque and random (src/lib/course-id.ts), so the suite
+// captures the ids `createDraft` returns instead of predicting them.
+const BUNDLED_COURSE_ID = 'thys2vej6my5mpxt'
+const COURSE_ID_PATTERN = /^[a-z2-7]{16}$/
+let probeCourseId
+
 describe('courses over IPC', () => {
   it('lists the bundled course seeded into userData on first run', async () => {
     const list = await harness.page.evaluate(() => window.courses.list('en'))
     const ids = list.map((c) => c.id)
-    expect(ids).toContain('matko-getting-started')
+    expect(ids).toContain(BUNDLED_COURSE_ID)
   })
 
   it('renders that course in the UI, not just over IPC', async () => {
@@ -182,13 +188,14 @@ describe('courses over IPC', () => {
         },
       }),
     )
-    expect(result.courseId).toBe('e2e-probe-course')
+    expect(result.courseId).toMatch(COURSE_ID_PATTERN)
+    probeCourseId = result.courseId
 
     // Contract 4: drafts live under a `draft/` subdirectory of the course root.
     const manifestPath = path.join(
       USER_DATA,
       'courses',
-      'e2e-probe-course',
+      probeCourseId,
       'draft',
       'course.json',
     )
@@ -196,7 +203,7 @@ describe('courses over IPC', () => {
 
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
     expect(manifest).toMatchObject({
-      id: 'e2e-probe-course',
+      id: probeCourseId,
       status: 'draft',
       defaultLocale: 'en',
       supportedLocales: ['en'],
@@ -215,7 +222,6 @@ describe('courses over IPC', () => {
 })
 
 describe('course assets', () => {
-  const courseId = 'e2e-probe-course'
   const assetFilename = 'e2e-test-image.png'
   // 1x1 transparent PNG, base64-encoded.
   const pngBase64 =
@@ -224,17 +230,17 @@ describe('course assets', () => {
   it('serves an uploaded image through the matko-asset:// protocol', async () => {
     const section = await harness.page.evaluate(
       (id) => window.courses.createSection({ courseId: id, title: 'E2E Section' }),
-      courseId,
+      probeCourseId,
     )
     const lesson = await harness.page.evaluate(
       ({ id, sectionId }) =>
         window.courses.createLesson({ courseId: id, sectionId, title: 'E2E Lesson' }),
-      { id: courseId, sectionId: section.sectionId },
+      { id: probeCourseId, sectionId: section.sectionId },
     )
 
     // Write the asset directly rather than driving the OS file picker behind
     // window.courses.uploadAsset — Playwright cannot automate native dialogs.
-    const assetsDir = path.join(USER_DATA, 'courses', courseId, 'draft', 'assets')
+    const assetsDir = path.join(USER_DATA, 'courses', probeCourseId, 'draft', 'assets')
     fs.mkdirSync(assetsDir, { recursive: true })
     fs.writeFileSync(path.join(assetsDir, assetFilename), Buffer.from(pngBase64, 'base64'))
 
@@ -248,7 +254,7 @@ describe('course assets', () => {
           locales: { en: { body } },
           sectionId,
         }),
-      { id: courseId, sectionId: section.sectionId, lessonId: lesson.lessonId, body },
+      { id: probeCourseId, sectionId: section.sectionId, lessonId: lesson.lessonId, body },
     )
 
     // Assert the image actually loaded over the protocol, not just that an
@@ -261,7 +267,7 @@ describe('course assets', () => {
           img.onerror = () => resolve({ ok: false, width: 0 })
           img.src = `matko-asset://${id}/${encodeURIComponent(filename)}`
         }),
-      { id: courseId, filename: assetFilename },
+      { id: probeCourseId, filename: assetFilename },
     )
 
     expect(result).toEqual({ ok: true, width: 1 })
@@ -271,7 +277,7 @@ describe('course assets', () => {
     const status = await harness.page.evaluate(
       (id) =>
         fetch(`matko-asset://${id}/does-not-exist.png`).then((response) => response.status),
-      courseId,
+      probeCourseId,
     )
     expect(status).toBe(404)
 
@@ -284,11 +290,10 @@ describe('course assets', () => {
 })
 
 describe('course version badge', () => {
-  const courseId = 'e2e-probe-course'
 
   it('shows "draft" for a course that has never been cut', async () => {
     const courses = await harness.page.evaluate(() => window.courses.list('en'))
-    const course = courses.find((c) => c.id === courseId)
+    const course = courses.find((c) => c.id === probeCourseId)
 
     expect(course.versionBadge).toEqual({ kind: 'draft' })
   })
@@ -296,12 +301,12 @@ describe('course version badge', () => {
   it('shows the version once cut with no further changes', async () => {
     const result = await harness.page.evaluate(
       (id) => window.courses.cutVersion({ courseId: id, releaseType: 'minor' }),
-      courseId,
+      probeCourseId,
     )
     expect(result.version).toBe('0.2.0')
 
     const courses = await harness.page.evaluate(() => window.courses.list('en'))
-    const course = courses.find((c) => c.id === courseId)
+    const course = courses.find((c) => c.id === probeCourseId)
 
     expect(course.versionBadge).toEqual({ kind: 'version', version: '0.2.0' })
   })
@@ -313,12 +318,12 @@ describe('course version badge', () => {
     // always rewrites it. Edit the lesson file created in "course assets"
     // instead, a real content file.
     const sectionDir = fs
-      .readdirSync(path.join(USER_DATA, 'courses', courseId, 'draft'))
+      .readdirSync(path.join(USER_DATA, 'courses', probeCourseId, 'draft'))
       .find((name) => name.startsWith('section-'))
     const lessonPath = fs
-      .readdirSync(path.join(USER_DATA, 'courses', courseId, 'draft', sectionDir))
+      .readdirSync(path.join(USER_DATA, 'courses', probeCourseId, 'draft', sectionDir))
       .filter((name) => name.startsWith('lesson-'))
-      .map((name) => path.join(USER_DATA, 'courses', courseId, 'draft', sectionDir, name))[0]
+      .map((name) => path.join(USER_DATA, 'courses', probeCourseId, 'draft', sectionDir, name))[0]
     const lesson = JSON.parse(fs.readFileSync(lessonPath, 'utf8'))
     lesson.locales.en.description = 'Edited after cutting a version'
     // Replace (write temp, then rename) the way the app's own writers do: the
@@ -328,14 +333,14 @@ describe('course version badge', () => {
     fs.renameSync(`${lessonPath}.tmp-e2e`, lessonPath)
 
     const courses = await harness.page.evaluate(() => window.courses.list('en'))
-    const course = courses.find((c) => c.id === courseId)
+    const course = courses.find((c) => c.id === probeCourseId)
 
     expect(course.versionBadge).toEqual({ kind: 'draft' })
   })
 })
 
 describe('learner flow: attend a course and complete its test', () => {
-  const courseId = 'e2e-attend-probe-course'
+  let attendCourseId
   let sectionId
   let lessonId
 
@@ -349,18 +354,19 @@ describe('learner flow: attend a course and complete its test', () => {
         },
       }),
     )
-    expect(draft.courseId).toBe(courseId)
+    expect(draft.courseId).toMatch(COURSE_ID_PATTERN)
+    attendCourseId = draft.courseId
 
     const section = await harness.page.evaluate(
       (id) => window.courses.createSection({ courseId: id, title: 'E2E Attend Section' }),
-      courseId,
+      attendCourseId,
     )
     sectionId = section.sectionId
 
     const lesson = await harness.page.evaluate(
       ({ id, sectionId }) =>
         window.courses.createLesson({ courseId: id, sectionId, title: 'E2E Attend Lesson' }),
-      { id: courseId, sectionId },
+      { id: attendCourseId, sectionId },
     )
     lessonId = lesson.lessonId
 
@@ -388,13 +394,13 @@ describe('learner flow: attend a course and complete its test', () => {
             template: '',
           },
         }),
-      { id: courseId, sectionId, lessonId },
+      { id: attendCourseId, sectionId, lessonId },
     )
 
     const testPath = path.join(
       USER_DATA,
       'courses',
-      courseId,
+      attendCourseId,
       'draft',
       sectionId,
       `${lessonId.replace(/^lesson-/, 'test-')}.json`,
@@ -407,7 +413,7 @@ describe('learner flow: attend a course and complete its test', () => {
       ({ id, lessonId }) => {
         location.hash = `#/courses/${id}/lessons/${lessonId}`
       },
-      { id: courseId, lessonId },
+      { id: attendCourseId, lessonId },
     )
     await waitForText(harness.page, 'Continue')
 

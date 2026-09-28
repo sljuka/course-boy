@@ -1,6 +1,8 @@
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import {
   getCourseDetails,
@@ -10,12 +12,14 @@ import {
 } from "./course-registry";
 
 const coursesRoot = path.resolve(process.cwd(), "courses");
+// The bundled "Getting Started with Matko" course (see bundledSeedCourseIds).
+const BUNDLED_COURSE_ID = "thys2vej6my5mpxt";
 
 describe("listCourses", () => {
   it("returns the bundled getting started course", async () => {
     const courses = await listCourses(coursesRoot, "en");
     const gettingStartedCourse = courses.find(
-      (course) => course.id === "matko-getting-started",
+      (course) => course.id === BUNDLED_COURSE_ID,
     );
 
     expect(courses).toHaveLength(1);
@@ -40,7 +44,7 @@ describe("getCourseDetails", () => {
   it("returns the configured entry section and section order", async () => {
     const course = await getCourseDetails(
       coursesRoot,
-      "matko-getting-started",
+      BUNDLED_COURSE_ID,
       "en",
     );
 
@@ -59,7 +63,7 @@ describe("getCourseDetails", () => {
   it("returns localized section and lesson content for the bundled guide", async () => {
     const course = await getCourseDetails(
       coursesRoot,
-      "matko-getting-started",
+      BUNDLED_COURSE_ID,
       "en",
     );
 
@@ -595,5 +599,70 @@ describe("isDraftSharedTestDefinition", () => {
 
   it("still rejects a missing `template` field", () => {
     expect(isDraftSharedTestDefinition({ exercises: [] })).toBe(false);
+  });
+});
+
+describe("course distribution (derived from the folder layout, not course.json)", () => {
+  let tempRoot = "";
+
+  async function writeCourse(
+    relativeManifestDir: string,
+    manifest: Record<string, unknown>,
+  ): Promise<void> {
+    const dir = path.join(tempRoot, relativeManifestDir);
+
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, "course.json"), JSON.stringify(manifest));
+    // Published courses must have at least one section to be listed; borrow a
+    // real one from the bundled course.
+    await fs.cp(
+      path.join(coursesRoot, BUNDLED_COURSE_ID, "section-01-welcome"),
+      path.join(dir, "section-01-welcome"),
+      { recursive: true },
+    );
+  }
+
+  function manifestFor(id: string, status: "draft" | "published") {
+    return {
+      builtin: false,
+      defaultLocale: "en",
+      id,
+      locales: { en: { description: "", title: `Course ${id}` } },
+      slug: id,
+      status,
+      supportedLocales: ["en"],
+      version: "0.1.0",
+    };
+  }
+
+  beforeEach(async () => {
+    tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "matko-distribution-"));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tempRoot, { force: true, recursive: true });
+  });
+
+  it("is local for a course with a draft, imported for a published root-only course", async () => {
+    await writeCourse("aaaaaaaaaaaaaaaa/draft", manifestFor("aaaaaaaaaaaaaaaa", "draft"));
+    // An import lands at the course root with no draft/ — and the author's own
+    // course.json may still claim "local"; that claim must be ignored.
+    await writeCourse("bbbbbbbbbbbbbbbb", {
+      ...manifestFor("bbbbbbbbbbbbbbbb", "published"),
+      distribution: "local",
+    });
+
+    const courses = await listCourses(tempRoot, "en");
+    const byId = Object.fromEntries(courses.map((course) => [course.id, course.distribution]));
+
+    expect(byId).toEqual({ aaaaaaaaaaaaaaaa: "local", bbbbbbbbbbbbbbbb: "imported" });
+  });
+
+  it("is bundled for the seeded tutorial course", async () => {
+    await writeCourse(BUNDLED_COURSE_ID, manifestFor(BUNDLED_COURSE_ID, "published"));
+
+    const [course] = await listCourses(tempRoot, "en");
+
+    expect(course?.distribution).toBe("bundled");
   });
 });

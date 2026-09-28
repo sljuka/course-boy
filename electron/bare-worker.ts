@@ -22,6 +22,7 @@ import spawnBare from 'bare-runtime/spawn'
 import RPC from 'bare-rpc'
 import { app } from 'electron'
 import { getPublishedCoursePackagePath } from './course-paths'
+import { isValidCourseId } from '../src/lib/course-id'
 
 // Must match workers/main.cjs.
 const CMD_GET_CREATOR_KEY = 1
@@ -65,6 +66,10 @@ async function resolveSharedCoursePackagePath(
   courseId: string,
   version?: string,
 ): Promise<string> {
+  if (!isValidCourseId(courseId)) {
+    throw new Error(`Invalid course id "${courseId}"`)
+  }
+
   const coursePath = version
     ? path.join(app.getPath('userData'), 'courses', courseId, 'versions', version)
     : await getPublishedCoursePackagePath(courseId)

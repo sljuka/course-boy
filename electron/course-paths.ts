@@ -57,12 +57,20 @@ import {
   parseCourseVersion,
   type CourseVersionReleaseType,
 } from "../src/lib/course-versioning";
+import { createCourseId, isValidCourseId } from "../src/lib/course-id";
 import { slugifyCourseName } from "../src/lib/course-slug";
 import { createReferencedFilesFilter, getCourseAssetUsage } from "./course-asset-usage";
 import { transliterateSerbianLatinToCyrillic } from "../src/lib/serbian-transliteration";
 
-const bundledSeedCourseIds = ["matko-getting-started"] as const;
+// The bundled "Getting Started with Matko" course. Its id follows the same
+// random format as every other course (see src/lib/course-id.ts); it was
+// "matko-getting-started" before ids became opaque.
+const bundledSeedCourseIds = ["thys2vej6my5mpxt"] as const;
 const bundledSeedCourseIdSet = new Set<string>(bundledSeedCourseIds);
+
+export function isBundledSeedCourseId(courseId: string): boolean {
+  return bundledSeedCourseIdSet.has(courseId);
+}
 
 type BundledSeedState = {
   removedCourseIds: string[];
@@ -152,6 +160,7 @@ export async function ensureLocalCoursesRoot(): Promise<string> {
   const localCoursesRoot = getLocalCoursesRoot();
 
   await fs.mkdir(localCoursesRoot, { recursive: true });
+  await removeLegacyIdCourses(localCoursesRoot);
 
   try {
     const bundledCoursesRoot = getBundledCoursesRoot();
@@ -191,6 +200,8 @@ export async function ensureLocalCoursesRoot(): Promise<string> {
 }
 
 export async function removeLocalCourse(courseId: string): Promise<void> {
+  assertValidCourseId(courseId);
+
   const localCoursesRoot = await ensureLocalCoursesRoot();
   const courseRootPath = path.join(localCoursesRoot, courseId);
   const resolvedCourseRootPath = path.resolve(courseRootPath);
@@ -222,31 +233,64 @@ export async function removeLocalCourse(courseId: string): Promise<void> {
   }
 }
 
-async function resolveUniqueCourseId(
-  localCoursesRoot: string,
-  baseId: string,
-): Promise<string> {
-  let candidateId = baseId;
-  let suffix = 2;
-  let isUnique = false;
+// Every course id entering the main process (from the renderer over IPC, or
+// read back from disk) is checked before it becomes part of a path.
+export function assertValidCourseId(courseId: string): void {
+  if (!isValidCourseId(courseId)) {
+    throw new Error(`Invalid course id "${courseId}"`);
+  }
+}
 
-  while (!isUnique) {
-    try {
-      await fs.access(path.join(localCoursesRoot, candidateId));
-      candidateId = `${baseId}-${suffix}`;
-      suffix += 1;
-    } catch {
-      isUnique = true;
+async function createUniqueCourseId(localCoursesRoot: string): Promise<string> {
+  // 80 random bits make a collision practically impossible; the check only
+  // guards against the unthinkable rather than resolving a likely clash.
+  for (;;) {
+    const courseId = createCourseId();
+
+    if (!(await pathExists(path.join(localCoursesRoot, courseId)))) {
+      return courseId;
     }
   }
+}
 
-  return candidateId;
+// Course ids changed from title slugs ("polinomi") to opaque random ids
+// (src/lib/course-id.ts). Old user courses are deliberately not migrated —
+// the maintainer chose to drop them — so on the first launch after the change,
+// every course folder whose name isn't a valid id is removed. The bundled
+// course is re-seeded under its new id right after. Runs once, recorded by a
+// marker file, so a folder someone later drops into courses/ by hand is never
+// deleted.
+const LEGACY_COURSE_ID_CLEANUP_MARKER = ".legacy-course-ids-removed";
+
+async function removeLegacyIdCourses(localCoursesRoot: string): Promise<void> {
+  const markerPath = path.join(localCoursesRoot, LEGACY_COURSE_ID_CLEANUP_MARKER);
+
+  if (await pathExists(markerPath)) {
+    return;
+  }
+
+  const entries = await fs.readdir(localCoursesRoot, { withFileTypes: true });
+
+  await Promise.all(
+    entries
+      .filter(
+        (entry) =>
+          entry.isDirectory() && !entry.name.startsWith(".") && !isValidCourseId(entry.name),
+      )
+      .map((entry) =>
+        fs.rm(path.join(localCoursesRoot, entry.name), { force: true, recursive: true }),
+      ),
+  );
+
+  await writeFileAtomic(markerPath, `${new Date().toISOString()}\n`);
 }
 
 function resolveCourseDirectoryPath(
   localCoursesRoot: string,
   courseId: string,
 ): string {
+  assertValidCourseId(courseId);
+
   const courseDirectoryPath = getDraftDirectoryPath(path.join(localCoursesRoot, courseId));
   const resolvedCourseDirectoryPath = path.resolve(courseDirectoryPath);
   const relativeToCoursesRoot = path.relative(
@@ -278,6 +322,8 @@ export async function openCourseDirectoryInFileSystem(courseId: string): Promise
 }
 
 function resolveCourseRootPath(localCoursesRoot: string, courseId: string): string {
+  assertValidCourseId(courseId);
+
   const courseRootPath = path.join(localCoursesRoot, courseId);
   const resolvedCourseRootPath = path.resolve(courseRootPath);
   const relativeToCoursesRoot = path.relative(localCoursesRoot, resolvedCourseRootPath);
@@ -975,8 +1021,8 @@ export async function createLocalCourseDraft(
     }),
   ) as CreateCourseDraftInput["locales"];
   const normalizedTitle = normalizedLocales[input.defaultLocale]?.title ?? "";
-  const slugBase = slugifyCourseName(normalizedTitle) || "untitled-course";
-  const courseId = await resolveUniqueCourseId(localCoursesRoot, slugBase);
+  const slug = slugifyCourseName(normalizedTitle) || "untitled-course";
+  const courseId = await createUniqueCourseId(localCoursesRoot);
   const courseRootPath = path.join(localCoursesRoot, courseId);
   const courseDirectoryPath = getDraftDirectoryPath(courseRootPath);
   const nowIso = new Date().toISOString();
@@ -996,16 +1042,12 @@ export async function createLocalCourseDraft(
         contentRating: normalizeContentRating(input.contentRating),
         supportedLocales,
         builtin: false,
-        slug: courseId,
+        // Human-readable, informational only — never used as an identifier.
+        slug,
         status: resolveCourseStatus(),
         minAppVersion: "0.1.0",
         createdAt: nowIso,
         updatedAt: nowIso,
-        publisher: {
-          id: slugifyCourseName(app.getName()) || "matko",
-          displayName: app.getName(),
-        },
-        distribution: "local",
         isSeededOnFirstRun: false,
         locales: normalizedLocales,
       },

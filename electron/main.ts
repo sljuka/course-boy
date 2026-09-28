@@ -32,6 +32,7 @@ import {
   uploadLocalCourseAsset,
 } from './course-paths'
 import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
+import { isValidCourseId } from '../src/lib/course-id'
 import { parseRecentlyViewedEntries, type RecentlyViewedEntry } from '../src/lib/recently-viewed'
 import type {
   ApplyCourseSvgPresetInput,
@@ -339,7 +340,7 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
       decodeURIComponent(requestUrl.pathname.replace(/^\//, '')),
     )
 
-    if (!courseId || !filename) {
+    if (!isValidCourseId(courseId) || !filename) {
       return new Response(null, { status: 404 })
     }
 

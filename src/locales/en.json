@@ -321,8 +321,6 @@
     "errorBody": "The draft course package could not be created right now.",
     "errorTitle": "Could not create course",
     "emptySupportedLocales": "No languages found.",
-    "folderNameConvention": "Folder name on disk will be: '{{folderName}}'.",
-    "folderNamePreviewLabel": "Course folder name",
     "fields": {
       "defaultLocaleHelp": "This is the language the user will see if their selected language is not included in the course languages.",
       "defaultLocale": "Default language",

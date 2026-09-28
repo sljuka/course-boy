@@ -1,36 +1,40 @@
 import { describe, expect, it } from 'vitest'
-import { isValidCourseId, MAX_COURSE_ID_LENGTH } from './course-id.cjs'
+import { isValidCourseId } from './course-id.cjs'
+import { createCourseId, isValidCourseId as isValidCourseIdInApp } from '../src/lib/course-id'
 
-describe('isValidCourseId', () => {
-  it('accepts ids in the shape slugifyCourseName produces', () => {
-    expect(isValidCourseId('polinomi')).toBe(true)
-    expect(isValidCourseId('matko-getting-started')).toBe(true)
-    expect(isValidCourseId('everyday-math-2')).toBe(true)
+const samples = [
+  'abcdefghijklmn23',
+  'polinomi',
+  'matko-getting-started',
+  '..',
+  '../../Library/evil',
+  'a/b',
+  'a\\b',
+  '',
+  'AAAAAAAAAAAAAAAA',
+  'aaaaaaaaaaaaaaa1',
+  'aaaaaaaaaaaaaaaaa',
+  undefined,
+  42,
+]
+
+describe('isValidCourseId (worker)', () => {
+  it('accepts ids the app creates', () => {
+    for (let index = 0; index < 20; index += 1) {
+      expect(isValidCourseId(createCourseId())).toBe(true)
+    }
   })
 
-  it('rejects path traversal and separators', () => {
-    expect(isValidCourseId('..')).toBe(false)
+  it('rejects path traversal, separators and legacy slug ids', () => {
     expect(isValidCourseId('../../Library/evil')).toBe(false)
     expect(isValidCourseId('a/b')).toBe(false)
-    expect(isValidCourseId('a\\b')).toBe(false)
-    expect(isValidCourseId('/abs')).toBe(false)
+    expect(isValidCourseId('polinomi')).toBe(false)
+    expect(isValidCourseId({ toString: () => 'abcdefghijklmn23' })).toBe(false)
   })
 
-  it('rejects anything outside lowercase dash-separated ascii', () => {
-    expect(isValidCourseId('')).toBe(false)
-    expect(isValidCourseId('Polinomi')).toBe(false)
-    expect(isValidCourseId('-leading')).toBe(false)
-    expect(isValidCourseId('trailing-')).toBe(false)
-    expect(isValidCourseId('double--dash')).toBe(false)
-    expect(isValidCourseId('has space')).toBe(false)
-    expect(isValidCourseId('.hidden')).toBe(false)
-  })
-
-  it('rejects non-strings and overlong ids', () => {
-    expect(isValidCourseId(undefined)).toBe(false)
-    expect(isValidCourseId(42)).toBe(false)
-    expect(isValidCourseId({ toString: () => 'polinomi' })).toBe(false)
-    expect(isValidCourseId('a'.repeat(MAX_COURSE_ID_LENGTH))).toBe(true)
-    expect(isValidCourseId('a'.repeat(MAX_COURSE_ID_LENGTH + 1))).toBe(false)
+  it('agrees with the app-side validator on every sample', () => {
+    for (const sample of samples) {
+      expect(isValidCourseId(sample)).toBe(isValidCourseIdInApp(sample))
+    }
   })
 })

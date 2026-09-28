@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 
 import type {
   ApplyCourseSvgPresetInput,
@@ -67,6 +67,22 @@ export function useCourseDetailsQuery(
     queryKey: ["courses", "detail", courseId, locale],
     queryFn: () => window.courses.get(courseId!, locale),
     throwOnError: options.throwOnError,
+  });
+}
+
+// The same course-details query as `useCourseDetailsQuery`, once per locale —
+// for editors that need every language's content up front (the lesson document
+// editor seeds each language tab from its own saved body).
+export function useCourseDetailsForLocalesQueries(
+  courseId: string | undefined,
+  locales: readonly Locale[],
+) {
+  return useQueries({
+    queries: locales.map((locale) => ({
+      enabled: Boolean(courseId),
+      queryKey: ["courses", "detail", courseId, locale],
+      queryFn: () => window.courses.get(courseId!, locale),
+    })),
   });
 }
 

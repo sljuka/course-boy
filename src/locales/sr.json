@@ -321,8 +321,6 @@
     "errorBody": "Nacrt paketa kursa trenutno ne može da se napravi.",
     "errorTitle": "Kurs ne može da se napravi",
     "emptySupportedLocales": "Nijedan jezik nije pronađen.",
-    "folderNameConvention": "Ime foldera na disku biće: '{{folderName}}'.",
-    "folderNamePreviewLabel": "Ime foldera kursa",
     "fields": {
       "defaultLocaleHelp": "Ovo je jezik koji će korisnik videti ako njegov izabrani jezik nije među jezicima kursa.",
       "defaultLocale": "Podrazumevani jezik",

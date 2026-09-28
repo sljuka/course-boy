@@ -35,9 +35,11 @@ import {
 import {
   findMostRecentSnapshot,
   hashFileContents,
+  isBundledSeedCourseId,
   listFilesRecursively,
 } from "./course-paths";
 import { createReferencedFilesFilter, getCourseAssetUsage } from "./course-asset-usage";
+import { isValidCourseId } from "../src/lib/course-id";
 import {
   getExerciseKindRuntime,
   normalizeExerciseKind,
@@ -46,13 +48,13 @@ import {
 
 type CourseRecord = {
   courseRootPath: string;
+  distribution: CourseDistribution;
   manifest: CourseManifest;
   packageDirectoryPath: string;
 };
 
-type RawCourseManifest = Omit<CourseManifest, "distribution" | "status"> & {
+type RawCourseManifest = Omit<CourseManifest, "status"> & {
   contentRating?: ContentRating;
-  distribution?: CourseDistribution;
   status?: CourseStatus;
 };
 
@@ -96,10 +98,6 @@ const sectionDirectoryPattern = /^section-(\d{2})-[a-z0-9-]+$/;
 
 function isCourseStatus(value: unknown): value is CourseStatus {
   return value === "draft" || value === "published";
-}
-
-function isCourseDistribution(value: unknown): value is CourseDistribution {
-  return value === "local" || value === "bundled";
 }
 
 function isContentRating(value: unknown): value is ContentRating {
@@ -159,8 +157,6 @@ function isRawCourseManifest(value: unknown): value is RawCourseManifest {
       isContentRating(manifest.contentRating)) &&
     typeof manifest.slug === "string" &&
     (typeof manifest.status === "undefined" || isCourseStatus(manifest.status)) &&
-    (typeof manifest.distribution === "undefined" ||
-      isCourseDistribution(manifest.distribution)) &&
     Boolean(manifest.locales) &&
     typeof manifest.locales === "object" &&
     Object.entries(manifest.locales).every(([locale, metadata]) => {
@@ -398,11 +394,26 @@ function normalizeCourseManifest(manifest: RawCourseManifest): CourseManifest {
   return {
     ...manifest,
     contentRating: manifest.contentRating ?? "all-ages",
-    distribution: manifest.distribution ?? "local",
     status: manifest.status ?? "published",
     version: formatCourseVersion(normalizedVersionInfo),
     versionInfo: normalizedVersionInfo,
   };
+}
+
+// Whose course this is on this device, from the folder layout alone (see
+// `CourseDistribution`). Never read from course.json: a package's own claim
+// would travel with every copy and be wrong everywhere but its author's machine
+// (an imported course used to arrive saying "local" and land in My courses).
+export function resolveCourseDistribution(
+  courseId: string,
+  courseRootPath: string,
+  packageDirectoryPath: string,
+): CourseDistribution {
+  if (packageDirectoryPath === path.join(courseRootPath, "draft")) {
+    return "local";
+  }
+
+  return isBundledSeedCourseId(courseId) ? "bundled" : "imported";
 }
 
 export function resolvePackageDirectoryCandidates(courseRootPath: string): string[] {
@@ -442,6 +453,11 @@ async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecor
 
             return {
               courseRootPath,
+              distribution: resolveCourseDistribution(
+                manifest.id,
+                courseRootPath,
+                packageDirectoryPath,
+              ),
               manifest,
               packageDirectoryPath,
             } satisfies CourseRecord;
@@ -1070,7 +1086,7 @@ async function toCourseSummary(
     defaultLocale: courseRecord.manifest.defaultLocale,
     descriptiveTags: courseRecord.manifest.descriptiveTags ?? [],
     description: localizedCourseMetadata.description,
-    distribution: courseRecord.manifest.distribution,
+    distribution: courseRecord.distribution,
     id: courseRecord.manifest.id,
     lessonPreviews,
     previewItems,
@@ -1236,8 +1252,11 @@ export async function assertCoursePackageIsPublishable(
   );
   const manifest = normalizeCourseManifest(rawManifest);
 
+  // A version being cut (the caller is always the author, hence "local");
+  // only its sections are read here.
   await readSharedSectionDefinitions({
     courseRootPath: packageDirectoryPath,
+    distribution: "local",
     manifest: { ...manifest, status: "published" },
     packageDirectoryPath,
   });
@@ -1247,6 +1266,10 @@ export async function getCourseVersionHistory(
   rootDirectoryPath: string,
   courseId: string,
 ): Promise<CourseVersionHistory | null> {
+  if (!isValidCourseId(courseId)) {
+    return null;
+  }
+
   const courseRootPath = path.resolve(rootDirectoryPath, courseId);
   const relativeToRoot = path.relative(rootDirectoryPath, courseRootPath);
 

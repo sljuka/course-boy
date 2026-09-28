@@ -321,8 +321,6 @@
     "errorBody": "Нацрт пакета курса тренутно не може да се направи.",
     "errorTitle": "Курс не може да се направи",
     "emptySupportedLocales": "Ниједан језик није пронађен.",
-    "folderNameConvention": "Име фолдера на диску биће: '{{folderName}}'.",
-    "folderNamePreviewLabel": "Име фолдера курса",
     "fields": {
       "defaultLocaleHelp": "Ово је језик који ће корисник видети ако његов изабрани језик није међу језицима курса.",
       "defaultLocale": "Подразумевани језик",

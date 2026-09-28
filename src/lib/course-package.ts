@@ -8,19 +8,21 @@ import type {
 
 export type CourseStatus = "draft" | "published";
 export type ContentRating = "all-ages" | "mature-themes" | "explicit";
-// "local": authored on this device (has a draft/ directory that can diverge
-// from its last cut version — see CourseVersionBadge). "bundled": shipped
-// with the app or brought in from elsewhere (the seeded tutorial today; a
-// future peer import lands the same way) — read-only, always "at" its
-// version, never a draft.
-export type CourseDistribution = "local" | "bundled";
+// Whose course this is *on this device* — derived when courses are listed, never
+// stored in the package (the same package is "local" on its author's machine
+// and "imported" on a student's). See `resolveCourseDistribution` in
+// electron/course-registry.ts:
+// - "local": you author it (the course has a `draft/`).
+// - "bundled": shipped with the app (the seeded tutorial).
+// - "imported": a published course brought in from elsewhere (P2P import) —
+//   read-only, always "at" its version, never a draft.
+export type CourseDistribution = "local" | "bundled" | "imported";
 
 export type CourseManifest = {
   builtin: boolean;
   contentRating: ContentRating;
   defaultLocale: Locale;
   descriptiveTags?: CourseTagDefinition[];
-  distribution: CourseDistribution;
   id: string;
   locales: Record<Locale, LocalizedCourseMetadata>;
   slug: string;

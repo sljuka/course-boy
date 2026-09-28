@@ -1,6 +1,6 @@
 {
   "courseSchemaVersion": "1",
-  "id": "matko-getting-started",
+  "id": "thys2vej6my5mpxt",
   "version": "0.1.0",
   "defaultLocale": "en",
   "supportedLocales": [
@@ -13,11 +13,6 @@
   "minAppVersion": "0.1.0",
   "createdAt": "2026-08-01T00:00:00Z",
   "updatedAt": "2026-08-01T00:00:00Z",
-  "publisher": {
-    "id": "matko",
-    "displayName": "Matko"
-  },
-  "distribution": "bundled",
   "isSeededOnFirstRun": true,
   "locales": {
     "en": {

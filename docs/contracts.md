@@ -217,6 +217,21 @@ exercise exists), then gains `template`/`exercises`/`structure` once the author 
 `test` file pairs are untouched, read and written through the exact same paths they always
 were.
 
+**Course ids are opaque and random**: 16 lowercase base32 characters (`a–z`, `2–7`),
+80 random bits, created by `createCourseId` in
+[src/lib/course-id.ts](../src/lib/course-id.ts:1). The id is the course folder name,
+the namespace its share drive key is derived from (`course-${courseId}` in the Bare
+worker), and part of `matko-asset://` URLs, so it never changes after creation. The
+title lives only in `course.json` and changes freely; `course.json`'s `slug` is a
+readable leftover of the title at creation, never used as an identifier. Every entry
+point checks `isValidCourseId` before an id reaches a path: the main-process path
+helpers (`resolveCourseRootPath` / `resolveCourseDirectoryPath` in `course-paths.ts`),
+the `matko-asset://` handler, version history, sharing, and the Bare worker's import
+(`workers/course-id.cjs`, which mirrors the pattern — its test asserts the two agree).
+Ids used to be title slugs; on the first launch after the change,
+`removeLegacyIdCourses` deleted every course folder with a non-conforming name, once,
+and the bundled course was re-seeded under its new id (`thys2vej6my5mpxt`).
+
 Drafts live in a `draft/` subdirectory of the course root, so one course id can hold both
 a published version and an in-progress draft. Writers resolve it via
 `getDraftDirectoryPath()`; the draft manifest carries `status: "draft"` and every mutation
@@ -227,10 +242,17 @@ sharing/publishing unit, so drafts and published courses use the same package sh
 Changing it is a migration, not a refactor: existing course directories in users'
 `userData` already use the current layout.
 
-The generated manifest carries `publisher: { id: "matko", displayName: "matko" }` and
-`distribution: "local"` as placeholders. Those are the fields the peer-to-peer work has to
-fill with a real publisher key — see
-[pear-integration-notes.md](pear-integration-notes.md:1).
+`course.json` carries **no `publisher` and no `distribution`** (removed 2026-09-28).
+Where a course was published from — its share address and the publisher's creator key —
+goes in a `source.json` the Bare worker writes next to a version when sharing it (SLJ-9,
+not built yet). Whose course it is *on this device* is never stored in the package, since
+the same package is authored on one machine and imported on another:
+`resolveCourseDistribution` in
+[electron/course-registry.ts](../electron/course-registry.ts:1) derives
+`CourseSummary.distribution` from the folder layout — a `draft/` means `"local"` (My
+courses), the bundled seed id means `"bundled"`, anything else is `"imported"` (both
+listed on Home). A leftover `distribution` field in an older or peer-supplied
+`course.json` is ignored.
 
 ## 6. Design-system tier direction
 

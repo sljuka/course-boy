@@ -505,3 +505,77 @@ describe("cut and revert with course assets", () => {
     expect(draftAssetStat.ino).toBe(versionAssetStat.ino);
   });
 });
+
+describe("legacy course id cleanup", () => {
+  async function makeLegacyCourse(coursesRoot: string, name: string): Promise<void> {
+    await fs.mkdir(path.join(coursesRoot, name, "draft"), { recursive: true });
+    await fs.writeFile(path.join(coursesRoot, name, "draft", "course.json"), "{}");
+  }
+
+  it("removes slug-id courses once, keeps valid ids, and re-seeds the bundled course", async () => {
+    const coursesRoot = path.join(userDataDir, "courses");
+    const { courseId: keptCourseId } = await createLocalCourseDraft({
+      defaultLocale: "en",
+      locales: { en: { description: "", title: "Kept Course" } },
+      supportedLocales: ["en"],
+    });
+
+    // Simulate an install from before the id change: remove the marker the
+    // first call just wrote, then add courses with old-style slug ids.
+    await fs.rm(path.join(coursesRoot, ".legacy-course-ids-removed"));
+    await makeLegacyCourse(coursesRoot, "polinomi");
+    await makeLegacyCourse(coursesRoot, "matko-getting-started");
+
+    await ensureLocalCoursesRoot();
+
+    const remaining = (await fs.readdir(coursesRoot)).filter((name) => !name.startsWith("."));
+
+    expect(remaining.sort()).toEqual([keptCourseId, "thys2vej6my5mpxt"].sort());
+  });
+
+  it("never deletes a folder added after the one-time cleanup ran", async () => {
+    const coursesRoot = await ensureLocalCoursesRoot();
+
+    await makeLegacyCourse(coursesRoot, "added-later");
+    await ensureLocalCoursesRoot();
+
+    expect(await fs.readdir(coursesRoot)).toContain("added-later");
+  });
+});
+
+describe("course ids", () => {
+  it("creates drafts with random 16-character ids and a readable slug", async () => {
+    const { courseId } = await createLocalCourseDraft({
+      defaultLocale: "en",
+      locales: { en: { description: "", title: "Polinomi i funkcije" } },
+      supportedLocales: ["en"],
+    });
+    const coursesRoot = await ensureLocalCoursesRoot();
+    const manifest = JSON.parse(
+      await fs.readFile(path.join(coursesRoot, courseId, "draft", "course.json"), "utf8"),
+    ) as { id: string; slug: string };
+
+    expect(courseId).toMatch(/^[a-z2-7]{16}$/);
+    expect(manifest.id).toBe(courseId);
+    expect(manifest.slug).toBe("polinomi-i-funkcije");
+  });
+
+  it("gives two courses with the same title different ids", async () => {
+    const input = {
+      defaultLocale: "en" as const,
+      locales: { en: { description: "", title: "Same Title" } },
+      supportedLocales: ["en" as const],
+    };
+
+    const first = await createLocalCourseDraft(input);
+    const second = await createLocalCourseDraft(input);
+
+    expect(first.courseId).not.toBe(second.courseId);
+  });
+
+  it("rejects malformed ids before touching the filesystem", async () => {
+    await expect(
+      cutLocalCourseVersion({ courseId: "../../escape", releaseType: "patch" }),
+    ).rejects.toThrow(/Invalid course id/);
+  });
+});
