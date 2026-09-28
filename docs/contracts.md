@@ -164,6 +164,27 @@ filename containing `/`, `\`, or `..` via `resolveAssetFilename()` in
 [src/lib/course-asset-id.ts](../src/lib/course-asset-id.ts:1) before it ever reaches the
 filesystem.
 
+Asset filenames are **content-addressed**: `<slug-of-original-name>-<first 16 hex of the
+file's sha256>.<ext>` (`createAssetFilename`). Assets are never edited after upload, so
+uploading bytes the draft already holds — even under another original name — reuses the
+existing file instead of storing a second copy (`storeCourseAsset` in `course-paths.ts`).
+Older random-suffix names (`<slug>-<8 random chars>.<ext>`) stay valid; they're just not
+deduplicated.
+
+A cut version contains **only the assets its content references**: an asset counts as
+referenced when its filename appears anywhere in the package's `.json`/`.md` text
+(`getCourseAssetUsage` in `electron/course-asset-usage.ts`; `version-meta.json` excluded,
+since it lists every path). Unreferenced uploads stay behind in `draft/assets/`, and the
+draft-vs-version badge ignores them for the same reason.
+
+**Draft files are replaced, never edited in place.** Cut hardlinks files from the draft
+into the version, and revert hardlinks them back, so a draft file and a version file can
+share one inode. Every writer goes through `writeFileAtomic`/`copyFileAtomic`/
+`storeCourseAsset` (write a temp file, then rename), which gives the draft a new inode and
+leaves the version untouched. A write that truncates an existing draft file in place
+(`fs.writeFile` on an existing path, or an external editor that saves in place) would
+silently change every version hardlinked to it.
+
 That handler must answer a `Range` request with a real `206 Partial Content` (status,
 `Content-Range`, `Content-Length`, read via `fs/promises`' `open`/`read` at the requested
 offset) rather than the plain `200` `net.fetch(pathToFileURL(...))` returns on its own —
@@ -286,6 +307,31 @@ Both registries type their entries as `ExerciseKindRuntime<any, any>` /
 precision at the registry boundary itself (an eslint-disable comment marks each spot).
 Each kind's own module still gets full type safety internally; only code that looks a
 kind up generically (rather than importing it directly) sees the erased type.
+
+## 9. The window title bar is drawn by the renderer
+
+The native title bar is hidden (`titleBarStyle: 'hidden'` in
+[electron/main.ts](../electron/main.ts:1)); `AppTitleBar`
+([src/components/app-title-bar/app-title-bar.tsx](../src/components/app-title-bar/app-title-bar.tsx:1))
+draws a fixed 42px strip instead. Three things have to stay in sync by hand:
+
+- **Height.** `titleBarOverlay.height` (Windows/Linux) and `trafficLightPosition`
+  (macOS, centred in the bar) in `main.ts` must match `--app-titlebar-height` in
+  [src/index.css](../src/index.css:1).
+- **Full-height layouts use `--app-content-height`, not `100vh`.** `#root` is padded by
+  the bar's height, so a `min-h-screen`/`h-svh` layout overflows by the bar's height and scrolls for
+  no reason. The fixed sidebar container starts at `top-(--app-titlebar-height)`, and
+  sticky headers stick at that offset rather than `top-0`.
+- **Anything drawn over the bar must opt out of dragging.** The bar is a
+  `-webkit-app-region: drag` region, and Electron gives drag regions priority over
+  overlapping elements, so clicks in the top 42px of an overlay would move the window
+  instead. `ui/dialog.tsx` and `ui/sheet.tsx` carry `[-webkit-app-region:no-drag]` on
+  their overlays and popups; a new full-screen overlay needs the same. Clickable
+  controls inside the bar go in `WindowTitleBarGroup`, which does this for them.
+
+The sidebar toggle reaches whichever layout's `SidebarProvider` is mounted through
+`RegisterTitleBarSidebarToggle` (see `src/lib/use-title-bar-sidebar.ts`) — a new layout
+with a sidebar must render it inside its provider, or the button stays disabled there.
 
 ## Third-party extensions (not yet built)
 

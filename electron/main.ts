@@ -27,10 +27,12 @@ import {
   updateLocalCourseLessonTest,
   updateLocalCourseSection,
   updateLocalCourseSectionTest,
+  updateLocalCourseSectionTestMetadata,
   uploadCourseAssetFromBytes,
   uploadLocalCourseAsset,
 } from './course-paths'
 import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
+import { parseRecentlyViewedEntries, type RecentlyViewedEntry } from '../src/lib/recently-viewed'
 import type {
   ApplyCourseSvgPresetInput,
   CreateCourseDraftInput,
@@ -49,6 +51,7 @@ import type {
   SaveSectionTestInput,
   UpdateCourseDraftMetadataInput,
   UpdateCourseSectionInput,
+  UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
   UploadCourseAssetBytesInput,
   UploadCourseAssetInput,
@@ -111,6 +114,7 @@ type UserPreferences = {
   locale?: Locale
   nickname?: string
   persona?: Persona
+  recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
   theme?: Theme
 }
@@ -174,6 +178,12 @@ ipcMain.handle(
       preferencesStore.set('hasAcknowledgedCreatorKey', preferences.hasAcknowledgedCreatorKey)
     }
 
+    // Validated rather than trusted: it's a list the renderer builds, and only
+    // well-formed entries (in-app paths, known kinds, capped length) persist.
+    if (Array.isArray(preferences.recentlyViewed)) {
+      preferencesStore.set('recentlyViewed', parseRecentlyViewedEntries(preferences.recentlyViewed))
+    }
+
     return preferencesStore.store
   },
 )
@@ -183,6 +193,7 @@ ipcMain.handle('preferences:reset-onboarding', () => {
   preferencesStore.delete('category')
   preferencesStore.delete('role')
   preferencesStore.delete('persona')
+  preferencesStore.delete('recentlyViewed')
 
   return preferencesStore.store
 })
@@ -241,6 +252,13 @@ ipcMain.handle('courses:save-section-test', (_event, input: SaveSectionTestInput
 ipcMain.handle('courses:get-section-test-draft', (_event, input: GetSectionTestDraftInput) => {
   return getLocalCourseSectionTestDraft(input)
 })
+
+ipcMain.handle(
+  'courses:update-section-test-metadata',
+  (_event, input: UpdateCourseSectionTestMetadataInput) => {
+    return updateLocalCourseSectionTestMetadata(input)
+  },
+)
 
 ipcMain.handle('courses:delete-section', (_event, input: DeleteCourseSectionInput) => {
   return deleteLocalCourseSection(input)
@@ -419,6 +437,18 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
 function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    // The renderer draws its own title bar (`WindowTitleBar` in
+    // src/components/ui/window-title-bar.tsx) holding the sidebar toggle,
+    // back/forward and recently viewed. The OS keeps drawing only the window
+    // controls: macOS's traffic lights, centred in the 42px bar (the renderer
+    // leaves room for them), or on Windows/Linux the min/max/close overlay on
+    // the right. Keep the 42px here in sync with `--app-titlebar-height` in
+    // src/index.css. The traffic lights' button frame is 16px tall, so y = 13
+    // centres them at 21px — the same line as the bar's own icon buttons.
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 14, y: 13 } }
+      : { titleBarOverlay: { color: '#00000000', height: 42, symbolColor: '#78716c' } }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
     },

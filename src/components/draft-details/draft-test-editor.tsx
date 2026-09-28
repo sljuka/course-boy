@@ -1,7 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
+import { getLocaleLabel } from "@/components/draft-details/draft-locale-utils";
 import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import type { CourseLayoutOutletContext } from "@/components/course-layout";
+import { LocalesTabs } from "@/components/locales-tabs";
 import { PageContent } from "@/components/page-content";
 import { TestEditorPrototype } from "@/components/test-editor-prototype";
 import { createInitialState } from "@/components/test-editor-prototype-logic";
@@ -10,22 +13,71 @@ import {
   toSharedTestDefinition,
 } from "@/components/test-editor-prototype-persistence";
 import type { TestEditorState } from "@/components/test-editor-prototype-types";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import type {
   CourseSectionPreview,
+  LocalizedSectionMetadata,
   SaveLessonTestInput,
   SaveSectionTestInput,
   SharedTestDefinition,
+  UpdateCourseSectionTestMetadataInput,
 } from "@/lib/course-package";
-import { normalizeCourseTagLabel, type CourseTagDefinition } from "@/lib/course-tags";
+import {
+  normalizeCourseTagLabel,
+  type CourseTagDefinition,
+} from "@/lib/course-tags";
 import type { Locale } from "@/lib/i18n";
 import {
   useLessonTestDraftQuery,
   useSaveLessonTestMutation,
   useSaveSectionTestMutation,
   useSectionTestDraftQuery,
+  useUpdateSectionTestMetadataMutation,
 } from "@/lib/course-queries";
 import { resolveLessonIdForTest } from "@/lib/course-test-id";
-import { useEntityAutosave, useForwardAutosaveStatus } from "@/lib/use-entity-autosave";
+import {
+  type EntityAutosaveStatus,
+  useEntityAutosave,
+  useForwardAutosaveStatus,
+} from "@/lib/use-entity-autosave";
+
+function isTestTitleValid(title: string | undefined): boolean {
+  return (title?.trim().length ?? 0) > 0;
+}
+
+function getTestTitleValidationMessage(
+  locale: Locale,
+  title: string | undefined,
+) {
+  if (!isTestTitleValid(title)) {
+    return `Test title for ${locale} is required.`;
+  }
+
+  return null;
+}
+
+function buildTestLocales(
+  locales: Record<Locale, LocalizedSectionMetadata> | undefined,
+): Partial<Record<Locale, string>> {
+  if (!locales) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(locales).map(([locale, metadata]) => [
+      locale,
+      metadata.title,
+    ]),
+  );
+}
 
 // A registered tag is one that shows up in the "Add tag" combobox — an
 // exercise or blueprint rule referencing anything else (typically a tag
@@ -49,7 +101,11 @@ function toPersistableSharedTestDefinition(
       tags: exercise.tags.filter((tagId) => registeredTagIds.has(tagId)),
     })),
     ...(shared.structure
-      ? { structure: shared.structure.filter((rule) => registeredTagIds.has(rule.tag)) }
+      ? {
+          structure: shared.structure.filter((rule) =>
+            registeredTagIds.has(rule.tag),
+          ),
+        }
       : {}),
   };
 }
@@ -61,26 +117,34 @@ function toPersistableSharedTestDefinition(
 export function DraftTestEditor({
   courseId,
   courseSections,
+  defaultLocale,
   descriptiveTags,
   reportAutosaveStatus,
   selectedNode,
+  setSelectedNode,
   supportedLocales,
 }: {
   courseId: string;
   courseSections: CourseSectionPreview[];
+  defaultLocale: Locale;
   descriptiveTags: CourseTagDefinition[];
   reportAutosaveStatus: CourseLayoutOutletContext["reportAutosaveStatus"];
   selectedNode: StructureSelection;
+  setSelectedNode: (selection: StructureSelection) => void;
   supportedLocales: Locale[];
 }) {
-  const standaloneSectionId =
-    courseSections.find((section) => section.tests.some((test) => test.id === selectedNode.id))
-      ?.id ?? null;
+  const standaloneSection = courseSections.find((section) =>
+    section.tests.some((test) => test.id === selectedNode.id),
+  );
+  const standaloneSectionId = standaloneSection?.id ?? null;
   const isStandalone = standaloneSectionId !== null;
-  const lessonId = isStandalone ? null : resolveLessonIdForTest(selectedNode.id);
+  const lessonId = isStandalone
+    ? null
+    : resolveLessonIdForTest(selectedNode.id);
   const lessonSectionId = lessonId
-    ? (courseSections.find((section) => section.lessons.some((lesson) => lesson.id === lessonId))
-        ?.id ?? null)
+    ? (courseSections.find((section) =>
+        section.lessons.some((lesson) => lesson.id === lessonId),
+      )?.id ?? null)
     : null;
 
   const lessonTestDraftQuery = useLessonTestDraftQuery(
@@ -93,45 +157,50 @@ export function DraftTestEditor({
       ? { courseId, sectionId: standaloneSectionId, testId: selectedNode.id }
       : null,
   );
-  const activeQuery = isStandalone ? sectionTestDraftQuery : lessonTestDraftQuery;
+  const activeQuery = isStandalone
+    ? sectionTestDraftQuery
+    : lessonTestDraftQuery;
 
   // `isFetching` (not just `isLoading`) matters here: a fresh mount of this
   // page (e.g. returning from the "Preview test" route) can find this query
   // already cached from earlier in the session but stale — invalidated once
   // this test's own autosave landed — which would otherwise serve the *old*
-  // cached value instantly while a refetch runs in the background.
+  // cached value instantly while a refetch runs in the background. This no
+  // longer fires on every save: `useSaveSectionTestMutation`/
+  // `useSaveLessonTestMutation` write the just-saved value straight into
+  // this same query's cache instead of invalidating it, so a normal save
+  // never flips `isFetching` at all — only a real stale-cache reconciliation
+  // (e.g. after that unmount-triggered flush race) does.
   if (activeQuery.isLoading || activeQuery.isFetching) {
     return <PageContent>{null}</PageContent>;
   }
 
   if (isStandalone) {
+    const test = standaloneSection?.tests.find(
+      (candidate) => candidate.id === selectedNode.id,
+    );
+
     return (
       <DraftStandaloneTestEditor
         courseId={courseId}
+        defaultLocale={defaultLocale}
         descriptiveTags={descriptiveTags}
+        initialLocales={test?.locales}
         initialSharedTest={sectionTestDraftQuery.data ?? null}
         reportAutosaveStatus={reportAutosaveStatus}
         sectionId={standaloneSectionId!}
         selectedNode={selectedNode}
+        setSelectedNode={setSelectedNode}
         supportedLocales={supportedLocales}
       />
     );
   }
-
-  // This test is attached to (follows) its own lesson document — default its
-  // name to that document's title rather than the generic "Test", for the
-  // same reason a standalone test defaults to the section's last document's
-  // title (see `startAddTest` in course-structure-prototype.tsx).
-  const lessonTitle = courseSections
-    .flatMap((section) => section.lessons)
-    .find((lesson) => lesson.id === lessonId)?.title;
 
   return (
     <DraftLessonTestEditor
       courseId={courseId}
       descriptiveTags={descriptiveTags}
       initialSharedTest={lessonTestDraftQuery.data ?? null}
-      initialTitle={lessonTitle || "Test"}
       lessonId={lessonId!}
       reportAutosaveStatus={reportAutosaveStatus}
       sectionId={lessonSectionId!}
@@ -143,25 +212,32 @@ export function DraftTestEditor({
 
 function DraftStandaloneTestEditor({
   courseId,
+  defaultLocale,
   descriptiveTags,
+  initialLocales,
   initialSharedTest,
   reportAutosaveStatus,
   sectionId,
   selectedNode,
+  setSelectedNode,
   supportedLocales,
 }: {
   courseId: string;
+  defaultLocale: Locale;
   descriptiveTags: CourseTagDefinition[];
+  initialLocales: Record<Locale, LocalizedSectionMetadata> | undefined;
   initialSharedTest: SharedTestDefinition | null;
   reportAutosaveStatus: CourseLayoutOutletContext["reportAutosaveStatus"];
   sectionId: string;
   selectedNode: StructureSelection;
+  setSelectedNode: (selection: StructureSelection) => void;
   supportedLocales: Locale[];
 }) {
+  const { t } = useTranslation();
   const [seed] = useState<TestEditorState>(() =>
     initialSharedTest
       ? fromSharedTestDefinition(initialSharedTest, supportedLocales)
-      : createInitialState(supportedLocales, selectedNode.title),
+      : createInitialState(supportedLocales),
   );
   const [testState, setTestState] = useState<TestEditorState>(seed);
   const saveSectionTestMutation = useSaveSectionTestMutation();
@@ -183,21 +259,133 @@ function DraftStandaloneTestEditor({
     value: testState,
   });
 
-  useForwardAutosaveStatus(reportAutosaveStatus, autosave);
+  const [titleSeed] = useState(() => buildTestLocales(initialLocales));
+  const [titleLocales, setTitleLocales] = useState(titleSeed);
+  const [activeTitleLocale, setActiveTitleLocale] =
+    useState<Locale>(defaultLocale);
+  const updateSectionTestMetadataMutation =
+    useUpdateSectionTestMetadataMutation();
 
-  // Unlike a lesson-attached test, a standalone test's own file does carry a
-  // real title (selectedNode.title, sourced from CourseSectionTest) — but
-  // SharedTestDefinition still has no title field, so an edit made inside
-  // TestEditorPrototype's own title input doesn't round-trip on save any
-  // more than it does for a lesson-attached test today.
+  useEffect(() => {
+    if (supportedLocales.includes(activeTitleLocale)) {
+      return;
+    }
+
+    setActiveTitleLocale(defaultLocale);
+  }, [activeTitleLocale, defaultLocale, supportedLocales]);
+
+  // The on-disk test file requires every locale's `description` to stay a
+  // defined string (see `isStoredSectionTestDefinition` in
+  // electron/course-registry.ts) even though this editor only ever changes
+  // `title` — preserve whatever the section originally had (or "") rather
+  // than omitting it, or a save here would corrupt the file for every other
+  // reader.
+  const buildTitleInput = useCallback(
+    (value: typeof titleSeed): UpdateCourseSectionTestMetadataInput => ({
+      courseId,
+      locales: Object.fromEntries(
+        Object.entries(value).map(([locale, title]) => [
+          locale,
+          {
+            description: initialLocales?.[locale as Locale]?.description ?? "",
+            title: title ?? "",
+          },
+        ]),
+      ) as Partial<Record<Locale, LocalizedSectionMetadata>>,
+      sectionId,
+      testId: selectedNode.id,
+    }),
+    [courseId, initialLocales, sectionId, selectedNode.id],
+  );
+
+  const titleAutosave = useEntityAutosave({
+    buildInput: buildTitleInput,
+    initialValue: titleSeed,
+    mutation: updateSectionTestMetadataMutation,
+    value: titleLocales,
+  });
+
+  // Two independent autosaves (content + title metadata) share one status
+  // indicator, so combine them rather than calling useForwardAutosaveStatus
+  // twice — two separate reporters would race and overwrite each other.
+  const combinedStatus: EntityAutosaveStatus =
+    autosave.status === "error" || titleAutosave.status === "error"
+      ? "error"
+      : autosave.status === "saving" || titleAutosave.status === "saving"
+        ? "saving"
+        : autosave.status === "dirty" || titleAutosave.status === "dirty"
+          ? "dirty"
+          : "saved";
+  const combinedSaveNow = useCallback(() => {
+    autosave.saveNow();
+    titleAutosave.saveNow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autosave.saveNow, titleAutosave.saveNow]);
+
+  useForwardAutosaveStatus(reportAutosaveStatus, {
+    errorMessage: autosave.errorMessage ?? titleAutosave.errorMessage,
+    saveNow: combinedSaveNow,
+    status: combinedStatus,
+  });
+
+  function updateTitleLocale(locale: Locale, title: string) {
+    setTitleLocales((current) => ({ ...current, [locale]: title }));
+
+    if (locale === defaultLocale) {
+      setSelectedNode({ ...selectedNode, title });
+    }
+  }
+
+  const titleEditor = (
+    <LocalesTabs
+      activeLocale={activeTitleLocale}
+      getIsIncomplete={(locale) => !isTestTitleValid(titleLocales[locale])}
+      locales={supportedLocales}
+      onActiveLocaleChange={setActiveTitleLocale}
+      renderContent={(locale) => (
+        <FieldSet>
+          <FieldLegend className="sr-only">
+            {getLocaleLabel(locale, t)}
+          </FieldLegend>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor={`draft-test-title-${locale}`}>
+                Test title
+                <span aria-hidden="true" className="text-destructive">
+                  *
+                </span>
+              </FieldLabel>
+              <Input
+                aria-invalid={!isTestTitleValid(titleLocales[locale])}
+                id={`draft-test-title-${locale}`}
+                onChange={(event) =>
+                  updateTitleLocale(locale, event.target.value)
+                }
+                placeholder="Test title"
+                value={titleLocales[locale] ?? ""}
+              />
+              {getTestTitleValidationMessage(locale, titleLocales[locale]) && (
+                <FieldDescription variant="destructive">
+                  {getTestTitleValidationMessage(locale, titleLocales[locale])}
+                </FieldDescription>
+              )}
+            </Field>
+          </FieldGroup>
+        </FieldSet>
+      )}
+    />
+  );
+
   return (
     <TestEditorPrototype
       courseId={courseId}
       descriptiveTags={descriptiveTags}
       initialState={testState}
+      isStandalone
       onStateChange={setTestState}
       selectedNode={selectedNode}
       supportedLocales={supportedLocales}
+      titleEditor={titleEditor}
     />
   );
 }
@@ -206,7 +394,6 @@ function DraftLessonTestEditor({
   courseId,
   descriptiveTags,
   initialSharedTest,
-  initialTitle,
   lessonId,
   reportAutosaveStatus,
   sectionId,
@@ -216,7 +403,6 @@ function DraftLessonTestEditor({
   courseId: string;
   descriptiveTags: CourseTagDefinition[];
   initialSharedTest: SharedTestDefinition | null;
-  initialTitle: string;
   lessonId: string;
   reportAutosaveStatus: CourseLayoutOutletContext["reportAutosaveStatus"];
   sectionId: string;
@@ -226,7 +412,7 @@ function DraftLessonTestEditor({
   const [seed] = useState<TestEditorState>(() =>
     initialSharedTest
       ? fromSharedTestDefinition(initialSharedTest, supportedLocales)
-      : createInitialState(supportedLocales, initialTitle),
+      : createInitialState(supportedLocales),
   );
   const [testState, setTestState] = useState<TestEditorState>(seed);
   const saveLessonTestMutation = useSaveLessonTestMutation();
@@ -255,6 +441,7 @@ function DraftLessonTestEditor({
       courseId={courseId}
       descriptiveTags={descriptiveTags}
       initialState={testState}
+      isStandalone={false}
       onStateChange={setTestState}
       selectedNode={selectedNode}
       supportedLocales={supportedLocales}

@@ -131,11 +131,13 @@ Not blockers, but do not mistake them for patterns to copy:
   referencing a tag that doesn't exist — but it is easy to misdiagnose as a save-pipeline
   bug when constructing test fixtures or IPC calls by hand instead of going through the
   real tag-picker UI.
-- **"Toggle Sidebar" is a hardcoded English literal** and stays untranslated in every
-  locale. `check:i18n` cannot catch this class of bug (it compares key parity between
-  locale files, not literals in components); it is pinned by an `it.fails` case in
-  `e2e/app.e2e.mjs`, which will start failing once the literal becomes a key. Adding an
-  `i18next/no-literal-string` eslint rule would catch the whole class.
+- **Hardcoded English literals slip past `check:i18n`**, which only compares key parity
+  between locale files. The vendored `SidebarTrigger`/`SidebarRail` in
+  `src/components/ui/sidebar.tsx` still contain a literal "Toggle Sidebar" but are no
+  longer rendered (the toggle moved to the window title bar); `e2e/app.e2e.mjs` asserts
+  the string never reappears on screen. `course-layout.tsx`'s "Back to my courses" and
+  "Explorer" are live examples. An `i18next/no-literal-string` eslint rule would catch
+  the whole class.
 - No Content-Security-Policy is set, so Electron logs a warning on every launch. Exposure
   is still low for most content — `react-markdown` runs without `rehype-raw` — but the
   `region-picker` exercise kind (`src/components/region-picker-canvas.tsx`) is now a real

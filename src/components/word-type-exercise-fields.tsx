@@ -277,14 +277,6 @@ export function WordTypeExerciseFields({
           rows={3}
           value={text}
         />
-        {validation.status !== "idle" && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={validation.status === "valid" ? "success" : "warning"}>
-              {getValidationLabel(validation.status)}
-            </Badge>
-            <CardDescription>{validation.message}</CardDescription>
-          </div>
-        )}
         {previewTokens.length > 0 && (
           // overflow-visible: the preview's floating word-type icons are
           // deliberately positioned outside normal flow and must not be
@@ -297,6 +289,14 @@ export function WordTypeExerciseFields({
               wordTypes={previewWordTypes}
             />
           </Card>
+        )}
+        {validation.status !== "idle" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={validation.status === "valid" ? "success" : "warning"}>
+              {getValidationLabel(validation.status)}
+            </Badge>
+            <CardDescription>{validation.message}</CardDescription>
+          </div>
         )}
       </Field>
     </>

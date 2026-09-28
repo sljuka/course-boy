@@ -4,9 +4,11 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
-import { getLocaleLabel, normalizeSupportedLocales } from "@/components/draft-details/draft-locale-utils";
+import {
+  getLocaleLabel,
+  normalizeSupportedLocales,
+} from "@/components/draft-details/draft-locale-utils";
 import { LocalesTabs } from "@/components/locales-tabs";
-import { PageActions } from "@/components/page-actions";
 import { PageContent } from "@/components/page-content";
 import { TestEditorTagManager } from "@/components/test-editor-tag-manager";
 import {
@@ -47,10 +49,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useComboboxAnchor } from "@/components/ui/use-combobox-anchor";
-import type { ContentRating, CourseLayoutOutletContext } from "@/components/course-layout";
-import type { CourseSectionPreview, LocalizedCourseMetadata } from "@/lib/course-package";
+import type {
+  ContentRating,
+  CourseLayoutOutletContext,
+} from "@/components/course-layout";
+import type {
+  CourseSectionPreview,
+  LocalizedCourseMetadata,
+} from "@/lib/course-package";
 import {
   createCourseTagDefinition,
   normalizeCourseTagLabel,
@@ -60,7 +72,10 @@ import { getContentRatingLabelKey } from "@/lib/course-utils";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { useUpdateDraftMetadataMutation } from "@/lib/course-queries";
-import { useEntityAutosave, useForwardAutosaveStatus } from "@/lib/use-entity-autosave";
+import {
+  useEntityAutosave,
+  useForwardAutosaveStatus,
+} from "@/lib/use-entity-autosave";
 
 type CourseMetadataDraft = {
   contentRating: ContentRating;
@@ -101,7 +116,8 @@ export function CourseMetadataEditor({
     supportedLocales,
   }));
   const [draft, setDraft] = useState<CourseMetadataDraft>(seed);
-  const [activeCourseLocale, setActiveCourseLocale] = useState<Locale>(defaultLocale);
+  const [activeCourseLocale, setActiveCourseLocale] =
+    useState<Locale>(defaultLocale);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const canCommitNewVersion = versionBadge?.kind === "draft";
   const updateDraftMetadataMutation = useUpdateDraftMetadataMutation();
@@ -177,7 +193,10 @@ export function CourseMetadataEditor({
     }));
   }
 
-  function updateDescriptiveTag(tagId: string, patch: Partial<CourseTagDefinition>) {
+  function updateDescriptiveTag(
+    tagId: string,
+    patch: Partial<CourseTagDefinition>,
+  ) {
     setDraft((current) => ({
       ...current,
       descriptiveTags: current.descriptiveTags.map((tag) => {
@@ -201,10 +220,17 @@ export function CourseMetadataEditor({
     let nextTagId = "";
 
     setDraft((current) => {
-      const nextTag = createCourseTagDefinition("", "sky", current.descriptiveTags);
+      const nextTag = createCourseTagDefinition(
+        "",
+        "sky",
+        current.descriptiveTags,
+      );
       nextTagId = nextTag.id;
 
-      return { ...current, descriptiveTags: [...current.descriptiveTags, nextTag] };
+      return {
+        ...current,
+        descriptiveTags: [...current.descriptiveTags, nextTag],
+      };
     });
 
     return nextTagId;
@@ -213,7 +239,9 @@ export function CourseMetadataEditor({
   function deleteDescriptiveTag(tagId: string) {
     setDraft((current) => ({
       ...current,
-      descriptiveTags: current.descriptiveTags.filter((tag) => tag.id !== tagId),
+      descriptiveTags: current.descriptiveTags.filter(
+        (tag) => tag.id !== tagId,
+      ),
     }));
   }
 
@@ -222,7 +250,6 @@ export function CourseMetadataEditor({
       <Button
         nativeButton={false}
         render={<Link to={`/courses/${courseId}`} />}
-        size="sm"
         variant="secondary"
       >
         <Eye aria-hidden="true" className="h-4 w-4" />
@@ -233,7 +260,6 @@ export function CourseMetadataEditor({
           <Button
             disabled={!canCommitNewVersion}
             onClick={() => setIsVersionHistoryOpen(true)}
-            size="sm"
             variant="secondary"
           >
             <History aria-hidden="true" className="h-4 w-4" />
@@ -241,19 +267,20 @@ export function CourseMetadataEditor({
           </Button>
         </TooltipTrigger>
         {!canCommitNewVersion && (
-          <TooltipContent>{t("courseVersions.noChangesTooltip")}</TooltipContent>
+          <TooltipContent>
+            {t("courseVersions.noChangesTooltip")}
+          </TooltipContent>
         )}
       </Tooltip>
     </>
   );
 
   return (
-    <PageContent actions={<PageActions>{courseActionButtons}</PageActions>}>
+    <PageContent
+      actions={courseActionButtons}
+      pageHero={<Eyebrow>Course</Eyebrow>}
+    >
       <div className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <Eyebrow>Course</Eyebrow>
-          <PageActions className="hidden lg:flex">{courseActionButtons}</PageActions>
-        </div>
         <FieldSet>
           <FieldGroup>
             <Field>
@@ -279,11 +306,16 @@ export function CourseMetadataEditor({
                 }
                 value={draft.supportedLocales}
               >
-                <ComboboxChips id="draft-course-supported-locales" ref={supportedLocalesAnchor}>
+                <ComboboxChips
+                  id="draft-course-supported-locales"
+                  ref={supportedLocalesAnchor}
+                >
                   <ComboboxValue>
                     {draft.supportedLocales.map((locale) => (
                       <ComboboxChip key={locale} showRemove>
-                        <span className="text-base leading-none">{getLocaleFlag(locale)}</span>
+                        <span className="text-base leading-none">
+                          {getLocaleFlag(locale)}
+                        </span>
                         <span>{getLocaleLabel(locale, t)}</span>
                       </ComboboxChip>
                     ))}
@@ -295,7 +327,9 @@ export function CourseMetadataEditor({
                   <ComboboxList>
                     {locales.map((locale) => (
                       <ComboboxItem key={locale} value={locale}>
-                        <span className="text-base leading-none">{getLocaleFlag(locale)}</span>
+                        <span className="text-base leading-none">
+                          {getLocaleFlag(locale)}
+                        </span>
                         <span>{getLocaleLabel(locale, t)}</span>
                       </ComboboxItem>
                     ))}
@@ -315,18 +349,28 @@ export function CourseMetadataEditor({
           onActiveLocaleChange={setActiveCourseLocale}
           renderContent={(locale) => (
             <FieldSet className="pt-2">
-              <FieldLegend className="sr-only">{getLocaleLabel(locale, t)}</FieldLegend>
+              <FieldLegend className="sr-only">
+                {getLocaleLabel(locale, t)}
+              </FieldLegend>
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor={`draft-course-title-${locale}`}>Course title</FieldLabel>
+                  <FieldLabel htmlFor={`draft-course-title-${locale}`}>
+                    Course title
+                  </FieldLabel>
                   <Input
                     className="h-9 text-base"
                     id={`draft-course-title-${locale}`}
                     onChange={(event) =>
-                      updateLocalizedCourseField(locale, "title", event.target.value)
+                      updateLocalizedCourseField(
+                        locale,
+                        "title",
+                        event.target.value,
+                      )
                     }
                     placeholder="Course"
-                    ref={locale === activeCourseLocale ? courseTitleRef : undefined}
+                    ref={
+                      locale === activeCourseLocale ? courseTitleRef : undefined
+                    }
                     value={draft.localizedCourse[locale]?.title ?? ""}
                   />
                 </Field>
@@ -337,10 +381,16 @@ export function CourseMetadataEditor({
                   <Textarea
                     id={`draft-course-description-${locale}`}
                     onChange={(event) =>
-                      updateLocalizedCourseField(locale, "description", event.target.value)
+                      updateLocalizedCourseField(
+                        locale,
+                        "description",
+                        event.target.value,
+                      )
                     }
                     placeholder="Add a short course description"
-                    ref={locale === activeCourseLocale ? descriptionRef : undefined}
+                    ref={
+                      locale === activeCourseLocale ? descriptionRef : undefined
+                    }
                     rows={3}
                     value={draft.localizedCourse[locale]?.description ?? ""}
                   />
@@ -357,19 +407,33 @@ export function CourseMetadataEditor({
               </FieldLabel>
               <Select
                 onValueChange={(value) =>
-                  setDraft((current) => ({ ...current, contentRating: value as ContentRating }))
+                  setDraft((current) => ({
+                    ...current,
+                    contentRating: value as ContentRating,
+                  }))
                 }
                 value={draft.contentRating}
               >
-                <SelectTrigger className="w-full max-w-sm" id="draft-course-content-rating">
+                <SelectTrigger
+                  className="w-full max-w-sm"
+                  id="draft-course-content-rating"
+                >
                   <SelectValue>
-                    {t(`contentRating.${getContentRatingLabelKey(draft.contentRating)}`)}
+                    {t(
+                      `contentRating.${getContentRatingLabelKey(draft.contentRating)}`,
+                    )}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all-ages">{t("contentRating.allAges")}</SelectItem>
-                  <SelectItem value="mature-themes">{t("contentRating.matureThemes")}</SelectItem>
-                  <SelectItem value="explicit">{t("contentRating.explicit")}</SelectItem>
+                  <SelectItem value="all-ages">
+                    {t("contentRating.allAges")}
+                  </SelectItem>
+                  <SelectItem value="mature-themes">
+                    {t("contentRating.matureThemes")}
+                  </SelectItem>
+                  <SelectItem value="explicit">
+                    {t("contentRating.explicit")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -377,7 +441,9 @@ export function CourseMetadataEditor({
             <Accordion>
               <AccordionItem value="descriptive-tags">
                 <div className="flex items-center gap-1">
-                  <AccordionTrigger className="flex-none">Manage tags</AccordionTrigger>
+                  <AccordionTrigger className="flex-none">
+                    Manage tags
+                  </AccordionTrigger>
                   <InfoTooltip aria-label={t("courseTags.helpTooltip")}>
                     {t("courseTags.helpTooltip")}
                   </InfoTooltip>
@@ -400,7 +466,9 @@ export function CourseMetadataEditor({
           <Alert variant="info">
             <Info aria-hidden="true" className="size-4" />
             <AlertTitle>{t("courseDetails.noSectionsTitle")}</AlertTitle>
-            <AlertDescription>{t("courseDetails.noSectionsHint")}</AlertDescription>
+            <AlertDescription>
+              {t("courseDetails.noSectionsHint")}
+            </AlertDescription>
           </Alert>
         )}
       </div>

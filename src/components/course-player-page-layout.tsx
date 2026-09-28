@@ -16,8 +16,8 @@ export function CoursePlayerPageLayout({
   const { t } = useTranslation();
 
   return (
-    <main className="min-h-screen bg-background print:min-h-0 print:bg-white">
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 print:min-h-0 print:max-w-none print:px-0 print:py-0">
+    <main className="min-h-(--app-content-height) bg-background print:min-h-0 print:bg-white">
+      <div className="mx-auto flex min-h-(--app-content-height) w-full max-w-7xl flex-col px-4 py-4 print:min-h-0 print:max-w-none print:px-0 print:py-0">
         <ErrorBoundary
           fallback={<CourseErrorCard message={t("courseDetails.error")} />}
           key={`${playerKey}-${locale}`}

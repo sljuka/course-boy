@@ -7,6 +7,9 @@ import {
   SuggestionMenuController,
   useCreateBlockNote,
 } from "@blocknote/react";
+import { Play } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import type { CourseLayoutOutletContext } from "@/components/course-layout";
@@ -23,9 +26,11 @@ import {
 } from "@/components/editor-prototype/blocknote-translation";
 import { LocalesTabs } from "@/components/locales-tabs";
 import { PageContent } from "@/components/page-content";
+import { Button } from "@/components/ui/button";
 import type { CourseAssetKind } from "@/lib/course-asset-id";
 import { matkoAssetUrl } from "@/lib/course-assets";
 import type { CourseLesson, UpdateLessonContentInput } from "@/lib/course-package";
+import { buildDraftLessonPreviewPath } from "@/lib/course-utils";
 import type { Locale } from "@/lib/i18n";
 import { blocksToMarkdown, markdownToBlocks } from "@/lib/lesson-content-markdown";
 import {
@@ -156,6 +161,8 @@ export function DraftDocumentEditor({
   selectedNode: StructureSelection;
   supportedLocales: Locale[];
 }) {
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [seed] = useState<DocumentLocaleDraft>(() => buildDocumentSeed(lesson.body, appLocale));
   const [draft, setDraft] = useState<DocumentLocaleDraft>(seed);
   // Frozen at mount, same as `seed` above — a document that starts blank
@@ -200,8 +207,26 @@ export function DraftDocumentEditor({
   const activeBlocks =
     draft[activeDocumentLocale] ?? createInitialDocumentBlocks(undefined, activeDocumentLocale);
 
+  function openPreview() {
+    navigate(buildDraftLessonPreviewPath(courseId), {
+      state: {
+        body: blocksToMarkdown(activeBlocks),
+        selectedNode,
+        test: lesson.test,
+      },
+    });
+  }
+
   return (
-    <PageContent fullBleed>
+    <PageContent
+      actions={
+        <Button onClick={openPreview} size="sm" variant="secondary">
+          <Play aria-hidden="true" className="h-4 w-4" />
+          {t("courseDetails.previewDocument")}
+        </Button>
+      }
+      fullBleed
+    >
       {supportedLocales.length > 1 && (
         <LocalesTabs
           activeLocale={activeDocumentLocale}

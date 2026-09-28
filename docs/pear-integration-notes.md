@@ -385,7 +385,10 @@ only publishers ever touch, not an onboarding step every user sees.
    code. Fixed by mirroring into a staging directory first, reading the real `id` from
    the fetched manifest, and only then finalizing — refusing cleanly
    (`"already imported"`) if that id already exists locally, rather than attempting any
-   merge/update. Needed `bare-fs` as a new direct dependency (already present
+   merge/update. The fetched id is untrusted remote input about to become a directory
+   name, so `finalizeImportedCourse` rejects anything that isn't a plain slug
+   (`isValidCourseId` in `workers/course-id.cjs`) before any path operation — without
+   that check a crafted id like `../../x` could land the import outside `courses/`. Needed `bare-fs` as a new direct dependency (already present
    transitively via Corestore's own tree) for the Bare worker to do the exists-check and
    stage-then-rename itself.
 

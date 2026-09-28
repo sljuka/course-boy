@@ -13,8 +13,9 @@ import {
   ensureLocalCoursesRoot,
   publishLocalCourseVersion,
   revertLocalCourseDraftToVersion,
+  uploadCourseAssetFromBytes,
 } from "./course-paths";
-import { getCourseVersionHistory } from "./course-registry";
+import { getCourseVersionHistory, listCourses } from "./course-registry";
 
 let userDataDir = "";
 
@@ -317,5 +318,190 @@ describe("getCourseVersionHistory", () => {
 
     expect(history?.versions).toEqual([]);
     expect(history?.publishedVersion).toBeNull();
+  });
+});
+
+describe("uploadCourseAssetFromBytes", () => {
+  function bytes(text: string): ArrayBuffer {
+    return new TextEncoder().encode(text).buffer as ArrayBuffer;
+  }
+
+  async function listDraftAssets(courseId: string): Promise<string[]> {
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+
+    return (await fs.readdir(path.join(localCoursesRoot, courseId, "draft", "assets"))).sort();
+  }
+
+  it("names the asset after its content hash", async () => {
+    const courseId = await seedDraftCourse();
+
+    const result = await uploadCourseAssetFromBytes({
+      courseId,
+      data: bytes("<svg>europe</svg>"),
+      filename: "Europe Map.svg",
+      kind: "svg",
+    });
+
+    expect(result.path).toMatch(/^europe-map-[0-9a-f]{16}\.svg$/);
+    expect(await listDraftAssets(courseId)).toEqual([result.path]);
+  });
+
+  it("reuses the existing file when the same bytes are uploaded again, even under another name", async () => {
+    const courseId = await seedDraftCourse();
+
+    const first = await uploadCourseAssetFromBytes({
+      courseId,
+      data: bytes("<svg>europe</svg>"),
+      filename: "europe.svg",
+      kind: "svg",
+    });
+    const again = await uploadCourseAssetFromBytes({
+      courseId,
+      data: bytes("<svg>europe</svg>"),
+      filename: "europe.svg",
+      kind: "svg",
+    });
+    const renamed = await uploadCourseAssetFromBytes({
+      courseId,
+      data: bytes("<svg>europe</svg>"),
+      filename: "Countries of Europe.svg",
+      kind: "svg",
+    });
+
+    expect(again.path).toBe(first.path);
+    expect(renamed.path).toBe(first.path);
+    expect(await listDraftAssets(courseId)).toEqual([first.path]);
+  });
+
+  it("stores different content as separate files", async () => {
+    const courseId = await seedDraftCourse();
+
+    const europe = await uploadCourseAssetFromBytes({
+      courseId,
+      data: bytes("<svg>europe</svg>"),
+      filename: "map.svg",
+      kind: "svg",
+    });
+    const africa = await uploadCourseAssetFromBytes({
+      courseId,
+      data: bytes("<svg>africa</svg>"),
+      filename: "map.svg",
+      kind: "svg",
+    });
+
+    expect(africa.path).not.toBe(europe.path);
+    expect(await listDraftAssets(courseId)).toEqual([africa.path, europe.path].sort());
+  });
+
+  it("rejects an unsupported file type before writing anything", async () => {
+    const courseId = await seedDraftCourse();
+
+    await expect(
+      uploadCourseAssetFromBytes({
+        courseId,
+        data: bytes("not a video"),
+        filename: "notes.txt",
+        kind: "video",
+      }),
+    ).rejects.toThrow(/Unsupported file type/);
+
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const assetsPath = path.join(localCoursesRoot, courseId, "draft", "assets");
+
+    await expect(fs.readdir(assetsPath)).rejects.toThrow();
+  });
+});
+
+describe("cut and revert with course assets", () => {
+  function bytes(text: string): ArrayBuffer {
+    return new TextEncoder().encode(text).buffer as ArrayBuffer;
+  }
+
+  async function findLessonMarkdown(draftDir: string): Promise<string> {
+    const entries = await fs.readdir(draftDir, { recursive: true });
+    const lessonMarkdown = entries.find((entry) => entry.endsWith(".md"));
+
+    if (!lessonMarkdown) {
+      throw new Error("seeded draft has no lesson markdown");
+    }
+
+    return path.join(draftDir, lessonMarkdown);
+  }
+
+  // Replaces the file (temp + rename) the way every real draft writer does —
+  // an in-place write would also change any cut version hardlinked to it.
+  async function replaceFile(filePath: string, contents: string): Promise<void> {
+    const tmpPath = `${filePath}.tmp-test`;
+
+    await fs.writeFile(tmpPath, contents);
+    await fs.rename(tmpPath, filePath);
+  }
+
+  async function seedCourseWithAssets(): Promise<{
+    courseId: string;
+    draftDir: string;
+    usedAsset: string;
+    unusedAsset: string;
+  }> {
+    const courseId = await seedDraftCourse();
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const draftDir = path.join(localCoursesRoot, courseId, "draft");
+    const used = await uploadCourseAssetFromBytes({
+      courseId,
+      data: bytes("<svg>used</svg>"),
+      filename: "used.svg",
+      kind: "svg",
+    });
+    const unused = await uploadCourseAssetFromBytes({
+      courseId,
+      data: bytes("<svg>unused</svg>"),
+      filename: "unused.svg",
+      kind: "svg",
+    });
+    const lessonPath = await findLessonMarkdown(draftDir);
+
+    await replaceFile(lessonPath, `${await fs.readFile(lessonPath, "utf8")}\n\n![map](${used.path})\n`);
+
+    return { courseId, draftDir, unusedAsset: unused.path, usedAsset: used.path };
+  }
+
+  it("puts only referenced assets into the cut version, hardlinked from the draft", async () => {
+    const { courseId, draftDir, unusedAsset, usedAsset } = await seedCourseWithAssets();
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const versionDir = path.join(path.dirname(draftDir), "versions", cut.version);
+
+    expect(await fs.readdir(path.join(versionDir, "assets"))).toEqual([usedAsset]);
+
+    const draftAssetStat = await fs.stat(path.join(draftDir, "assets", usedAsset));
+    const versionAssetStat = await fs.stat(path.join(versionDir, "assets", usedAsset));
+
+    expect(versionAssetStat.ino).toBe(draftAssetStat.ino);
+    // The draft keeps its unused upload; cutting never deletes from the draft.
+    expect((await fs.readdir(path.join(draftDir, "assets"))).sort()).toEqual(
+      [unusedAsset, usedAsset].sort(),
+    );
+  });
+
+  it("does not report an unused asset as a change since the last cut", async () => {
+    const { courseId } = await seedCourseWithAssets();
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+
+    const course = (await listCourses(localCoursesRoot)).find((entry) => entry.id === courseId);
+
+    expect(course?.versionBadge).toEqual({ kind: "version", version: cut.version });
+  });
+
+  it("hardlinks files back into the draft on revert", async () => {
+    const { courseId, draftDir, usedAsset } = await seedCourseWithAssets();
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const versionDir = path.join(path.dirname(draftDir), "versions", cut.version);
+
+    await revertLocalCourseDraftToVersion({ courseId, version: cut.version });
+
+    const draftAssetStat = await fs.stat(path.join(draftDir, "assets", usedAsset));
+    const versionAssetStat = await fs.stat(path.join(versionDir, "assets", usedAsset));
+
+    expect(draftAssetStat.ino).toBe(versionAssetStat.ino);
   });
 });

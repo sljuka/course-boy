@@ -44,11 +44,11 @@
   --chart-4: oklch(0.367 0.016 35.7);
   --chart-5: oklch(0.268 0.011 36.5);
   --radius: 0.625rem;
-  --sidebar: oklch(0.986 0.002 67.8);
+  --sidebar: oklch(0.96 0.002 17.2);
   --sidebar-foreground: oklch(0.147 0.004 49.3);
   --sidebar-primary: oklch(0.666 0.179 58.318);
   --sidebar-primary-foreground: oklch(0.987 0.022 95.277);
-  --sidebar-accent: oklch(0.96 0.002 17.2);
+  --sidebar-accent: oklch(0.922 0.005 34.3);
   --sidebar-accent-foreground: oklch(0.214 0.009 43.1);
   --sidebar-border: oklch(0.922 0.005 34.3);
   --sidebar-ring: oklch(0.714 0.014 41.2);
@@ -88,8 +88,40 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* The app draws its own window title bar (`WindowTitleBar`), fixed across the
+   top; everything else lays out below it. `--app-content-height` replaces
+   `100vh`/`min-h-screen` for full-height layouts so they don't overflow by the
+   bar's height. The height must match `titleBarOverlay.height` in
+   electron/main.ts. The insets keep the bar's own controls clear of the OS
+   window controls: macOS traffic lights on the left, the Windows/Linux
+   overlay on the right (reported through the Window Controls Overlay
+   `titlebar-area-*` env vars, 0 when absent). */
+:root {
+  --app-titlebar-height: 42px;
+  --app-content-height: calc(100svh - var(--app-titlebar-height));
+  --app-titlebar-inset-left: 0px;
+  --app-titlebar-inset-right: calc(
+    100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)
+  );
+}
+
+/* Traffic lights end at ~66px (x 14 + three 12px buttons + gaps). 6rem leaves
+   a clear ~30px gap before the app's own buttons, so the two groups read as
+   separate rather than one row of controls. */
+:root[data-platform="mac"] {
+  --app-titlebar-inset-left: 6rem;
+  --app-titlebar-inset-right: 0px;
+}
+
+@media print {
+  :root {
+    --app-titlebar-height: 0px;
+  }
+}
+
 #root {
   min-height: 100vh;
+  padding-top: var(--app-titlebar-height);
 }
 
 @keyframes page-fade-in {
@@ -252,11 +284,11 @@ button:disabled {
     --border: oklch(0.922 0.005 34.3);
     --input: oklch(0.922 0.005 34.3);
     --ring: oklch(0.714 0.014 41.2);
-    --sidebar: oklch(0.986 0.002 67.8);
+    --sidebar: oklch(0.96 0.002 17.2);
     --sidebar-foreground: oklch(0.147 0.004 49.3);
     --sidebar-primary: oklch(0.666 0.179 58.318);
     --sidebar-primary-foreground: oklch(0.987 0.022 95.277);
-    --sidebar-accent: oklch(0.96 0.002 17.2);
+    --sidebar-accent: oklch(0.922 0.005 34.3);
     --sidebar-accent-foreground: oklch(0.214 0.009 43.1);
     --sidebar-border: oklch(0.922 0.005 34.3);
     --sidebar-ring: oklch(0.714 0.014 41.2);

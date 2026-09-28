@@ -27,6 +27,7 @@ import type {
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
   UpdateCourseSectionInput,
+  UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
   UploadCourseAssetBytesInput,
   UploadCourseAssetBytesResult,
@@ -87,6 +88,9 @@ contextBridge.exposeInMainWorld('courses', {
   },
   getSectionTestDraft(input: GetSectionTestDraftInput) {
     return ipcRenderer.invoke('courses:get-section-test-draft', input) as Promise<SharedTestDefinition | null>
+  },
+  updateSectionTestMetadata(input: UpdateCourseSectionTestMetadataInput) {
+    return ipcRenderer.invoke('courses:update-section-test-metadata', input) as Promise<void>
   },
   deleteSection(input: DeleteCourseSectionInput) {
     return ipcRenderer.invoke('courses:delete-section', input) as Promise<void>

@@ -6,7 +6,10 @@ import { FlaskConical } from "lucide-react";
 
 import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
 import { useDocumentEditorContext } from "@/components/editor-prototype/document-editor-context";
-import { getExerciseKindEditor, listExerciseKindEditors } from "@/components/exercise-kinds/registry";
+import {
+  getExerciseKindEditor,
+  listExerciseKindEditors,
+} from "@/components/exercise-kinds/registry";
 import { toSharedTestExerciseDefinition } from "@/components/test-editor-prototype-persistence";
 import type { TestExercise } from "@/components/test-editor-prototype-types";
 import { deriveExerciseResult } from "@/components/test-player/use-test-player-state";
@@ -22,7 +25,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { ExerciseKind } from "@/lib/course-package";
-import { buildExerciseInstance, getExercisePromptSource } from "@/lib/course-player-utils";
+import {
+  buildExerciseInstance,
+  getExercisePromptSource,
+} from "@/lib/course-player-utils";
 import { resolveSharedExerciseForPlayer } from "@/lib/exercise-kinds/registry";
 import type { Locale } from "@/lib/i18n";
 import { useAppState } from "@/lib/use-app-state";
@@ -39,14 +45,21 @@ function parseExercise(data: string): TestExercise | null {
   }
 }
 
-function ExerciseKindPicker({ onChoose }: { onChoose: (kind: ExerciseKind) => void }) {
+function ExerciseKindPicker({
+  onChoose,
+}: {
+  onChoose: (kind: ExerciseKind) => void;
+}) {
   const [kind, setKind] = useState<ExerciseKind>("numeric");
 
   return (
     <div className="flex w-full flex-col gap-2 rounded-lg border border-dashed border-border p-4">
       <Label htmlFor="inline-exercise-kind">Exercise type</Label>
       <div className="flex flex-wrap items-center gap-2">
-        <Select onValueChange={(value) => value && setKind(value as ExerciseKind)} value={kind}>
+        <Select
+          onValueChange={(value) => value && setKind(value as ExerciseKind)}
+          value={kind}
+        >
           <SelectTrigger className="w-full sm:w-56" id="inline-exercise-kind">
             <SelectValue>{getExerciseKindEditor(kind).label}</SelectValue>
           </SelectTrigger>
@@ -62,7 +75,9 @@ function ExerciseKindPicker({ onChoose }: { onChoose: (kind: ExerciseKind) => vo
           Add exercise
         </Button>
       </div>
-      <p className="text-sm text-muted-foreground">{getExerciseKindEditor(kind).description}</p>
+      <p className="text-sm text-muted-foreground">
+        {getExerciseKindEditor(kind).description}
+      </p>
     </div>
   );
 }
@@ -95,6 +110,7 @@ function ExerciseAuthoringCard({
         activeLocale={activeLocale}
         locales={supportedLocales}
         onActiveLocaleChange={setActiveLocale}
+        contentClassName="flex flex-col gap-4"
         renderContent={(locale) => (
           <FieldsComponent
             courseId={courseId}
@@ -108,7 +124,13 @@ function ExerciseAuthoringCard({
   );
 }
 
-function ExercisePlayerCard({ courseId, exercise }: { courseId: string; exercise: TestExercise }) {
+function ExercisePlayerCard({
+  courseId,
+  exercise,
+}: {
+  courseId: string;
+  exercise: TestExercise;
+}) {
   const { t } = useTranslation();
   const { locale } = useAppState();
   const [answer, setAnswer] = useState("");
@@ -124,8 +146,13 @@ function ExercisePlayerCard({ courseId, exercise }: { courseId: string; exercise
       ),
     [courseId, exercise, locale],
   );
-  const instance = useMemo(() => buildExerciseInstance(courseExercise), [courseExercise]);
-  const result = hasSubmitted ? deriveExerciseResult(courseExercise, instance, answer, t) : null;
+  const instance = useMemo(
+    () => buildExerciseInstance(courseExercise),
+    [courseExercise],
+  );
+  const result = hasSubmitted
+    ? deriveExerciseResult(courseExercise, instance, answer, t)
+    : null;
   const { AnswerComponent } = getExerciseKindEditor(courseExercise.kind);
   const promptSource = getExercisePromptSource(courseExercise, instance);
 
@@ -133,10 +160,18 @@ function ExercisePlayerCard({ courseId, exercise }: { courseId: string; exercise
     <div
       className={
         "flex w-full flex-col gap-3 rounded-lg border p-4 transition-colors " +
-        (result?.isCorrect ? "border-success" : hasSubmitted ? "border-warning" : "border-border")
+        (result?.isCorrect
+          ? "border-success"
+          : hasSubmitted
+            ? "border-warning"
+            : "border-border")
       }
     >
-      <ExercisePromptHeader index={0} promptSource={promptSource} showIndex={false} />
+      <ExercisePromptHeader
+        index={0}
+        promptSource={promptSource}
+        showIndex={false}
+      />
       <AnswerComponent
         exercise={courseExercise}
         index={0}
@@ -154,7 +189,9 @@ function ExercisePlayerCard({ courseId, exercise }: { courseId: string; exercise
       )}
       {result?.isCorrect && (
         <Alert variant="success">
-          <AlertDescription>{t("courseDetails.inlineExerciseCorrect")}</AlertDescription>
+          <AlertDescription>
+            {t("courseDetails.inlineExerciseCorrect")}
+          </AlertDescription>
         </Alert>
       )}
       <Button
@@ -201,7 +238,9 @@ export const exerciseBlockSpec = createReactBlockSpec(
           return (
             <ExerciseKindPicker
               onChoose={(kind) =>
-                updateExercise(getExerciseKindEditor(kind).createExercise(supportedLocales))
+                updateExercise(
+                  getExerciseKindEditor(kind).createExercise(supportedLocales),
+                )
               }
             />
           );
@@ -233,8 +272,10 @@ export const exerciseBlockSpec = createReactBlockSpec(
  */
 // Generic-erased on purpose, same as `ExerciseKindEditor<any, any, any>` in
 // `registry.ts` — this only ever calls schema-agnostic editor methods.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function createExerciseSlashMenuItem(editor: BlockNoteEditor<any, any, any>) {
+export function createExerciseSlashMenuItem(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  editor: BlockNoteEditor<any, any, any>,
+) {
   return {
     aliases: ["exercise", "question", "quiz"],
     // Its own group, not "Advanced" — sharing a group name with a built-in
@@ -247,7 +288,11 @@ export function createExerciseSlashMenuItem(editor: BlockNoteEditor<any, any, an
     onItemClick: () => {
       const currentBlock = editor.getTextCursorPosition().block;
 
-      editor.insertBlocks([{ type: "exercise", props: { data: "" } }], currentBlock, "after");
+      editor.insertBlocks(
+        [{ type: "exercise", props: { data: "" } }],
+        currentBlock,
+        "after",
+      );
     },
     subtext: "A gradable exercise a student answers inline",
     title: "Exercise",

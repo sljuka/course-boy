@@ -229,8 +229,8 @@ function CourseCreate() {
   }
 
   return (
-    <PageContent>
-      <div className="flex flex-col gap-6">
+    <PageContent
+      pageHero={
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             {t("courseCreate.title")}
@@ -239,250 +239,251 @@ function CourseCreate() {
             {t("courseCreate.description")}
           </p>
         </div>
-        <form
-          className="flex min-w-0 max-w-3xl flex-col gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setHasAttemptedSubmit(true);
+      }
+    >
+      <form
+        className="flex min-w-0 max-w-3xl flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setHasAttemptedSubmit(true);
 
-            if (hasValidationErrors) {
-              return;
-            }
+          if (hasValidationErrors) {
+            return;
+          }
 
-            createDraftMutation.mutate(
-              {
-                contentRating,
-                defaultLocale: defaultLocale!,
-                deriveSrCyrlFromSr,
-                locales: Object.fromEntries(
-                  supportedLocales.map((locale) => [
-                    locale,
-                    {
-                      title: localizedCourse[locale]?.title.trim() ?? "",
-                      description:
-                        localizedCourse[locale]?.description.trim() ?? "",
-                    },
-                  ]),
-                ) as Record<Locale, LocalizedCourseMetadata>,
-                supportedLocales,
+          createDraftMutation.mutate(
+            {
+              contentRating,
+              defaultLocale: defaultLocale!,
+              deriveSrCyrlFromSr,
+              locales: Object.fromEntries(
+                supportedLocales.map((locale) => [
+                  locale,
+                  {
+                    title: localizedCourse[locale]?.title.trim() ?? "",
+                    description:
+                      localizedCourse[locale]?.description.trim() ?? "",
+                  },
+                ]),
+              ) as Record<Locale, LocalizedCourseMetadata>,
+              supportedLocales,
+            },
+            {
+              onSuccess: ({ courseId }) => {
+                navigate(`/drafts/${courseId}`, {
+                  state: {
+                    focusCourseTitle: true,
+                  },
+                });
               },
-              {
-                onSuccess: ({ courseId }) => {
-                  navigate(`/drafts/${courseId}`, {
-                    state: {
-                      focusCourseTitle: true,
-                    },
-                  });
-                },
-              },
-            );
-          }}
-        >
-          <FieldSet className="gap-3">
-            <FieldLegend variant="label">
-              {t("courseCreate.fields.supportedLocales")}
-            </FieldLegend>
-            <FieldGroup className="gap-3">
-              <Field>
-                <Combobox
-                  items={selectableLocales}
-                  multiple
-                  onValueChange={(nextLocales) =>
-                    setSupportedLocales(
-                      normalizeSupportedLocales(nextLocales as string[]),
-                    )
-                  }
-                  value={supportedLocales}
+            },
+          );
+        }}
+      >
+        <FieldSet className="gap-3">
+          <FieldLegend variant="label">
+            {t("courseCreate.fields.supportedLocales")}
+          </FieldLegend>
+          <FieldGroup className="gap-3">
+            <Field>
+              <Combobox
+                items={selectableLocales}
+                multiple
+                onValueChange={(nextLocales) =>
+                  setSupportedLocales(
+                    normalizeSupportedLocales(nextLocales as string[]),
+                  )
+                }
+                value={supportedLocales}
+              >
+                <ComboboxChips
+                  id="course-create-supported-locales"
+                  ref={supportedLocalesAnchor}
                 >
-                  <ComboboxChips
-                    id="course-create-supported-locales"
-                    ref={supportedLocalesAnchor}
-                  >
-                    <ComboboxValue>
-                      {supportedLocales.map((locale) => (
-                        <ComboboxChip key={locale} showRemove>
-                          <span className="text-base leading-none">
-                            {getLocaleFlag(locale)}
-                          </span>
-                          <span>{getLocaleLabel(locale, t)}</span>
-                        </ComboboxChip>
-                      ))}
-                    </ComboboxValue>
-                    <ComboboxChipsInput
-                      placeholder={t(
-                        "courseCreate.placeholders.supportedLocales",
-                      )}
-                    />
-                  </ComboboxChips>
-                  <ComboboxContent anchor={supportedLocalesAnchor}>
-                    <ComboboxEmpty>
-                      {t("courseCreate.emptySupportedLocales")}
-                    </ComboboxEmpty>
-                    <ComboboxList>
-                      {(locale) => (
-                        <ComboboxItem key={locale} value={locale}>
-                          <span className="text-lg leading-none">
-                            {getLocaleFlag(locale)}
-                          </span>
-                          <span>{getLocaleLabel(locale, t)}</span>
-                        </ComboboxItem>
-                      )}
-                    </ComboboxList>
-                  </ComboboxContent>
-                </Combobox>
-              </Field>
-              {supportedLocales.includes("sr") && (
-                <Field orientation="horizontal">
-                  <input
-                    checked={deriveSrCyrlFromSr}
-                    className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
-                    id="course-create-derive-sr-cyrl"
-                    onChange={(event) =>
-                      setDeriveSrCyrlFromSr(event.target.checked)
-                    }
-                    type="checkbox"
-                  />
-                  <FieldContent>
-                    <FieldLabel htmlFor="course-create-derive-sr-cyrl">
-                      {t("courseCreate.fields.deriveSrCyrlFromSr")}
-                    </FieldLabel>
-                  </FieldContent>
-                </Field>
-              )}
-            </FieldGroup>
-          </FieldSet>
-          {supportedLocales.length > 0 && activeLocale ? (
-            <LocalesTabs
-              activeLocale={activeLocale}
-              getIsIncomplete={(locale) =>
-                !isLocalizedCourseComplete(localizedCourse[locale])
-              }
-              locales={supportedLocales}
-              onActiveLocaleChange={setActiveLocale}
-              renderContent={(locale) => (
-                <FieldSet>
-                  <FieldLegend className="sr-only">
-                    {getLocaleLabel(locale, t)}
-                  </FieldLegend>
-                  <FieldGroup className="gap-5">
-                    <Field>
-                      <FieldLabel htmlFor={`course-create-title-${locale}`}>
-                        {t("courseCreate.fields.title")}
-                        <span aria-hidden="true" className="text-destructive">
-                          *
+                  <ComboboxValue>
+                    {supportedLocales.map((locale) => (
+                      <ComboboxChip key={locale} showRemove>
+                        <span className="text-base leading-none">
+                          {getLocaleFlag(locale)}
                         </span>
-                      </FieldLabel>
-                      <Input
-                        id={`course-create-title-${locale}`}
-                        onChange={(event) =>
-                          updateLocalizedCourseField(
-                            locale,
-                            "title",
-                            event.target.value,
-                          )
-                        }
-                        placeholder={t("courseCreate.placeholders.title")}
-                        value={localizedCourse[locale]?.title ?? ""}
-                      />
-                      {hasAttemptedSubmit && getTitleValidationMessage(locale) && (
-                        <FieldDescription variant="destructive">
-                          {getTitleValidationMessage(locale)}
-                        </FieldDescription>
-                      )}
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor={`course-create-description-${locale}`}>
-                        {t("courseCreate.fields.description")}
-                      </FieldLabel>
-                      <Textarea
-                        id={`course-create-description-${locale}`}
-                        onChange={(event) =>
-                          updateLocalizedCourseField(
-                            locale,
-                            "description",
-                            event.target.value,
-                          )
-                        }
-                        placeholder={t("courseCreate.placeholders.description")}
-                        value={localizedCourse[locale]?.description ?? ""}
-                      />
-                    </Field>
-                  </FieldGroup>
-                </FieldSet>
-              )}
-            />
-          ) : (
-            <Card className="border border-dashed shadow-none">
-              <CardContent>
-                <CardDescription>
-                  {t("courseCreate.selectLanguageFirst")}
-                </CardDescription>
-              </CardContent>
-            </Card>
-          )}
-          <FieldSet>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="course-create-content-rating">
-                  {t("contentRating.label")}
-                </FieldLabel>
-                <Select
-                  onValueChange={(value) =>
-                    setContentRating(value as ContentRating)
+                        <span>{getLocaleLabel(locale, t)}</span>
+                      </ComboboxChip>
+                    ))}
+                  </ComboboxValue>
+                  <ComboboxChipsInput
+                    placeholder={t(
+                      "courseCreate.placeholders.supportedLocales",
+                    )}
+                  />
+                </ComboboxChips>
+                <ComboboxContent anchor={supportedLocalesAnchor}>
+                  <ComboboxEmpty>
+                    {t("courseCreate.emptySupportedLocales")}
+                  </ComboboxEmpty>
+                  <ComboboxList>
+                    {(locale) => (
+                      <ComboboxItem key={locale} value={locale}>
+                        <span className="text-lg leading-none">
+                          {getLocaleFlag(locale)}
+                        </span>
+                        <span>{getLocaleLabel(locale, t)}</span>
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </Field>
+            {supportedLocales.includes("sr") && (
+              <Field orientation="horizontal">
+                <input
+                  checked={deriveSrCyrlFromSr}
+                  className="mt-0.5 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  id="course-create-derive-sr-cyrl"
+                  onChange={(event) =>
+                    setDeriveSrCyrlFromSr(event.target.checked)
                   }
-                  value={contentRating}
-                >
-                  <SelectTrigger
-                    className="w-full max-w-sm"
-                    id="course-create-content-rating"
-                  >
-                    <SelectValue>
-                      {t(`contentRating.${getContentRatingLabelKey(contentRating)}`)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-ages">
-                      {t("contentRating.allAges")}
-                    </SelectItem>
-                    <SelectItem value="mature-themes">
-                      {t("contentRating.matureThemes")}
-                    </SelectItem>
-                    <SelectItem value="explicit">
-                      {t("contentRating.explicit")}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  type="checkbox"
+                />
+                <FieldContent>
+                  <FieldLabel htmlFor="course-create-derive-sr-cyrl">
+                    {t("courseCreate.fields.deriveSrCyrlFromSr")}
+                  </FieldLabel>
+                </FieldContent>
               </Field>
-            </FieldGroup>
-          </FieldSet>
-          {shouldShowFolderPreview && (
-            <Alert variant="info">
-              <Info className="size-4" />
-              <AlertTitle>{t("courseCreate.folderNamePreviewLabel")}</AlertTitle>
-              <AlertDescription className="mt-1.5">
-                {t("courseCreate.folderNameConvention", {
-                  folderName: folderNamePreview,
-                })}
-              </AlertDescription>
-            </Alert>
-          )}
-          {createDraftMutation.isError && (
-            <Alert variant="destructive">
-              <AlertTitle>{t("courseCreate.errorTitle")}</AlertTitle>
-              <AlertDescription className="mt-1.5">
-                {t("courseCreate.errorBody")}
-              </AlertDescription>
-            </Alert>
-          )}
-          <div className="flex justify-end">
-            <Button disabled={createDraftMutation.isPending} size="lg" type="submit">
-              {createDraftMutation.isPending
-                ? t("courseCreate.creating")
-                : t("courseCreate.submit")}
-            </Button>
-          </div>
-        </form>
-      </div>
+            )}
+          </FieldGroup>
+        </FieldSet>
+        {supportedLocales.length > 0 && activeLocale ? (
+          <LocalesTabs
+            activeLocale={activeLocale}
+            getIsIncomplete={(locale) =>
+              !isLocalizedCourseComplete(localizedCourse[locale])
+            }
+            locales={supportedLocales}
+            onActiveLocaleChange={setActiveLocale}
+            renderContent={(locale) => (
+              <FieldSet>
+                <FieldLegend className="sr-only">
+                  {getLocaleLabel(locale, t)}
+                </FieldLegend>
+                <FieldGroup className="gap-5">
+                  <Field>
+                    <FieldLabel htmlFor={`course-create-title-${locale}`}>
+                      {t("courseCreate.fields.title")}
+                      <span aria-hidden="true" className="text-destructive">
+                        *
+                      </span>
+                    </FieldLabel>
+                    <Input
+                      id={`course-create-title-${locale}`}
+                      onChange={(event) =>
+                        updateLocalizedCourseField(
+                          locale,
+                          "title",
+                          event.target.value,
+                        )
+                      }
+                      placeholder={t("courseCreate.placeholders.title")}
+                      value={localizedCourse[locale]?.title ?? ""}
+                    />
+                    {hasAttemptedSubmit && getTitleValidationMessage(locale) && (
+                      <FieldDescription variant="destructive">
+                        {getTitleValidationMessage(locale)}
+                      </FieldDescription>
+                    )}
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor={`course-create-description-${locale}`}>
+                      {t("courseCreate.fields.description")}
+                    </FieldLabel>
+                    <Textarea
+                      id={`course-create-description-${locale}`}
+                      onChange={(event) =>
+                        updateLocalizedCourseField(
+                          locale,
+                          "description",
+                          event.target.value,
+                        )
+                      }
+                      placeholder={t("courseCreate.placeholders.description")}
+                      value={localizedCourse[locale]?.description ?? ""}
+                    />
+                  </Field>
+                </FieldGroup>
+              </FieldSet>
+            )}
+          />
+        ) : (
+          <Card className="border border-dashed shadow-none">
+            <CardContent>
+              <CardDescription>
+                {t("courseCreate.selectLanguageFirst")}
+              </CardDescription>
+            </CardContent>
+          </Card>
+        )}
+        <FieldSet>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="course-create-content-rating">
+                {t("contentRating.label")}
+              </FieldLabel>
+              <Select
+                onValueChange={(value) =>
+                  setContentRating(value as ContentRating)
+                }
+                value={contentRating}
+              >
+                <SelectTrigger
+                  className="w-full max-w-sm"
+                  id="course-create-content-rating"
+                >
+                  <SelectValue>
+                    {t(`contentRating.${getContentRatingLabelKey(contentRating)}`)}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-ages">
+                    {t("contentRating.allAges")}
+                  </SelectItem>
+                  <SelectItem value="mature-themes">
+                    {t("contentRating.matureThemes")}
+                  </SelectItem>
+                  <SelectItem value="explicit">
+                    {t("contentRating.explicit")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </FieldGroup>
+        </FieldSet>
+        {shouldShowFolderPreview && (
+          <Alert variant="info">
+            <Info className="size-4" />
+            <AlertTitle>{t("courseCreate.folderNamePreviewLabel")}</AlertTitle>
+            <AlertDescription className="mt-1.5">
+              {t("courseCreate.folderNameConvention", {
+                folderName: folderNamePreview,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+        {createDraftMutation.isError && (
+          <Alert variant="destructive">
+            <AlertTitle>{t("courseCreate.errorTitle")}</AlertTitle>
+            <AlertDescription className="mt-1.5">
+              {t("courseCreate.errorBody")}
+            </AlertDescription>
+          </Alert>
+        )}
+        <div className="flex justify-end">
+          <Button disabled={createDraftMutation.isPending} size="lg" type="submit">
+            {createDraftMutation.isPending
+              ? t("courseCreate.creating")
+              : t("courseCreate.submit")}
+          </Button>
+        </div>
+      </form>
     </PageContent>
   );
 }

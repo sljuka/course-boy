@@ -1,4 +1,5 @@
 import type { Locale } from '@/lib/i18n'
+import type { RecentlyViewedEntry } from '@/lib/recently-viewed'
 
 export type Category =
   | 'pre-school'
@@ -18,6 +19,7 @@ export type UserPreferences = {
   locale?: Locale
   nickname?: string
   persona?: Persona
+  recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
   theme?: Theme
 }

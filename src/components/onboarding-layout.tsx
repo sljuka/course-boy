@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export const OnboardingLayout = () => {
   return (
-    <main className="flex min-h-screen items-center justify-center">
+    <main className="flex min-h-(--app-content-height) items-center justify-center">
       <section className="w-full max-w-2xl">
         <Card className="overflow-hidden">
           <CardContent>

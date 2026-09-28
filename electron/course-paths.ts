@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { app, dialog, shell } from "electron";
@@ -26,6 +27,7 @@ import type {
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
   UpdateCourseSectionInput,
+  UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
   UploadCourseAssetBytesInput,
   UploadCourseAssetBytesResult,
@@ -36,6 +38,8 @@ import {
   assetExtensionsByKind,
   assetMimeTypesByExtension,
   createAssetFilename,
+  extractAssetExtension,
+  findAssetFilenameByContentHash,
 } from "../src/lib/course-asset-id";
 import { regionPickerSvgPresets } from "../src/lib/region-picker-svg-presets";
 import {
@@ -54,6 +58,7 @@ import {
   type CourseVersionReleaseType,
 } from "../src/lib/course-versioning";
 import { slugifyCourseName } from "../src/lib/course-slug";
+import { createReferencedFilesFilter, getCourseAssetUsage } from "./course-asset-usage";
 import { transliterateSerbianLatinToCyrillic } from "../src/lib/serbian-transliteration";
 
 const bundledSeedCourseIds = ["matko-getting-started"] as const;
@@ -328,11 +333,23 @@ export async function listFilesRecursively(rootPath: string): Promise<string[]> 
   return nestedFilePaths.flat();
 }
 
+// Streams rather than reading the whole file into memory: course assets include
+// uploaded videos, which can be hundreds of megabytes.
 export async function hashFileContents(filePath: string): Promise<string> {
-  const contents = await fs.readFile(filePath);
+  const hash = crypto.createHash("sha256");
 
-  return crypto.createHash("sha256").update(contents).digest("hex");
+  for await (const chunk of createReadStream(filePath)) {
+    hash.update(chunk);
+  }
+
+  return hash.digest("hex");
 }
+
+// `fs.link` failures that mean "this filesystem/location can't hardlink here",
+// where a plain copy is the right fallback: different volumes (EXDEV), a
+// filesystem without hardlinks such as FAT/exFAT (EPERM/ENOTSUP), or the
+// per-inode link limit (EMLINK).
+const HARDLINK_UNSUPPORTED_ERROR_CODES = new Set(["EXDEV", "EPERM", "ENOTSUP", "EMLINK"]);
 
 /**
  * Populates a fresh `targetDirectoryPath` with the contents of
@@ -345,6 +362,16 @@ export async function hashFileContents(filePath: string): Promise<string> {
  * real copy for new/changed files, and whenever `fs.link` fails (e.g.
  * `EXDEV` — source and target on different filesystems).
  *
+ * Two opt-in `options`, both used by cut and revert:
+ * - `includeFile` skips files (by path relative to the source) — a cut uses it
+ *   to leave unreferenced assets out of the version.
+ * - `hardlinkFromSource` hardlinks every remaining file from the source too,
+ *   not only files unchanged since `previousSnapshot`. Only safe when nothing
+ *   ever edits a source file in place — true for a course draft, whose writers
+ *   all replace files (write temp, then rename), and for a cut version, which
+ *   is never written after it's cut. Not the default, because a generic caller
+ *   can't promise that.
+ *
  * Does not create or rename `targetDirectoryPath` itself beyond `mkdir` —
  * atomicity is the caller's responsibility (stage into a temp-named
  * directory, then a single `fs.rename` into place), since callers need to
@@ -355,6 +382,10 @@ export async function copyDirectoryWithDedup(
   sourceDirectoryPath: string,
   targetDirectoryPath: string,
   previousSnapshot: { directoryPath: string; fileHashes: Record<string, string> } | null,
+  options: {
+    hardlinkFromSource?: boolean;
+    includeFile?: (relativeFilePath: string) => boolean;
+  } = {},
 ): Promise<Record<string, string>> {
   await fs.mkdir(targetDirectoryPath, { recursive: true });
 
@@ -364,6 +395,11 @@ export async function copyDirectoryWithDedup(
   await Promise.all(
     sourceFilePaths.map(async (sourceFilePath) => {
       const relativeFilePath = path.relative(sourceDirectoryPath, sourceFilePath);
+
+      if (options.includeFile && !options.includeFile(relativeFilePath)) {
+        return;
+      }
+
       const targetFilePath = path.join(targetDirectoryPath, relativeFilePath);
       const contentHash = await hashFileContents(sourceFilePath);
 
@@ -384,6 +420,18 @@ export async function copyDirectoryWithDedup(
           const nodeError = error as NodeJS.ErrnoException;
 
           if (nodeError.code !== "EXDEV" && nodeError.code !== "ENOENT") {
+            throw error;
+          }
+          // Fall through to a real copy below.
+        }
+      }
+
+      if (options.hardlinkFromSource) {
+        try {
+          await fs.link(sourceFilePath, targetFilePath);
+          return;
+        } catch (error) {
+          if (!HARDLINK_UNSUPPORTED_ERROR_CODES.has((error as NodeJS.ErrnoException).code ?? "")) {
             throw error;
           }
           // Fall through to a real copy below.
@@ -936,7 +984,7 @@ export async function createLocalCourseDraft(
 
   await fs.mkdir(courseDirectoryPath, { recursive: true });
 
-  await fs.writeFile(
+  await writeFileAtomic(
     path.join(courseDirectoryPath, "course.json"),
     JSON.stringify(
       {
@@ -1016,7 +1064,7 @@ export async function createLocalCourseSection(
   const nowIso = new Date().toISOString();
 
   await fs.mkdir(sectionDirectoryPath, { recursive: true });
-  await fs.writeFile(
+  await writeFileAtomic(
     path.join(sectionDirectoryPath, "section.json"),
     JSON.stringify(
       {
@@ -1452,6 +1500,67 @@ export async function updateLocalCourseSectionTest(
   });
 }
 
+// The inverse of `updateLocalCourseSectionTest` above: that one preserves
+// `locales` and replaces the content fields; this preserves the content
+// fields and replaces `locales`. A standalone test's title/description were
+// otherwise only ever set once, at `createLocalCourseSectionTest` time, with
+// no way to change them afterward.
+export async function updateLocalCourseSectionTestMetadata(
+  input: UpdateCourseSectionTestMetadataInput,
+): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(
+    localCoursesRoot,
+    input.courseId,
+  );
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${input.courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(
+    courseDirectoryPath,
+    input.sectionId,
+  );
+  const testDefinitionPath = path.join(sectionDirectoryPath, `${input.testId}.json`);
+
+  let existingFileContents: string;
+
+  try {
+    existingFileContents = await fs.readFile(testDefinitionPath, "utf8");
+  } catch {
+    throw new Error(`Test "${input.testId}" does not exist`);
+  }
+
+  const localesAreValid = Object.entries(input.locales).every(
+    ([locale, metadata]) => isLocale(locale) && isLocalizedSectionMetadata(metadata),
+  );
+
+  if (!localesAreValid) {
+    throw new Error("Test data is invalid");
+  }
+
+  const existingDefinition = JSON.parse(existingFileContents) as Record<string, unknown>;
+
+  await writeFileAtomic(
+    testDefinitionPath,
+    JSON.stringify(
+      {
+        ...existingDefinition,
+        locales: input.locales,
+      },
+      null,
+      2,
+    ),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, {
+    ...manifest,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
 export async function getLocalCourseSectionTestDraft(
   input: GetSectionTestDraftInput,
 ): Promise<SharedTestDefinition | null> {
@@ -1654,6 +1763,51 @@ export async function updateLocalCourseDraftMetadata(
   });
 }
 
+// Lands a new asset under its content-addressed name (see `createAssetFilename`).
+// `writeTempFile` puts the bytes at a temp path inside `assetsDirectoryPath`;
+// the file is hashed there, then either renamed into place or — when the course
+// already holds the same bytes, possibly under another original name —
+// discarded in favour of the existing file. Either way the returned name is
+// complete on disk: the rename is atomic, and a same-hash overwrite from a
+// concurrent upload replaces identical bytes.
+async function storeCourseAsset(
+  assetsDirectoryPath: string,
+  originalFilename: string,
+  writeTempFile: (tmpPath: string) => Promise<void>,
+): Promise<string> {
+  await fs.mkdir(assetsDirectoryPath, { recursive: true });
+
+  const tmpPath = path.join(
+    assetsDirectoryPath,
+    `.upload.tmp-${process.pid}-${Date.now()}-${crypto.randomUUID()}`,
+  );
+
+  try {
+    await writeTempFile(tmpPath);
+
+    const contentHash = await hashFileContents(tmpPath);
+    const existingFilename = findAssetFilenameByContentHash(
+      await fs.readdir(assetsDirectoryPath),
+      contentHash,
+      extractAssetExtension(originalFilename),
+    );
+
+    if (existingFilename) {
+      await fs.rm(tmpPath, { force: true });
+      return existingFilename;
+    }
+
+    const filename = createAssetFilename(originalFilename, contentHash);
+
+    await fs.rename(tmpPath, path.join(assetsDirectoryPath, filename));
+
+    return filename;
+  } catch (error) {
+    await fs.rm(tmpPath, { force: true });
+    throw error;
+  }
+}
+
 export async function uploadLocalCourseAsset(
   input: UploadCourseAssetInput,
 ): Promise<UploadCourseAssetResult> {
@@ -1695,13 +1849,11 @@ export async function uploadLocalCourseAsset(
     throw new Error(`Unsupported file type "${extension}"`);
   }
 
-  const assetsDirectoryPath = path.join(courseDirectoryPath, "assets");
-
-  await fs.mkdir(assetsDirectoryPath, { recursive: true });
-
-  const filename = createAssetFilename(path.basename(sourcePath));
-
-  await copyFileAtomic(sourcePath, path.join(assetsDirectoryPath, filename));
+  const filename = await storeCourseAsset(
+    path.join(courseDirectoryPath, "assets"),
+    path.basename(sourcePath),
+    (tmpPath) => fs.copyFile(sourcePath, tmpPath),
+  );
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,
@@ -1739,16 +1891,11 @@ export async function uploadCourseAssetFromBytes(
     throw new Error(`Unsupported file type "${extension}"`);
   }
 
-  const assetsDirectoryPath = path.join(courseDirectoryPath, "assets");
-
-  await fs.mkdir(assetsDirectoryPath, { recursive: true });
-
-  const filename = createAssetFilename(path.basename(input.filename));
-  const targetPath = path.join(assetsDirectoryPath, filename);
-  const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}`;
-
-  await fs.writeFile(tmpPath, Buffer.from(input.data));
-  await fs.rename(tmpPath, targetPath);
+  const filename = await storeCourseAsset(
+    path.join(courseDirectoryPath, "assets"),
+    path.basename(input.filename),
+    (tmpPath) => fs.writeFile(tmpPath, Buffer.from(input.data)),
+  );
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,
@@ -1765,11 +1912,9 @@ export async function uploadCourseAssetFromBytes(
 // up referencing a real course asset like any upload and the course stays
 // portable.
 //
-// Unlike `createAssetFilename`'s random suffix (right for a teacher's own
-// upload, where two files are two distinct choices even if identically
-// named), the filename here is content-addressed —
-// `preset-<presetId>-<contentHash>.svg` — rather than keyed on `presetId`
-// alone. Two exercises applying "Europe" while the bundled file hasn't
+// Like uploads (see `createAssetFilename`), the filename here is
+// content-addressed — `preset-<presetId>-<contentHash>.svg` — rather than
+// keyed on `presetId` alone. Two exercises applying "Europe" while the bundled file hasn't
 // changed resolve to the same hash and share the one copy, same as keying
 // on `presetId` alone would give. The difference shows up once a future app
 // release ships an edited `europe.svg`: the hash changes, so an exercise
@@ -1839,10 +1984,15 @@ export async function cutLocalCourseVersion(
   const previousSnapshot = await findMostRecentSnapshot(versionsDirectoryPath);
   const tempSnapshotPath = `${targetSnapshotPath}.tmp-${process.pid}-${Date.now()}`;
 
+  // A version holds only the assets its content references (unused uploads stay
+  // behind in the draft), and every file is hardlinked rather than copied —
+  // from the previous version when unchanged since then, else from the draft.
+  const assetUsage = await getCourseAssetUsage(draftDirectoryPath);
   const fileHashes = await copyDirectoryWithDedup(
     draftDirectoryPath,
     tempSnapshotPath,
     previousSnapshot,
+    { hardlinkFromSource: true, includeFile: createReferencedFilesFilter(assetUsage) },
   );
 
   const nowIso = new Date().toISOString();
@@ -1898,7 +2048,11 @@ export async function revertLocalCourseDraftToVersion(
     `.draft-staging-${process.pid}-${Date.now()}`,
   );
 
-  await copyDirectoryWithDedup(snapshotPath, stagingDraftPath, null);
+  // Hardlinked, not copied: a cut version is never written again, and the
+  // draft's own writers only ever replace files, so sharing inodes is safe.
+  await copyDirectoryWithDedup(snapshotPath, stagingDraftPath, null, {
+    hardlinkFromSource: true,
+  });
 
   const snapshotManifest = await readCourseManifest(stagingDraftPath);
 

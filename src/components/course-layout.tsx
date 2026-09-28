@@ -5,6 +5,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 
+import { RegisterTitleBarSidebarToggle } from "@/components/app-title-bar/register-title-bar-sidebar-toggle";
 import { CourseStructurePrototype } from "@/components/course-structure-prototype/course-structure-prototype";
 import {
   courseRootId,
@@ -151,6 +152,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
         className="page-fade-in bg-background"
         style={{ "--sidebar-width": "22rem" } as React.CSSProperties}
       >
+        <RegisterTitleBarSidebarToggle />
         <ExplorerSidebar
           courseId={courseId ?? ""}
           courseTitle={courseTitle}
@@ -249,7 +251,7 @@ function ExplorerSidebar({
           <span>Back to my courses</span>
         </Link>
       </SidebarHeader>
-      <SidebarContent className="bg-muted p-3">
+      <SidebarContent className="p-3">
         <Eyebrow className="px-1 pb-3" size="small">
           Explorer
         </Eyebrow>

@@ -126,59 +126,54 @@ export function DraftSectionEditor({
   }
 
   return (
-    <PageContent>
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Eyebrow>Section</Eyebrow>
-          <LocalesTabs
-            activeLocale={activeSectionLocale}
-            getIsIncomplete={(locale) => !isSectionTitleValid(locales[locale]?.title)}
-            locales={supportedLocales}
-            onActiveLocaleChange={setActiveSectionLocale}
-            renderContent={(locale) => (
-              <FieldSet className="pt-2">
-                <FieldLegend className="sr-only">{getLocaleLabel(locale, t)}</FieldLegend>
-                <FieldGroup>
-                  <Field>
-                    <FieldLabel htmlFor={`draft-section-title-${locale}`}>
-                      Section title
-                      <span aria-hidden="true" className="text-destructive">
-                        *
-                      </span>
-                    </FieldLabel>
-                    <Input
-                      aria-invalid={!isSectionTitleValid(locales[locale]?.title)}
-                      id={`draft-section-title-${locale}`}
-                      onChange={(event) => updateLocale(locale, { title: event.target.value })}
-                      placeholder={getInitialSectionTitle(locale)}
-                      value={locales[locale]?.title ?? ""}
-                    />
-                    {getSectionTitleValidationMessage(locale, locales[locale]?.title) && (
-                      <FieldDescription variant="destructive">
-                        {getSectionTitleValidationMessage(locale, locales[locale]?.title)}
-                      </FieldDescription>
-                    )}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor={`draft-section-description-${locale}`}>
-                      Description
-                    </FieldLabel>
-                    <Textarea
-                      id={`draft-section-description-${locale}`}
-                      onChange={(event) =>
-                        updateLocale(locale, { description: event.target.value })
-                      }
-                      placeholder="Add a short section description"
-                      rows={3}
-                      value={locales[locale]?.description ?? ""}
-                    />
-                  </Field>
-                </FieldGroup>
-              </FieldSet>
-            )}
-          />
-        </div>
-      </div>
+    <PageContent pageHero={<Eyebrow>Section</Eyebrow>}>
+      <LocalesTabs
+        activeLocale={activeSectionLocale}
+        getIsIncomplete={(locale) => !isSectionTitleValid(locales[locale]?.title)}
+        locales={supportedLocales}
+        onActiveLocaleChange={setActiveSectionLocale}
+        renderContent={(locale) => (
+          <FieldSet className="pt-2">
+            <FieldLegend className="sr-only">{getLocaleLabel(locale, t)}</FieldLegend>
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor={`draft-section-title-${locale}`}>
+                  Section title
+                  <span aria-hidden="true" className="text-destructive">
+                    *
+                  </span>
+                </FieldLabel>
+                <Input
+                  aria-invalid={!isSectionTitleValid(locales[locale]?.title)}
+                  id={`draft-section-title-${locale}`}
+                  onChange={(event) => updateLocale(locale, { title: event.target.value })}
+                  placeholder={getInitialSectionTitle(locale)}
+                  value={locales[locale]?.title ?? ""}
+                />
+                {getSectionTitleValidationMessage(locale, locales[locale]?.title) && (
+                  <FieldDescription variant="destructive">
+                    {getSectionTitleValidationMessage(locale, locales[locale]?.title)}
+                  </FieldDescription>
+                )}
+              </Field>
+              <Field>
+                <FieldLabel htmlFor={`draft-section-description-${locale}`}>
+                  Description
+                </FieldLabel>
+                <Textarea
+                  id={`draft-section-description-${locale}`}
+                  onChange={(event) =>
+                    updateLocale(locale, { description: event.target.value })
+                  }
+                  placeholder="Add a short section description"
+                  rows={3}
+                  value={locales[locale]?.description ?? ""}
+                />
+              </Field>
+            </FieldGroup>
+          </FieldSet>
+        )}
+      />
     </PageContent>
   );
 }

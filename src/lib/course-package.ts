@@ -392,6 +392,13 @@ export type CourseLesson = LessonPreview & {
 // standalone test's own file exists (holding its title) before its content
 // does. See docs/contracts.md.
 export type CourseSectionTest = LessonPreview & {
+  // Only ever populated for a real standalone test (never for a
+  // lesson-attached one, whose file has no identity/locales at all — see
+  // `updateLocalCourseLessonTest`) — the full per-locale map backing
+  // `title`/`description` above, which are just the resolved-for-the-
+  // current-app-locale projection of it. Needed so the editor can offer
+  // per-locale title/description editing the same way a section does.
+  locales?: Record<Locale, LocalizedSectionMetadata>;
   test: CourseTest | null;
 };
 
@@ -509,6 +516,17 @@ export type SaveSectionTestInput = {
   courseId: string;
   sectionId: string;
   test: SharedTestDefinition;
+  testId: string;
+};
+
+// Sibling to `UpdateCourseSectionInput` — a standalone test's own
+// title/description (its file's `locales`), never its exercise content.
+// Lesson-attached tests have no identity of their own to update this way
+// (see `updateLocalCourseLessonTest`).
+export type UpdateCourseSectionTestMetadataInput = {
+  courseId: string;
+  locales: Partial<Record<Locale, LocalizedSectionMetadata>>;
+  sectionId: string;
   testId: string;
 };
 

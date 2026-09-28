@@ -39,3 +39,7 @@ export function buildLessonTestPath(courseId: string, lessonId: string) {
 export function buildDraftTestPreviewPath(courseId: string) {
   return `/drafts/${courseId}/preview-test`;
 }
+
+export function buildDraftLessonPreviewPath(courseId: string) {
+  return `/drafts/${courseId}/preview-lesson`;
+}

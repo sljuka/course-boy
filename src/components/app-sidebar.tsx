@@ -56,7 +56,7 @@ function AppSidebar() {
       </SidebarHeader>
       <SidebarContent className="px-3 py-4">
         {sidebarGroups.map((group) => (
-          <SidebarGroup className="space-y-3" key={group.label ?? "root"}>
+          <SidebarGroup key={group.label ?? "root"}>
             {group.label && (
               <SidebarGroupLabel className="px-2 text-muted-foreground">
                 {t(`sidebar.${group.label}`)}

@@ -181,10 +181,8 @@ type TestEditorState = {
   blueprint: BlueprintRule[];
   description: string;
   exercises: TestExercise[];
-  selectedAdvancedSections: string[];
   selectedLocale: Locale;
   strictAdvancement: boolean;
-  title: string;
   useBlueprint: boolean;
 };
 

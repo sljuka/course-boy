@@ -1,5 +1,7 @@
 import { Route, Routes } from "react-router-dom";
 
+import { AppTitleBar } from "@/components/app-title-bar/app-title-bar";
+import { TitleBarSidebarProvider } from "@/components/app-title-bar/title-bar-sidebar-provider";
 import { BlankLayout } from "@/components/blank-layout";
 import { CourseLayout } from "@/components/course-layout";
 import { OnboardingGuard } from "@/components/onboarding-guard";
@@ -7,12 +9,14 @@ import { OnboardingLayout } from "@/components/onboarding-layout";
 import { SidebarLayout } from "@/components/sidebar-layout";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppStateProvider } from "@/lib/app-state";
+import { useTrackRecentlyViewed } from "@/lib/recently-viewed-queries";
 import { CourseCreatePage } from "@/pages/course-create-page";
 import { CourseDetailPage } from "@/pages/course-detail-page";
 import { CourseLessonPlayerPage } from "@/pages/course-lesson-player-page";
 import { CourseStructurePrototypePage } from "@/pages/course-structure-prototype-page";
 import { CourseTestPlayerPage } from "@/pages/course-test-player-page";
 import { DraftDetailPage } from "@/pages/draft-detail-page";
+import { DraftLessonPreviewPage } from "@/pages/draft-lesson-preview-page";
 import { DraftTestPreviewPage } from "@/pages/draft-test-preview-page";
 import { HomePage } from "@/pages/home-page";
 import { MyCoursesPage } from "@/pages/my-courses-page";
@@ -59,6 +63,7 @@ const AppRoutes = () => {
           path="/courses/:courseId/lessons/:lessonId/test"
         />
         <Route element={<DraftTestPreviewPage />} path="/drafts/:courseId/preview-test" />
+        <Route element={<DraftLessonPreviewPage />} path="/drafts/:courseId/preview-lesson" />
       </Route>
       <Route element={<OnboardingLayout />}>
         <Route element={<WelcomePage />} path="/onboarding" />
@@ -69,11 +74,21 @@ const AppRoutes = () => {
   );
 };
 
+const RecentlyViewedTracker = () => {
+  useTrackRecentlyViewed();
+
+  return null;
+};
+
 export const App = () => {
   return (
     <AppStateProvider>
       <TooltipProvider>
-        <AppRoutes />
+        <TitleBarSidebarProvider>
+          <AppTitleBar />
+          <RecentlyViewedTracker />
+          <AppRoutes />
+        </TitleBarSidebarProvider>
       </TooltipProvider>
     </AppStateProvider>
   );

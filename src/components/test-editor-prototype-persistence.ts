@@ -61,10 +61,13 @@ export function fromSharedTestDefinition(
     blueprint,
     description: definition.template,
     exercises,
-    selectedAdvancedSections: [],
     selectedLocale: supportedLocales[0] ?? "en",
     strictAdvancement: definition.strictAdvancement ?? true,
-    title: "",
-    useBlueprint: Boolean(definition.structure && definition.structure.length > 0),
+    // Presence, not length: a teacher can enable randomization before
+    // adding any rule yet, and `toSharedTestDefinition` above already
+    // writes `structure: []` (not `undefined`) in that case — deriving
+    // this from `.length > 0` instead would silently drop the toggle the
+    // moment this round-trips through a save.
+    useBlueprint: definition.structure !== undefined,
   };
 }

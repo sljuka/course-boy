@@ -11,9 +11,7 @@ import {
 import {
   CoursePreviewStrip,
 } from "@/components/course-preview-strip";
-import { PageActions } from "@/components/page-actions";
 import { PageContent } from "@/components/page-content";
-import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
@@ -86,7 +84,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   }
 
   const actions = (
-    <PageActions>
+    <>
       <Button disabled={!entryStep} onClick={startCourse} size="sm">
         {t("courseDetails.startCourse")}
       </Button>
@@ -106,64 +104,59 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
           className={isFavorite ? "h-5 w-5 fill-current" : "h-5 w-5"}
         />
       </Button>
-    </PageActions>
+    </>
+  );
+
+  const pageHero = (
+    <div className="flex flex-col gap-2">
+      <Link
+        className="inline-flex w-fit items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        to={
+          resolvedCourse.distribution === "local"
+            ? `/drafts/${courseId}`
+            : "/"
+        }
+      >
+        <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+        {t(
+          resolvedCourse.distribution === "local"
+            ? "courseDetails.backToEditor"
+            : "courseDetails.back",
+        )}
+      </Link>
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <CardTitle size="lg">{resolvedCourse.title}</CardTitle>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Badge className="font-normal" variant="secondary">
+                  {t("courseSearch.version", { version: resolvedCourse.version })}
+                </Badge>
+              }
+            />
+            <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
+          </Tooltip>
+          {resolvedCourse.distribution === "local" && (
+            <Button
+              onClick={() => setIsVersionHistoryOpen(true)}
+              size="sm"
+              variant="ghost"
+            >
+              <History aria-hidden="true" className="h-4 w-4" />
+              {t("courseVersions.openButton")}
+            </Button>
+          )}
+        </div>
+        <CardDescription className="max-w-3xl">
+          {resolvedCourse.description}
+        </CardDescription>
+      </div>
+    </div>
   );
 
   return (
-    <PageContent actions={actions}>
-      <PageHeader
-        children={<></>}
-        right={actions}
-        subtitle={
-          <CardDescription className="max-w-3xl">
-            {resolvedCourse.description}
-          </CardDescription>
-        }
-        title={
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <CardTitle size="lg">{resolvedCourse.title}</CardTitle>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Badge className="font-normal" variant="secondary">
-                    {t("courseSearch.version", { version: resolvedCourse.version })}
-                  </Badge>
-                }
-              />
-              <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
-            </Tooltip>
-            {resolvedCourse.distribution === "local" && (
-              <Button
-                onClick={() => setIsVersionHistoryOpen(true)}
-                size="sm"
-                variant="ghost"
-              >
-                <History aria-hidden="true" className="h-4 w-4" />
-                {t("courseVersions.openButton")}
-              </Button>
-            )}
-          </div>
-        }
-        top={
-          <div className="px-2">
-            <Link
-              className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-              to={
-                resolvedCourse.distribution === "local"
-                  ? `/drafts/${courseId}`
-                  : "/"
-              }
-            >
-              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-              {t(
-                resolvedCourse.distribution === "local"
-                  ? "courseDetails.backToEditor"
-                  : "courseDetails.back",
-              )}
-            </Link>
-          </div>
-        }
-      />
+    <PageContent actions={actions} pageHero={pageHero}>
       {resolvedCourse.sections.map((section) => (
         <Card
           className="overflow-hidden border-border bg-muted/80 shadow-none"

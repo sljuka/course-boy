@@ -79,6 +79,7 @@ describe('launch', () => {
       'updateDraftMetadata',
       'updateLessonContent',
       'updateSection',
+      'updateSectionTestMetadata',
       'uploadAsset',
       'uploadAssetBytes',
     ])
@@ -320,7 +321,11 @@ describe('course version badge', () => {
       .map((name) => path.join(USER_DATA, 'courses', courseId, 'draft', sectionDir, name))[0]
     const lesson = JSON.parse(fs.readFileSync(lessonPath, 'utf8'))
     lesson.locales.en.description = 'Edited after cutting a version'
-    fs.writeFileSync(lessonPath, JSON.stringify(lesson, null, 2))
+    // Replace (write temp, then rename) the way the app's own writers do: the
+    // draft file is hardlinked into the cut version, so an in-place write would
+    // silently edit the version too (docs/contracts.md §5).
+    fs.writeFileSync(`${lessonPath}.tmp-e2e`, JSON.stringify(lesson, null, 2))
+    fs.renameSync(`${lessonPath}.tmp-e2e`, lessonPath)
 
     const courses = await harness.page.evaluate(() => window.courses.list('en'))
     const course = courses.find((c) => c.id === courseId)
@@ -449,11 +454,12 @@ describe('i18n', () => {
     expect(prefs.locale).toBe('sr')
   })
 
-  // Known bug, documented in CLAUDE.md: this string is a hardcoded literal in the
-  // sidebar rather than an i18next key, so it stays English in every locale.
-  // check:i18n cannot catch it — it only compares key parity between locale files.
-  // Flip this to a real assertion once the literal is replaced with a key.
-  it.fails('translates every visible string (Toggle Sidebar is hardcoded)', async () => {
+  // The vendored `SidebarTrigger`/`SidebarRail` in src/components/ui/sidebar.tsx
+  // still carry a hardcoded "Toggle Sidebar", but neither is rendered anymore —
+  // the sidebar toggle lives in the window title bar, labelled through i18next
+  // (`titleBar.toggleSidebar`). check:i18n can't catch a literal coming back
+  // (it only compares key parity between locale files); this can.
+  it('shows no untranslated "Toggle Sidebar" literal', async () => {
     expect(await bodyText(harness.page)).not.toContain('Toggle Sidebar')
   })
 })

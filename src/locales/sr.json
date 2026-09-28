@@ -78,6 +78,7 @@
     "incorrectAnswerWithHint": "Taj odgovor nije tačan. Pomoć: {{hint}}",
     "dismissPrintHint": "Zatvori savet za štampu",
     "previewBadge": "Pregled",
+    "previewDocument": "Pregledaj dokument",
     "progress": "Lekcija {{current}} od {{total}}",
     "printHintBody": "Možeš da odštampaš ovaj test, rešiš ga olovkom na papiru, pa zatim ovde uneseš odgovore da proveriš da li su tačni.",
     "printHintTitle": "Više ti odgovara papir? Prvo odštampaj test.",
@@ -427,5 +428,17 @@
     "switchToLight": "Prebaci na svetlu temu"
   },
   "welcomeSubtitle": "Matko je otvorena platforma za kreiranje i pohađanje kurseva. Testovi i dokumenti od kojih su kursevi sastavljeni prilagođeni su za štampanje. Fokus je na tome da učenje i podučavanje budu prijatno iskustvo 😊",
-  "welcomeTitle": "Dobrodošli! 😊"
+  "welcomeTitle": "Dobrodošli! 😊",
+  "titleBar": {
+    "back": "Nazad",
+    "forward": "Napred",
+    "recentKind": {
+      "course": "Kurs",
+      "draft": "Uređivanje",
+      "lesson": "Lekcija"
+    },
+    "recentlyViewed": "Nedavno pregledano",
+    "recentlyViewedEmpty": "Još ništa nije pregledano",
+    "toggleSidebar": "Prikaži ili sakrij bočnu traku"
+  }
 }

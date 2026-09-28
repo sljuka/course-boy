@@ -62,9 +62,11 @@ export function DraftDetailPage() {
         key={selectedNode.id}
         courseId={courseId}
         courseSections={courseSections}
+        defaultLocale={defaultLocale}
         descriptiveTags={courseDescriptiveTags}
         reportAutosaveStatus={reportAutosaveStatus}
         selectedNode={selectedNode}
+        setSelectedNode={setSelectedNode}
         supportedLocales={supportedLocales}
       />
     );

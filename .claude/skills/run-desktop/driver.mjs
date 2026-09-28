@@ -10,6 +10,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {
   APP_DIR,
+  INTERACTIVE_SELECTOR,
   launchApp,
   listInteractive,
   clickIndex,
@@ -155,6 +156,20 @@ const COMMANDS = {
     const [x, y] = args.split(' ').map(Number)
     await harness.page.mouse.click(x, y, { button: 'right' })
     console.log('right-click', x, y)
+  },
+
+  // Set files on an <input type=file> by its `ui` index — args: "index /abs/path"
+  async upload(args) {
+    if (!need()) return
+    const sp = args.indexOf(' ')
+    const idx = Number(args.slice(0, sp))
+    const filePath = args.slice(sp + 1)
+    try {
+      await harness.page.locator(INTERACTIVE_SELECTOR).nth(idx).setInputFiles(filePath)
+      console.log('upload', idx, '-> OK')
+    } catch (e) {
+      console.log('upload', idx, '-> ERROR', e.message)
+    }
   },
 
   // Call the preload bridge: renderer -> preload -> ipcMain -> filesystem.

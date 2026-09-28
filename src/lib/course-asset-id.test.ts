@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ASSET_HASH_LENGTH,
   assetExtensionsByKind,
   assetMimeTypesByExtension,
   createAssetFilename,
+  findAssetFilenameByContentHash,
   resolveAssetFilename,
 } from "./course-asset-id";
 
@@ -17,30 +19,60 @@ describe("assetExtensionsByKind", () => {
   });
 });
 
-describe("createAssetFilename", () => {
-  it("slugifies the base name and keeps the original extension", () => {
-    const filename = createAssetFilename("My Vacation Photo.PNG");
+const HASH_A = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const HASH_B = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
 
-    expect(filename).toMatch(/^my-vacation-photo-[a-z0-9]{8}\.png$/);
+describe("createAssetFilename", () => {
+  it("slugifies the base name, appends the truncated content hash, keeps the extension", () => {
+    expect(createAssetFilename("My Vacation Photo.PNG", HASH_A)).toBe(
+      "my-vacation-photo-0123456789abcdef.png",
+    );
   });
 
-  it("produces different filenames for repeated uploads of the same name", () => {
-    const first = createAssetFilename("clip.mp4");
-    const second = createAssetFilename("clip.mp4");
+  it("uses exactly ASSET_HASH_LENGTH hash characters", () => {
+    const filename = createAssetFilename("clip.mp4", HASH_A);
 
-    expect(first).not.toBe(second);
+    expect(filename).toMatch(new RegExp(`^clip-[0-9a-f]{${ASSET_HASH_LENGTH}}\\.mp4$`));
+  });
+
+  it("gives the same name for the same content and a different one for different content", () => {
+    expect(createAssetFilename("clip.mp4", HASH_A)).toBe(createAssetFilename("clip.mp4", HASH_A));
+    expect(createAssetFilename("clip.mp4", HASH_A)).not.toBe(
+      createAssetFilename("clip.mp4", HASH_B),
+    );
   });
 
   it("falls back to a generic base name when nothing slugifiable remains", () => {
-    const filename = createAssetFilename("???.mp3");
-
-    expect(filename).toMatch(/^asset-[a-z0-9]{8}\.mp3$/);
+    expect(createAssetFilename("???.mp3", HASH_A)).toBe("asset-0123456789abcdef.mp3");
   });
 
   it("handles filenames with no extension", () => {
-    const filename = createAssetFilename("README");
+    expect(createAssetFilename("README", HASH_A)).toBe("readme-0123456789abcdef");
+  });
+});
 
-    expect(filename).toMatch(/^readme-[a-z0-9]{8}$/);
+describe("findAssetFilenameByContentHash", () => {
+  const existing = ["photo-0123456789abcdef.png", "clip-fedcba9876543210.mp4"];
+
+  it("finds a file with the same content under a different original name", () => {
+    expect(findAssetFilenameByContentHash(existing, HASH_A, ".png")).toBe(
+      "photo-0123456789abcdef.png",
+    );
+  });
+
+  it("matches the extension case-insensitively", () => {
+    expect(findAssetFilenameByContentHash(existing, HASH_A, ".PNG")).toBe(
+      "photo-0123456789abcdef.png",
+    );
+  });
+
+  it("does not match the same hash with a different extension", () => {
+    expect(findAssetFilenameByContentHash(existing, HASH_A, ".jpg")).toBeNull();
+  });
+
+  it("returns null when no file carries the hash", () => {
+    expect(findAssetFilenameByContentHash(existing, HASH_B, ".png")).toBeNull();
+    expect(findAssetFilenameByContentHash([], HASH_A, ".png")).toBeNull();
   });
 });
 

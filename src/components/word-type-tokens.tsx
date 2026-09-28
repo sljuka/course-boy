@@ -84,7 +84,16 @@ export function WordTypeTokens({
               // text. Whatever wraps this must not clip (overflow-hidden) —
               // see the Card override in word-type-exercise-fields.tsx. Only
               // needed when some word type actually has an icon to float.
-              "gap-y-6 pt-6"
+              //
+              // pt-6 needs `!` (important): this exercise kind is also
+              // embedded inline in a lesson document (the exercise slash
+              // command, see exercise-block.tsx), where BlockNote's own
+              // `.bn-default-styles p { padding: 0px }` reset — scoped to
+              // every `<p>` under its editor root, not just its own content
+              // — otherwise wins on specificity over a plain `pt-6` and
+              // silently zeroes this padding, clipping the icon into the
+              // card border above it.
+              "gap-y-6 pt-6!"
             : "gap-y-3",
         )}
       >

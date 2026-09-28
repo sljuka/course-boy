@@ -12,6 +12,7 @@ const Hyperswarm = require('hyperswarm')
 const BlindPairing = require('blind-pairing')
 const fsp = require('bare-fs/promises')
 const path = require('bare-path')
+const { isValidCourseId } = require('./course-id.cjs')
 
 const CMD_GET_CREATOR_KEY = 1 // must match electron/bare-worker.ts
 const CMD_PUBLISH_COURSE = 2 // must match electron/bare-worker.ts
@@ -124,6 +125,13 @@ async function start() {
 
       if (!courseId) {
         throw new Error('course.json is missing an id')
+      }
+
+      // The id comes from a remote peer and is about to become a directory name
+      // under coursesRoot — reject anything that isn't a plain slug before it
+      // reaches a path operation.
+      if (!isValidCourseId(courseId)) {
+        throw new Error('course.json has an invalid id')
       }
 
       // A published version's own snapshot manifest still says status: "draft" — a

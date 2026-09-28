@@ -1,1 +1,5 @@
-export { LessonPlayer } from "@/components/lesson-player/lesson-player";
+export {
+  LessonPlayer,
+  LessonPlayerView,
+  type LessonPlayerReadyState,
+} from "@/components/lesson-player/lesson-player";

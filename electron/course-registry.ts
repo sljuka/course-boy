@@ -37,6 +37,7 @@ import {
   hashFileContents,
   listFilesRecursively,
 } from "./course-paths";
+import { createReferencedFilesFilter, getCourseAssetUsage } from "./course-asset-usage";
 import {
   getExerciseKindRuntime,
   normalizeExerciseKind,
@@ -614,7 +615,7 @@ async function readCourseSectionTest(
     ? resolveSharedTestForPlayer(sharedSectionTest, requestedLocales, testId, courseRecord.manifest.id)
     : null;
 
-  return { ...preview, test };
+  return { ...preview, locales: sharedSectionTest.locales, test };
 }
 
 function resolveLocalizedLessonBodyPath(
@@ -985,14 +986,18 @@ async function readSharedSectionDefinitions(
   );
 }
 
-async function hashDirectoryContents(directoryPath: string): Promise<Record<string, string>> {
+async function hashDirectoryContents(
+  directoryPath: string,
+  includeFile: (relativePath: string) => boolean,
+): Promise<Record<string, string>> {
   const filePaths = await listFilesRecursively(directoryPath);
   const entries = await Promise.all(
-    filePaths.map(async (filePath) => {
-      const relativePath = path.relative(directoryPath, filePath);
-
-      return [relativePath, await hashFileContents(filePath)] as const;
-    }),
+    filePaths
+      .map((filePath) => [filePath, path.relative(directoryPath, filePath)] as const)
+      .filter(([, relativePath]) => includeFile(relativePath))
+      .map(async ([filePath, relativePath]) => {
+        return [relativePath, await hashFileContents(filePath)] as const;
+      }),
   );
 
   return Object.fromEntries(entries);
@@ -1041,7 +1046,13 @@ async function computeCourseVersionBadge(courseRecord: CourseRecord): Promise<Co
     return { kind: "draft" };
   }
 
-  const draftFileHashes = await hashDirectoryContents(draftDirectoryPath);
+  // Compare exactly the files a cut would put in a version: unreferenced assets
+  // are left out of versions, so they must not count as a draft change either.
+  const draftAssetUsage = await getCourseAssetUsage(draftDirectoryPath);
+  const draftFileHashes = await hashDirectoryContents(
+    draftDirectoryPath,
+    createReferencedFilesFilter(draftAssetUsage),
+  );
 
   return areFileHashesEqual(draftFileHashes, mostRecentSnapshot.fileHashes)
     ? { kind: "version", version: courseRecord.manifest.version }

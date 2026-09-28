@@ -78,6 +78,7 @@
     "incorrectAnswerWithHint": "That answer is not correct. Hint: {{hint}}",
     "dismissPrintHint": "Dismiss print hint",
     "previewBadge": "Preview",
+    "previewDocument": "Preview document",
     "progress": "Lesson {{current}} of {{total}}",
     "printHintBody": "You can print this test, solve it with pen and paper, and then enter the answers here to check whether they are correct.",
     "printHintTitle": "Prefer paper? Print this test first.",
@@ -427,5 +428,17 @@
     "switchToLight": "Switch to light theme"
   },
   "welcomeSubtitle": "Matko is an open platform for creating and attending courses. Tests and documents that make up the courses are adjusted to be print-friendly. The focus is on making learning and teaching an enjoyable experience 😊",
-  "welcomeTitle": "Welcome! 😊"
+  "welcomeTitle": "Welcome! 😊",
+  "titleBar": {
+    "back": "Back",
+    "forward": "Forward",
+    "recentKind": {
+      "course": "Course",
+      "draft": "Editing",
+      "lesson": "Lesson"
+    },
+    "recentlyViewed": "Recently viewed",
+    "recentlyViewedEmpty": "Nothing viewed yet",
+    "toggleSidebar": "Toggle sidebar"
+  }
 }

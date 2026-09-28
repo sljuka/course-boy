@@ -34,7 +34,7 @@ export function EditorStatusBar({
               className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground"
             />
           ) : (
-            <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Check aria-hidden="true" className="h-4 w-4 shrink-0 text-success" />
           )}
           <span
             className={cn(

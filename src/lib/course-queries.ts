@@ -28,6 +28,7 @@ import type {
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
   UpdateCourseSectionInput,
+  UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
   UploadCourseAssetBytesInput,
   UploadCourseAssetBytesResult,
@@ -120,6 +121,18 @@ export function useUpdateSectionMutation() {
   });
 }
 
+export function useUpdateSectionTestMetadataMutation() {
+  return useMutation<void, Error, UpdateCourseSectionTestMetadataInput>({
+    mutationFn: (input) => window.courses.updateSectionTestMetadata(input),
+    mutationKey: courseContentSaveMutationKey,
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
 export function useUpdateDraftMetadataMutation() {
   return useMutation<void, Error, UpdateCourseDraftMetadataInput>({
     mutationFn: (input) => window.courses.updateDraftMetadata(input),
@@ -168,9 +181,16 @@ export function useSaveLessonTestMutation() {
       await queryClient.invalidateQueries({
         queryKey: ["courses", "detail", input.courseId],
       });
-      await queryClient.invalidateQueries({
-        queryKey: ["courses", "lesson-test-draft", input.courseId, input.lessonId],
-      });
+      // `input.test` is exactly what `updateLocalCourseLessonTest` just wrote
+      // to disk (see its own JSON.stringify(input.test)) — write it straight
+      // into the cache instead of invalidating. Invalidating would refetch
+      // from disk for data we already have, which flips this query's
+      // `isFetching` true and (via `DraftTestEditor`'s loading gate) blanks
+      // and remounts the whole editor after every single edit.
+      queryClient.setQueryData(
+        ["courses", "lesson-test-draft", input.courseId, input.lessonId],
+        input.test,
+      );
     },
   });
 }
@@ -202,9 +222,15 @@ export function useSaveSectionTestMutation() {
       await queryClient.invalidateQueries({
         queryKey: ["courses", "detail", input.courseId],
       });
-      await queryClient.invalidateQueries({
-        queryKey: ["courses", "section-test-draft", input.courseId, input.testId],
-      });
+      // See the matching comment in useSaveLessonTestMutation — `input.test`
+      // is exactly the content `updateLocalCourseSectionTest` just persisted
+      // (it preserves identity/locales and spreads `input.test` verbatim),
+      // so writing it directly into the cache avoids an unnecessary disk
+      // refetch on every save.
+      queryClient.setQueryData(
+        ["courses", "section-test-draft", input.courseId, input.testId],
+        input.test,
+      );
     },
   });
 }

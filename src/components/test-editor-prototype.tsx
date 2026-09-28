@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { Check, Play, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eyebrow } from "@/components/ui/eyebrow";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,11 +27,17 @@ import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
-import { PageActions } from "@/components/page-actions";
 import { PageContent } from "@/components/page-content";
-import { getExerciseKindEditor, listExerciseKindEditors } from "@/components/exercise-kinds/registry";
+import {
+  getExerciseKindEditor,
+  listExerciseKindEditors,
+} from "@/components/exercise-kinds/registry";
 import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import {
   countMatchingExercises,
@@ -55,7 +62,17 @@ type TestEditorPrototypeProps = {
   // its own query has resolved — so this never arrives late, and there's no
   // separate "uncontrolled" mode to support.
   initialState: TestEditorState;
+  // A lesson-attached test has no title/description of its own at all —
+  // its file is pure exercise content, no identity fields (see
+  // `updateLocalCourseLessonTest`). Only a standalone test's own
+  // title/description block (rendered by the caller, above this component)
+  // and this component's own description field are shown when true.
+  isStandalone: boolean;
   onStateChange: (state: TestEditorState) => void;
+  // A standalone test's own per-locale title editor (rendered by the
+  // caller, since it owns that mutation/autosave) — shown as the first
+  // regular field, above Description. Absent for a lesson-attached test.
+  titleEditor?: ReactNode;
   // The tree node currently selected in the draft explorer — forwarded to
   // the preview route so closing it can land back on this same test instead
   // of resetting to the course root (see `CourseLayout`'s `selectedNode`
@@ -68,14 +85,29 @@ export function TestEditorPrototype({
   courseId,
   descriptiveTags,
   initialState,
+  isStandalone,
   onStateChange,
   selectedNode,
   supportedLocales,
+  titleEditor,
 }: TestEditorPrototypeProps) {
   const navigate = useNavigate();
   const [isAddingExercise, setIsAddingExercise] = useState(false);
-  const [draftExerciseKind, setDraftExerciseKind] = useState<ExerciseKind>("numeric");
+  const [draftExerciseKind, setDraftExerciseKind] =
+    useState<ExerciseKind>("numeric");
   const [draftExercise, setDraftExercise] = useState<TestExercise | null>(null);
+  // Which accordion sections are expanded is pure UI state, not test
+  // content — it must not live in `TestEditorState`. That state is only
+  // ever saved/reloaded through `SharedTestDefinition`, which has no field
+  // for it, so persisting it there was a dead write: the moment any real
+  // edit's autosave landed and invalidated this test's query, `DraftTestEditor`
+  // unmounted this whole subtree while refetching and remounted it with the
+  // accordion state re-seeded to `[]`, silently closing it right after a
+  // teacher opened it — the same "invalidate → unmount → remount → lose
+  // unpersisted state" shape as the blueprint and title bugs fixed earlier.
+  const [selectedAdvancedSections, setSelectedAdvancedSections] = useState<
+    string[]
+  >([]);
   // `initialState` is only ever read here, at mount — the single caller
   // (draft-test-editor.tsx) owns the persisted value and re-mounts this
   // component (via a fresh `key`, through its own loading-state gate)
@@ -111,13 +143,6 @@ export function TestEditorPrototype({
     }));
   }
 
-  function setTitle(title: string) {
-    setState((currentState) => ({
-      ...currentState,
-      title,
-    }));
-  }
-
   function setDescription(description: string) {
     setState((currentState) => ({
       ...currentState,
@@ -125,7 +150,10 @@ export function TestEditorPrototype({
     }));
   }
 
-  function updateBlueprintRule(ruleId: string, nextRule: Partial<BlueprintRule>) {
+  function updateBlueprintRule(
+    ruleId: string,
+    nextRule: Partial<BlueprintRule>,
+  ) {
     setState((currentState) => ({
       ...currentState,
       blueprint: currentState.blueprint.map((rule) =>
@@ -171,7 +199,9 @@ export function TestEditorPrototype({
   }
 
   function selectDraftExerciseKind() {
-    setDraftExercise(getExerciseKindEditor(draftExerciseKind).createExercise(supportedLocales));
+    setDraftExercise(
+      getExerciseKindEditor(draftExerciseKind).createExercise(supportedLocales),
+    );
   }
 
   function cancelAddExercise() {
@@ -222,7 +252,9 @@ export function TestEditorPrototype({
   function removeExercise(exerciseId: string) {
     setState((currentState) => ({
       ...currentState,
-      exercises: currentState.exercises.filter((exercise) => exercise.id !== exerciseId),
+      exercises: currentState.exercises.filter(
+        (exercise) => exercise.id !== exerciseId,
+      ),
     }));
   }
 
@@ -258,41 +290,30 @@ export function TestEditorPrototype({
   );
 
   return (
-    <PageContent actions={<PageActions>{testActionButtons}</PageActions>}>
+    <PageContent actions={testActionButtons} pageHero={<Eyebrow>Test</Eyebrow>}>
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <Eyebrow>Test</Eyebrow>
-            <Input
-              className="text-2xl font-semibold tracking-tight md:text-3xl"
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="Untitled test"
-              value={state.title}
-              variant="ghost"
-            />
+        {titleEditor}
+
+        {isStandalone && (
+          <Field>
+            <FieldLabel htmlFor="test-description">Description</FieldLabel>
             <Textarea
-              className="min-h-0 resize-none overflow-hidden text-base font-medium text-muted-foreground md:text-base"
+              className="min-h-0 resize-none overflow-hidden"
+              id="test-description"
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="No description"
+              placeholder="Add a short test description"
               rows={1}
               value={state.description}
-              variant="ghost"
             />
-          </div>
-          <PageActions className="hidden lg:flex">
-            {testActionButtons}
-          </PageActions>
-        </div>
+          </Field>
+        )}
 
         <Accordion
           multiple
           onValueChange={(value) =>
-            setState((currentState) => ({
-              ...currentState,
-              selectedAdvancedSections: value as string[],
-            }))
+            setSelectedAdvancedSections(value as string[])
           }
-          value={state.selectedAdvancedSections}
+          value={selectedAdvancedSections}
         >
           <AccordionItem value="advanced">
             <div className="flex items-center gap-2">
@@ -309,9 +330,8 @@ export function TestEditorPrototype({
             <AccordionContent>
               <div className="flex flex-col gap-4">
                 <CardDescription>
-                  Exercise randomization selects a random part of the
-                  exercises to show the student, based on the tags of the
-                  exercises.
+                  Exercise randomization selects a random part of the exercises
+                  to show the student, based on the tags of the exercises.
                 </CardDescription>
 
                 <div className="flex items-center gap-2">
@@ -379,11 +399,11 @@ export function TestEditorPrototype({
                         {state.useBlueprint && rule.tagId && isInvalid && (
                           <CardDescription className="text-warning">
                             Need {rule.count} exercises tagged "
-                            {descriptiveTags.find((tag) => tag.id === rule.tagId)?.label ??
-                              rule.tagId}
-                            ", but
-                            only {available} {available === 1 ? "is" : "are"}{" "}
-                            available.
+                            {descriptiveTags.find(
+                              (tag) => tag.id === rule.tagId,
+                            )?.label ?? rule.tagId}
+                            ", but only {available}{" "}
+                            {available === 1 ? "is" : "are"} available.
                           </CardDescription>
                         )}
                       </div>
@@ -417,8 +437,8 @@ export function TestEditorPrototype({
           </Label>
           <InfoTooltip>
             When on, a student must answer each exercise correctly before
-            interactive mode lets them move to the next one. When off, they
-            can move on regardless and come back to fix answers later.
+            interactive mode lets them move to the next one. When off, they can
+            move on regardless and come back to fix answers later.
           </InfoTooltip>
         </div>
 
@@ -448,7 +468,11 @@ export function TestEditorPrototype({
           )}
 
           {supportedLocales.map((locale) => (
-            <TabsContent className="flex flex-col gap-4" key={locale} value={locale}>
+            <TabsContent
+              className="flex flex-col gap-4"
+              key={locale}
+              value={locale}
+            >
               {state.exercises.map((exercise, index) => (
                 <Fragment key={exercise.id}>
                   {index > 0 && <Separator />}
@@ -488,7 +512,9 @@ export function TestEditorPrototype({
                     {!draftExercise ? (
                       <>
                         <div className="flex flex-col gap-2">
-                          <Label htmlFor="draft-exercise-kind">Exercise type</Label>
+                          <Label htmlFor="draft-exercise-kind">
+                            Exercise type
+                          </Label>
                           <div className="flex flex-wrap items-center gap-2">
                             <Select
                               onValueChange={(value) => {
@@ -498,14 +524,23 @@ export function TestEditorPrototype({
                               }}
                               value={draftExerciseKind}
                             >
-                              <SelectTrigger className="w-full sm:w-56" id="draft-exercise-kind">
+                              <SelectTrigger
+                                className="w-full sm:w-56"
+                                id="draft-exercise-kind"
+                              >
                                 <SelectValue>
-                                  {getExerciseKindEditor(draftExerciseKind).label}
+                                  {
+                                    getExerciseKindEditor(draftExerciseKind)
+                                      .label
+                                  }
                                 </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
                                 {listExerciseKindEditors().map((editor) => (
-                                  <SelectItem key={editor.kind} value={editor.kind}>
+                                  <SelectItem
+                                    key={editor.kind}
+                                    value={editor.kind}
+                                  >
                                     {editor.label}
                                   </SelectItem>
                                 ))}
@@ -514,7 +549,11 @@ export function TestEditorPrototype({
                             <Button onClick={selectDraftExerciseKind} size="sm">
                               Confirm
                             </Button>
-                            <Button onClick={cancelAddExercise} size="sm" variant="ghost">
+                            <Button
+                              onClick={cancelAddExercise}
+                              size="sm"
+                              variant="ghost"
+                            >
                               Cancel
                             </Button>
                           </div>
@@ -524,7 +563,10 @@ export function TestEditorPrototype({
                             {getExerciseKindEditor(draftExerciseKind).label}
                           </p>
                           <CardDescription>
-                            {getExerciseKindEditor(draftExerciseKind).description}
+                            {
+                              getExerciseKindEditor(draftExerciseKind)
+                                .description
+                            }
                           </CardDescription>
                         </div>
                         {(() => {
@@ -550,7 +592,9 @@ export function TestEditorPrototype({
                             locale={locale}
                             onChange={(updater) =>
                               setDraftExercise((currentDraft) =>
-                                currentDraft ? updater(currentDraft) : currentDraft,
+                                currentDraft
+                                  ? updater(currentDraft)
+                                  : currentDraft,
                               )
                             }
                           />
@@ -559,15 +603,23 @@ export function TestEditorPrototype({
                           const isMissingPrompt = !(
                             draftExercise.locales[locale]?.prompt ?? ""
                           ).trim();
-                          const isMissingSolution =
-                            draftExercise.kind === "numeric" &&
-                            !draftExercise.solution.trim();
-                          const isDraftIncomplete = isMissingPrompt || isMissingSolution;
+                          const validation = getExerciseKindEditor(
+                            draftExercise.kind,
+                          ).validate(draftExercise, locale);
+                          const isInvalid = validation.status === "error";
+                          const validationMessage =
+                            validation.status === "idle"
+                              ? null
+                              : validation.message;
+                          const isDraftIncomplete =
+                            isMissingPrompt || isInvalid;
 
                           return (
                             <div className="flex items-center gap-2">
                               <Tooltip>
-                                <TooltipTrigger render={<span className="inline-flex" />}>
+                                <TooltipTrigger
+                                  render={<span className="inline-flex" />}
+                                >
                                   <Button
                                     disabled={isDraftIncomplete}
                                     onClick={commitDraftExercise}
@@ -578,15 +630,19 @@ export function TestEditorPrototype({
                                 </TooltipTrigger>
                                 {isDraftIncomplete && (
                                   <TooltipContent>
-                                    {isMissingPrompt && isMissingSolution
-                                      ? "Add a prompt and solution before saving this exercise"
+                                    {isMissingPrompt && isInvalid
+                                      ? `Add a prompt before saving this exercise. ${validationMessage}`
                                       : isMissingPrompt
                                         ? "Add a prompt before saving this exercise"
-                                        : "Add a solution before saving this exercise"}
+                                        : validationMessage}
                                   </TooltipContent>
                                 )}
                               </Tooltip>
-                              <Button onClick={cancelAddExercise} size="sm" variant="ghost">
+                              <Button
+                                onClick={cancelAddExercise}
+                                size="sm"
+                                variant="ghost"
+                              >
                                 Cancel
                               </Button>
                             </div>

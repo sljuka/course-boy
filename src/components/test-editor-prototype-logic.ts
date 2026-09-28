@@ -13,7 +13,7 @@ import type {
   TestExercise,
 } from "@/components/test-editor-prototype-types";
 
-function createInitialState(locales: Locale[], title: string): TestEditorState {
+function createInitialState(locales: Locale[]): TestEditorState {
   return {
     activeExerciseId: "",
     // A teacher fills these in themselves (see `addBlueprintRule`) — this
@@ -23,10 +23,8 @@ function createInitialState(locales: Locale[], title: string): TestEditorState {
     blueprint: [] satisfies BlueprintRule[],
     description: "",
     exercises: [],
-    selectedAdvancedSections: [],
     selectedLocale: locales[0] ?? "en",
     strictAdvancement: true,
-    title,
     useBlueprint: false,
   };
 }
@@ -195,9 +193,6 @@ function normalizeDraftTestData(
               : "",
           blueprint: normalizedBlueprint,
           exercises: normalizedExercises,
-          selectedAdvancedSections: Array.isArray(draftState.selectedAdvancedSections)
-            ? draftState.selectedAdvancedSections
-            : [],
           strictAdvancement:
             typeof draftState.strictAdvancement === "boolean"
               ? draftState.strictAdvancement

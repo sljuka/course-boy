@@ -8,8 +8,6 @@ import { CourseList } from "@/components/course-search/course-list";
 import { CourseSearchField } from "@/components/course-search/course-search-field";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { PageContent } from "@/components/page-content";
-import { PageActions } from "@/components/page-actions";
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 
@@ -30,26 +28,17 @@ export function MyCoursesPage() {
 
   return (
     <PageContent
-      actions={
-        <PageActions>
-          <CreateCourseAction />
-        </PageActions>
+      actions={<CreateCourseAction />}
+      pageHero={
+        <div className="flex flex-col gap-1">
+          <CardTitle size="lg">{t("myCourses.title")}</CardTitle>
+          <CardDescription className="max-w-3xl">
+            {t("myCourses.description")}
+          </CardDescription>
+        </div>
       }
     >
       <ErrorBoundary fallback={<CourseErrorCard message={t("myCourses.error")} />}>
-        <PageHeader
-          right={
-            <PageActions>
-              <CreateCourseAction />
-            </PageActions>
-          }
-          subtitle={
-            <CardDescription className="max-w-3xl">
-              {t("myCourses.description")}
-            </CardDescription>
-          }
-          title={<CardTitle size="lg">{t("myCourses.title")}</CardTitle>}
-        />
         <CourseSearchField
           onChange={setQuery}
           placeholder={t("myCourses.searchPlaceholder")}
