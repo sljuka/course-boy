@@ -133,7 +133,10 @@
     "releaseTypePatch": "Zakrpa",
     "revertButton": "Vrati se na ovu verziju",
     "reverting": "Vraćanje...",
-    "title": "Istorija verzija"
+    "title": "Istorija verzija",
+    "unusedAssetsTitle": "Neiskorišćeni fajlovi biće uklonjeni iz nacrta: {{count}}",
+    "unusedAssetsDescription": "Ništa u kursu više ne koristi ove fajlove. Ranije verzije koje ih koriste zadržavaju svoje kopije.",
+    "unusedAssetsShow": "Prikaži fajlove ({{count}})"
   },
   "courseTags": {
     "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."

@@ -174,8 +174,13 @@ deduplicated.
 A cut version contains **only the assets its content references**: an asset counts as
 referenced when its filename appears anywhere in the package's `.json`/`.md` text
 (`getCourseAssetUsage` in `electron/course-asset-usage.ts`; `version-meta.json` excluded,
-since it lists every path). Unreferenced uploads stay behind in `draft/assets/`, and the
-draft-vs-version badge ignores them for the same reason.
+since it lists every path). The draft-vs-version badge ignores unreferenced assets for
+the same reason. **After a successful cut, unreferenced assets are deleted from
+`draft/assets/`** (`removeUnusedDraftAssets`; never from `versions/` — an older version
+that still uses a file keeps its own hardlinked copy, and reverting to it brings the file
+back). The cut dialog lists them first via `courses.getUnusedDraftAssets(courseId)`. Not
+done on every edit: an abandoned upload or the editor's undo can still bring a reference
+back before the next cut.
 
 **Draft files are replaced, never edited in place.** Cut hardlinks files from the draft
 into the version, and revert hardlinks them back, so a draft file and a version file can

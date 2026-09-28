@@ -12,6 +12,7 @@ import {
   createLocalCourseSection,
   createLocalCourseSectionTest,
   cutLocalCourseVersion,
+  getUnusedDraftAssets,
   deleteLocalCourseLesson,
   deleteLocalCourseSection,
   deleteLocalCourseSectionTest,
@@ -308,6 +309,10 @@ ipcMain.handle('courses:get-version-history', (_event, courseId: string) => {
 
 ipcMain.handle('courses:cut-version', (_event, input: CutCourseVersionInput) => {
   return cutLocalCourseVersion(input)
+})
+
+ipcMain.handle('courses:get-unused-draft-assets', (_event, courseId: string) => {
+  return getUnusedDraftAssets(courseId)
 })
 
 ipcMain.handle('courses:revert-to-version', (_event, input: RevertCourseDraftInput) => {

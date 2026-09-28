@@ -93,6 +93,9 @@ interface Window {
     cutVersion: (
       input: import('../src/lib/course-package').CutCourseVersionInput,
     ) => Promise<import('../src/lib/course-package').CutCourseVersionResult>
+    getUnusedDraftAssets: (
+      courseId: string,
+    ) => Promise<import('../src/lib/course-package').UnusedDraftAsset[]>
     revertToVersion: (
       input: import('../src/lib/course-package').RevertCourseDraftInput,
     ) => Promise<void>

@@ -15,6 +15,7 @@ import type {
   CourseVersionHistory,
   CutCourseVersionInput,
   CutCourseVersionResult,
+  UnusedDraftAsset,
   DeleteCourseLessonInput,
   DeleteCourseSectionInput,
   DeleteCourseSectionTestInput,
@@ -127,6 +128,9 @@ contextBridge.exposeInMainWorld('courses', {
   },
   cutVersion(input: CutCourseVersionInput) {
     return ipcRenderer.invoke('courses:cut-version', input) as Promise<CutCourseVersionResult>
+  },
+  getUnusedDraftAssets(courseId: string) {
+    return ipcRenderer.invoke('courses:get-unused-draft-assets', courseId) as Promise<UnusedDraftAsset[]>
   },
   revertToVersion(input: RevertCourseDraftInput) {
     return ipcRenderer.invoke('courses:revert-to-version', input) as Promise<void>

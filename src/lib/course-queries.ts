@@ -16,6 +16,7 @@ import type {
   CreateCourseSectionTestResult,
   CutCourseVersionInput,
   CutCourseVersionResult,
+  UnusedDraftAsset,
   DeleteCourseLessonInput,
   DeleteCourseSectionInput,
   DeleteCourseSectionTestInput,
@@ -329,8 +330,23 @@ export function useCutCourseVersionMutation() {
         queryClient.invalidateQueries({
           queryKey: ["courses", "version-history", input.courseId],
         }),
+        queryClient.invalidateQueries({
+          queryKey: ["courses", "unused-draft-assets", input.courseId],
+        }),
       ]);
     },
+  });
+}
+
+// The draft's unused assets — what the next cut will remove. Always refetched
+// when the cut dialog opens (`enabled` flips on) since any lesson edit can
+// change it.
+export function useUnusedDraftAssetsQuery(courseId: string, enabled: boolean) {
+  return useQuery<UnusedDraftAsset[]>({
+    enabled,
+    queryKey: ["courses", "unused-draft-assets", courseId],
+    queryFn: () => window.courses.getUnusedDraftAssets(courseId),
+    refetchOnMount: "always",
   });
 }
 

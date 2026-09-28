@@ -26,6 +26,7 @@ import {
   useRevertCourseDraftMutation,
 } from "@/lib/course-queries";
 import type { CourseVersionReleaseType } from "@/lib/course-versioning";
+import { UnusedAssetsWarning } from "./unused-assets-warning";
 import { VersionHistoryRow } from "./version-history-row";
 
 type ReleaseType = Exclude<CourseVersionReleaseType, "initial">;
@@ -88,6 +89,7 @@ export function VersionHistoryDialog({
             })}
           </DialogDescription>
         </DialogHeader>
+        {canCut && <UnusedAssetsWarning courseId={courseId} open={open} />}
         {canCut && (
           <div className="flex items-end gap-2">
             <div className="flex flex-1 flex-col gap-1.5">

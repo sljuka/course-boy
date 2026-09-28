@@ -33,6 +33,7 @@ import type {
   UploadCourseAssetBytesResult,
   UploadCourseAssetInput,
   UploadCourseAssetResult,
+  UnusedDraftAsset,
 } from "../src/lib/course-package";
 import {
   assetExtensionsByKind,
@@ -2070,7 +2071,40 @@ export async function cutLocalCourseVersion(
     versionInfo: nextVersionInfo,
   });
 
-  return { version: nextVersion };
+  const removedAssets = await removeUnusedDraftAssets(draftDirectoryPath);
+
+  return { removedAssets, version: nextVersion };
+}
+
+// Deletes the draft's unused assets, after a cut has safely written its
+// version (which already left them out). Only ever touches `draft/assets/`:
+// a version that still uses one of these files keeps its own hardlinked copy,
+// and reverting to it brings the file back. Usage is recomputed here rather
+// than reusing the cut's own snapshot of it, so an edit saved while the cut
+// ran can't lose a file it just started referencing.
+async function removeUnusedDraftAssets(draftDirectoryPath: string): Promise<string[]> {
+  const { unreferenced } = await getCourseAssetUsage(draftDirectoryPath);
+
+  await Promise.all(
+    unreferenced.map((filename) =>
+      fs.rm(path.join(draftDirectoryPath, "assets", filename), { force: true }),
+    ),
+  );
+
+  return unreferenced;
+}
+
+export async function getUnusedDraftAssets(courseId: string): Promise<UnusedDraftAsset[]> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const draftDirectoryPath = resolveCourseDirectoryPath(localCoursesRoot, courseId);
+  const { unreferenced } = await getCourseAssetUsage(draftDirectoryPath);
+
+  return Promise.all(
+    unreferenced.map(async (filename) => ({
+      filename,
+      sizeBytes: (await fs.stat(path.join(draftDirectoryPath, "assets", filename))).size,
+    })),
+  );
 }
 
 export async function revertLocalCourseDraftToVersion(

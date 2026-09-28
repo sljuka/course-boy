@@ -610,7 +610,17 @@ export type CutCourseVersionInput = {
 };
 
 export type CutCourseVersionResult = {
+  // Unused asset filenames the cut removed from the draft's `assets/` (see
+  // `getUnusedDraftAssets`); versions that still use them keep their copies.
+  removedAssets: string[];
   version: string;
+};
+
+// An asset in the draft that nothing in the draft references — what the next
+// cut will remove from `draft/assets/`, shown as a warning before cutting.
+export type UnusedDraftAsset = {
+  filename: string;
+  sizeBytes: number;
 };
 
 export type RevertCourseDraftInput = {

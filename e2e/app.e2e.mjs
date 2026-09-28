@@ -68,6 +68,7 @@ describe('launch', () => {
       'get',
       'getLessonTestDraft',
       'getSectionTestDraft',
+      'getUnusedDraftAssets',
       'getVersionHistory',
       'list',
       'openInFileSystem',

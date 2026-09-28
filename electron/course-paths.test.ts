@@ -11,6 +11,7 @@ import {
   createLocalCourseSection,
   cutLocalCourseVersion,
   ensureLocalCoursesRoot,
+  getUnusedDraftAssets,
   publishLocalCourseVersion,
   revertLocalCourseDraftToVersion,
   uploadCourseAssetFromBytes,
@@ -476,10 +477,39 @@ describe("cut and revert with course assets", () => {
     const versionAssetStat = await fs.stat(path.join(versionDir, "assets", usedAsset));
 
     expect(versionAssetStat.ino).toBe(draftAssetStat.ino);
-    // The draft keeps its unused upload; cutting never deletes from the draft.
-    expect((await fs.readdir(path.join(draftDir, "assets"))).sort()).toEqual(
-      [unusedAsset, usedAsset].sort(),
-    );
+    // The cut removed the unused upload from the draft too.
+    expect(await fs.readdir(path.join(draftDir, "assets"))).toEqual([usedAsset]);
+    expect(cut.removedAssets).toEqual([unusedAsset]);
+  });
+
+  it("lists unused draft assets with their sizes before a cut", async () => {
+    const { courseId, unusedAsset } = await seedCourseWithAssets();
+
+    expect(await getUnusedDraftAssets(courseId)).toEqual([
+      { filename: unusedAsset, sizeBytes: "<svg>unused</svg>".length },
+    ]);
+  });
+
+  it("never breaks an older version that still uses a file the draft dropped", async () => {
+    const { courseId, draftDir, usedAsset } = await seedCourseWithAssets();
+    const lessonPath = await findLessonMarkdown(draftDir);
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+
+    // Stop referencing the image, then cut again: the draft drops it…
+    await replaceFile(lessonPath, (await fs.readFile(lessonPath, "utf8")).replace(usedAsset, ""));
+    const second = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+
+    expect(second.removedAssets).toEqual([usedAsset]);
+    expect(await fs.readdir(path.join(draftDir, "assets"))).toEqual([]);
+
+    // …but the first version keeps its own copy, and reverting brings it back.
+    const firstVersionAsset = path.join(path.dirname(draftDir), "versions", first.version, "assets", usedAsset);
+
+    expect(await fs.readFile(firstVersionAsset, "utf8")).toBe("<svg>used</svg>");
+
+    await revertLocalCourseDraftToVersion({ courseId, version: first.version });
+
+    expect(await fs.readdir(path.join(draftDir, "assets"))).toEqual([usedAsset]);
   });
 
   it("does not report an unused asset as a change since the last cut", async () => {
