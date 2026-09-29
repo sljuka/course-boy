@@ -1,62 +1,52 @@
-import { useState } from 'react'
 import { Menu } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useAppState } from '@/lib/use-app-state'
-import { cn } from '@/lib/utils'
 
-type AppMenuProps = {
-  className?: string
-}
-
-function AppMenu({ className }: AppMenuProps) {
+// The app's menu (Settings, About, Logout) behind an icon button, so it fits
+// in the sidebar header row next to the language switcher.
+function AppMenu() {
   const navigate = useNavigate()
   const { logout } = useAppState()
-  const [isOpen, setIsOpen] = useState(false)
   const { t } = useTranslation()
 
   function handleLogout() {
     logout()
-    setIsOpen(false)
     navigate('/onboarding')
   }
 
   return (
-    <div className={cn('relative', className)}>
-      <button
-        aria-expanded={isOpen}
-        aria-haspopup="menu"
-        className="inline-flex h-10 w-full items-center justify-center rounded-xl border border-border bg-background px-3 text-foreground transition-colors hover:bg-muted"
-        onClick={() => setIsOpen((open) => !open)}
-        type="button"
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            aria-label={t('menu.open')}
+            size="icon"
+            title={t('menu.open')}
+            variant="subtle"
+          />
+        }
       >
-        <Menu aria-hidden="true" className="h-4 w-4" />
-      </button>
-      {isOpen && (
-        <div className="absolute bottom-12 left-0 z-[60] min-w-full overflow-hidden rounded-2xl border border-border bg-popover shadow-[0_18px_40px_-24px_rgba(41,37,36,0.3)]">
-          <button
-            className="block w-full px-4 py-3 text-left text-sm text-foreground transition-colors hover:bg-muted"
-            type="button"
-          >
-            {t('menu.settings')}
-          </button>
-          <button
-            className="block w-full px-4 py-3 text-left text-sm text-foreground transition-colors hover:bg-muted"
-            type="button"
-          >
-            {t('menu.about')}
-          </button>
-          <button
-            className="block w-full border-t border-border px-4 py-3 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"
-            onClick={handleLogout}
-            type="button"
-          >
-            {t('menu.logout')}
-          </button>
-        </div>
-      )}
-    </div>
+        <Menu aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-44">
+        <DropdownMenuItem onClick={() => navigate('/settings')}>{t('menu.settings')}</DropdownMenuItem>
+        <DropdownMenuItem>{t('menu.about')}</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout} variant="destructive">
+          {t('menu.logout')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

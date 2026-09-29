@@ -288,13 +288,13 @@
     "english": "English",
     "serbian": "Srpski",
     "serbianCyrillic": "Српски",
-    "switchToCyrillic": "Prebaci na ćirilicu",
-    "switchToLatin": "Prebaci na latinicu"
+    "label": "Jezik"
   },
   "menu": {
     "about": "O aplikaciji",
     "logout": "Odjavi se",
-    "settings": "Podešavanja"
+    "settings": "Podešavanja",
+    "open": "Otvori meni"
   },
   "nameHint": "Ne moraš koristiti svoje pravo ime. Nije ovo MUP 👮. Možeš koristiti nadimak tipa 'Gušter 🦎' ili 'Patak Kvakanović'. Generalno ne treba unositi lične podatke gde nema potrebe. Naravno, može i lično ime da se koristi, izbor je na tebi.",
   "nameLabel": "Korisničko ime ili nadimak",
@@ -453,5 +453,15 @@
     "saved": "Sve izmene su sačuvane",
     "saving": "Čuvanje…",
     "savingSoon": "Uskoro čuvanje…"
+  },
+  "settings": {
+    "title": "Podešavanja",
+    "subtitle": "Kako koristiš aplikaciju na ovom uređaju.",
+    "role": {
+      "title": "Uloga",
+      "description": "Menja šta ti Matko prikazuje. Možeš je promeniti u bilo kom trenutku.",
+      "studentDescription": "Prati kurseve koji su podeljeni sa tobom.",
+      "teacherDescription": "Pravi, uređuj, štampaj i deli svoje kurseve, a možeš i da pratiš kurseve."
+    }
   }
 }

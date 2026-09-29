@@ -8,6 +8,7 @@ import { BlankLayout } from "@/components/blank-layout";
 import { CourseLayout } from "@/components/course-layout";
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
+import { RoleRoute } from "@/components/role-route";
 import { SidebarLayout } from "@/components/sidebar-layout";
 import { AppShell, AppShellMain } from "@/components/ui/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +26,7 @@ import { HomePage } from "@/pages/home-page";
 import { MyCoursesPage } from "@/pages/my-courses-page";
 import { PersonaPage } from "@/pages/persona-page";
 import { RolePage } from "@/pages/role-page";
+import { SettingsPage } from "@/pages/settings-page";
 import { WelcomePage } from "@/pages/welcome-page";
 import { useAppState } from "@/lib/use-app-state";
 
@@ -39,16 +41,22 @@ const AppRoutes = () => {
     <Routes>
       <Route element={<SidebarLayout />}>
         <Route element={<HomePage />} path="/" />
-        <Route element={<MyCoursesPage />} path="/my-courses" />
-        <Route element={<CourseCreatePage />} path="/courses/new" />
-        <Route
-          element={<CourseStructurePrototypePage />}
-          path="/courses/prototype-2"
-        />
+        <Route element={<SettingsPage />} path="/settings" />
         <Route element={<CourseDetailPage />} path="/courses/:courseId" />
+        {/* Teacher-only pages; see RoleRoute. */}
+        <Route element={<RoleRoute roles="teacher" />}>
+          <Route element={<MyCoursesPage />} path="/my-courses" />
+          <Route element={<CourseCreatePage />} path="/courses/new" />
+          <Route
+            element={<CourseStructurePrototypePage />}
+            path="/courses/prototype-2"
+          />
+        </Route>
       </Route>
-      <Route element={<CourseLayout />}>
-        <Route element={<DraftDetailPage />} path="/drafts/:courseId" />
+      <Route element={<RoleRoute roles="teacher" />}>
+        <Route element={<CourseLayout />}>
+          <Route element={<DraftDetailPage />} path="/drafts/:courseId" />
+        </Route>
       </Route>
       <Route
         element={
@@ -65,8 +73,10 @@ const AppRoutes = () => {
           element={<CourseTestPlayerPage />}
           path="/courses/:courseId/lessons/:lessonId/test"
         />
-        <Route element={<DraftTestPreviewPage />} path="/drafts/:courseId/preview-test" />
-        <Route element={<DraftLessonPreviewPage />} path="/drafts/:courseId/preview-lesson" />
+        <Route element={<RoleRoute roles="teacher" />}>
+          <Route element={<DraftTestPreviewPage />} path="/drafts/:courseId/preview-test" />
+          <Route element={<DraftLessonPreviewPage />} path="/drafts/:courseId/preview-lesson" />
+        </Route>
       </Route>
       <Route element={<OnboardingLayout />}>
         <Route element={<WelcomePage />} path="/onboarding" />

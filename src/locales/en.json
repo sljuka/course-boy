@@ -288,13 +288,13 @@
     "english": "English",
     "serbian": "Srpski",
     "serbianCyrillic": "Српски",
-    "switchToCyrillic": "Switch to Cyrillic script",
-    "switchToLatin": "Switch to Latin script"
+    "label": "Language"
   },
   "menu": {
     "about": "About",
     "logout": "Logout",
-    "settings": "Settings"
+    "settings": "Settings",
+    "open": "Open menu"
   },
   "nameHint": "You don't need to use your real name. This isn't a government office. You can use a nickname like 'Lizard' or 'Quacky McDuck'. In general, it's better not to share personal data when there's no real need. Of course, you can use your real name too. Your choice.",
   "nameLabel": "Username or nickname",
@@ -453,5 +453,15 @@
     "saved": "All changes saved",
     "saving": "Saving…",
     "savingSoon": "Saving soon…"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Preferences for how you use Matko on this device.",
+    "role": {
+      "title": "Role",
+      "description": "Changes what Matko shows you. You can switch at any time.",
+      "studentDescription": "Take courses shared with you.",
+      "teacherDescription": "Create, edit, print and share your own courses, and take courses too."
+    }
   }
 }

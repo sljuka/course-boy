@@ -25,12 +25,15 @@ const kindIcons: Record<RecentlyViewedKind, LucideIcon> = {
 function RecentlyViewedMenu() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { locale } = useAppState();
+  const { locale, role } = useAppState();
   const recentlyViewedQuery = useRecentlyViewedQuery();
   const coursesQuery = useCoursesQuery(locale);
   const coursesById = new Map((coursesQuery.data ?? []).map((course) => [course.id, course]));
-  // A course deleted since it was viewed simply drops out of the list.
-  const entries = (recentlyViewedQuery.data ?? []).filter((entry) => coursesById.has(entry.courseId));
+  // A course deleted since it was viewed simply drops out of the list, and
+  // drafts (teacher-only pages, see RoleRoute) are hidden from students.
+  const entries = (recentlyViewedQuery.data ?? []).filter(
+    (entry) => coursesById.has(entry.courseId) && (entry.kind !== "draft" || role === "teacher"),
+  );
   const label = t("titleBar.recentlyViewed");
 
   return (

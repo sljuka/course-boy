@@ -167,16 +167,35 @@ describe('sidebar by role', () => {
       [...document.querySelectorAll('[data-sidebar=menu-button]')].map((item) => item.textContent),
     )
 
-  it('hides the Teaching section from students and shows it to teachers', async () => {
+  it('hides teacher pages from students; Settings switches the role', async () => {
     await harness.page.evaluate(() => window.preferences.set({ role: 'student' }))
     await harness.page.reload()
     await waitFor(harness.page, () => document.querySelectorAll('[data-sidebar=menu-button]').length > 0)
     expect(await sidebarLinkTexts()).toEqual(['Home'])
 
-    await harness.page.evaluate(() => window.preferences.set({ role: 'teacher' }))
-    await harness.page.reload()
+    // Teacher pages stay reachable by URL (history, recently viewed), so the
+    // route itself sends students Home.
+    await harness.page.evaluate(() => {
+      location.hash = '#/my-courses'
+    })
+    await waitFor(harness.page, () => location.hash === '#/')
+    expect(new URL(harness.page.url()).hash).toBe('#/')
+
+    // Switching back in Settings shows the teacher section again, no reload.
+    await harness.page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await waitFor(harness.page, () => Boolean(document.querySelector('#settings-role-teacher')))
+    await harness.page.click('label[for="settings-role-teacher"]')
     await waitFor(harness.page, () => document.querySelectorAll('[data-sidebar=menu-button]').length > 1)
     expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses'])
+    const prefs = await harness.page.evaluate(() => window.preferences.get())
+    expect(prefs.role).toBe('teacher')
+
+    // Leave the app on Home, where the next suite starts.
+    await harness.page.evaluate(() => {
+      location.hash = '#/'
+    })
   })
 })
 

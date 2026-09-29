@@ -8,7 +8,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarHeader,
   SidebarGroup,
   SidebarGroupContent,
@@ -61,7 +60,7 @@ function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="space-y-4 border-b px-4 py-5">
+      <SidebarHeader className="space-y-4 px-4 py-5">
         <div className="flex items-center justify-between gap-2">
           <Link
             className="flex items-center gap-2 text-base font-bold text-foreground transition-colors hover:text-foreground/80"
@@ -72,7 +71,14 @@ function AppSidebar() {
           </Link>
           <ThemeToggle onThemeChange={setTheme} theme={theme} />
         </div>
-        <LanguageSwitcher locale={locale} onLocaleChange={setLocale} />
+        <div className="flex items-center gap-2">
+          <AppMenu />
+          <LanguageSwitcher
+            className="min-w-0 flex-1"
+            locale={locale}
+            onLocaleChange={setLocale}
+          />
+        </div>
       </SidebarHeader>
       <SidebarContent className="px-3 py-4">
         {visibleGroups.map((group) => (
@@ -103,9 +109,6 @@ function AppSidebar() {
           </SidebarGroup>
         ))}
       </SidebarContent>
-      <SidebarFooter className="border-t px-3 py-4">
-        <AppMenu />
-      </SidebarFooter>
     </Sidebar>
   );
 }
