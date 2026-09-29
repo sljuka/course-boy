@@ -30,7 +30,8 @@
     "removeTestTitle": "Remove this test?",
     "removing": "Removing…",
     "title": "Explorer",
-    "testLabel": "Test"
+    "testLabel": "Test",
+    "toggle": "Show or hide explorer"
   },
   "courseSearch": {
     "courseMenuLabel": "Course actions for {{title}}",

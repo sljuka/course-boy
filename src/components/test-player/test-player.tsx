@@ -9,7 +9,6 @@ import { CoursePlayerShell } from "@/components/course-player/course-player-shel
 import { CourseTestContent } from "@/components/course-player/course-test-content";
 import { PrintDocumentHeader } from "@/components/course-player/print-document-header";
 import { useCoursePlayer, type CoursePlayerReadyState } from "@/components/course-player/use-course-player";
-import { buildPlayerBreadcrumbs } from "@/components/course-player/player-breadcrumbs";
 import { Page } from "@/components/page/page";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -143,11 +142,8 @@ export function TestPlayerView({
 
   return (
     <Page
-      breadcrumbs={buildPlayerBreadcrumbs(
-        playerState,
-        activeItem.title,
-        playerState.activeStep.kind === "lesson" ? t("explorer.testLabel") : undefined,
-      )}
+      // No breadcrumbs in the test player (either mode): only the action bar,
+      // with the test's own controls — and, in interactive mode, the stepper.
       header={
         !isInteractiveMode && (
           <PageHeader
@@ -184,10 +180,10 @@ export function TestPlayerView({
           />
         )
       }
-      toolbarActions={toolbarActions}
+      actions={toolbarActions}
       // Interactive mode steps through one exercise at a time; its stepper
-      // sits centred in the page toolbar.
-      toolbarCenter={
+      // sits centred in the action bar.
+      actionBarCenter={
         isInteractiveMode && (
           <ExerciseStepper
             currentIndex={currentExerciseIndex}

@@ -17,6 +17,7 @@ import {
   clickText,
   bodyText,
   findIndex,
+  waitFor,
   waitForText,
   waitForUrl,
 } from './launch.mjs'
@@ -345,7 +346,13 @@ describe('page breadcrumbs', () => {
     await harness.page.evaluate((id) => {
       location.hash = `#/drafts/${id}`
     }, probeCourseId)
-    await waitForText(harness.page, 'E2E Probe Course')
+    // The course title arrives with the course details query; until then the
+    // trail shows a placeholder, so wait for the real one.
+    await waitFor(harness.page, () =>
+      [...document.querySelectorAll('[data-slot=breadcrumb-item]')]
+        .map((item) => item.textContent)
+        .join(' › ') === 'My courses › E2E Probe Course',
+    )
 
     const trail = await harness.page.evaluate(() =>
       [...document.querySelectorAll('[data-slot=breadcrumb-item]')].map((item) => item.textContent),
@@ -359,6 +366,24 @@ describe('page breadcrumbs', () => {
     )
     await waitForUrl(harness.page, '#/my-courses')
     expect(harness.page.url()).toContain('#/my-courses')
+  })
+
+  it('keeps page actions and the explorer toggle in the action bar, not the breadcrumb row', async () => {
+    await harness.page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, probeCourseId)
+    await waitFor(harness.page, () =>
+      Boolean(document.querySelector('[data-slot=page-action-bar] [aria-label="Show or hide explorer"]')),
+    )
+
+    const rows = await harness.page.evaluate(() => ({
+      actionBar: document.querySelector('[data-slot=page-action-bar]').textContent,
+      toolbar: document.querySelector('[data-slot=page-toolbar]').textContent,
+      explorerPanels: document.querySelectorAll('[data-slot=page-side-panel]').length,
+    }))
+    expect(rows.actionBar).toContain('Preview course')
+    expect(rows.toolbar).not.toContain('Preview course')
+    expect(rows.explorerPanels).toBe(1)
   })
 })
 

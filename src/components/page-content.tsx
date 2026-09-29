@@ -5,9 +5,11 @@ import type { PageBreadcrumb } from "@/components/page/page-breadcrumbs";
 
 type PageContentProps = {
   children: ReactNode;
-  // Page actions, shown at the end of the page toolbar.
+  // Page actions, shown at the end of the page's action bar.
   actions?: ReactNode;
   breadcrumbs?: readonly PageBreadcrumb[];
+  // Actions on the item itself (★, ⋯), right after the last breadcrumb.
+  crumbActions?: ReactNode;
   /** Skip the max-width cap — for canvases like the block editor that want the full width. */
   fullBleed?: boolean;
   className?: string;
@@ -22,16 +24,18 @@ export const PageContent = ({
   breadcrumbs,
   children,
   className,
+  crumbActions,
   fullBleed,
   pageHero,
 }: PageContentProps) => {
   return (
     <Page
+      actions={actions}
       breadcrumbs={breadcrumbs}
       className={className}
+      crumbActions={crumbActions}
       fullBleed={fullBleed}
       header={pageHero}
-      toolbarActions={actions}
     >
       {children}
     </Page>

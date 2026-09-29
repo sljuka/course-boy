@@ -374,6 +374,18 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   layout with a sidebar must render it inside its provider, or the button stays disabled.
   A layout puts content at the end of the status bar with `AppStatusBarEnd` (a portal;
   `src/lib/use-app-status-bar.ts`), as `CourseLayout` does for the editor's save status.
+- **Layout-owned page slots.** The course editor is one route whose "pages" are explorer
+  selections, so its layout supplies what every editor page shares: the breadcrumb trail
+  (`LayoutBreadcrumbsContext`) and its in-page side panels (`PageSidePanelsContext`,
+  `src/lib/use-page-side-panel.ts`): `left` is the explorer, `right` is reserved for a
+  later panel. `<Page>` renders each beside its `PageBody` (a sheet on narrow windows)
+  and its toggle at that end of the page's second row, the `PageActionBar` — the first
+  row (`PageToolbar`) is breadcrumbs only. The explorer's open state persists as
+  `explorerPanel` in the preferences store, validated in `main.ts` by
+  `parseExplorerPanelPreference`.
+- **The whole frame waits for app state.** `AppFrame` in `src/App.tsx` renders nothing
+  until preferences have loaded, so the first thing in `#root` is the page the app starts
+  on — the e2e launch helper treats "something mounted in `#root`" as ready.
 - **Dark mode.** The frame (`--sidebar`) is darker than the page card (`--background`),
   like Linear; flipping them back would draw a light frame around a dark card.
 

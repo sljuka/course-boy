@@ -2,9 +2,10 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-// The row across the top of the page card: breadcrumbs at the start, an
-// optional centred control (e.g. the test stepper) and page actions at the
-// end. Sits above `PageBody`, so it never scrolls away. Screen-only.
+// The row across the top of the page card: navigation only — breadcrumbs, and
+// right after the last crumb a small group of actions on the item itself
+// (★, ⋯). Page-specific controls go in `PageActionBar` below it. Sits above
+// `PageBody`, so it never scrolls away. Screen-only.
 function PageToolbar({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -48,4 +49,18 @@ function PageToolbarEnd({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-export { PageToolbar, PageToolbarCenter, PageToolbarEnd, PageToolbarStart };
+// The page's second row, under the breadcrumbs: page-specific controls —
+// panel toggles, view controls, page actions. Uses the same start / centre /
+// end slots as `PageToolbar`. Lighter than the first row (no rule, shorter),
+// since it belongs with the content below it. Screen-only.
+function PageActionBar({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="page-action-bar"
+      className={cn("flex h-10 shrink-0 items-center gap-3 px-3 print:hidden", className)}
+      {...props}
+    />
+  );
+}
+
+export { PageActionBar, PageToolbar, PageToolbarCenter, PageToolbarEnd, PageToolbarStart };

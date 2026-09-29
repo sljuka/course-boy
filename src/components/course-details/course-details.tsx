@@ -92,19 +92,22 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         <Share2 aria-hidden="true" className="h-4 w-4" />
         {t("shareCourse.openButton")}
       </Button>
-      <Button
-        aria-label={t(isFavorite ? "removeFavoriteCourse" : "favoriteCourse")}
-        onClick={() => setIsFavorite((currentValue) => !currentValue)}
-        shape="circle"
-        size="icon"
-        variant={isFavorite ? "default" : "secondary"}
-      >
-        <Star
-          aria-hidden="true"
-          className={isFavorite ? "h-5 w-5 fill-current" : "h-5 w-5"}
-        />
-      </Button>
     </>
+  );
+
+  // On the course itself, so it sits by its crumb (like Linear's ★).
+  const crumbActions = (
+    <Button
+      aria-label={t(isFavorite ? "removeFavoriteCourse" : "favoriteCourse")}
+      aria-pressed={isFavorite}
+      onClick={() => setIsFavorite((currentValue) => !currentValue)}
+      shape="circle"
+      size="icon-sm"
+      title={t(isFavorite ? "removeFavoriteCourse" : "favoriteCourse")}
+      variant="subtle"
+    >
+      <Star aria-hidden="true" className={isFavorite ? "fill-current" : undefined} />
+    </Button>
   );
 
   // Your own course sits under My courses; the bundled and imported ones under Home.
@@ -153,7 +156,12 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   );
 
   return (
-    <PageContent actions={actions} breadcrumbs={breadcrumbs} pageHero={pageHero}>
+    <PageContent
+      actions={actions}
+      breadcrumbs={breadcrumbs}
+      crumbActions={crumbActions}
+      pageHero={pageHero}
+    >
       {resolvedCourse.sections.map((section) => (
         <Card
           className="overflow-hidden border-border bg-muted/80 shadow-none"

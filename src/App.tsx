@@ -77,6 +77,27 @@ const AppRoutes = () => {
   );
 };
 
+// The whole window frame renders only once preferences have loaded, so the
+// first thing that mounts is the page the app actually starts on (e.g. the
+// onboarding redirect) — never an empty frame that redirects a moment later.
+const AppFrame = () => {
+  const { isLoaded } = useAppState();
+
+  if (!isLoaded) {
+    return null;
+  }
+
+  return (
+    <AppShell>
+      <AppTitleBar />
+      <AppShellMain>
+        <AppRoutes />
+      </AppShellMain>
+      <AppFrameStatusBar />
+    </AppShell>
+  );
+};
+
 const RecentlyViewedTracker = () => {
   useTrackRecentlyViewed();
 
@@ -90,13 +111,7 @@ export const App = () => {
         <TitleBarSidebarProvider>
           <AppStatusBarProvider>
             <RecentlyViewedTracker />
-            <AppShell>
-              <AppTitleBar />
-              <AppShellMain>
-                <AppRoutes />
-              </AppShellMain>
-              <AppFrameStatusBar />
-            </AppShell>
+            <AppFrame />
           </AppStatusBarProvider>
         </TitleBarSidebarProvider>
       </TooltipProvider>

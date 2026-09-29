@@ -34,6 +34,7 @@ import {
 } from './course-paths'
 import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
 import { isValidCourseId } from '../src/lib/course-id'
+import { parseExplorerPanelPreference, type ExplorerPanelPreference } from '../src/lib/explorer-panel'
 import { parseRecentlyViewedEntries, type RecentlyViewedEntry } from '../src/lib/recently-viewed'
 import type {
   ApplyCourseSvgPresetInput,
@@ -112,6 +113,7 @@ type Persona = 'course-boy' | 'course-girl' | 'course-bot' | 'course-monster'
 type Theme = 'light' | 'dark'
 type UserPreferences = {
   category?: Category
+  explorerPanel?: ExplorerPanelPreference
   hasAcknowledgedCreatorKey?: boolean
   locale?: Locale
   nickname?: string
@@ -182,6 +184,10 @@ ipcMain.handle(
 
     // Validated rather than trusted: it's a list the renderer builds, and only
     // well-formed entries (in-app paths, known kinds, capped length) persist.
+    if (typeof preferences.explorerPanel === 'object' && preferences.explorerPanel !== null) {
+      preferencesStore.set('explorerPanel', parseExplorerPanelPreference(preferences.explorerPanel))
+    }
+
     if (Array.isArray(preferences.recentlyViewed)) {
       preferencesStore.set('recentlyViewed', parseRecentlyViewedEntries(preferences.recentlyViewed))
     }

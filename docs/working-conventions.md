@@ -20,20 +20,31 @@
 
 ## Page structure
 
-Every page (except onboarding) is a `<Page>` ([src/components/page/page.tsx](../src/components/page/page.tsx:1)) rendered inside its route layout's `PagePanel`:
+Every page (except onboarding) is a `<Page>` ([src/components/page/page.tsx](../src/components/page/page.tsx:1)) rendered inside its route layout's `PagePanel`. It has two rows above its scrolling body:
+
+```
+row 1  PageToolbar    breadcrumbs · crumbActions                    (navigation)
+row 2  PageActionBar  [left toggle] actionBarStart · actionBarCenter · actions [right toggle]
+body   [left panel]   PageBody (the only scroll area)   [right panel]
+```
 
 ```
 <Page
   breadcrumbs={[{ label: t("sidebar.myCourses"), to: "/my-courses" }, { label: course.title }]}
-  toolbarActions={<Button …>…</Button>}   // end of the page toolbar
-  toolbarCenter={…}                        // optional, e.g. the test stepper
+  crumbActions={<Button …>★</Button>}      // row 1, right after the last crumb: actions on the item itself
+  actionBarStart={…}                       // row 2, start: view controls (tabs, filters)
+  actionBarCenter={…}                      // row 2, centre: optional, e.g. the test stepper
+  actions={<Button …>…</Button>}           // row 2, end: the page's actions
   header={<CardTitle …/>}                  // heading block at the top of the scrolling body
 >
   …page content…
 </Page>
 ```
 
-- **Breadcrumbs** say where the page is; the last crumb is the page itself. Earlier crumbs navigate (`to`) or select in place (`onSelect`). Pages pass them explicitly; the course editor's layout supplies its trail through `LayoutBreadcrumbsContext` because its "pages" are explorer selections.
-- **Page actions go in the toolbar** (`toolbarActions`), not in the page body.
+Each row shows only when it has something in it.
+
+- **Breadcrumbs** say where the page is; the last crumb is the page itself, and each crumb can carry the `icon` its sidebar/explorer item uses. Earlier crumbs navigate (`to`) or select in place (`onSelect`). Pages pass them explicitly; the course editor's layout supplies its trail through `LayoutBreadcrumbsContext` because its "pages" are explorer selections.
+- **Side panels:** a layout can give all its pages in-page side panels through `PageSidePanelsContext` — `left` is the editor's explorer, `right` is reserved for a later panel. `Page` places them beside the body and puts their toggles at the two ends of the action bar.
+- **Page-specific controls go in the action bar** (`actions`, `actionBarStart`, `actionBarCenter`), not in the breadcrumb row or the page body. Row 1 is navigation only, plus `crumbActions` for the item itself.
 - **Don't add scroll containers or full-height sizing** — `Page` owns the only scroll area. See docs/contracts.md §9 for the frame and the print rules.
-- `PageContent` is the same thing under older prop names (`pageHero`, `actions`); prefer `Page` for new pages.
+- `PageContent` is the same thing under older prop names (`pageHero`); prefer `Page` for new pages.

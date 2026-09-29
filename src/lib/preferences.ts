@@ -1,4 +1,5 @@
 import type { Locale } from '@/lib/i18n'
+import type { ExplorerPanelPreference } from '@/lib/explorer-panel'
 import type { RecentlyViewedEntry } from '@/lib/recently-viewed'
 
 export type Category =
@@ -15,6 +16,7 @@ export type Theme = 'light' | 'dark'
 
 export type UserPreferences = {
   category?: Category
+  explorerPanel?: ExplorerPanelPreference
   hasAcknowledgedCreatorKey?: boolean
   locale?: Locale
   nickname?: string

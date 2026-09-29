@@ -30,7 +30,8 @@
     "removeTestTitle": "Уклонити овај тест?",
     "removing": "Уклањање…",
     "title": "Преглед",
-    "testLabel": "Тест"
+    "testLabel": "Тест",
+    "toggle": "Прикажи или сакриј преглед"
   },
   "courseSearch": {
     "courseMenuLabel": "Радње за курс {{title}}",

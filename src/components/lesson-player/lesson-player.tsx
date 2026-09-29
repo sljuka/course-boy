@@ -137,7 +137,7 @@ export function LessonPlayerView({
           }
         />
       }
-      toolbarActions={playerActions}
+      actions={playerActions}
     >
       <PrintDocumentHeader
         courseTitle={playerState.courseTitle}

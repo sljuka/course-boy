@@ -31,6 +31,16 @@ const sidebarGroups = [
   },
 ] as const;
 
+// "My courses" stays highlighted while you're inside one of your courses
+// (the editor) or creating one — they're part of that section.
+function isSidebarItemActive(href: string, pathname: string): boolean {
+  if (href === "/my-courses") {
+    return pathname === href || pathname.startsWith("/drafts/") || pathname === "/courses/new";
+  }
+
+  return pathname === href;
+}
+
 function AppSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
@@ -67,7 +77,7 @@ function AppSidebar() {
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
-                      isActive={location.pathname === item.href}
+                      isActive={isSidebarItemActive(item.href, location.pathname)}
                       render={<Link to={item.href} />}
                     >
                       <item.icon

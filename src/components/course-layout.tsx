@@ -5,6 +5,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 
+import { AppSidebar } from "@/components/app-sidebar";
 import { RegisterTitleBarSidebarToggle } from "@/components/app-title-bar/register-title-bar-sidebar-toggle";
 import { CourseStructurePrototype } from "@/components/course-structure-prototype/course-structure-prototype";
 import {
@@ -17,12 +18,7 @@ import { OnboardingGuard } from "@/components/onboarding-guard";
 import { PagePanel } from "@/components/ui/page-panel";
 import { EditorStatusBar } from "@/components/ui/editor-status-bar";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarProvider,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import { courseContentSaveMutationKey, useCourseDetailsQuery } from "@/lib/course-queries";
 import type {
@@ -33,7 +29,9 @@ import type {
 } from "@/lib/course-package";
 import type { EntityAutosaveStatus } from "@/lib/use-entity-autosave";
 import { useAppState } from "@/lib/use-app-state";
+import { useExplorerPanelPreference } from "@/lib/explorer-panel-queries";
 import { LayoutBreadcrumbsContext } from "@/lib/use-layout-breadcrumbs";
+import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-panel";
 import type { Locale } from "@/lib/i18n";
 
 type CourseLayoutOutletContext = {
@@ -139,6 +137,31 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
     [courseDetailsQuery.data?.sections, courseTitle, selectedNode, t],
   );
 
+  const [explorerPanel, updateExplorerPanel] = useExplorerPanelPreference();
+  const sections = courseDetailsQuery.data?.sections;
+  // The explorer, shown on the left of every editor page. The right panel is
+  // reserved for later (properties/inspector).
+  const sidePanels = useMemo<PageSidePanels>(
+    () => ({
+      left: {
+        content: (
+          <ExplorerPanelContent
+            courseId={courseId ?? ""}
+            courseTitle={courseTitle}
+            onSelectionChange={setSelectedNode}
+            sections={sections ?? []}
+            selectedNodeId={selectedNode.id}
+          />
+        ),
+        label: t("explorer.title"),
+        onOpenChange: (open) => updateExplorerPanel({ open }),
+        open: explorerPanel.open,
+        toggleLabel: t("explorer.toggle"),
+      },
+    }),
+    [courseId, courseTitle, explorerPanel.open, sections, selectedNode.id, t, updateExplorerPanel],
+  );
+
   const reportAutosaveStatus = useCallback(
     (status: EntityAutosaveStatus | null, errorMessage: string | null, retry?: () => void) => {
       setForwardedAutosave({ errorMessage, retry: retry ?? null, status });
@@ -166,16 +189,11 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
     <OnboardingGuard>
       <SidebarProvider
         className="page-fade-in"
-        style={{ "--sidebar-width": "22rem" } as React.CSSProperties}
+        style={{ "--sidebar-width": "14rem" } as React.CSSProperties}
       >
         <RegisterTitleBarSidebarToggle />
-        <ExplorerSidebar
-          courseId={courseId ?? ""}
-          courseTitle={courseTitle}
-          onSelectionChange={setSelectedNode}
-          sections={courseDetailsQuery.data?.sections ?? []}
-          selectedNodeId={selectedNode.id}
-        />
+        <AppSidebar />
+        <PageSidePanelsContext.Provider value={sidePanels}>
         <LayoutBreadcrumbsContext.Provider value={breadcrumbs}>
         <PagePanel>
           <div className="flex min-h-0 flex-1 flex-col">
@@ -232,12 +250,14 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
           </AppStatusBarEnd>
         </PagePanel>
         </LayoutBreadcrumbsContext.Provider>
+        </PageSidePanelsContext.Provider>
       </SidebarProvider>
     </OnboardingGuard>
   );
 };
 
-function ExplorerSidebar({
+// The explorer as the editor's left side panel (see `PageSidePanelsContext`).
+function ExplorerPanelContent({
   courseId,
   courseTitle,
   onSelectionChange,
@@ -250,30 +270,22 @@ function ExplorerSidebar({
   sections: CourseSectionPreview[];
   selectedNodeId: string;
 }) {
-  const { setOpenMobile } = useSidebar();
   const { t } = useTranslation();
 
-  function handleSelectionChange(selection: StructureSelection) {
-    onSelectionChange(selection);
-    setOpenMobile(false);
-  }
-
   return (
-    <Sidebar className="print:hidden" collapsible="offcanvas">
-      <SidebarContent className="p-3">
-        <Eyebrow className="px-1 pb-3" size="small">
-          {t("explorer.title")}
-        </Eyebrow>
-        <CourseStructurePrototype
-          compact
-          courseId={courseId}
-          courseTitle={courseTitle || "Course"}
-          onSelectionChange={handleSelectionChange}
-          sections={sections}
-          selectedNodeId={selectedNodeId}
-          showFrameHeader={false}
-        />
-      </SidebarContent>
-    </Sidebar>
+    <div className="flex flex-col gap-2 p-3">
+      <Eyebrow className="px-1" size="small">
+        {t("explorer.title")}
+      </Eyebrow>
+      <CourseStructurePrototype
+        compact
+        courseId={courseId}
+        courseTitle={courseTitle || "Course"}
+        onSelectionChange={onSelectionChange}
+        sections={sections}
+        selectedNodeId={selectedNodeId}
+        showFrameHeader={false}
+      />
+    </div>
   );
 }
