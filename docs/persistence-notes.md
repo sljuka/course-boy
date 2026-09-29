@@ -230,7 +230,7 @@ actual course editor, is untouched.
 
 **Implemented.** A personal course's card shows a **Draft** badge when its
 current draft has changes beyond its most recently cut version, or the cut
-version number (e.g. "0.2.0") when the draft is byte-identical to that cut —
+version number (e.g. "0.2.0") when the draft's content matches that cut —
 see `CourseVersionBadge` in `src/lib/course-package.ts` and
 `computeCourseVersionBadge` in `electron/course-registry.ts`.
 
@@ -239,13 +239,15 @@ hashes every file under `draft/` (minus assets nothing in the draft references, 
 a cut leaves out of the version too) and compares against the file hashes already
 stored in the latest `versions/<x.y.z>/version-meta.json` (written by
 `cutLocalCourseVersion` for its own hardlink-dedup optimization — reused here
-for a second purpose). Two files are deliberately excluded from the
-comparison: `course.json` (a cut always rewrites its `version`/`updatedAt`
-into the draft *after* the snapshot's hashes were already computed, so its
-hash can never match — that bug shipped once and was caught by
-`e2e/app.e2e.mjs`'s "course version badge" suite) and `version-meta.json`
-(only ever exists inside a `versions/` snapshot, never in `draft/`). Neither
-says anything about whether course *content* changed.
+for a second purpose). `version-meta.json` is excluded (it only ever exists
+inside a `versions/` snapshot, never in `draft/`). `course.json` is compared
+separately, as parsed content rather than by hash: it holds real content — the
+course title and description, supported languages, descriptive tags, content
+rating — mixed with bookkeeping that every draft write or cut changes
+(`updatedAt`, `version`, `versionInfo`, `status`), so those four fields are
+ignored and everything else must match. Until 2026-09-29 `course.json` was
+skipped entirely, so a metadata-only edit after a cut left Commit new version
+disabled; covered now by `electron/course-paths.test.ts`.
 
 A bundled course (`distribution: "bundled"`) has no `draft/` to diverge from
 anything, so its badge is always `{ kind: "version" }`.

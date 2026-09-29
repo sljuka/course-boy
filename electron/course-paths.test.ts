@@ -12,8 +12,10 @@ import {
   cutLocalCourseVersion,
   ensureLocalCoursesRoot,
   getUnusedDraftAssets,
+  hashFileContents,
   publishLocalCourseVersion,
   revertLocalCourseDraftToVersion,
+  updateLocalCourseDraftMetadata,
   uploadCourseAssetFromBytes,
 } from "./course-paths";
 import { getCourseVersionHistory, listCourses } from "./course-registry";
@@ -104,6 +106,30 @@ describe("cutLocalCourseVersion", () => {
 
     const majorResult = await cutLocalCourseVersion({ courseId, releaseType: "major" });
     expect(majorResult.version).toBe("1.0.0");
+  });
+
+  // version-meta.json's hashes are the version's integrity record (planned: a
+  // publisher signs it), so each must match the file actually in the version —
+  // including course.json, which the cut rewrites with the new version number.
+  it("records a hash in version-meta.json for exactly the files in the version", async () => {
+    const courseId = await seedDraftCourse();
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const versionDir = path.join(localCoursesRoot, courseId, "versions", cut.version);
+
+    const meta = JSON.parse(await fs.readFile(path.join(versionDir, "version-meta.json"), "utf8"));
+    const filesOnDisk = (await fs.readdir(versionDir, { recursive: true, withFileTypes: true }))
+      .filter((entry) => entry.isFile())
+      .map((entry) => path.relative(versionDir, path.join(entry.parentPath, entry.name)))
+      .filter((relativePath) => relativePath !== "version-meta.json")
+      .sort();
+
+    expect(Object.keys(meta.fileHashes).sort()).toEqual(filesOnDisk);
+    for (const relativePath of filesOnDisk) {
+      expect(meta.fileHashes[relativePath], relativePath).toBe(
+        await hashFileContents(path.join(versionDir, relativePath)),
+      );
+    }
   });
 
   it("shares unchanged files between cuts via hardlinks", async () => {
@@ -520,6 +546,29 @@ describe("cut and revert with course assets", () => {
     const course = (await listCourses(localCoursesRoot)).find((entry) => entry.id === courseId);
 
     expect(course?.versionBadge).toEqual({ kind: "version", version: cut.version });
+  });
+
+  // Title, description, languages and tags live in course.json, so editing
+  // only them must count as a change since the last cut.
+  it("reports a course.json-only metadata edit as a change since the last cut", async () => {
+    const courseId = await seedDraftCourse();
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const badge = async () =>
+      (await listCourses(localCoursesRoot)).find((entry) => entry.id === courseId)?.versionBadge;
+
+    expect(await badge()).toEqual({ kind: "version", version: cut.version });
+
+    await updateLocalCourseDraftMetadata({
+      contentRating: "all-ages",
+      courseId,
+      defaultLocale: "en",
+      descriptiveTags: [],
+      locales: { en: { description: "A test course", title: "Renamed Course" } },
+      supportedLocales: ["en"],
+    });
+
+    expect(await badge()).toEqual({ kind: "draft" });
   });
 
   it("hardlinks files back into the draft on revert", async () => {

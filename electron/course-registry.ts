@@ -1019,13 +1019,53 @@ async function hashDirectoryContents(
   return Object.fromEntries(entries);
 }
 
-// Excluded from the draft-vs-cut-version comparison: `course.json` carries
-// the version/updatedAt bookkeeping a cut always changes (its hash in a
-// snapshot's own version-meta.json reflects the manifest *before* the cut
-// stamps the bumped version into it, so it can never match anyway), and
+// Excluded from the draft-vs-cut-version file-hash comparison:
 // `version-meta.json` only exists inside `versions/<x.y.z>/`, never in
-// `draft/`. Neither says anything about whether course *content* changed.
+// `draft/`; `course.json` is compared separately by
+// `areManifestContentsEqual`, because it mixes content (titles, languages,
+// tags) with bookkeeping every draft write or cut changes.
 const VERSION_BADGE_COMPARISON_EXCLUDED_FILES = new Set(["course.json", "version-meta.json"]);
+
+// course.json fields that record *when* or *which version*, not what the
+// course says. `updatedAt` changes on every draft write; the others change on
+// cut, revert or publish.
+const MANIFEST_BOOKKEEPING_FIELDS = new Set(["status", "updatedAt", "version", "versionInfo"]);
+
+// Serializes a manifest without its bookkeeping fields, with keys sorted at
+// every level so key order never counts as a difference.
+function serializeManifestContent(value: unknown): string {
+  const normalize = (node: unknown, isRoot: boolean): unknown => {
+    if (Array.isArray(node)) {
+      return node.map((item) => normalize(item, false));
+    }
+
+    if (node && typeof node === "object") {
+      return Object.fromEntries(
+        Object.entries(node as Record<string, unknown>)
+          .filter(([key]) => !(isRoot && MANIFEST_BOOKKEEPING_FIELDS.has(key)))
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([key, child]) => [key, normalize(child, false)]),
+      );
+    }
+
+    return node;
+  };
+
+  return JSON.stringify(normalize(value, true));
+}
+
+async function areManifestContentsEqual(
+  leftDirectoryPath: string,
+  rightDirectoryPath: string,
+): Promise<boolean> {
+  const readManifest = async (directoryPath: string) =>
+    JSON.parse(await fs.readFile(path.join(directoryPath, "course.json"), "utf8")) as unknown;
+
+  return (
+    serializeManifestContent(await readManifest(leftDirectoryPath)) ===
+    serializeManifestContent(await readManifest(rightDirectoryPath))
+  );
+}
 
 function areFileHashesEqual(
   left: Record<string, string>,
@@ -1070,7 +1110,11 @@ async function computeCourseVersionBadge(courseRecord: CourseRecord): Promise<Co
     createReferencedFilesFilter(draftAssetUsage),
   );
 
-  return areFileHashesEqual(draftFileHashes, mostRecentSnapshot.fileHashes)
+  const isUnchanged =
+    areFileHashesEqual(draftFileHashes, mostRecentSnapshot.fileHashes) &&
+    (await areManifestContentsEqual(draftDirectoryPath, mostRecentSnapshot.directoryPath));
+
+  return isUnchanged
     ? { kind: "version", version: courseRecord.manifest.version }
     : { kind: "draft" };
 }

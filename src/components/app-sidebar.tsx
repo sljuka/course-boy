@@ -18,9 +18,15 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { DEFAULT_PERSONA, PERSONAS, getPersonaIconUrl } from "@/lib/personas";
+import type { UserRole } from "@/lib/preferences";
 import { useAppState } from "@/lib/use-app-state";
 
-const sidebarGroups = [
+// `roles` limits a group to those roles; groups without it show for everyone.
+const sidebarGroups: readonly {
+  items: readonly { href: string; icon: typeof Home; id: string }[];
+  label: string;
+  roles?: readonly UserRole[];
+}[] = [
   {
     items: [{ href: "/", icon: Home, id: "home" }],
     label: "learning",
@@ -28,8 +34,9 @@ const sidebarGroups = [
   {
     items: [{ href: "/my-courses", icon: BookOpen, id: "myCourses" }],
     label: "teaching",
+    roles: ["teacher"],
   },
-] as const;
+];
 
 // "My courses" stays highlighted while you're inside one of your courses
 // (the editor) or creating one — they're part of that section.
@@ -44,7 +51,10 @@ function isSidebarItemActive(href: string, pathname: string): boolean {
 function AppSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
-  const { locale, persona, setLocale, setTheme, theme } = useAppState();
+  const { locale, persona, role, setLocale, setTheme, theme } = useAppState();
+  const visibleGroups = sidebarGroups.filter(
+    (group) => !group.roles || (role !== null && group.roles.includes(role)),
+  );
   const personaLabelKey =
     PERSONAS.find((option) => option.id === persona)?.labelKey ??
     PERSONAS.find((option) => option.id === DEFAULT_PERSONA)!.labelKey;
@@ -65,7 +75,7 @@ function AppSidebar() {
         <LanguageSwitcher locale={locale} onLocaleChange={setLocale} />
       </SidebarHeader>
       <SidebarContent className="px-3 py-4">
-        {sidebarGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <SidebarGroup key={group.label ?? "root"}>
             {group.label && (
               <SidebarGroupLabel className="px-2 text-muted-foreground">

@@ -2046,6 +2046,12 @@ export async function cutLocalCourseVersion(
     version: nextVersion,
     versionInfo: nextVersionInfo,
   });
+  // The copy above hashed the draft's course.json; the version's own was just
+  // rewritten with the new version number, so hash that one instead. Every
+  // hash in version-meta.json must match the file in the version.
+  fileHashes["course.json"] = await hashFileContents(
+    path.join(tempSnapshotPath, "course.json"),
+  );
   await fs.writeFile(
     getVersionMetaPath(tempSnapshotPath),
     JSON.stringify(

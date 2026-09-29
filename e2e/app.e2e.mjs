@@ -161,6 +161,25 @@ describe('onboarding', () => {
   })
 })
 
+describe('sidebar by role', () => {
+  const sidebarLinkTexts = () =>
+    harness.page.evaluate(() =>
+      [...document.querySelectorAll('[data-sidebar=menu-button]')].map((item) => item.textContent),
+    )
+
+  it('hides the Teaching section from students and shows it to teachers', async () => {
+    await harness.page.evaluate(() => window.preferences.set({ role: 'student' }))
+    await harness.page.reload()
+    await waitFor(harness.page, () => document.querySelectorAll('[data-sidebar=menu-button]').length > 0)
+    expect(await sidebarLinkTexts()).toEqual(['Home'])
+
+    await harness.page.evaluate(() => window.preferences.set({ role: 'teacher' }))
+    await harness.page.reload()
+    await waitFor(harness.page, () => document.querySelectorAll('[data-sidebar=menu-button]').length > 1)
+    expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses'])
+  })
+})
+
 // Course ids are opaque and random (src/lib/course-id.ts), so the suite
 // captures the ids `createDraft` returns instead of predicting them.
 const BUNDLED_COURSE_ID = 'thys2vej6my5mpxt'
