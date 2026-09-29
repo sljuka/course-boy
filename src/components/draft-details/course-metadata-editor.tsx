@@ -249,9 +249,10 @@ export function CourseMetadataEditor({
       <Button
         nativeButton={false}
         render={<Link to={`/courses/${courseId}`} />}
+        size="sm"
         variant="secondary"
       >
-        <Eye aria-hidden="true" className="h-4 w-4" />
+        <Eye aria-hidden="true" />
         {t("courseVersions.previewCourse")}
       </Button>
       <Tooltip>
@@ -259,9 +260,10 @@ export function CourseMetadataEditor({
           <Button
             disabled={!canCommitNewVersion}
             onClick={() => setIsVersionHistoryOpen(true)}
+            size="sm"
             variant="secondary"
           >
-            <History aria-hidden="true" className="h-4 w-4" />
+            <History aria-hidden="true" />
             {t("courseVersions.commitButton")}
           </Button>
         </TooltipTrigger>

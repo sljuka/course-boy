@@ -25,23 +25,22 @@ export const CoursePlayerActions = ({
             aria-label={t("courseDetails.refreshExercise")}
             onClick={onRefreshExercise}
             shape="circle"
-            size="icon"
-            variant="secondary"
+            size="icon-sm"
+            variant="subtle"
           >
-            <RotateCw aria-hidden="true" className="h-5 w-5" />
+            <RotateCw aria-hidden="true" />
           </Button>
         )}
       </RoleGuard>
       {printControl}
       <Button
         aria-label={t("courseDetails.closeCourse")}
-        className="h-10! w-10! shrink-0"
         onClick={onClose}
         shape="circle"
-        size="icon"
-        variant="outline"
+        size="icon-sm"
+        variant="subtle"
       >
-        <X aria-hidden="true" className="h-5 w-5" />
+        <X aria-hidden="true" />
       </Button>
     </>
   );

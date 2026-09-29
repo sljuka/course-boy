@@ -15,12 +15,8 @@ export const HomePage = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   const actions = (
-    <Button
-      className="gap-2"
-      onClick={() => setIsImportOpen(true)}
-      variant="secondary"
-    >
-      <Download aria-hidden="true" className="h-4 w-4 shrink-0" />
+    <Button onClick={() => setIsImportOpen(true)} size="sm" variant="secondary">
+      <Download aria-hidden="true" />
       <span>{t("importCourse.openButton")}</span>
     </Button>
   );

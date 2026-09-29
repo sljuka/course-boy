@@ -15,11 +15,12 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
-        // Linear-style bar button: a faint fill with a dimmed icon; hover
-        // brightens both. As a toggle (`aria-pressed`), "on" gets a stronger
-        // fill and full-contrast icon so it reads as active at rest.
+        // Linear-style icon button: the same fill as `secondary`, with a
+        // dimmed icon that brightens on hover. As a toggle (`aria-pressed`),
+        // "on" gets a stronger fill and a full-contrast icon, so it reads as
+        // active at rest.
         subtle:
-          "bg-foreground/5 text-muted-foreground hover:bg-foreground/8 hover:text-foreground aria-expanded:bg-foreground/8 aria-expanded:text-foreground aria-pressed:bg-foreground/15 aria-pressed:text-foreground aria-pressed:hover:bg-foreground/20",
+          "bg-secondary text-muted-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] hover:text-foreground aria-expanded:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:text-foreground aria-pressed:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_12%)] aria-pressed:text-foreground aria-pressed:hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_16%)]",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         success:

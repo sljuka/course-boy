@@ -120,20 +120,20 @@ export function TestPlayerView({
             <Button
               aria-label={t("courseDetails.printCourse")}
               shape="circle"
-              size="icon"
-              variant="secondary"
+              size="icon-sm"
+              variant="subtle"
             >
-              <Printer aria-hidden="true" className="h-5 w-5" />
+              <Printer aria-hidden="true" />
             </Button>
           </PrintOptionsMenu>
           <Button
             aria-label={t("courseDetails.interactiveHintTitle")}
             onClick={startInteractiveMode}
             shape="circle"
-            size="icon"
-            variant="secondary"
+            size="icon-sm"
+            variant="subtle"
           >
-            <Play aria-hidden="true" className="h-5 w-5 fill-success text-success" />
+            <Play aria-hidden="true" className="fill-success text-success" />
           </Button>
         </div>
       }

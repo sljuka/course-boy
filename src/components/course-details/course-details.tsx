@@ -89,7 +89,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         {t("courseDetails.startCourse")}
       </Button>
       <Button onClick={() => setIsShareOpen(true)} size="sm" variant="secondary">
-        <Share2 aria-hidden="true" className="h-4 w-4" />
+        <Share2 aria-hidden="true" />
         {t("shareCourse.openButton")}
       </Button>
     </>

@@ -18,8 +18,8 @@ export const CreateCourseAction = () => {
   const { t } = useTranslation();
 
   return (
-    <Button className="gap-2" nativeButton={false} render={<Link to="/courses/new" />}>
-      <Plus aria-hidden="true" className="h-4 w-4 shrink-0" />
+    <Button nativeButton={false} render={<Link to="/courses/new" />} size="sm">
+      <Plus aria-hidden="true" />
       <span>{t("sidebar.createCourse")}</span>
     </Button>
   );

@@ -96,10 +96,10 @@ export function LessonPlayerView({
           <Button
             aria-label={t("courseDetails.printCourse")}
             shape="circle"
-            size="icon"
-            variant="secondary"
+            size="icon-sm"
+            variant="subtle"
           >
-            <Printer aria-hidden="true" className="h-5 w-5" />
+            <Printer aria-hidden="true" />
           </Button>
         </PrintOptionsMenu>
       }
