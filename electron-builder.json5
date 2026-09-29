@@ -1,15 +1,24 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
-  "asar": true,
-  "productName": "YourAppName",
+  "appId": "com.matko.app",
+  // Off on purpose (CLAUDE.md): the Bare worker is a separate process that can't
+  // read inside an asar archive, and the OS can't run the `bare` binary from one.
+  "asar": false,
+  "productName": "Matko",
   "directories": {
     "output": "release/${version}"
   },
+  // Everything the app reads from its own folder at runtime (APP_ROOT): the
+  // Bare worker, the bundled seed course, the SVG presets. Production
+  // `dependencies` are added automatically. `npm run check:packaged` verifies it.
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    "workers",
+    "!workers/**/*.test.*",
+    "courses",
+    "presets"
   ],
   "mac": {
     "target": [

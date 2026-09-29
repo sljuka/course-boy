@@ -19,6 +19,7 @@ npm run lint         # eslint, --max-warnings 0 (includes shadcn/no-restyle — 
 npm test             # vitest run
 npm run check:i18n   # locale key parity against en.json
 npm run check:e2e    # vite build + real Electron app driven by Playwright (~15s)
+npm run check:packaged # electron-builder --dir (unsigned, unpublished) + checks the packaged app
 npm run build        # tsc + vite build + electron-builder
 ```
 
@@ -27,6 +28,17 @@ fails, that is your change.
 
 `check:e2e` is deliberately **not** part of `check` (it needs a build and launches a real
 app). Run it when you touch `electron/`, the preload bridge, onboarding, or i18n wiring.
+
+`check:packaged` (~1 min) builds an unpacked, unsigned app into `release/` — a local
+build, not a release — and checks what only packaging can break: files the app reads from
+its own folder (`workers/`, `courses/`, `presets/`), asar staying off, and the Bare worker
+starting outside the repo. Run it when you touch `electron-builder.json5`, dependencies,
+the worker, or anything read from `APP_ROOT`.
+
+`dependencies` holds only what loads from `node_modules` at runtime — the Bare worker's
+imports and `bare-runtime` — because electron-builder ships every one of them. Anything Vite
+bundles (all renderer libraries, and main-process ones like `electron-store`) is a
+`devDependency`.
 
 ## Verifying in the real app
 

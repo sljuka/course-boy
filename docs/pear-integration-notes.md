@@ -97,8 +97,10 @@ without asking first. See the roadmap below for how Phase 0 sidesteps this.
 - **electron-builder → electron-forge.** The Pear makers
   (`pear-electron-forge-maker-appimage` / `-flatpak` / `-snap`) and the
   `prune-prebuilds` / `universal-prebuilds` plugins are forge plugins.
-- **`asar: true` → `false`** in the current `electron-builder.json5`. asar breaks worker
-  spawning.
+- **`asar: false`** — done 2026-09-29 in `electron-builder.json5` (SLJ-22), with
+  `workers/`, `courses/` and `presets/` added to `files`; asar breaks worker spawning
+  (`spawn ENOTDIR` from inside the archive). `npm run check:packaged` guards it, and
+  forge would need the same settings.
 - Build-output paths move; see contract 6 in [contracts.md](contracts.md:1).
 - Upstream is CommonJS (`"type": "commonjs"`); Matko is ESM (`"type": "module"`). Our own
   code can stay ESM — the worker runs under Bare either way — but the template's
@@ -402,7 +404,8 @@ only publishers ever touch, not an onboarding step every user sees.
      up in Drafts instead of My Courses. Fixed by patching `status` to `"published"`
      during the worker's finalize step, before the rename.
    - **A genuine, pre-existing cross-feature collision**: `migrateNonBundledCoursesToDrafts`
-     (`electron/course-paths.ts`, runs on every `ensureLocalCoursesRoot()` call) treats
+     (`electron/course-paths.ts`, then run on every `ensureLocalCoursesRoot()` call; since
+     SLJ-16, 2026-09-29, once per launch) treats
      *any* non-bundled-seed course sitting at its root with no `draft/` as legacy
      pre-migration content, and force-converts it into an editable draft — silently
      undoing the import on the very next `courses:list`/`courses:get` call after it

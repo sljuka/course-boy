@@ -284,8 +284,10 @@ The app should eventually support:
 - local draft snapshots — **implemented**, see "Keep local snapshots or revision
   history for drafts" above
 - restore from previous snapshot when a save fails — partially implemented:
-  `recoverInterruptedDraftReplacements` (`electron/course-paths.ts`, run on every
-  `ensureLocalCoursesRoot()`) self-heals a draft left mid-swap by a crashed
+  `recoverInterruptedDraftReplacements` (`electron/course-paths.ts`, run once per
+  launch by the first `ensureLocalCoursesRoot()` call — not on every call, which
+  deleted the temp folders an in-flight cut or revert was still building; fixed
+  2026-09-29, SLJ-16) self-heals a draft left mid-swap by a crashed
   `revertLocalCourseDraftToVersion` call, but there is no equivalent for a crash
   during ordinary lesson/section editing yet
 

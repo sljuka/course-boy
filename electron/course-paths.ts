@@ -157,9 +157,36 @@ async function writeBundledSeedState(
   );
 }
 
-export async function ensureLocalCoursesRoot(): Promise<string> {
-  const localCoursesRoot = getLocalCoursesRoot();
+// One setup run per courses root, shared by every caller: concurrent callers
+// await the same run, later callers get it already done. The setup copies the
+// bundled seed and repairs what an earlier session left behind, so it must not
+// run again while this session is writing: overlapping seed copies raced
+// (EEXIST), and a repeated crash-recovery pass deleted the temp folders an
+// in-flight cut or revert was building. Keyed by path so tests, which point
+// userData somewhere new each time, get a fresh setup. A failed run is
+// forgotten so the next call retries.
+const localCoursesRootSetups = new Map<string, Promise<string>>();
 
+export function ensureLocalCoursesRoot(): Promise<string> {
+  const localCoursesRoot = getLocalCoursesRoot();
+  let setup = localCoursesRootSetups.get(localCoursesRoot);
+
+  if (!setup) {
+    setup = setUpLocalCoursesRoot(localCoursesRoot);
+    localCoursesRootSetups.set(localCoursesRoot, setup);
+    setup.catch(() => localCoursesRootSetups.delete(localCoursesRoot));
+  }
+
+  return setup;
+}
+
+// Tests only: forget the setup, as an app restart would, so the next call runs
+// it again (e.g. to check that crash recovery repairs a simulated crash).
+export function forgetLocalCoursesRootSetupForTests(): void {
+  localCoursesRootSetups.clear();
+}
+
+async function setUpLocalCoursesRoot(localCoursesRoot: string): Promise<string> {
   await fs.mkdir(localCoursesRoot, { recursive: true });
   await removeLegacyIdCourses(localCoursesRoot);
 

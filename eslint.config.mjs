@@ -24,7 +24,7 @@ export default [
     // "dist"/"dist-electron" are build output, never source — the old
     // `--ext ts,tsx` CLI filtering kept them out implicitly; flat config's
     // file discovery does not, so they must be ignored explicitly.
-    ignores: ["dist", "dist-electron"],
+    ignores: ["dist", "dist-electron", "release"],
   },
   ...scopeToTypeScript(js.configs.recommended),
   ...scopeToTypeScript(tsPlugin.configs["flat/recommended"]),

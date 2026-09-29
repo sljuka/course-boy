@@ -11,6 +11,7 @@ import {
   createLocalCourseSection,
   cutLocalCourseVersion,
   ensureLocalCoursesRoot,
+  forgetLocalCoursesRootSetupForTests,
   getUnusedDraftAssets,
   hashFileContents,
   publishLocalCourseVersion,
@@ -234,6 +235,7 @@ describe("revertLocalCourseDraftToVersion", () => {
     const stagingPath = path.join(courseRootPath, ".draft-staging-simulated");
 
     await fs.mkdir(stagingPath, { recursive: true });
+    forgetLocalCoursesRootSetupForTests(); // the next launch repairs it
     await ensureLocalCoursesRoot();
 
     const stagingExists = await fs.access(stagingPath).then(
@@ -257,6 +259,7 @@ describe("revertLocalCourseDraftToVersion", () => {
     const stagingPath = path.join(courseRootPath, ".draft-staging-simulated");
 
     await fs.rename(draftPath, stagingPath);
+    forgetLocalCoursesRootSetupForTests(); // the next launch repairs it
     await ensureLocalCoursesRoot();
 
     const draftExists = await fs.access(draftPath).then(
@@ -585,6 +588,42 @@ describe("cut and revert with course assets", () => {
   });
 });
 
+// The courses-root setup (seed copy, migrations, crash recovery) runs once per
+// root, not on every call: overlapping runs raced each other (EEXIST while two
+// seed copies wrote the same folder), and a repeated recovery pass deleted the
+// temp folders a cut or revert was still building (SLJ-16).
+describe("ensureLocalCoursesRoot", () => {
+  it("resolves every overlapping call on a fresh root, with the bundled course seeded", async () => {
+    const roots = await Promise.all(Array.from({ length: 8 }, () => ensureLocalCoursesRoot()));
+
+    expect(new Set(roots).size).toBe(1);
+    const list = await listCourses(roots[0]);
+    expect(list.some((course) => course.distribution === "bundled")).toBe(true);
+  });
+
+  it("leaves an in-flight revert's staging folder alone on later calls", async () => {
+    const courseId = await seedDraftCourse();
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const stagingPath = path.join(localCoursesRoot, courseId, ".draft-staging-123-456");
+
+    await fs.mkdir(stagingPath);
+    await ensureLocalCoursesRoot();
+
+    expect(await fs.stat(stagingPath).then(() => true, () => false)).toBe(true);
+  });
+
+  it("leaves an in-flight cut's temp version folder alone on later calls", async () => {
+    const courseId = await seedDraftCourse();
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const tempVersionPath = path.join(localCoursesRoot, courseId, "versions", "0.1.1.tmp-123-456");
+
+    await fs.mkdir(tempVersionPath, { recursive: true });
+    await ensureLocalCoursesRoot();
+
+    expect(await fs.stat(tempVersionPath).then(() => true, () => false)).toBe(true);
+  });
+});
+
 describe("legacy course id cleanup", () => {
   async function makeLegacyCourse(coursesRoot: string, name: string): Promise<void> {
     await fs.mkdir(path.join(coursesRoot, name, "draft"), { recursive: true });
@@ -605,6 +644,7 @@ describe("legacy course id cleanup", () => {
     await makeLegacyCourse(coursesRoot, "polinomi");
     await makeLegacyCourse(coursesRoot, "matko-getting-started");
 
+    forgetLocalCoursesRootSetupForTests(); // the next launch runs the cleanup
     await ensureLocalCoursesRoot();
 
     const remaining = (await fs.readdir(coursesRoot)).filter((name) => !name.startsWith("."));
@@ -616,6 +656,7 @@ describe("legacy course id cleanup", () => {
     const coursesRoot = await ensureLocalCoursesRoot();
 
     await makeLegacyCourse(coursesRoot, "added-later");
+    forgetLocalCoursesRootSetupForTests(); // even on a later launch
     await ensureLocalCoursesRoot();
 
     expect(await fs.readdir(coursesRoot)).toContain("added-later");

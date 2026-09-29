@@ -206,6 +206,17 @@ const COURSE_ID_PATTERN = /^[a-z2-7]{16}$/
 let probeCourseId
 
 describe('courses over IPC', () => {
+  // SLJ-16: overlapping list calls used to race while copying the bundled
+  // course (EEXIST). The root setup now runs once per launch and is shared.
+  it('answers overlapping list calls', async () => {
+    const lists = await harness.page.evaluate(() =>
+      Promise.all(Array.from({ length: 6 }, () => window.courses.list('en'))),
+    )
+    for (const list of lists) {
+      expect(list.map((c) => c.id)).toContain(BUNDLED_COURSE_ID)
+    }
+  })
+
   it('lists the bundled course seeded into userData on first run', async () => {
     const list = await harness.page.evaluate(() => window.courses.list('en'))
     const ids = list.map((c) => c.id)
