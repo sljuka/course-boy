@@ -1,5 +1,6 @@
 import { BlockNoteEditor, type Block, type BlockNoteSchema, type PartialBlock } from "@blocknote/core";
 
+import { stripSpacesAfterHardBreaks } from "@/components/editor-prototype/blocknote-hard-breaks";
 import { documentEditorSchema } from "@/components/editor-prototype/blocknote-schema";
 import type {
   EditorPrototypeBlock,
@@ -61,7 +62,7 @@ function markdownRunToBlockNoteBlocks(markdown: string): DocumentEditorPartialBl
     return [];
   }
 
-  return conversionEditor.tryParseMarkdownToBlocks(markdown);
+  return stripSpacesAfterHardBreaks(conversionEditor.tryParseMarkdownToBlocks(markdown));
 }
 
 function blockNoteBlocksToMarkdownRun(blocks: DocumentEditorBlock[]): string {

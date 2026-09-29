@@ -2041,17 +2041,27 @@ export async function cutLocalCourseVersion(
     throw new Error(`Course "${input.courseId}" is not a draft`);
   }
 
-  const currentVersionInfo = manifest.versionInfo ?? parseCourseVersion(manifest.version);
+  const versionsDirectoryPath = path.join(courseRootPath, "versions");
+  const previousSnapshot = await findMostRecentSnapshot(versionsDirectoryPath);
+  // Count up from the newest version already cut, not only from the draft's own
+  // number: a revert copies an older version's course.json (and its number)
+  // into the draft, and bumping from that would land on a version that exists.
+  const draftVersionInfo = manifest.versionInfo ?? parseCourseVersion(manifest.version);
+  const newestCutVersionInfo = previousSnapshot
+    ? parseCourseVersion(path.basename(previousSnapshot.directoryPath))
+    : null;
+  const currentVersionInfo =
+    newestCutVersionInfo && compareCourseVersions(newestCutVersionInfo, draftVersionInfo) > 0
+      ? newestCutVersionInfo
+      : draftVersionInfo;
   const nextVersionInfo = bumpCourseVersion(currentVersionInfo, input.releaseType);
   const nextVersion = formatCourseVersion(nextVersionInfo);
-  const versionsDirectoryPath = path.join(courseRootPath, "versions");
   const targetSnapshotPath = path.join(versionsDirectoryPath, nextVersion);
 
   if (await pathExists(targetSnapshotPath)) {
     throw new Error(`Version "${nextVersion}" has already been cut`);
   }
 
-  const previousSnapshot = await findMostRecentSnapshot(versionsDirectoryPath);
   const tempSnapshotPath = `${targetSnapshotPath}.tmp-${process.pid}-${Date.now()}`;
 
   // A version holds only the assets its content references (unused uploads stay

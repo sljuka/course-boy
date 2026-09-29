@@ -133,6 +133,22 @@ describe("cutLocalCourseVersion", () => {
     }
   });
 
+  // A revert copies the old version's course.json (and its version number) into
+  // the draft, so the next cut must count up from the newest version, not from
+  // the draft's own number (SLJ-23).
+  it("cuts past the newest version after reverting to an older one", async () => {
+    const courseId = await seedDraftCourse();
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const third = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+
+    await revertLocalCourseDraftToVersion({ courseId, version: first.version });
+    const afterRevert = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+
+    expect(third.version).toBe("0.1.3");
+    expect(afterRevert.version).toBe("0.1.4");
+  });
+
   it("shares unchanged files between cuts via hardlinks", async () => {
     const courseId = await seedDraftCourse();
     const localCoursesRoot = await ensureLocalCoursesRoot();
@@ -176,7 +192,7 @@ describe("cutLocalCourseVersion", () => {
     expect(targetSnapshotExists).toBe(false);
   });
 
-  it("rejects cutting a version that has already been cut", async () => {
+  it("never re-cuts an existing version, even when the draft's number is rewound", async () => {
     const courseId = await seedDraftCourse();
     await cutLocalCourseVersion({ courseId, releaseType: "patch" });
 
@@ -187,14 +203,15 @@ describe("cutLocalCourseVersion", () => {
       versionInfo: unknown;
     };
 
-    // Rewind the draft's version so the next cut recomputes an already-cut target.
+    // Rewind the draft's version; before SLJ-23 the next cut recomputed an
+    // already-cut target (0.1.1) and failed.
     manifest.version = "0.1.0";
     manifest.versionInfo = { major: 0, minor: 1, patch: 0, releaseType: "initial" };
     await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 
-    await expect(cutLocalCourseVersion({ courseId, releaseType: "patch" })).rejects.toThrow(
-      /already been cut/,
-    );
+    const next = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+
+    expect(next.version).toBe("0.1.2");
   });
 });
 
