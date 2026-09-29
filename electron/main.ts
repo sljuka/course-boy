@@ -456,10 +456,12 @@ function createWindow() {
     // leaves room for them), or on Windows/Linux the min/max/close overlay on
     // the right. Keep the 42px here in sync with `--app-titlebar-height` in
     // src/index.css. The traffic lights' button frame is 16px tall, so y = 13
-    // centres them at 21px — the same line as the bar's own icon buttons.
+    // would centre the frame at 21px, but the circles sit low in that frame:
+    // y = 12 lines them up by eye with the bar's own icon buttons (checked on
+    // macOS 2026-09-29).
     titleBarStyle: 'hidden',
     ...(process.platform === 'darwin'
-      ? { trafficLightPosition: { x: 14, y: 13 } }
+      ? { trafficLightPosition: { x: 14, y: 12 } }
       : { titleBarOverlay: { color: '#00000000', height: 42, symbolColor: '#78716c' } }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
