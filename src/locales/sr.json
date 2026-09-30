@@ -115,7 +115,7 @@
   },
   "courseVersions": {
     "actionErrorTitle": "Nešto nije u redu",
-    "activeBadge": "Aktivna",
+    "activeBadge": "Trenutna",
     "commitButton": "Sačuvaj novu verziju",
     "cutButton": "Iseci novu verziju",
     "cutting": "Sečenje verzije...",
@@ -140,7 +140,12 @@
     "unusedAssetsShow": "Prikaži fajlove ({{count}})",
     "panelTitle": "Verzije",
     "togglePanel": "Prikaži ili sakrij verzije",
-    "versionMenuLabel": "Radnje za verziju {{version}}"
+    "versionMenuLabel": "Radnje za verziju {{version}}",
+    "draftRow": "Nacrt",
+    "draftChangesSince": "Izmene od {{version}}",
+    "draftSameAs": "Isto kao {{version}}",
+    "draftNotCommitted": "Još nije sačuvana nijedna verzija",
+    "draftMenuLabel": "Radnje za nacrt"
   },
   "courseTags": {
     "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."

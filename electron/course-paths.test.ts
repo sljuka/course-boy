@@ -349,6 +349,35 @@ describe("publishLocalCourseVersion", () => {
 });
 
 describe("getCourseVersionHistory", () => {
+  // The Versions panel's Draft row: "Same as 0.1.1" / "Changes since 0.1.1",
+  // measured against the version the draft is based on, not the newest one.
+  it("says whether the draft still matches the version it's based on", async () => {
+    const courseId = await seedDraftCourse();
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const history = () => getCourseVersionHistory(localCoursesRoot, courseId);
+
+    expect((await history())?.draftMatchesCurrentVersion).toBe(false);
+
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    expect((await history())?.draftMatchesCurrentVersion).toBe(true);
+
+    await updateLocalCourseDraftMetadata({
+      contentRating: "all-ages",
+      courseId,
+      defaultLocale: "en",
+      descriptiveTags: [],
+      locales: { en: { description: "A test course", title: "Renamed" } },
+      supportedLocales: ["en"],
+    });
+    expect((await history())?.draftMatchesCurrentVersion).toBe(false);
+
+    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    await revertLocalCourseDraftToVersion({ courseId, version: first.version });
+
+    expect((await history())?.currentDraftVersion).toBe(first.version);
+    expect((await history())?.draftMatchesCurrentVersion).toBe(true);
+  });
+
   it("reflects cut and published versions, sorted newest first", async () => {
     const courseId = await seedDraftCourse();
     const localCoursesRoot = await ensureLocalCoursesRoot();

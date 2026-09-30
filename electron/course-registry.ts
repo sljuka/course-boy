@@ -34,6 +34,7 @@ import {
 } from "../src/lib/course-versioning";
 import {
   findMostRecentSnapshot,
+  readVersionFileHashes,
   hashFileContents,
   isBundledSeedCourseId,
   listFilesRecursively,
@@ -1102,21 +1103,28 @@ async function computeCourseVersionBadge(courseRecord: CourseRecord): Promise<Co
     return { kind: "draft" };
   }
 
-  // Compare exactly the files a cut would put in a version: unreferenced assets
-  // are left out of versions, so they must not count as a draft change either.
+  return (await isDraftSameAsVersion(draftDirectoryPath, mostRecentSnapshot))
+    ? { kind: "version", version: courseRecord.manifest.version }
+    : { kind: "draft" };
+}
+
+// Whether the draft's content equals a cut version's: the same files a cut
+// would copy (unreferenced assets are left out of versions, so they must not
+// count as a draft change either), and the same course.json content.
+async function isDraftSameAsVersion(
+  draftDirectoryPath: string,
+  version: { directoryPath: string; fileHashes: Record<string, string> },
+): Promise<boolean> {
   const draftAssetUsage = await getCourseAssetUsage(draftDirectoryPath);
   const draftFileHashes = await hashDirectoryContents(
     draftDirectoryPath,
     createReferencedFilesFilter(draftAssetUsage),
   );
 
-  const isUnchanged =
-    areFileHashesEqual(draftFileHashes, mostRecentSnapshot.fileHashes) &&
-    (await areManifestContentsEqual(draftDirectoryPath, mostRecentSnapshot.directoryPath));
-
-  return isUnchanged
-    ? { kind: "version", version: courseRecord.manifest.version }
-    : { kind: "draft" };
+  return (
+    areFileHashesEqual(draftFileHashes, version.fileHashes) &&
+    (await areManifestContentsEqual(draftDirectoryPath, version.directoryPath))
+  );
 }
 
 async function toCourseSummary(
@@ -1374,8 +1382,20 @@ export async function getCourseVersionHistory(
     compareCourseVersions(parseCourseVersion(right.version), parseCourseVersion(left.version)),
   );
 
+  // Compared with the version the draft is based on (after a revert, an older
+  // one), not the newest — that's what the badge does, to decide whether
+  // there's anything to commit.
+  const baseVersionPath = path.join(versionsDirectoryPath, draftManifest.version);
+  const draftMatchesCurrentVersion = versionDirectoryNames.includes(draftManifest.version)
+    ? await isDraftSameAsVersion(path.join(courseRootPath, "draft"), {
+        directoryPath: baseVersionPath,
+        fileHashes: await readVersionFileHashes(baseVersionPath),
+      })
+    : false;
+
   return {
     currentDraftVersion: draftManifest.version,
+    draftMatchesCurrentVersion,
     publishedVersion: releaseState.publishedVersion,
     versions: versionEntries,
   };

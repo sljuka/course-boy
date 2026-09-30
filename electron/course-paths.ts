@@ -598,6 +598,14 @@ async function readCourseVersionMeta(
   }
 }
 
+// A cut version's recorded file hashes (empty if its version-meta.json is
+// missing or unreadable).
+export async function readVersionFileHashes(
+  versionDirectoryPath: string,
+): Promise<Record<string, string>> {
+  return (await readCourseVersionMeta(versionDirectoryPath))?.fileHashes ?? {};
+}
+
 export async function findMostRecentSnapshot(
   versionsDirectoryPath: string,
 ): Promise<{ directoryPath: string; fileHashes: Record<string, string> } | null> {

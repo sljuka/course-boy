@@ -7,12 +7,20 @@ import { cn } from "@/lib/utils"
 // A dense, one-line list row (Linear's issue rows). The whole row is
 // clickable through `ListRowLink`, whose hit area stretches over the row;
 // anything in `ListRowActions` sits above it so its own buttons still work.
-function ListRow({ className, ...props }: React.ComponentProps<"div">) {
+// `selected` marks the row as the current one (e.g. the version the draft is
+// based on), with the same background as a selected tree row.
+function ListRow({
+  className,
+  selected = false,
+  ...props
+}: React.ComponentProps<"div"> & { selected?: boolean }) {
   return (
     <div
+      aria-current={selected ? "true" : undefined}
+      data-selected={selected || undefined}
       data-slot="list-row"
       className={cn(
-        "relative flex h-10 min-w-0 items-center gap-3 rounded-md px-2 text-sm transition-colors has-[[data-slot=list-row-link]:focus-visible]:bg-muted hover:bg-muted/60",
+        "relative flex h-10 min-w-0 items-center gap-3 rounded-md px-2 text-sm transition-colors has-[[data-slot=list-row-link]:focus-visible]:bg-muted hover:bg-muted/60 data-selected:bg-muted",
         className
       )}
       {...props}
@@ -38,12 +46,24 @@ function ListRowLink({ className, render, ...props }: useRender.ComponentProps<"
   })
 }
 
-// Secondary information: small, muted, never wraps.
-function ListRowMeta({ className, ...props }: React.ComponentProps<"span">) {
+// Secondary information: small, muted, never wraps. `fill` lets it take the
+// row's free space and truncate (a sentence rather than a short value);
+// `emphasized` drops the muting for something that needs attention.
+function ListRowMeta({
+  className,
+  emphasized = false,
+  fill = false,
+  ...props
+}: React.ComponentProps<"span"> & { emphasized?: boolean; fill?: boolean }) {
   return (
     <span
       data-slot="list-row-meta"
-      className={cn("shrink-0 text-xs whitespace-nowrap text-muted-foreground tabular-nums", className)}
+      className={cn(
+        "text-xs whitespace-nowrap tabular-nums",
+        emphasized ? "text-foreground" : "text-muted-foreground",
+        fill ? "min-w-0 flex-1 truncate" : "shrink-0",
+        className
+      )}
       {...props}
     />
   )

@@ -651,6 +651,9 @@ export type CourseVersionHistoryEntry = {
 
 export type CourseVersionHistory = {
   currentDraftVersion: string;
+  // Whether the draft's content still equals `currentDraftVersion` (the version
+  // it was cut or reverted from). False when that version doesn't exist.
+  draftMatchesCurrentVersion: boolean;
   publishedVersion: string | null;
   versions: CourseVersionHistoryEntry[];
 };

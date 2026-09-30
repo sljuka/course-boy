@@ -115,7 +115,7 @@
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
-    "activeBadge": "Active",
+    "activeBadge": "Current",
     "commitButton": "Commit new version",
     "cutButton": "Cut new version",
     "cutting": "Cutting version...",
@@ -140,7 +140,12 @@
     "unusedAssetsShow": "Show files ({{count}})",
     "panelTitle": "Versions",
     "togglePanel": "Show or hide versions",
-    "versionMenuLabel": "Actions for version {{version}}"
+    "versionMenuLabel": "Actions for version {{version}}",
+    "draftRow": "Draft",
+    "draftChangesSince": "Changes since {{version}}",
+    "draftSameAs": "Same as {{version}}",
+    "draftNotCommitted": "Not committed yet",
+    "draftMenuLabel": "Actions for the draft"
   },
   "courseTags": {
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."
