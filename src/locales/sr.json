@@ -411,7 +411,13 @@
     "empty": "Nijedan kurs još ne odgovara ovoj pretrazi.",
     "error": "Lista kurseva ne može da se učita.",
     "searchPlaceholder": "Pretraži moje kurseve",
-    "title": "Moji kursevi"
+    "title": "Moji kursevi",
+    "groups": {
+      "published": "Objavljeni",
+      "local": "Lokalni"
+    },
+    "unpublishedChanges": "Neobjavljene izmene",
+    "edited": "Izmenjeno {{date}}"
   },
   "sidebar": {
     "createCourse": "Napravi novi kurs",

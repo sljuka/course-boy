@@ -411,7 +411,13 @@
     "empty": "No courses match this search yet.",
     "error": "The courses list could not be loaded.",
     "searchPlaceholder": "Search my courses",
-    "title": "My courses"
+    "title": "My courses",
+    "groups": {
+      "published": "Published",
+      "local": "Local"
+    },
+    "unpublishedChanges": "Unpublished changes",
+    "edited": "Edited {{date}}"
   },
   "sidebar": {
     "createCourse": "Create new course",

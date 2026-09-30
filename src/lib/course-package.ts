@@ -28,6 +28,9 @@ export type CourseManifest = {
   slug: string;
   status: CourseStatus;
   supportedLocales: Locale[];
+  // ISO time of the last write to this package's course content; bumped on
+  // every draft save. Missing in some hand-made packages.
+  updatedAt?: string;
   version: string;
   versionInfo?: CourseVersionInfo;
 };
@@ -428,9 +431,14 @@ export type CourseSummary = {
   id: string;
   lessonPreviews: LessonPreview[];
   previewItems: CoursePreviewItem[];
+  // Your own courses only: the version marked published (`release.json`), or
+  // null if none ever was. Always null for bundled and imported courses.
+  publishedVersion: string | null;
   status: CourseStatus;
   supportedLocales: Locale[];
   title: string;
+  // Last edit (the package's `course.json` `updatedAt`), or null if unknown.
+  updatedAt: string | null;
   version: string;
   versionBadge: CourseVersionBadge;
 };

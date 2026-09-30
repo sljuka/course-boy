@@ -4,15 +4,12 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { CourseErrorCard } from "@/components/course-error-card";
-import { CourseList } from "@/components/course-search/course-list";
 import { CourseSearchField } from "@/components/course-search/course-search-field";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { MyCoursesList } from "@/components/my-courses/my-courses-list";
 import { PageContent } from "@/components/page-content";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
-
-// Only courses you author (they have a draft).
-const authoredDistributions = ["local"] as const;
 
 export const CreateCourseAction = () => {
   const { t } = useTranslation();
@@ -48,12 +45,7 @@ export function MyCoursesPage() {
           placeholder={t("myCourses.searchPlaceholder")}
           value={query}
         />
-        <CourseList
-          distributions={authoredDistributions}
-          emptyMessage={t("myCourses.empty")}
-          query={query}
-          routeBuilder={(courseId) => `/drafts/${courseId}`}
-        />
+        <MyCoursesList query={query} />
       </ErrorBoundary>
     </PageContent>
   );

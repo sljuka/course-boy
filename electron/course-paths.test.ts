@@ -322,6 +322,23 @@ describe("publishLocalCourseVersion", () => {
     );
   });
 
+  // My courses groups your courses into Published / Local from these (SLJ-15).
+  it("reports the published version and last edit in the course list", async () => {
+    const courseId = await seedDraftCourse();
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const summary = async (id: string) =>
+      (await listCourses(localCoursesRoot)).find((course) => course.id === id);
+
+    expect((await summary(courseId))?.publishedVersion).toBeNull();
+    expect(Number.isNaN(Date.parse((await summary(courseId))?.updatedAt ?? ""))).toBe(false);
+
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    await publishLocalCourseVersion({ courseId, version: cut.version });
+
+    expect((await summary(courseId))?.publishedVersion).toBe(cut.version);
+    expect((await summary("thys2vej6my5mpxt"))?.publishedVersion).toBeNull();
+  });
+
   it("rejects publishing a version that was never cut", async () => {
     const courseId = await seedDraftCourse();
 

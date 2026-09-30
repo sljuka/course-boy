@@ -17,6 +17,7 @@ import {
   clickText,
   bodyText,
   findIndex,
+  sleep,
   waitFor,
   waitForText,
   waitForUrl,
@@ -269,6 +270,15 @@ describe('courses over IPC', () => {
     await clickText(harness.page, 'My courses')
     await waitForText(harness.page, 'E2E Probe Course')
     expect(await bodyText(harness.page)).toContain('E2E Probe Course')
+
+    // Never published, so it's listed under the Local group (SLJ-15).
+    const localGroupTitles = await harness.page.evaluate(() => {
+      const localGroup = [...document.querySelectorAll('[data-slot=list-group]')].find((group) =>
+        group.querySelector('[data-slot=list-group-header]').textContent.startsWith('Local'),
+      )
+      return [...localGroup.querySelectorAll('[data-slot=list-row-link]')].map((link) => link.textContent)
+    })
+    expect(localGroupTitles).toContain('E2E Probe Course')
   })
 })
 
@@ -534,6 +544,78 @@ describe('learner flow: attend a course and complete its test', () => {
     // later describe blocks land back on normal app chrome.
     expect(await clickText(harness.page, 'Close course')).toContain('OK')
     await waitForText(harness.page, 'English')
+  })
+})
+
+// SLJ-19: BlockNote's markdown import read a hard line break back with a space
+// after it, so a pasted multi-line paragraph gained a leading space on lines 2+
+// every time it was saved and reopened.
+describe('lesson editor line breaks', () => {
+  it('keeps a pasted multi-line paragraph unchanged across save and reopen', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Line Breaks' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Line breaks lesson' })
+      return { courseId, lessonId }
+    })
+    const draftDir = path.join(USER_DATA, 'courses', ids.courseId, 'draft')
+    const lessonFile = () =>
+      path.join(
+        draftDir,
+        fs.readdirSync(draftDir, { recursive: true }).map(String).find((file) => file.endsWith(`${ids.lessonId}.md`)),
+      )
+    const openLesson = async () => {
+      await page.evaluate((id) => {
+        location.hash = `#/drafts/${id}`
+      }, ids.courseId)
+      await waitFor(page, () =>
+        [...document.querySelectorAll('span,button,div')].some((el) => el.textContent === 'Line breaks lesson'),
+      )
+      await page.evaluate(() =>
+        [...document.querySelectorAll('span,button,div')]
+          .filter((el) => el.textContent === 'Line breaks lesson')
+          .pop()
+          .click(),
+      )
+      await waitFor(page, () => Boolean(document.querySelector('.bn-editor')))
+      await sleep(500)
+    }
+    const waitForFile = async (predicate) => {
+      const deadline = Date.now() + 15_000
+      while (Date.now() < deadline) {
+        const text = fs.readFileSync(lessonFile(), 'utf8')
+        if (predicate(text)) return text
+        await sleep(250)
+      }
+      throw new Error(`lesson file never matched: ${fs.readFileSync(lessonFile(), 'utf8')}`)
+    }
+
+    // Paste three lines into a new paragraph under the lesson's heading.
+    await openLesson()
+    await page.click('.bn-editor')
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End')
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.evaluate(() => {
+      const data = new DataTransfer()
+      data.setData('text/plain', 'first line\nsecond line\nthird line')
+      document.activeElement.dispatchEvent(
+        new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: data }),
+      )
+    })
+    const saved = await waitForFile((text) => text.includes('third line'))
+    expect(saved).toContain('first line\\\nsecond line\\\nthird line')
+
+    // Reopen: the editor must show the lines as pasted, with no leading spaces.
+    await page.reload()
+    await openLesson()
+    const shown = await page.evaluate(() => document.querySelector('.bn-editor').innerText)
+    expect(shown).toContain('first line\nsecond line\nthird line')
   })
 })
 

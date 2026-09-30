@@ -1134,9 +1134,14 @@ async function toCourseSummary(
     id: courseRecord.manifest.id,
     lessonPreviews,
     previewItems,
+    publishedVersion:
+      courseRecord.distribution === "local"
+        ? (await readCourseReleaseState(courseRecord.courseRootPath)).publishedVersion
+        : null,
     status: courseRecord.manifest.status,
     supportedLocales: courseRecord.manifest.supportedLocales,
     title: localizedCourseMetadata.title,
+    updatedAt: courseRecord.manifest.updatedAt ?? null,
     versionBadge: await computeCourseVersionBadge(courseRecord),
     version: courseRecord.manifest.version,
   };
