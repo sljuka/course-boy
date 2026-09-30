@@ -7,7 +7,7 @@ import { createContext, useContext, type ReactNode } from "react";
 // their toggles at the start and end of the page's action bar.
 //
 // - left: the course editor's explorer.
-// - right: reserved for a later panel (properties/inspector); nothing uses it yet.
+// - right: the course editor's Versions (cut versions, revert, publish).
 //
 // See docs/contracts.md §9.
 export type PageSidePanelValue = {

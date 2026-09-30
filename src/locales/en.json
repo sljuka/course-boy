@@ -137,7 +137,10 @@
     "title": "Version history",
     "unusedAssetsTitle": "Unused files will be removed from the draft: {{count}}",
     "unusedAssetsDescription": "Nothing in the course uses these files anymore. Earlier versions that use them keep their own copies.",
-    "unusedAssetsShow": "Show files ({{count}})"
+    "unusedAssetsShow": "Show files ({{count}})",
+    "panelTitle": "Versions",
+    "togglePanel": "Show or hide versions",
+    "versionMenuLabel": "Actions for version {{version}}"
   },
   "courseTags": {
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."

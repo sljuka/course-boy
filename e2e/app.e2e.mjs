@@ -17,7 +17,6 @@ import {
   clickText,
   bodyText,
   findIndex,
-  sleep,
   waitFor,
   waitForText,
   waitForUrl,
@@ -438,11 +437,18 @@ describe('page breadcrumbs', () => {
     const rows = await harness.page.evaluate(() => ({
       actionBar: document.querySelector('[data-slot=page-action-bar]').textContent,
       toolbar: document.querySelector('[data-slot=page-toolbar]').textContent,
-      explorerPanels: document.querySelectorAll('[data-slot=page-side-panel]').length,
+      sidePanels: [...document.querySelectorAll('[data-slot=page-side-panel]')].map((panel) => ({
+        side: panel.dataset.side,
+        title: panel.querySelector('[data-slot=panel-card-header]')?.textContent,
+      })),
     }))
     expect(rows.actionBar).toContain('Preview course')
     expect(rows.toolbar).not.toContain('Preview course')
-    expect(rows.explorerPanels).toBe(1)
+    // Explorer on the left, Versions on the right, each a card with its title inside.
+    expect(rows.sidePanels).toEqual([
+      { side: 'left', title: 'Explorer' },
+      { side: 'right', title: 'Versions' },
+    ])
   })
 })
 
@@ -489,7 +495,9 @@ describe('learner flow: attend a course and complete its test', () => {
           test: {
             exercises: [
               {
-                locales: { en: { prompt: 'What is {{a}} plus {{b}}?' } },
+                // One placeholder with spaces inside the braces: both forms must
+                // be filled in (they once weren't, and `{{ a }}` showed literally).
+                locales: { en: { prompt: 'What is {{ a }} plus {{b}}?' } },
                 solution: { formula: 'a + b', precision: 0 },
                 tags: ['practice'],
                 variables: {
@@ -526,6 +534,7 @@ describe('learner flow: attend a course and complete its test', () => {
 
     expect(await clickText(harness.page, 'Continue')).toContain('OK')
     await waitForText(harness.page, 'Check answer')
+    expect(await bodyText(harness.page)).toContain('What is 4 plus 3?')
 
     const answerIdx = await findIndex(
       harness.page,
@@ -582,18 +591,19 @@ describe('lesson editor line breaks', () => {
           .pop()
           .click(),
       )
-      await waitFor(page, () => Boolean(document.querySelector('.bn-editor')))
-      await sleep(500)
+      // The editor element mounts before the lesson is loaded into it; wait
+      // until it is editable and shows the lesson's heading.
+      await waitFor(page, () => {
+        const editor = document.querySelector('.bn-editor')
+        return editor?.getAttribute('contenteditable') === 'true' && editor.innerText.includes('Document title')
+      })
     }
-    const waitForFile = async (predicate) => {
-      const deadline = Date.now() + 15_000
-      while (Date.now() < deadline) {
-        const text = fs.readFileSync(lessonFile(), 'utf8')
-        if (predicate(text)) return text
-        await sleep(250)
-      }
-      throw new Error(`lesson file never matched: ${fs.readFileSync(lessonFile(), 'utf8')}`)
-    }
+    // Autosave writes in the background; poll the file on disk until it matches.
+    const waitForFile = (predicate) =>
+      expect
+        .poll(() => fs.readFileSync(lessonFile(), 'utf8'), { interval: 250, timeout: 15_000 })
+        .toSatisfy(predicate)
+        .then(() => fs.readFileSync(lessonFile(), 'utf8'))
 
     // Paste three lines into a new paragraph under the lesson's heading.
     await openLesson()

@@ -8,7 +8,9 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  /* The bundled variable font registers as "Inter Variable", not "Inter" —
+     naming only "Inter" silently fell back to Helvetica Neue app-wide. */
+  font-family: "Inter Variable", "Helvetica Neue", Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: var(--foreground);

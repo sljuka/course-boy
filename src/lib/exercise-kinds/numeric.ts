@@ -6,6 +6,7 @@ import type {
 import type { ExerciseInstance } from "../course-player-utils";
 import { evaluateFormula } from "../formula-dsl";
 import { isLocale } from "../i18n";
+import { findTemplateVariables } from "../template-variables";
 
 import {
   hasValidTags,
@@ -55,7 +56,7 @@ export function rollVariableValue(definition: CourseExerciseVariable): number {
 }
 
 function extractTemplateVariables(source: string): string[] {
-  return [...source.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]);
+  return findTemplateVariables(source);
 }
 
 function isVariableRangeSatisfiable(

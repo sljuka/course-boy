@@ -14,19 +14,8 @@ import { ListRow, ListRowActions, ListRowLink, ListRowMeta } from "@/components/
 import { StatusIcon } from "@/components/ui/status-icon";
 import type { CourseSummary } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
+import { formatShortDate } from "@/lib/format-date";
 import { getLocaleFlag } from "@/lib/locale-flags";
-
-// "Sep 27" this year, "Sep 27, 2025" otherwise — in the app's language.
-function formatEditedDate(isoDate: string, locale: Locale): string {
-  const date = new Date(isoDate);
-  const isThisYear = date.getFullYear() === new Date().getFullYear();
-
-  return new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "short",
-    ...(isThisYear ? {} : { year: "numeric" }),
-  }).format(date);
-}
 
 type MyCourseRowProps = {
   course: CourseSummary;
@@ -54,7 +43,7 @@ export function MyCourseRow({ course, locale, onRemove }: MyCourseRowProps) {
       <ListRowMeta>{course.publishedVersion ?? course.version}</ListRowMeta>
       {course.updatedAt && (
         <ListRowMeta title={t("myCourses.edited", { date: new Date(course.updatedAt).toLocaleString(locale) })}>
-          {formatEditedDate(course.updatedAt, locale)}
+          {formatShortDate(course.updatedAt, locale)}
         </ListRowMeta>
       )}
       <ListRowActions>

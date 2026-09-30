@@ -1,5 +1,6 @@
 import type { CourseExercise, CourseTest } from "@/lib/course-package";
 import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
+import { replaceTemplateVariables } from "@/lib/template-variables";
 
 export type ExerciseInstance =
   | { kind: "numeric"; expectedAnswer: number; variables: Record<string, number> }
@@ -15,7 +16,7 @@ export function interpolateTemplate(
   variables: Record<string, number>,
   options: { emphasizeValues?: boolean } = {},
 ): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_match, variableName: string) => {
+  return replaceTemplateVariables(template, (variableName) => {
     const value = String(variables[variableName] ?? "");
     // `**value**` renders bold via InlineMarkdown — used for the prompt (the
     // substituted numbers should stand out against otherwise regular-weight

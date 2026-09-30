@@ -23,5 +23,7 @@ export type UserPreferences = {
   persona?: Persona
   recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
+  // The course editor's right panel (Versions): open or closed.
+  versionsPanel?: ExplorerPanelPreference
   theme?: Theme
 }

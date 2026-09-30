@@ -114,6 +114,7 @@ type Theme = 'light' | 'dark'
 type UserPreferences = {
   category?: Category
   explorerPanel?: ExplorerPanelPreference
+  versionsPanel?: ExplorerPanelPreference
   hasAcknowledgedCreatorKey?: boolean
   locale?: Locale
   nickname?: string
@@ -186,6 +187,10 @@ ipcMain.handle(
     // well-formed entries (in-app paths, known kinds, capped length) persist.
     if (typeof preferences.explorerPanel === 'object' && preferences.explorerPanel !== null) {
       preferencesStore.set('explorerPanel', parseExplorerPanelPreference(preferences.explorerPanel))
+    }
+
+    if (typeof preferences.versionsPanel === 'object' && preferences.versionsPanel !== null) {
+      preferencesStore.set('versionsPanel', parseExplorerPanelPreference(preferences.versionsPanel))
     }
 
     if (Array.isArray(preferences.recentlyViewed)) {

@@ -18,6 +18,7 @@ import type {
   VariableConstraintType,
 } from "@/components/test-editor-prototype-types";
 import { filterValidLocaleEntries } from "@/components/exercise-kinds/types";
+import { findTemplateVariables } from "@/lib/template-variables";
 
 function createId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
@@ -71,18 +72,7 @@ function normalizeSolutionSpace(space: unknown): NumericSolutionSpace {
 }
 
 export function extractPromptVariables(prompt: string) {
-  const variableNames = new Set<string>();
-  const variablePattern = /\{\{\s*([a-zA-Z_][\w-]*)\s*\}\}/g;
-
-  for (const match of prompt.matchAll(variablePattern)) {
-    const variableName = match[1]?.trim();
-
-    if (variableName) {
-      variableNames.add(variableName);
-    }
-  }
-
-  return [...variableNames];
+  return findTemplateVariables(prompt);
 }
 
 export function getConstraintLabel(constraint: VariableConstraint) {

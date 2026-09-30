@@ -7,6 +7,7 @@ import { useParams } from "react-router-dom";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { RegisterTitleBarSidebarToggle } from "@/components/app-title-bar/register-title-bar-sidebar-toggle";
+import { VersionsPanel } from "@/components/course-details/versions-panel";
 import { CourseStructurePrototype } from "@/components/course-structure-prototype/course-structure-prototype";
 import {
   courseRootId,
@@ -17,7 +18,7 @@ import { buildEditorBreadcrumbs } from "@/components/draft-details/editor-breadc
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { PagePanel } from "@/components/ui/page-panel";
 import { EditorStatusBar } from "@/components/ui/editor-status-bar";
-import { Eyebrow } from "@/components/ui/eyebrow";
+import { PanelCard } from "@/components/ui/panel-card";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import { courseContentSaveMutationKey, useCourseDetailsQuery } from "@/lib/course-queries";
@@ -29,7 +30,7 @@ import type {
 } from "@/lib/course-package";
 import type { EntityAutosaveStatus } from "@/lib/use-entity-autosave";
 import { useAppState } from "@/lib/use-app-state";
-import { useExplorerPanelPreference } from "@/lib/explorer-panel-queries";
+import { useSidePanelPreference } from "@/lib/explorer-panel-queries";
 import { LayoutBreadcrumbsContext } from "@/lib/use-layout-breadcrumbs";
 import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-panel";
 import type { Locale } from "@/lib/i18n";
@@ -137,10 +138,11 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
     [courseDetailsQuery.data?.sections, courseTitle, selectedNode, t],
   );
 
-  const [explorerPanel, updateExplorerPanel] = useExplorerPanelPreference();
+  const [explorerPanel, updateExplorerPanel] = useSidePanelPreference("explorerPanel");
+  const [versionsPanel, updateVersionsPanel] = useSidePanelPreference("versionsPanel");
   const sections = courseDetailsQuery.data?.sections;
-  // The explorer, shown on the left of every editor page. The right panel is
-  // reserved for later (properties/inspector).
+  // Every editor page shares two panels: the explorer on the left and the
+  // course's versions on the right.
   const sidePanels = useMemo<PageSidePanels>(
     () => ({
       left: {
@@ -158,8 +160,29 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
         open: explorerPanel.open,
         toggleLabel: t("explorer.toggle"),
       },
+      right: {
+        content: (
+          <div className="p-2">
+            <VersionsPanel courseId={courseId ?? ""} />
+          </div>
+        ),
+        label: t("courseVersions.panelTitle"),
+        onOpenChange: (open) => updateVersionsPanel({ open }),
+        open: versionsPanel.open,
+        toggleLabel: t("courseVersions.togglePanel"),
+      },
     }),
-    [courseId, courseTitle, explorerPanel.open, sections, selectedNode.id, t, updateExplorerPanel],
+    [
+      courseId,
+      courseTitle,
+      explorerPanel.open,
+      sections,
+      selectedNode.id,
+      t,
+      updateExplorerPanel,
+      updateVersionsPanel,
+      versionsPanel.open,
+    ],
   );
 
   const reportAutosaveStatus = useCallback(
@@ -273,19 +296,19 @@ function ExplorerPanelContent({
   const { t } = useTranslation();
 
   return (
-    <div className="flex flex-col gap-2 p-3">
-      <Eyebrow className="px-1" size="small">
-        {t("explorer.title")}
-      </Eyebrow>
-      <CourseStructurePrototype
-        compact
-        courseId={courseId}
-        courseTitle={courseTitle || "Course"}
-        onSelectionChange={onSelectionChange}
-        sections={sections}
-        selectedNodeId={selectedNodeId}
-        showFrameHeader={false}
-      />
+    <div className="p-2">
+      <PanelCard title={t("explorer.title")}>
+        <CourseStructurePrototype
+          compact
+          courseId={courseId}
+          courseTitle={courseTitle || "Course"}
+          framed={false}
+          onSelectionChange={onSelectionChange}
+          sections={sections}
+          selectedNodeId={selectedNodeId}
+          showFrameHeader={false}
+        />
+      </PanelCard>
     </div>
   );
 }

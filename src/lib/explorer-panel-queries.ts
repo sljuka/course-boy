@@ -7,32 +7,34 @@ import {
   type ExplorerPanelPreference,
 } from "@/lib/explorer-panel";
 
-const explorerPanelQueryKey = ["preferences", "explorer-panel"] as const;
+// The course editor's side panels, each remembered across restarts under its
+// own preferences key: the explorer (left) and Versions (right).
+type SidePanelKey = "explorerPanel" | "versionsPanel";
 
-// The editor's explorer panel state (open, side), remembered across restarts.
-// Updates are applied to the cache immediately and persisted in the background.
-export function useExplorerPanelPreference(): [
-  ExplorerPanelPreference,
-  (next: Partial<ExplorerPanelPreference>) => void,
-] {
+// A side panel's state (open or closed). Updates are applied to the cache
+// immediately and persisted in the background.
+export function useSidePanelPreference(
+  key: SidePanelKey,
+): [ExplorerPanelPreference, (next: Partial<ExplorerPanelPreference>) => void] {
   const queryClient = useQueryClient();
+  const queryKey = ["preferences", key] as const;
   const { data } = useQuery({
-    queryKey: explorerPanelQueryKey,
-    queryFn: async () => parseExplorerPanelPreference((await window.preferences.get()).explorerPanel),
+    queryKey,
+    queryFn: async () => parseExplorerPanelPreference((await window.preferences.get())[key]),
   });
   const preference = data ?? DEFAULT_EXPLORER_PANEL;
 
   const update = useCallback(
     (next: Partial<ExplorerPanelPreference>) => {
       const current =
-        queryClient.getQueryData<ExplorerPanelPreference>(explorerPanelQueryKey) ??
+        queryClient.getQueryData<ExplorerPanelPreference>(["preferences", key]) ??
         DEFAULT_EXPLORER_PANEL;
       const merged = { ...current, ...next };
 
-      queryClient.setQueryData(explorerPanelQueryKey, merged);
-      void window.preferences.set({ explorerPanel: merged });
+      queryClient.setQueryData(["preferences", key], merged);
+      void window.preferences.set({ [key]: merged });
     },
-    [queryClient],
+    [key, queryClient],
   );
 
   return [preference, update];

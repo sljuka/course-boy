@@ -102,6 +102,7 @@ function pickDefaultTestTitle(
 
 export function CourseStructurePrototype({
   compact = false,
+  framed = true,
   courseId,
   courseTitle = courseRootTitle,
   onSelectionChange,
@@ -110,6 +111,9 @@ export function CourseStructurePrototype({
   showFrameHeader = true,
 }: {
   compact?: boolean;
+  // Draw its own bordered frame. Off when a container (the editor's
+  // Explorer `PanelCard`) already frames it.
+  framed?: boolean;
   courseId: string;
   courseTitle?: string;
   onSelectionChange?: (selection: StructureSelection) => void;
@@ -295,7 +299,13 @@ export function CourseStructurePrototype({
         </div>
       )}
 
-      <section className="overflow-hidden rounded-sm border border-border bg-card shadow-[0_12px_30px_-24px_rgba(28,25,23,0.12)]">
+      <section
+        className={
+          framed
+            ? "overflow-hidden rounded-sm border border-border bg-card shadow-[0_12px_30px_-24px_rgba(28,25,23,0.12)]"
+            : undefined
+        }
+      >
         {showFrameHeader && (
           <div className="flex items-center justify-between border-b border-border bg-muted px-4 py-2">
             <Eyebrow>Explorer</Eyebrow>

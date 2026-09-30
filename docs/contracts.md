@@ -377,12 +377,13 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
 - **Layout-owned page slots.** The course editor is one route whose "pages" are explorer
   selections, so its layout supplies what every editor page shares: the breadcrumb trail
   (`LayoutBreadcrumbsContext`) and its in-page side panels (`PageSidePanelsContext`,
-  `src/lib/use-page-side-panel.ts`): `left` is the explorer, `right` is reserved for a
-  later panel. `<Page>` renders each beside its `PageBody` (a sheet on narrow windows)
+  `src/lib/use-page-side-panel.ts`): `left` is the explorer, `right` the course's
+  Versions. `<Page>` renders each beside its `PageBody` (a sheet on narrow windows)
   and its toggle at that end of the page's second row, the `PageActionBar` — the first
-  row (`PageToolbar`) is breadcrumbs only. The explorer's open state persists as
-  `explorerPanel` in the preferences store, validated in `main.ts` by
-  `parseExplorerPanelPreference`.
+  row (`PageToolbar`) is breadcrumbs only. Each panel's open state persists in the
+  preferences store (`explorerPanel`, `versionsPanel`), both validated in `main.ts` by
+  `parseExplorerPanelPreference`; a new panel needs its key in `UserPreferences` on
+  both sides and in that validation.
 - **The whole frame waits for app state.** `AppFrame` in `src/App.tsx` renders nothing
   until preferences have loaded, so the first thing in `#root` is the page the app starts
   on — the e2e launch helper treats "something mounted in `#root`" as ready.
