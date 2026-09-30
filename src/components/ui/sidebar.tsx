@@ -5,7 +5,7 @@ import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
 
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useIsCompactAppSidebar } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -66,7 +66,11 @@ function SidebarProvider({
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
-  const isMobile = useIsMobile()
+  // `isMobile` means "render as a drawer": below the app sidebar's compact
+  // width (not only on phones), so mid-size windows give the page its width.
+  // The drawer's own open state (`openMobile`) starts closed and never touches
+  // the saved inline `open` state.
+  const isMobile = useIsCompactAppSidebar()
   const [openMobile, setOpenMobile] = React.useState(false)
 
   // This is the internal state of the sidebar.
@@ -156,11 +160,14 @@ function Sidebar({
   className,
   children,
   dir,
+  closeLabel,
   ...props
 }: React.ComponentProps<"div"> & {
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
+  // The drawer's close button name (narrow windows); pass a translated one.
+  closeLabel?: string
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
@@ -187,7 +194,8 @@ function Sidebar({
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+          className="w-(--sidebar-width) bg-sidebar px-0 pb-0 text-sidebar-foreground"
+          closeLabel={closeLabel}
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,

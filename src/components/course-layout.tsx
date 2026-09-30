@@ -155,6 +155,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
             selectedNodeId={selectedNode.id}
           />
         ),
+        dismissKey: selectedNode.id,
         label: t("explorer.title"),
         onOpenChange: (open) => updateExplorerPanel({ open }),
         open: explorerPanel.open,

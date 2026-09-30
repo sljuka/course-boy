@@ -14,7 +14,11 @@ export type PageSidePanelValue = {
   content: ReactNode;
   // Accessible name of the panel.
   label: string;
+  // As a drawer (narrow windows), the panel closes whenever this changes, e.g.
+  // the explorer's selection: picking something is "done, show me the page".
+  dismissKey?: unknown;
   onOpenChange: (open: boolean) => void;
+  // Inline (wide windows) only; a drawer starts closed and never changes it.
   open: boolean;
   toggleLabel: string;
 };

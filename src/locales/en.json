@@ -484,5 +484,8 @@
       "studentDescription": "Take courses shared with you.",
       "teacherDescription": "Create, edit, print and share your own courses, and take courses too."
     }
+  },
+  "drawer": {
+    "close": "Close"
   }
 }

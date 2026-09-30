@@ -26,7 +26,7 @@ import {
 } from "@/components/editor-prototype/blocknote-translation";
 import { LocalesTabs } from "@/components/locales-tabs";
 import { PageContent } from "@/components/page-content";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLabel } from "@/components/ui/button";
 import type { CourseAssetKind } from "@/lib/course-asset-id";
 import { matkoAssetUrl } from "@/lib/course-assets";
 import type { CourseLesson, UpdateLessonContentInput } from "@/lib/course-package";
@@ -250,9 +250,14 @@ function LoadedDraftDocumentEditor({
   return (
     <PageContent
       actions={
-        <Button onClick={openPreview} size="sm" variant="secondary">
-          <Play aria-hidden="true" className="h-4 w-4" />
-          {t("courseDetails.previewDocument")}
+        <Button
+          onClick={openPreview}
+          size="sm"
+          title={t("courseDetails.previewDocument")}
+          variant="secondary"
+        >
+          <Play aria-hidden="true" />
+          <ButtonLabel>{t("courseDetails.previewDocument")}</ButtonLabel>
         </Button>
       }
       fullBleed

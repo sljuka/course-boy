@@ -378,12 +378,24 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   selections, so its layout supplies what every editor page shares: the breadcrumb trail
   (`LayoutBreadcrumbsContext`) and its in-page side panels (`PageSidePanelsContext`,
   `src/lib/use-page-side-panel.ts`): `left` is the explorer, `right` the course's
-  Versions. `<Page>` renders each beside its `PageBody` (a sheet on narrow windows)
-  and its toggle at that end of the page's second row, the `PageActionBar` — the first
+  Versions. `<Page>` renders each beside its `PageBody` (a drawer on narrow windows,
+  see below) and its toggle at that end of the page's second row, the `PageActionBar` — the first
   row (`PageToolbar`) is breadcrumbs only. Each panel's open state persists in the
   preferences store (`explorerPanel`, `versionsPanel`), both validated in `main.ts` by
   `parseExplorerPanelPreference`; a new panel needs its key in `UserPreferences` on
   both sides and in that validation.
+- **Narrow windows turn the frame's side parts into drawers** (SLJ-26). Below
+  `SIDE_PANELS_INLINE_MIN_WIDTH` (1280px) the editor's panels, and below
+  `APP_SIDEBAR_INLINE_MIN_WIDTH` (1024px) the app sidebar, render as sheets that start
+  closed (`src/hooks/use-mobile.ts`). A drawer's open state is its own: opening or
+  closing it never writes the saved inline state (`explorerPanel`, `versionsPanel`, the
+  sidebar's `open`), so widening the window restores the saved layout. A panel closes
+  when its `dismissKey` changes (the explorer passes its selection); the app sidebar's
+  drawer closes on navigation. Text buttons in the action bar turn icon-only below the
+  same 1280px through the `compact` CSS variant (`src/index.css`) — keep its width in
+  sync with `SIDE_PANELS_INLINE_MIN_WIDTH`. The main window opens at up to 1440×900
+  (capped to the screen) so a first launch starts with everything inline; Electron's
+  default 800×600 would start with all three as drawers.
 - **The whole frame waits for app state.** `AppFrame` in `src/App.tsx` renders nothing
   until preferences have loaded, so the first thing in `#root` is the page the app starts
   on — the e2e launch helper treats "something mounted in `#root`" as ready.

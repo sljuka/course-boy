@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, net, protocol } from 'electron'
+import { app, BrowserWindow, ipcMain, net, protocol, screen } from 'electron'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { open as openFile, stat as statFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -458,7 +458,15 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
 }
 
 function createWindow() {
+  // Start wide enough for the app sidebar and the editor's side panels to sit
+  // inline (their drawer thresholds are 1024px / 1280px, src/hooks/use-mobile.ts),
+  // capped to the screen. Electron's own default, 800×600, would open with all
+  // three as drawers.
+  const workArea = screen.getPrimaryDisplay().workAreaSize
+
   win = new BrowserWindow({
+    width: Math.min(1440, workArea.width),
+    height: Math.min(900, workArea.height),
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     // The renderer draws its own title bar (`WindowTitleBar` in
     // src/components/ui/window-title-bar.tsx) holding the sidebar toggle,

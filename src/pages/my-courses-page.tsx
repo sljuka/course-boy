@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { MyCoursesList } from "@/components/my-courses/my-courses-list";
 import { ViewOptionsMenu } from "@/components/my-courses/view-options-menu";
 import { Page } from "@/components/page/page";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLabel } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { useMyCoursesView } from "@/lib/course-list-view-queries";
 
@@ -17,9 +17,14 @@ export const CreateCourseAction = () => {
   const { t } = useTranslation();
 
   return (
-    <Button nativeButton={false} render={<Link to="/courses/new" />} size="sm">
+    <Button
+      nativeButton={false}
+      render={<Link to="/courses/new" />}
+      size="sm"
+      title={t("sidebar.createCourse")}
+    >
       <Plus aria-hidden="true" />
-      <span>{t("sidebar.createCourse")}</span>
+      <ButtonLabel>{t("sidebar.createCourse")}</ButtonLabel>
     </Button>
   );
 };

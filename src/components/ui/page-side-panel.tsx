@@ -14,7 +14,7 @@ function PageSidePanel({
     <aside
       data-side={side}
       data-slot="page-side-panel"
-      className={cn("flex min-h-0 w-64 shrink-0 flex-col overflow-y-auto print:hidden", className)}
+      className={cn("flex min-h-0 w-72 shrink-0 flex-col overflow-x-hidden overflow-y-auto print:hidden", className)}
       {...props}
     />
   );

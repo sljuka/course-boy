@@ -1,5 +1,6 @@
 import { BookOpen, Home } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { AppMenu } from "@/components/app-menu";
@@ -15,6 +16,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { DEFAULT_PERSONA, PERSONAS, getPersonaIconUrl } from "@/lib/personas";
 import type { UserRole } from "@/lib/preferences";
@@ -50,6 +52,12 @@ function isSidebarItemActive(href: string, pathname: string): boolean {
 function AppSidebar() {
   const { t } = useTranslation();
   const location = useLocation();
+  const { setOpenMobile } = useSidebar();
+
+  // As a drawer (narrow windows), close after navigating somewhere.
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [location.pathname, setOpenMobile]);
   const { locale, persona, role, setLocale, setTheme, theme } = useAppState();
   const visibleGroups = sidebarGroups.filter(
     (group) => !group.roles || (role !== null && group.roles.includes(role)),
@@ -59,7 +67,7 @@ function AppSidebar() {
     PERSONAS.find((option) => option.id === DEFAULT_PERSONA)!.labelKey;
 
   return (
-    <Sidebar>
+    <Sidebar closeLabel={t("drawer.close")}>
       <SidebarHeader className="space-y-4 px-4 py-5">
         <div className="flex items-center justify-between gap-2">
           <Link

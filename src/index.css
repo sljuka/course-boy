@@ -6,6 +6,9 @@
 @import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
+/* Narrow windows, below SIDE_PANELS_INLINE_MIN_WIDTH (src/hooks/use-mobile.ts):
+   the editor's side panels are drawers and text buttons turn icon-only. */
+@custom-variant compact (@media (width < 1280px));
 
 :root {
   /* The bundled variable font registers as "Inter Variable", not "Inter" —

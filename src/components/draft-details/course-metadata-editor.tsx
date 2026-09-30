@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLabel } from "@/components/ui/button";
 import {
   Combobox,
   ComboboxChip,
@@ -251,10 +251,11 @@ export function CourseMetadataEditor({
         nativeButton={false}
         render={<Link to={`/courses/${courseId}`} />}
         size="sm"
+        title={t("courseVersions.previewCourse")}
         variant="secondary"
       >
         <Eye aria-hidden="true" />
-        {t("courseVersions.previewCourse")}
+        <ButtonLabel>{t("courseVersions.previewCourse")}</ButtonLabel>
       </Button>
       <Tooltip>
         <TooltipTrigger render={<span className="inline-flex" />}>
@@ -262,10 +263,11 @@ export function CourseMetadataEditor({
             disabled={!canCommitNewVersion}
             onClick={() => setIsVersionHistoryOpen(true)}
             size="sm"
+            title={t("courseVersions.commitButton")}
             variant="secondary"
           >
             <History aria-hidden="true" />
-            {t("courseVersions.commitButton")}
+            <ButtonLabel>{t("courseVersions.commitButton")}</ButtonLabel>
           </Button>
         </TooltipTrigger>
         {!canCommitNewVersion && (

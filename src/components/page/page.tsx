@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { FolderTree, PanelRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { PageBreadcrumbs, type PageBreadcrumb } from "@/components/page/page-breadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import {
   PageToolbarStart,
 } from "@/components/ui/page-toolbar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsCompactSidePanels } from "@/hooks/use-mobile";
 import { useLayoutBreadcrumbs } from "@/lib/use-layout-breadcrumbs";
 import { usePageSidePanels, type PageSidePanelValue } from "@/lib/use-page-side-panel";
 import { cn } from "@/lib/utils";
@@ -47,7 +48,8 @@ type PageProps = {
 //   body   [left panel]   PageBody (the only scroll area)   [right panel]
 //
 // Each row shows only when it has something in it. Panels come from the route
-// layout (`PageSidePanelsContext`); on narrow windows they open as sheets.
+// layout (`PageSidePanelsContext`); on narrow windows (below
+// `SIDE_PANELS_INLINE_MIN_WIDTH`) they are drawers that start closed.
 // Layout-only — visual styling lives in the `ui` primitives it composes.
 // See docs/working-conventions.md.
 export function Page({
@@ -63,7 +65,8 @@ export function Page({
 }: PageProps) {
   const layoutBreadcrumbs = useLayoutBreadcrumbs();
   const panels = usePageSidePanels();
-  const isMobile = useIsMobile();
+  // Below the side panels' compact width they become drawers (sheets).
+  const isMobile = useIsCompactSidePanels();
   const trail = breadcrumbs ?? layoutBreadcrumbs ?? undefined;
   const hasToolbar = Boolean(trail?.length || crumbActions);
   const hasActionBar = Boolean(
@@ -138,7 +141,24 @@ function PanelToggle({
   panel: PageSidePanelValue;
   side: "left" | "right";
 }) {
+  const { t } = useTranslation();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const lastDismissKey = useRef(panel.dismissKey);
+
+  // Picking something in the drawer (its dismiss key changes) closes it.
+  useEffect(() => {
+    if (lastDismissKey.current !== panel.dismissKey) {
+      lastDismissKey.current = panel.dismissKey;
+      setIsSheetOpen(false);
+    }
+  }, [panel.dismissKey]);
+
+  // Widening the window back to inline panels drops the drawer.
+  useEffect(() => {
+    if (!isMobile) {
+      setIsSheetOpen(false);
+    }
+  }, [isMobile]);
 
   return (
     <>
@@ -155,7 +175,15 @@ function PanelToggle({
       </Button>
       {isMobile && (
         <Sheet onOpenChange={setIsSheetOpen} open={isSheetOpen}>
-          <SheetContent className="w-72 p-0" side={side}>
+          <SheetContent
+            className="w-72 px-0 pb-0"
+            closeLabel={t("drawer.close")}
+            // No ✕ on the right drawer (Versions): its top-right corner is where
+            // Windows/Linux draw the window buttons. It closes with Esc, a click
+            // outside or its toggle.
+            showCloseButton={side === "left"}
+            side={side}
+          >
             <SheetTitle className="sr-only">{panel.label}</SheetTitle>
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{panel.content}</div>
           </SheetContent>

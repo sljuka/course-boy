@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, Folder, History, Home, Share2, Star } from "lucide-react";
+import { BookOpen, Folder, History, Home, Play, Share2, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -14,7 +14,7 @@ import {
 import { CourseActionsMenu } from "@/components/course-actions-menu";
 import { PageContent } from "@/components/page-content";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLabel } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
@@ -86,12 +86,23 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
 
   const actions = (
     <>
-      <Button disabled={!entryStep} onClick={startCourse} size="sm">
-        {t("courseDetails.startCourse")}
+      <Button
+        disabled={!entryStep}
+        onClick={startCourse}
+        size="sm"
+        title={t("courseDetails.startCourse")}
+      >
+        <Play aria-hidden="true" />
+        <ButtonLabel>{t("courseDetails.startCourse")}</ButtonLabel>
       </Button>
-      <Button onClick={() => setIsShareOpen(true)} size="sm" variant="secondary">
+      <Button
+        onClick={() => setIsShareOpen(true)}
+        size="sm"
+        title={t("shareCourse.openButton")}
+        variant="secondary"
+      >
         <Share2 aria-hidden="true" />
-        {t("shareCourse.openButton")}
+        <ButtonLabel>{t("shareCourse.openButton")}</ButtonLabel>
       </Button>
       <CourseActionsMenu
         afterRemovePath={resolvedCourse.distribution === "local" ? "/my-courses" : "/"}

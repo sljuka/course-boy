@@ -7,7 +7,7 @@ import { ImportCourseDialog } from "@/components/course-search/import-course-dia
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Home } from "@/components/home/home";
 import { PageContent } from "@/components/page-content";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLabel } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 
 export const HomePage = () => {
@@ -15,9 +15,14 @@ export const HomePage = () => {
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   const actions = (
-    <Button onClick={() => setIsImportOpen(true)} size="sm" variant="secondary">
+    <Button
+      onClick={() => setIsImportOpen(true)}
+      size="sm"
+      title={t("importCourse.openButton")}
+      variant="secondary"
+    >
       <Download aria-hidden="true" />
-      <span>{t("importCourse.openButton")}</span>
+      <ButtonLabel>{t("importCourse.openButton")}</ButtonLabel>
     </Button>
   );
 

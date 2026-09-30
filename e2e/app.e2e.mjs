@@ -452,6 +452,55 @@ describe('page breadcrumbs', () => {
   })
 })
 
+// SLJ-26: on narrow windows the editor's side panels (< 1280px) and the app
+// sidebar (< 1024px) become drawers that start closed, without touching the
+// saved wide-window panel state.
+describe('narrow windows', () => {
+  const setWidth = (width) =>
+    harness.app.evaluate(({ BrowserWindow }, w) => BrowserWindow.getAllWindows()[0].setContentSize(w, 900), width)
+  const layout = () =>
+    harness.page.evaluate(() => ({
+      inlinePanels: document.querySelectorAll('[data-slot=page-side-panel]').length,
+      sidebarLinks: document.querySelectorAll('[data-sidebar=menu-button]').length,
+    }))
+
+  it('turns the side panels and then the app sidebar into closed drawers', async () => {
+    const { page } = harness
+    const panelsBefore = await page.evaluate(() =>
+      window.preferences.get().then((p) => [p.explorerPanel ?? null, p.versionsPanel ?? null]),
+    )
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, probeCourseId)
+    await page.locator('[data-slot=page-action-bar]').waitFor()
+
+    try {
+      await setWidth(1100)
+      await expect.poll(async () => (await layout()).inlinePanels).toBe(0)
+      expect((await layout()).sidebarLinks).toBeGreaterThan(0)
+
+      // The explorer opens as a drawer from its toggle.
+      await page.getByRole('button', { name: 'Show or hide explorer' }).click()
+      await page.getByRole('dialog', { name: 'Explorer' }).waitFor()
+      await page.keyboard.press('Escape')
+
+      await setWidth(960)
+      await expect.poll(async () => (await layout()).sidebarLinks).toBe(0)
+
+      await setWidth(1440)
+      await expect.poll(async () => (await layout()).inlinePanels).toBe(2)
+      expect((await layout()).sidebarLinks).toBeGreaterThan(0)
+
+      const panelsAfter = await page.evaluate(() =>
+        window.preferences.get().then((p) => [p.explorerPanel ?? null, p.versionsPanel ?? null]),
+      )
+      expect(panelsAfter).toEqual(panelsBefore)
+    } finally {
+      await setWidth(1440)
+    }
+  })
+})
+
 describe('learner flow: attend a course and complete its test', () => {
   let attendCourseId
   let sectionId

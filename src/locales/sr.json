@@ -484,5 +484,8 @@
       "studentDescription": "Prati kurseve koji su podeljeni sa tobom.",
       "teacherDescription": "Pravi, uređuj, štampaj i deli svoje kurseve, a možeš i da pratiš kurseve."
     }
+  },
+  "drawer": {
+    "close": "Zatvori"
   }
 }
