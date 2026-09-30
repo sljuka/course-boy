@@ -7,9 +7,11 @@ import { CourseErrorCard } from "@/components/course-error-card";
 import { CourseSearchField } from "@/components/course-search/course-search-field";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { MyCoursesList } from "@/components/my-courses/my-courses-list";
-import { PageContent } from "@/components/page-content";
+import { ViewOptionsMenu } from "@/components/my-courses/view-options-menu";
+import { Page } from "@/components/page/page";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
+import { useMyCoursesView } from "@/lib/course-list-view-queries";
 
 export const CreateCourseAction = () => {
   const { t } = useTranslation();
@@ -25,12 +27,14 @@ export const CreateCourseAction = () => {
 export function MyCoursesPage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
+  const [view, setView] = useMyCoursesView();
 
   return (
-    <PageContent
+    <Page
+      actionBarStart={<ViewOptionsMenu onViewChange={setView} view={view} />}
       actions={<CreateCourseAction />}
       breadcrumbs={[{ icon: BookOpen, label: t("sidebar.myCourses") }]}
-      pageHero={
+      header={
         <div className="flex flex-col gap-1">
           <CardTitle size="lg">{t("myCourses.title")}</CardTitle>
           <CardDescription className="max-w-3xl">
@@ -45,8 +49,8 @@ export function MyCoursesPage() {
           placeholder={t("myCourses.searchPlaceholder")}
           value={query}
         />
-        <MyCoursesList query={query} />
+        <MyCoursesList query={query} view={view} />
       </ErrorBoundary>
-    </PageContent>
+    </Page>
   );
 }

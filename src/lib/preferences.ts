@@ -1,4 +1,5 @@
 import type { Locale } from '@/lib/i18n'
+import type { CourseListView } from '@/lib/course-list-view'
 import type { ExplorerPanelPreference } from '@/lib/explorer-panel'
 import type { RecentlyViewedEntry } from '@/lib/recently-viewed'
 
@@ -19,6 +20,8 @@ export type UserPreferences = {
   explorerPanel?: ExplorerPanelPreference
   hasAcknowledgedCreatorKey?: boolean
   locale?: Locale
+  // My courses: compact rows ("table") or cards ("list").
+  myCoursesView?: CourseListView
   nickname?: string
   persona?: Persona
   recentlyViewed?: RecentlyViewedEntry[]

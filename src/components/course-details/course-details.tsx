@@ -11,6 +11,7 @@ import {
 import {
   CoursePreviewStrip,
 } from "@/components/course-preview-strip";
+import { CourseActionsMenu } from "@/components/course-actions-menu";
 import { PageContent } from "@/components/page-content";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,10 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         <Share2 aria-hidden="true" />
         {t("shareCourse.openButton")}
       </Button>
+      <CourseActionsMenu
+        afterRemovePath={resolvedCourse.distribution === "local" ? "/my-courses" : "/"}
+        course={resolvedCourse}
+      />
     </>
   );
 

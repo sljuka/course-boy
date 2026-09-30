@@ -23,10 +23,10 @@ import {
   useCourseVersionHistoryQuery,
   useCutCourseVersionMutation,
   usePublishCourseVersionMutation,
-  useRevertCourseDraftMutation,
 } from "@/lib/course-queries";
 import type { CourseVersionReleaseType } from "@/lib/course-versioning";
 import { UnusedAssetsWarning } from "./unused-assets-warning";
+import { useRevertWithConfirmation } from "./use-revert-with-confirmation";
 import { VersionHistoryRow } from "./version-history-row";
 
 type ReleaseType = Exclude<CourseVersionReleaseType, "initial">;
@@ -54,7 +54,7 @@ export function VersionHistoryDialog({
   const [releaseType, setReleaseType] = useState<ReleaseType>("patch");
   const { data: history } = useCourseVersionHistoryQuery(open ? courseId : undefined);
   const cutMutation = useCutCourseVersionMutation();
-  const revertMutation = useRevertCourseDraftMutation();
+  const { confirmationDialog, requestRevert, revertMutation } = useRevertWithConfirmation(courseId);
   const publishMutation = usePublishCourseVersionMutation();
   const canCut = mode === "editor";
   const canPublish = mode === "editor";
@@ -142,13 +142,14 @@ export function VersionHistoryDialog({
                 }
                 key={entry.version}
                 onPublish={() => publishMutation.mutate({ courseId, version: entry.version })}
-                onRevert={() => revertMutation.mutate({ courseId, version: entry.version })}
+                onRevert={() => requestRevert(entry.version)}
               />
             ))
           ) : (
             <CardDescription>{t("courseVersions.emptyState")}</CardDescription>
           )}
         </div>
+        {confirmationDialog}
       </DialogContent>
     </Dialog>
   );

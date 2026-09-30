@@ -431,6 +431,9 @@ export type CourseSummary = {
   id: string;
   lessonPreviews: LessonPreview[];
   previewItems: CoursePreviewItem[];
+  // Your own courses only: when the newest version was cut (committed), or
+  // null if none was. Always null for bundled and imported courses.
+  lastCutAt: string | null;
   // Your own courses only: the version marked published (`release.json`), or
   // null if none ever was. Always null for bundled and imported courses.
   publishedVersion: string | null;

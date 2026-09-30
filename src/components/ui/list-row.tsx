@@ -8,7 +8,9 @@ import { cn } from "@/lib/utils"
 // clickable through `ListRowLink`, whose hit area stretches over the row;
 // anything in `ListRowActions` sits above it so its own buttons still work.
 // `selected` marks the row as the current one (e.g. the version the draft is
-// based on), with the same background as a selected tree row.
+// based on), with the same background as a selected tree row. A row inside a
+// context-menu trigger keeps that background while its menu is open (the
+// trigger marks itself `data-popup-open`), like the explorer's rows.
 function ListRow({
   className,
   selected = false,
@@ -20,7 +22,7 @@ function ListRow({
       data-selected={selected || undefined}
       data-slot="list-row"
       className={cn(
-        "relative flex h-10 min-w-0 items-center gap-3 rounded-md px-2 text-sm transition-colors has-[[data-slot=list-row-link]:focus-visible]:bg-muted hover:bg-muted/60 data-selected:bg-muted",
+        "relative flex h-10 min-w-0 items-center gap-3 rounded-md px-2 text-sm transition-colors has-[[data-slot=list-row-link]:focus-visible]:bg-muted hover:bg-muted/60 data-selected:bg-muted in-data-popup-open:bg-muted",
         className
       )}
       {...props}

@@ -140,12 +140,14 @@
     "unusedAssetsShow": "Show files ({{count}})",
     "panelTitle": "Versions",
     "togglePanel": "Show or hide versions",
-    "versionMenuLabel": "Actions for version {{version}}",
     "draftRow": "Draft",
     "draftChangesSince": "Changes since {{version}}",
     "draftSameAs": "Same as {{version}}",
     "draftNotCommitted": "Not committed yet",
-    "draftMenuLabel": "Actions for the draft"
+    "cancel": "Cancel",
+    "confirmRevertTitle": "Revert to {{version}}?",
+    "confirmRevertDescription": "Your changes since {{version}} haven't been committed and will be lost.",
+    "confirmRevertButton": "Revert"
   },
   "courseTags": {
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."
@@ -425,7 +427,12 @@
       "local": "Local"
     },
     "unpublishedChanges": "Unpublished changes",
-    "edited": "Edited {{date}}"
+    "edited": "Edited {{date}}",
+    "viewOptions": "View options",
+    "layout": "Layout",
+    "layoutTable": "Table",
+    "layoutList": "List",
+    "lastCommitted": "Committed {{date}}"
   },
   "sidebar": {
     "createCourse": "Create new course",

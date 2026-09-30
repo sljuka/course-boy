@@ -140,12 +140,14 @@
     "unusedAssetsShow": "Prikaži fajlove ({{count}})",
     "panelTitle": "Verzije",
     "togglePanel": "Prikaži ili sakrij verzije",
-    "versionMenuLabel": "Radnje za verziju {{version}}",
     "draftRow": "Nacrt",
     "draftChangesSince": "Izmene od {{version}}",
     "draftSameAs": "Isto kao {{version}}",
     "draftNotCommitted": "Još nije sačuvana nijedna verzija",
-    "draftMenuLabel": "Radnje za nacrt"
+    "cancel": "Otkaži",
+    "confirmRevertTitle": "Vratiti na {{version}}?",
+    "confirmRevertDescription": "Tvoje izmene od {{version}} nisu sačuvane kao verzija i biće izgubljene.",
+    "confirmRevertButton": "Vrati"
   },
   "courseTags": {
     "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."
@@ -425,7 +427,12 @@
       "local": "Lokalni"
     },
     "unpublishedChanges": "Neobjavljene izmene",
-    "edited": "Izmenjeno {{date}}"
+    "edited": "Izmenjeno {{date}}",
+    "viewOptions": "Opcije prikaza",
+    "layout": "Raspored",
+    "layoutTable": "Tabela",
+    "layoutList": "Lista",
+    "lastCommitted": "Sačuvano {{date}}"
   },
   "sidebar": {
     "createCourse": "Napravi novi kurs",

@@ -1142,6 +1142,8 @@ async function toCourseSummary(
     id: courseRecord.manifest.id,
     lessonPreviews,
     previewItems,
+    lastCutAt:
+      courseRecord.distribution === "local" ? await readLastCutAt(courseRecord.courseRootPath) : null,
     publishedVersion:
       courseRecord.distribution === "local"
         ? (await readCourseReleaseState(courseRecord.courseRootPath)).publishedVersion
@@ -1269,6 +1271,17 @@ async function readCourseReleaseState(
   } catch {
     return { everPublishedVersions: [], publishedAt: null, publishedVersion: null };
   }
+}
+
+// When the newest cut version was cut, or null if there is none.
+async function readLastCutAt(courseRootPath: string): Promise<string | null> {
+  const newest = await findMostRecentSnapshot(path.join(courseRootPath, "versions"));
+
+  if (!newest) {
+    return null;
+  }
+
+  return (await readCourseVersionMeta(newest.directoryPath)).cutAt || null;
 }
 
 async function readCourseVersionMeta(

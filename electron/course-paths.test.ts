@@ -330,12 +330,14 @@ describe("publishLocalCourseVersion", () => {
       (await listCourses(localCoursesRoot)).find((course) => course.id === id);
 
     expect((await summary(courseId))?.publishedVersion).toBeNull();
+    expect((await summary(courseId))?.lastCutAt).toBeNull();
     expect(Number.isNaN(Date.parse((await summary(courseId))?.updatedAt ?? ""))).toBe(false);
 
     const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
     await publishLocalCourseVersion({ courseId, version: cut.version });
 
     expect((await summary(courseId))?.publishedVersion).toBe(cut.version);
+    expect(Number.isNaN(Date.parse((await summary(courseId))?.lastCutAt ?? ""))).toBe(false);
     expect((await summary("thys2vej6my5mpxt"))?.publishedVersion).toBeNull();
   });
 

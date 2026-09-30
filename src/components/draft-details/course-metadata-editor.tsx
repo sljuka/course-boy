@@ -9,6 +9,7 @@ import {
   normalizeSupportedLocales,
 } from "@/components/draft-details/draft-locale-utils";
 import { LocalesTabs } from "@/components/locales-tabs";
+import { CourseActionsMenu } from "@/components/course-actions-menu";
 import { PageContent } from "@/components/page-content";
 import { TestEditorTagManager } from "@/components/test-editor-tag-manager";
 import {
@@ -278,7 +279,15 @@ export function CourseMetadataEditor({
 
   return (
     <PageContent
-      actions={courseActionButtons}
+      actions={
+        <>
+          {courseActionButtons}
+          <CourseActionsMenu
+            afterRemovePath="/my-courses"
+            course={{ id: courseId, title: draft.localizedCourse[defaultLocale]?.title ?? "" }}
+          />
+        </>
+      }
     >
       <div className="flex flex-col gap-6">
         <FieldSet>

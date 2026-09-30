@@ -8,17 +8,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { CourseSummary } from "@/lib/course-package";
 import { useRemoveCourseMutation } from "@/lib/course-queries";
 
 type RemoveCourseDialogProps = {
-  course: CourseSummary | null;
+  course: { id: string; title: string } | null;
   onOpenChange: (open: boolean) => void;
+  // After a successful removal, e.g. to leave the removed course's page.
+  onRemoved?: () => void;
 };
 
 export function RemoveCourseDialog({
   course,
   onOpenChange,
+  onRemoved,
 }: RemoveCourseDialogProps) {
   const { t } = useTranslation();
   const removeCourseMutation = useRemoveCourseMutation();
@@ -60,6 +62,7 @@ export function RemoveCourseDialog({
 
               void removeCourseMutation.mutateAsync(course.id).then(() => {
                 onOpenChange(false);
+                onRemoved?.();
               });
             }}
           >

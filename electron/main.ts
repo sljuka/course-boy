@@ -34,6 +34,7 @@ import {
 } from './course-paths'
 import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
 import { isValidCourseId } from '../src/lib/course-id'
+import { parseCourseListView, type CourseListView } from '../src/lib/course-list-view'
 import { parseExplorerPanelPreference, type ExplorerPanelPreference } from '../src/lib/explorer-panel'
 import { parseRecentlyViewedEntries, type RecentlyViewedEntry } from '../src/lib/recently-viewed'
 import type {
@@ -114,6 +115,7 @@ type Theme = 'light' | 'dark'
 type UserPreferences = {
   category?: Category
   explorerPanel?: ExplorerPanelPreference
+  myCoursesView?: CourseListView
   versionsPanel?: ExplorerPanelPreference
   hasAcknowledgedCreatorKey?: boolean
   locale?: Locale
@@ -187,6 +189,10 @@ ipcMain.handle(
     // well-formed entries (in-app paths, known kinds, capped length) persist.
     if (typeof preferences.explorerPanel === 'object' && preferences.explorerPanel !== null) {
       preferencesStore.set('explorerPanel', parseExplorerPanelPreference(preferences.explorerPanel))
+    }
+
+    if (typeof preferences.myCoursesView === 'string') {
+      preferencesStore.set('myCoursesView', parseCourseListView(preferences.myCoursesView))
     }
 
     if (typeof preferences.versionsPanel === 'object' && preferences.versionsPanel !== null) {

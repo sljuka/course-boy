@@ -629,6 +629,90 @@ describe('lesson editor line breaks', () => {
   })
 })
 
+// Removing a course lives in the course's own ⋯ menu (end of the action bar),
+// not on list rows or cards.
+describe('remove a course', () => {
+  it("removes a course from the editor's course menu and returns to My courses", async () => {
+    const { page } = harness
+    const { courseId } = await page.evaluate(() =>
+      window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Remove Me' } },
+        supportedLocales: ['en'],
+      }),
+    )
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, courseId)
+    await page.getByRole('button', { name: 'Course actions for E2E Remove Me' }).click()
+    await page.getByRole('menuitem', { name: 'Remove course' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'OK' }).click()
+
+    await waitForUrl(page, '#/my-courses')
+    const ids = (await page.evaluate(() => window.courses.list('en'))).map((course) => course.id)
+    expect(ids).not.toContain(courseId)
+  })
+})
+
+// SLJ-28: reverting replaces the draft, so it asks first when the draft has
+// uncommitted changes, and reverts directly when it doesn't.
+describe('revert confirmation', () => {
+  it('asks before reverting over uncommitted changes, and not otherwise', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Revert' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      await window.courses.createLesson({ courseId, sectionId, title: 'First' })
+      const first = await window.courses.cutVersion({ courseId, releaseType: 'patch' })
+      await window.courses.createLesson({ courseId, sectionId, title: 'Second' })
+      const second = await window.courses.cutVersion({ courseId, releaseType: 'patch' })
+      // An uncommitted change on top of the second version.
+      await window.courses.updateDraftMetadata({
+        contentRating: 'all-ages',
+        courseId,
+        defaultLocale: 'en',
+        descriptiveTags: [],
+        locales: { en: { description: '', title: 'E2E Revert (edited)' } },
+        supportedLocales: ['en'],
+      })
+      return { courseId, first: first.version, second: second.version }
+    })
+    const history = () => page.evaluate((id) => window.courses.getVersionHistory(id), ids.courseId)
+    const revertFromPanel = async (version) => {
+      const row = page.locator('[data-slot=list-row]').filter({ hasText: new RegExp(`^${version.replaceAll('.', '\\.')}`) })
+      await row.click({ button: 'right' })
+      await page.getByRole('menuitem', { name: 'Revert to this version' }).click()
+    }
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await page.locator('[data-slot=list-row]').filter({ hasText: /^Draft/ }).waitFor()
+
+    // Uncommitted changes: it asks. Cancel keeps the draft as it is.
+    await revertFromPanel(ids.first)
+    const dialog = page.getByRole('dialog')
+    await dialog.getByText(`Revert to ${ids.first}?`).waitFor()
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    expect((await history()).currentDraftVersion).toBe(ids.second)
+
+    // Confirm: it reverts.
+    await revertFromPanel(ids.first)
+    await page.getByRole('dialog').getByRole('button', { name: 'Revert' }).click()
+    await expect.poll(async () => (await history()).currentDraftVersion).toBe(ids.first)
+
+    // No uncommitted changes now: it reverts straight away, no dialog.
+    await revertFromPanel(ids.second)
+    await expect.poll(async () => (await history()).currentDraftVersion).toBe(ids.second)
+    expect(await page.getByRole('dialog').count()).toBe(0)
+  })
+})
+
 describe('i18n', () => {
   it('translates the app when the locale is switched and persists the choice', async () => {
     const pickerIdx = await findIndex(harness.page, (e) => e.text.includes('English'))
