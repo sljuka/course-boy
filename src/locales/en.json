@@ -142,7 +142,6 @@
     "togglePanel": "Show or hide versions",
     "draftRow": "Draft",
     "draftChangesSince": "Changes since {{version}}",
-    "draftSameAs": "Same as {{version}}",
     "draftNotCommitted": "Not committed yet",
     "cancel": "Cancel",
     "confirmRevertTitle": "Revert to {{version}}?",
@@ -158,14 +157,15 @@
     "missingDescription": "They'll show as broken for students. You can still commit.",
     "missingItem": "{{filename}}, used in {{location}}",
     "recommendedBadge": "Recommended update",
-    "showDetails": "Show changes for {{version}}",
     "missingTitle": "Missing files used in the course: {{count}}",
     "discardChanges": "Discard changes",
     "confirmDiscardTitle": "Discard changes since {{version}}?",
     "confirmDiscardDescription": "Your uncommitted changes will be lost, and the draft goes back to {{version}}.",
     "confirmDiscardButton": "Discard",
     "releaseTypeWithVersion": "{{name}} · {{version}}",
-    "cutButtonWithVersion": "Cut new version {{version}}"
+    "cutButtonWithVersion": "Cut new version {{version}}",
+    "showReleaseNotes": "Show release notes",
+    "releaseNotesTitle": "Release notes · {{version}}"
   },
   "courseTags": {
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."

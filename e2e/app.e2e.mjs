@@ -853,12 +853,17 @@ describe('release notes', () => {
       title: 'Subtraction',
     })
 
-    // Expanding the version in the Versions panel shows its notes.
+    // The version's context menu opens its release notes in a dialog.
     const newest = history.changelog[0].version
-    await page.getByRole('button', { name: `Show changes for ${newest}` }).click()
-    const panel = page.locator('[data-slot=page-side-panel][data-side=right]')
-    await panel.getByText('Added subtraction.').waitFor()
-    expect(await panel.innerText()).toContain('Recommended update')
+    await page
+      .locator('[data-slot=list-row]')
+      .filter({ hasText: new RegExp(`^${newest.replaceAll('.', '\\.')}`) })
+      .click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Show release notes' }).click()
+    const notesDialog = page.getByRole('dialog', { name: `Release notes · ${newest}` })
+    await notesDialog.getByText('Added subtraction.').waitFor()
+    expect(await notesDialog.innerText()).toContain('Recommended update')
+    expect(await notesDialog.innerText()).toContain('Added lesson "Subtraction" in "Numbers"')
   })
 })
 

@@ -142,7 +142,6 @@
     "togglePanel": "Prikaži ili sakrij verzije",
     "draftRow": "Nacrt",
     "draftChangesSince": "Izmene od {{version}}",
-    "draftSameAs": "Isto kao {{version}}",
     "draftNotCommitted": "Još nije sačuvana nijedna verzija",
     "cancel": "Otkaži",
     "confirmRevertTitle": "Vratiti na {{version}}?",
@@ -158,14 +157,15 @@
     "missingDescription": "Učenicima će se prikazati kao neispravni. Ipak možeš da sačuvaš verziju.",
     "missingItem": "{{filename}}, koristi se u: {{location}}",
     "recommendedBadge": "Preporučeno ažuriranje",
-    "showDetails": "Prikaži izmene za {{version}}",
     "missingTitle": "Fajlovi koji se koriste u kursu, a nedostaju: {{count}}",
     "discardChanges": "Odbaci izmene",
     "confirmDiscardTitle": "Odbaciti izmene od {{version}}?",
     "confirmDiscardDescription": "Nesačuvane izmene biće izgubljene, a nacrt se vraća na {{version}}.",
     "confirmDiscardButton": "Odbaci",
     "releaseTypeWithVersion": "{{name}} · {{version}}",
-    "cutButtonWithVersion": "Iseci novu verziju {{version}}"
+    "cutButtonWithVersion": "Iseci novu verziju {{version}}",
+    "showReleaseNotes": "Prikaži beleške o verziji",
+    "releaseNotesTitle": "Beleške o verziji · {{version}}"
   },
   "courseTags": {
     "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."
