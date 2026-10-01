@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getLocaleLabel } from "@/components/draft-details/draft-locale-utils";
 import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import type { CourseLayoutOutletContext } from "@/components/course-layout";
-import { LocalesTabs } from "@/components/locales-tabs";
 import { PageContent } from "@/components/page-content";
 import { TestEditorPrototype } from "@/components/test-editor-prototype";
 import { createInitialState } from "@/components/test-editor-prototype-logic";
@@ -261,18 +260,8 @@ function DraftStandaloneTestEditor({
 
   const [titleSeed] = useState(() => buildTestLocales(initialLocales));
   const [titleLocales, setTitleLocales] = useState(titleSeed);
-  const [activeTitleLocale, setActiveTitleLocale] =
-    useState<Locale>(defaultLocale);
   const updateSectionTestMetadataMutation =
     useUpdateSectionTestMetadataMutation();
-
-  useEffect(() => {
-    if (supportedLocales.includes(activeTitleLocale)) {
-      return;
-    }
-
-    setActiveTitleLocale(defaultLocale);
-  }, [activeTitleLocale, defaultLocale, supportedLocales]);
 
   // The on-disk test file requires every locale's `description` to stay a
   // defined string (see `isStoredSectionTestDefinition` in
@@ -336,44 +325,34 @@ function DraftStandaloneTestEditor({
     }
   }
 
-  const titleEditor = (
-    <LocalesTabs
-      activeLocale={activeTitleLocale}
-      getIsIncomplete={(locale) => !isTestTitleValid(titleLocales[locale])}
-      locales={supportedLocales}
-      onActiveLocaleChange={setActiveTitleLocale}
-      renderContent={(locale) => (
-        <FieldSet>
-          <FieldLegend className="sr-only">
-            {getLocaleLabel(locale, t)}
-          </FieldLegend>
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor={`draft-test-title-${locale}`}>
-                Test title
-                <span aria-hidden="true" className="text-destructive">
-                  *
-                </span>
-              </FieldLabel>
-              <Input
-                aria-invalid={!isTestTitleValid(titleLocales[locale])}
-                id={`draft-test-title-${locale}`}
-                onChange={(event) =>
-                  updateTitleLocale(locale, event.target.value)
-                }
-                placeholder="Test title"
-                value={titleLocales[locale] ?? ""}
-              />
-              {getTestTitleValidationMessage(locale, titleLocales[locale]) && (
-                <FieldDescription variant="destructive">
-                  {getTestTitleValidationMessage(locale, titleLocales[locale])}
-                </FieldDescription>
-              )}
-            </Field>
-          </FieldGroup>
-        </FieldSet>
-      )}
-    />
+  // The title for one locale; the test editor's single language tab bar
+  // picks which (it drives the exercises too).
+  const renderTitle = (locale: Locale) => (
+    <FieldSet>
+      <FieldLegend className="sr-only">{getLocaleLabel(locale, t)}</FieldLegend>
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor={`draft-test-title-${locale}`}>
+            Test title
+            <span aria-hidden="true" className="text-destructive">
+              *
+            </span>
+          </FieldLabel>
+          <Input
+            aria-invalid={!isTestTitleValid(titleLocales[locale])}
+            id={`draft-test-title-${locale}`}
+            onChange={(event) => updateTitleLocale(locale, event.target.value)}
+            placeholder="Test title"
+            value={titleLocales[locale] ?? ""}
+          />
+          {getTestTitleValidationMessage(locale, titleLocales[locale]) && (
+            <FieldDescription variant="destructive">
+              {getTestTitleValidationMessage(locale, titleLocales[locale])}
+            </FieldDescription>
+          )}
+        </Field>
+      </FieldGroup>
+    </FieldSet>
   );
 
   return (
@@ -385,7 +364,10 @@ function DraftStandaloneTestEditor({
       onStateChange={setTestState}
       selectedNode={selectedNode}
       supportedLocales={supportedLocales}
-      titleEditor={titleEditor}
+      getIsLocaleIncomplete={(locale) =>
+        !isTestTitleValid(titleLocales[locale])
+      }
+      renderTitle={renderTitle}
     />
   );
 }

@@ -25,7 +25,9 @@ import {
 } from "@/components/ui/select";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { LocaleTabsList } from "@/components/locales-tabs";
+import { StickyBar } from "@/components/ui/sticky-bar";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
@@ -33,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
+import { GeneratedLocaleNotice } from "@/components/generated-locale-notice";
 import { PageContent } from "@/components/page-content";
 import {
   getExerciseKindEditor,
@@ -52,7 +55,10 @@ import type {
 import type { ExerciseKind } from "@/lib/course-package";
 import { buildDraftTestPreviewPath } from "@/lib/course-utils";
 import type { Locale } from "@/lib/i18n";
-import { getLocaleFlag } from "@/lib/locale-flags";
+import {
+  isGeneratedLocale,
+  useGeneratedSerbianLocale,
+} from "@/lib/use-serbian-script";
 
 type TestEditorPrototypeProps = {
   courseId: string;
@@ -69,10 +75,13 @@ type TestEditorPrototypeProps = {
   // and this component's own description field are shown when true.
   isStandalone: boolean;
   onStateChange: (state: TestEditorState) => void;
-  // A standalone test's own per-locale title editor (rendered by the
-  // caller, since it owns that mutation/autosave) — shown as the first
-  // regular field, above Description. Absent for a lesson-attached test.
-  titleEditor?: ReactNode;
+  // A standalone test's title field for one locale (rendered by the caller,
+  // since it owns that mutation/autosave) — shown as the first regular
+  // field, above Description, for the locale picked in the page's single
+  // language tab bar. Absent for a lesson-attached test.
+  renderTitle?: (locale: Locale) => ReactNode;
+  // Marks a language tab as incomplete (e.g. a missing title).
+  getIsLocaleIncomplete?: (locale: Locale) => boolean;
   // The tree node currently selected in the draft explorer — forwarded to
   // the preview route so closing it can land back on this same test instead
   // of resetting to the course root (see `CourseLayout`'s `selectedNode`
@@ -89,9 +98,11 @@ export function TestEditorPrototype({
   onStateChange,
   selectedNode,
   supportedLocales,
-  titleEditor,
+  renderTitle,
+  getIsLocaleIncomplete,
 }: TestEditorPrototypeProps) {
   const navigate = useNavigate();
+  const generatedLocale = useGeneratedSerbianLocale();
   const [isAddingExercise, setIsAddingExercise] = useState(false);
   const [draftExerciseKind, setDraftExerciseKind] =
     useState<ExerciseKind>("numeric");
@@ -291,8 +302,43 @@ export function TestEditorPrototype({
 
   return (
     <PageContent actions={testActionButtons}>
-      <div className="flex flex-col gap-4">
-        {titleEditor}
+      {/* One language tab bar for the whole page, kept in view while
+          scrolling: it picks the title's locale and the exercises' locale
+          together. The fields in between (description, randomization,
+          strictness) aren't per-language. */}
+      <Tabs
+        className="flex flex-col gap-4"
+        onValueChange={(value) =>
+          setState((currentState) => ({
+            ...currentState,
+            selectedLocale: value as Locale,
+          }))
+        }
+        value={state.selectedLocale}
+      >
+        {supportedLocales.length > 1 && (
+          <StickyBar>
+            <LocaleTabsList
+              getIsIncomplete={getIsLocaleIncomplete}
+              locales={supportedLocales}
+            />
+          </StickyBar>
+        )}
+
+        {generatedLocale &&
+        isGeneratedLocale(generatedLocale, state.selectedLocale) ? (
+          <GeneratedLocaleNotice
+            onEditSource={() =>
+              setState((currentState) => ({
+                ...currentState,
+                selectedLocale: generatedLocale.source,
+              }))
+            }
+            source={generatedLocale.source}
+          />
+        ) : (
+          renderTitle?.(state.selectedLocale)
+        )}
 
         {isStandalone && (
           <Field>
@@ -444,30 +490,11 @@ export function TestEditorPrototype({
 
         <Separator />
 
-        <Tabs
-          className="flex flex-col gap-4"
-          onValueChange={(value) =>
-            setState((currentState) => ({
-              ...currentState,
-              selectedLocale: value as Locale,
-            }))
-          }
-          value={state.selectedLocale}
-        >
-          {supportedLocales.length > 1 && (
-            <TabsList>
-              {supportedLocales.map((locale) => (
-                <TabsTrigger key={locale} value={locale}>
-                  <span className="text-base leading-none">
-                    {getLocaleFlag(locale)}
-                  </span>
-                  <span>{locale}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          )}
-
-          {supportedLocales.map((locale) => (
+        {/* A generated Serbian script has no fields of its own: the notice
+              above stands in for it. */}
+        {supportedLocales
+          .filter((locale) => !isGeneratedLocale(generatedLocale, locale))
+          .map((locale) => (
             <TabsContent
               className="flex flex-col gap-4"
               key={locale}
@@ -655,8 +682,7 @@ export function TestEditorPrototype({
               )}
             </TabsContent>
           ))}
-        </Tabs>
-      </div>
+      </Tabs>
     </PageContent>
   );
 }

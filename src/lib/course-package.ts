@@ -1,6 +1,7 @@
 import type { Locale } from "@/lib/i18n";
 import type { CourseAssetKind } from "@/lib/course-asset-id";
 import type { CourseTagDefinition } from "@/lib/course-tags";
+import type { SerbianScriptSetting } from "@/lib/serbian-script";
 import type {
   CourseVersionInfo,
   CourseVersionReleaseType,
@@ -25,6 +26,10 @@ export type CourseManifest = {
   descriptiveTags?: CourseTagDefinition[];
   id: string;
   locales: Record<Locale, LocalizedCourseMetadata>;
+  // Write Serbian in one script, generate the other (SLJ-17). Only on a
+  // course supporting both `sr` and `sr-Cyrl`; missing means both are
+  // written by hand. See `src/lib/serbian-script.ts`.
+  serbianScript?: SerbianScriptSetting;
   slug: string;
   status: CourseStatus;
   supportedLocales: Locale[];
@@ -452,6 +457,7 @@ export type CourseDetails = CourseSummary & {
   lessonIds: string[];
   locales: Record<Locale, LocalizedCourseMetadata>;
   sections: CourseSectionPreview[];
+  serbianScript: SerbianScriptSetting | null;
   sectionIds: string[];
   slug: string;
 };
@@ -572,6 +578,10 @@ export type UpdateCourseDraftMetadataInput = {
   defaultLocale: Locale;
   descriptiveTags: CourseTagDefinition[];
   locales: Partial<Record<Locale, LocalizedCourseMetadata>>;
+  // Omitted: keep the course's setting. null: write both scripts by hand.
+  // Choosing a source adds both Serbian locales and regenerates the other
+  // script across the whole draft.
+  serbianScript?: SerbianScriptSetting | null;
   supportedLocales: Locale[];
 };
 
@@ -640,7 +650,7 @@ export type CourseChange =
   | {
       kind: "edited";
       target: "course";
-      field: "contentRating" | "defaultLocale" | "description" | "tags" | "title";
+      field: "contentRating" | "defaultLocale" | "description" | "serbianScript" | "tags" | "title";
     }
   | { kind: "added" | "removed"; target: "language"; locale: string }
   | { kind: "added" | "removed"; target: "files"; count: number };

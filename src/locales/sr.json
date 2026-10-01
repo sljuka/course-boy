@@ -538,7 +538,8 @@
       "description": "Izmenjen opis kursa",
       "contentRating": "Izmenjena ocena sadržaja",
       "tags": "Izmenjene oznake kursa",
-      "defaultLocale": "Izmenjen glavni jezik"
+      "defaultLocale": "Izmenjen glavni jezik",
+      "serbianScript": "Izmenjeno generisanje ćirilice i latinice"
     },
     "language": {
       "added": "Dodat jezik: {{language}}",
@@ -554,5 +555,30 @@
       "lesson": "lekcija „{{title}}“ u „{{section}}“",
       "test": "test „{{title}}“ u „{{section}}“"
     }
+  },
+  "serbianScript": {
+    "title": "Srpska pisma",
+    "description": "Piši srpski jednom, a Matko pravi drugo pismo pri svakom čuvanju.",
+    "sourceLatin": "Pišem latinicom, ćirilica se pravi sama",
+    "sourceLatinDescription": "Menjaš tekst na latinici; tekst na ćirilici se pravi od njega.",
+    "sourceCyrillic": "Pišem ćirilicom, latinica se pravi sama",
+    "sourceCyrillicDescription": "Menjaš tekst na ćirilici; tekst na latinici se pravi od njega.",
+    "separately": "Pišem oba pisma posebno",
+    "separatelyDescription": "Sam pišeš i tekst na latinici i tekst na ćirilici.",
+    "keepAsIsLabel": "Reči koje ostaju kako su napisane",
+    "keepAsIsPlaceholder": "Matko, GeoGebra",
+    "keepAsIsDescription": "Imena ili strane reči koje ne menjaju pismo, odvojene zarezima. Reči sa q, w, x ili y uvek ostaju iste.",
+    "confirmLatinTitle": "Napraviti ćirilicu od latinice?",
+    "confirmLatinDescription": "Sav tekst na ćirilici u ovom kursu biće zamenjen tekstom napravljenim od latinice. Ono što je posebno napisano ćirilicom biće izgubljeno.",
+    "confirmLatinButton": "Napravi ćirilicu",
+    "confirmCyrillicTitle": "Napraviti latinicu od ćirilice?",
+    "confirmCyrillicDescription": "Sav tekst na latinici u ovom kursu biće zamenjen tekstom napravljenim od ćirilice. Ono što je posebno napisano latinicom biće izgubljeno.",
+    "confirmCyrillicButton": "Napravi latinicu",
+    "cancel": "Otkaži",
+    "generatedFromLatin": "Napravljeno od teksta na latinici",
+    "generatedFromCyrillic": "Napravljeno od teksta na ćirilici",
+    "generatedDescription": "Osvežava se pri svakom čuvanju, pa se ne menja ovde. Pismo kojim pišeš biraš u podešavanjima kursa.",
+    "editLatin": "Uredi latinicu",
+    "editCyrillic": "Uredi ćirilicu"
   }
 }

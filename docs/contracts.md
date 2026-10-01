@@ -278,6 +278,32 @@ courses), the bundled seed id means `"bundled"`, anything else is `"imported"` (
 listed on Home). A leftover `distribution` field in an older or peer-supplied
 `course.json` is ignored.
 
+**`serbianScript` (SLJ-17)** is an optional `course.json` field,
+`{ source: "sr" | "sr-Cyrl", keepAsIs?: string[] }`: the teacher writes Serbian in
+`source` and the other script is generated from it. It is only valid on a course that
+supports **both** `sr` and `sr-Cyrl` (the manifest validator rejects it otherwise), and
+missing means both scripts are written by hand, which is how every course before it
+works. The generated script is **written to disk on every save**, in the main process, so
+a cut version or an imported course carries both scripts and no reader needs the
+generator:
+
+- every course content file is written through `writeCourseJsonFile` in `course-paths.ts`,
+  which fills the generated locale of every per-locale map in it (`locales`, a word type's
+  `names`, a region's `labels`/`answers`, …) from the source (`syncSerbianLocales` in
+  [src/lib/serbian-script.ts](../src/lib/serbian-script.ts:1)). A new writer that
+  bypasses it lets the two scripts drift;
+- a lesson body save writes the generated `locales/<lang>/<lesson>.md` from the source
+  one and ignores anything sent for it (`withGeneratedLessonBody`);
+- turning the setting on, or switching the source, regenerates the whole draft once
+  (`regenerateSerbianScript`). Taking either Serbian locale off the course drops the
+  setting.
+
+Transliteration only touches prose: `{{…}}` placeholders, code, link targets, URLs, file
+names, block markers, words with q/w/x/y and the course's `keepAsIs` words stay as
+written. Cyrillic → Latin is exact; Latin → Cyrillic splits a few known digraphs
+(`LATIN_DIGRAPH_EXCEPTIONS`, e.g. "nadživeti" → надживети). The setting is course
+content, so changing it counts as a change since the last cut.
+
 ## 6. Design-system tier direction
 
 `src/components/ui` is the bottom layer. It may import `@/lib/*`, `@/hooks/*`, and other

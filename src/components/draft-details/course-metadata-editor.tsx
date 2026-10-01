@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Eye, History, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -9,6 +9,7 @@ import {
   normalizeSupportedLocales,
 } from "@/components/draft-details/draft-locale-utils";
 import { LocalesTabs } from "@/components/locales-tabs";
+import { SerbianScriptSettings } from "@/components/draft-details/serbian-script-settings";
 import { CourseActionsMenu } from "@/components/course-actions-menu";
 import { PageContent } from "@/components/page-content";
 import { TestEditorTagManager } from "@/components/test-editor-tag-manager";
@@ -62,6 +63,7 @@ import type {
 import type {
   CourseSectionPreview,
   LocalizedCourseMetadata,
+  UpdateCourseDraftMetadataInput,
 } from "@/lib/course-package";
 import {
   createCourseTagDefinition,
@@ -73,6 +75,13 @@ import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { useUpdateDraftMetadataMutation } from "@/lib/course-queries";
 import {
+  detectSerbianScript,
+  isSerbianLocale,
+  otherSerbianLocale,
+  type SerbianScriptSetting,
+} from "@/lib/serbian-script";
+import { SerbianScriptContext } from "@/lib/use-serbian-script";
+import {
   useEntityAutosave,
   useForwardAutosaveStatus,
 } from "@/lib/use-entity-autosave";
@@ -81,8 +90,20 @@ type CourseMetadataDraft = {
   contentRating: ContentRating;
   descriptiveTags: CourseTagDefinition[];
   localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>;
+  serbianScript: SerbianScriptSetting | null;
   supportedLocales: Locale[];
 };
+
+// A Serbian script setting needs both Serbian locales on the course.
+function withSerbianLocales(supportedLocales: Locale[], serbianScript: SerbianScriptSetting | null) {
+  if (!serbianScript) {
+    return supportedLocales;
+  }
+
+  return locales.filter(
+    (locale) => supportedLocales.includes(locale) || isSerbianLocale(locale),
+  );
+}
 
 export function CourseMetadataEditor({
   contentRating,
@@ -107,12 +128,14 @@ export function CourseMetadataEditor({
 }) {
   const { t, i18n } = useTranslation();
   const supportedLocalesAnchor = useComboboxAnchor();
+  const serbianScript = useContext(SerbianScriptContext);
   const courseTitleRef = useRef<HTMLInputElement | null>(null);
   const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const [seed] = useState<CourseMetadataDraft>(() => ({
     contentRating,
     descriptiveTags,
     localizedCourse,
+    serbianScript,
     supportedLocales,
   }));
   const [draft, setDraft] = useState<CourseMetadataDraft>(seed);
@@ -127,7 +150,7 @@ export function CourseMetadataEditor({
     : (draft.supportedLocales[0] ?? defaultLocale);
 
   const buildInput = useCallback(
-    (value: CourseMetadataDraft) => ({
+    (value: CourseMetadataDraft): UpdateCourseDraftMetadataInput => ({
       contentRating: value.contentRating,
       courseId,
       defaultLocale: value.supportedLocales.includes(defaultLocale)
@@ -142,6 +165,7 @@ export function CourseMetadataEditor({
           value.localizedCourse[locale] ?? { description: "", title: "" },
         ]),
       ),
+      serbianScript: value.serbianScript,
       supportedLocales: value.supportedLocales,
     }),
     [courseId, defaultLocale],
@@ -307,13 +331,41 @@ export function CourseMetadataEditor({
                 items={locales}
                 multiple
                 onValueChange={(nextLocales) =>
-                  setDraft((current) => ({
-                    ...current,
-                    supportedLocales: normalizeSupportedLocales(
+                  setDraft((current) => {
+                    const supportedLocales = normalizeSupportedLocales(
                       nextLocales as string[],
                       i18n.language as Locale,
-                    ),
-                  }))
+                    );
+                    const serbianBefore = current.supportedLocales.filter(isSerbianLocale);
+                    const serbianAfter = supportedLocales.filter(isSerbianLocale);
+                    let nextSerbianScript = current.serbianScript;
+
+                    if (serbianBefore.length === 0 && serbianAfter.length > 0) {
+                      // Serbian just added: write in the script added (or,
+                      // with both, the one existing text mostly uses) and
+                      // generate the other.
+                      nextSerbianScript = {
+                        source:
+                          serbianAfter.length === 1
+                            ? serbianAfter[0]
+                            : (detectSerbianScript(
+                                serbianAfter.flatMap((locale) => [
+                                  current.localizedCourse[locale]?.title ?? "",
+                                  current.localizedCourse[locale]?.description ?? "",
+                                ]),
+                              ) ?? "sr"),
+                      };
+                    } else if (serbianAfter.length < 2) {
+                      // A Serbian script taken off: nothing to generate.
+                      nextSerbianScript = null;
+                    }
+
+                    return {
+                      ...current,
+                      serbianScript: nextSerbianScript,
+                      supportedLocales: withSerbianLocales(supportedLocales, nextSerbianScript),
+                    };
+                  })
                 }
                 value={draft.supportedLocales}
               >
@@ -350,6 +402,21 @@ export function CourseMetadataEditor({
             </Field>
           </FieldGroup>
         </FieldSet>
+        {draft.supportedLocales.some(isSerbianLocale) && (
+          <SerbianScriptSettings
+            hasGeneratedLocaleText={(source) =>
+              draft.supportedLocales.includes(otherSerbianLocale(source))
+            }
+            onChange={(nextSerbianScript) =>
+              setDraft((current) => ({
+                ...current,
+                serbianScript: nextSerbianScript,
+                supportedLocales: withSerbianLocales(current.supportedLocales, nextSerbianScript),
+              }))
+            }
+            value={draft.serbianScript}
+          />
+        )}
         <LocalesTabs
           activeLocale={activeCourseLocale}
           getIsIncomplete={(locale) =>

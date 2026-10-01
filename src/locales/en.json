@@ -538,7 +538,8 @@
       "description": "Changed the course description",
       "contentRating": "Changed the content rating",
       "tags": "Changed the course tags",
-      "defaultLocale": "Changed the main language"
+      "defaultLocale": "Changed the main language",
+      "serbianScript": "Changed which Serbian script is generated"
     },
     "language": {
       "added": "Added language: {{language}}",
@@ -554,5 +555,30 @@
       "lesson": "lesson \"{{title}}\" in \"{{section}}\"",
       "test": "test \"{{title}}\" in \"{{section}}\""
     }
+  },
+  "serbianScript": {
+    "title": "Serbian scripts",
+    "description": "Write Serbian once and let Matko generate the other script every time you save.",
+    "sourceLatin": "Write in Latin, Cyrillic generated",
+    "sourceLatinDescription": "You edit the Latin text; the Cyrillic text is made from it.",
+    "sourceCyrillic": "Write in Cyrillic, Latin generated",
+    "sourceCyrillicDescription": "You edit the Cyrillic text; the Latin text is made from it.",
+    "separately": "Write both separately",
+    "separatelyDescription": "You write the Latin and the Cyrillic text yourself.",
+    "keepAsIsLabel": "Words to keep as written",
+    "keepAsIsPlaceholder": "Matko, GeoGebra",
+    "keepAsIsDescription": "Names or foreign words that shouldn't change script, separated by commas. Words with q, w, x or y are always kept.",
+    "confirmLatinTitle": "Generate the Cyrillic text from the Latin?",
+    "confirmLatinDescription": "All Cyrillic text in this course is replaced with text made from the Latin. Anything written separately in Cyrillic is lost.",
+    "confirmLatinButton": "Generate Cyrillic",
+    "confirmCyrillicTitle": "Generate the Latin text from the Cyrillic?",
+    "confirmCyrillicDescription": "All Latin text in this course is replaced with text made from the Cyrillic. Anything written separately in Latin is lost.",
+    "confirmCyrillicButton": "Generate Latin",
+    "cancel": "Cancel",
+    "generatedFromLatin": "Generated from the Latin text",
+    "generatedFromCyrillic": "Generated from the Cyrillic text",
+    "generatedDescription": "It's updated every time you save, so it isn't edited here. You can change which script you write in the course settings.",
+    "editLatin": "Edit Latin",
+    "editCyrillic": "Edit Cyrillic"
   }
 }

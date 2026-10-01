@@ -33,6 +33,7 @@ import { useAppState } from "@/lib/use-app-state";
 import { useSidePanelPreference } from "@/lib/explorer-panel-queries";
 import { LayoutBreadcrumbsContext } from "@/lib/use-layout-breadcrumbs";
 import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-panel";
+import { SerbianScriptContext } from "@/lib/use-serbian-script";
 import type { Locale } from "@/lib/i18n";
 
 type CourseLayoutOutletContext = {
@@ -214,6 +215,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
       <SidebarProvider style={{ "--sidebar-width": "14rem" } as React.CSSProperties}>
         <RegisterTitleBarSidebarToggle />
         <AppSidebar />
+        <SerbianScriptContext.Provider value={courseDetailsQuery.data?.serbianScript ?? null}>
         <PageSidePanelsContext.Provider value={sidePanels}>
         <LayoutBreadcrumbsContext.Provider value={breadcrumbs}>
         <PagePanel>
@@ -272,6 +274,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
         </PagePanel>
         </LayoutBreadcrumbsContext.Provider>
         </PageSidePanelsContext.Provider>
+        </SerbianScriptContext.Provider>
       </SidebarProvider>
     </OnboardingGuard>
   );

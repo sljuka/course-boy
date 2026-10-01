@@ -25,6 +25,7 @@ import type {
 } from "../src/lib/course-package";
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import { isLocale, type Locale } from "../src/lib/i18n";
+import { isSerbianScriptSetting } from "../src/lib/serbian-script";
 import {
   compareCourseVersions,
   formatCourseVersion,
@@ -168,7 +169,12 @@ function isRawCourseManifest(value: unknown): value is RawCourseManifest {
     Array.isArray(manifest.supportedLocales) &&
     manifest.supportedLocales.every(
       (locale) => isLocale(locale) && Boolean(manifest.locales?.[locale]),
-    )
+    ) &&
+    // Generating one Serbian script from the other needs both on the course.
+    (typeof manifest.serbianScript === "undefined" ||
+      (isSerbianScriptSetting(manifest.serbianScript) &&
+        manifest.supportedLocales.includes("sr") &&
+        manifest.supportedLocales.includes("sr-Cyrl")))
   );
 }
 
@@ -1238,6 +1244,7 @@ export async function getCourseDetails(
     locales: courseRecord.manifest.locales,
     sections,
     sectionIds,
+    serbianScript: courseRecord.manifest.serbianScript ?? null,
     slug: courseRecord.manifest.slug,
   };
 }

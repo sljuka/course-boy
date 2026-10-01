@@ -65,6 +65,13 @@ import { slugifyCourseName } from "../src/lib/course-slug";
 import { computeCourseChanges, findMissingAssets, readChangelog } from "./course-changes";
 import { createReferencedFilesFilter, getCourseAssetUsage } from "./course-asset-usage";
 import { transliterateSerbianLatinToCyrillic } from "../src/lib/serbian-transliteration";
+import {
+  isSerbianScriptSetting,
+  otherSerbianLocale,
+  syncSerbianLocales,
+  transliterateSerbianMarkdown,
+  type SerbianScriptSetting,
+} from "../src/lib/serbian-script";
 
 // The bundled "Getting Started with Matko" course. Its id follows the same
 // random format as every other course (see src/lib/course-id.ts); it was
@@ -771,6 +778,74 @@ async function writeCourseManifest(
   );
 }
 
+// A course file's JSON, with the generated Serbian locale filled in from the
+// source one when the course has `serbianScript` (SLJ-17). Every write of a
+// course content file goes through here, so both scripts are always on disk
+// and never drift — including writes from a direct IPC call.
+async function writeCourseJsonFile(
+  filePath: string,
+  value: unknown,
+  manifest: CourseManifest,
+): Promise<void> {
+  await writeFileAtomic(
+    filePath,
+    JSON.stringify(syncSerbianLocales(value, manifest.serbianScript), null, 2),
+  );
+}
+
+// Regenerates the generated Serbian script across a whole draft: every
+// section/lesson/test file and every lesson body. Run when a course turns
+// generation on or switches its source; each file is replaced atomically.
+async function regenerateSerbianScript(
+  draftDirectoryPath: string,
+  setting: SerbianScriptSetting,
+): Promise<void> {
+  const target = otherSerbianLocale(setting.source);
+  const sectionEntries = (await fs.readdir(draftDirectoryPath, { withFileTypes: true })).filter(
+    (entry) => entry.isDirectory() && /^section-\d{2}-/.test(entry.name),
+  );
+
+  for (const sectionEntry of sectionEntries) {
+    const sectionDirectoryPath = path.join(draftDirectoryPath, sectionEntry.name);
+    const fileEntries = await fs.readdir(sectionDirectoryPath, { withFileTypes: true });
+
+    for (const fileEntry of fileEntries) {
+      if (!fileEntry.isFile() || !fileEntry.name.endsWith(".json")) {
+        continue;
+      }
+
+      const filePath = path.join(sectionDirectoryPath, fileEntry.name);
+      const contents = await fs.readFile(filePath, "utf8");
+      const synced = JSON.stringify(syncSerbianLocales(JSON.parse(contents), setting), null, 2);
+
+      if (synced !== contents) {
+        await writeFileAtomic(filePath, synced);
+      }
+    }
+
+    const sourceBodiesPath = path.join(sectionDirectoryPath, "locales", setting.source);
+    const targetBodiesPath = path.join(sectionDirectoryPath, "locales", target);
+    let bodyFilenames: string[] = [];
+
+    try {
+      bodyFilenames = (await fs.readdir(sourceBodiesPath)).filter((name) => name.endsWith(".md"));
+    } catch {
+      continue;
+    }
+
+    await fs.mkdir(targetBodiesPath, { recursive: true });
+
+    for (const filename of bodyFilenames) {
+      const body = await fs.readFile(path.join(sourceBodiesPath, filename), "utf8");
+
+      await writeFileAtomic(
+        path.join(targetBodiesPath, filename),
+        transliterateSerbianMarkdown(body, setting),
+      );
+    }
+  }
+}
+
 async function migrateNonBundledCoursesToDrafts(
   localCoursesRoot: string,
 ): Promise<void> {
@@ -1099,6 +1174,10 @@ export async function createLocalCourseDraft(
         updatedAt: nowIso,
         isSeededOnFirstRun: false,
         locales: normalizedLocales,
+        // "Generate Cyrillic from Latin" at creation keeps generating it.
+        ...(input.deriveSrCyrlFromSr && supportedLocales.includes("sr")
+          ? { serbianScript: { source: "sr" } satisfies SerbianScriptSetting }
+          : {}),
       },
       null,
       2,
@@ -1155,17 +1234,14 @@ export async function createLocalCourseSection(
   const nowIso = new Date().toISOString();
 
   await fs.mkdir(sectionDirectoryPath, { recursive: true });
-  await writeFileAtomic(
+  await writeCourseJsonFile(
     path.join(sectionDirectoryPath, "section.json"),
-    JSON.stringify(
-      {
-        id: sectionId,
-        slug: sectionId.replace(/^section-\d{2}-/, ""),
-        locales: localizedSectionMetadata,
-      },
-      null,
-      2,
-    ),
+    {
+      id: sectionId,
+      slug: sectionId.replace(/^section-\d{2}-/, ""),
+      locales: localizedSectionMetadata,
+    },
+    manifest,
   );
 
   await writeCourseManifest(courseDirectoryPath, {
@@ -1219,17 +1295,14 @@ export async function updateLocalCourseSection(
     slug: string;
   };
 
-  await writeFileAtomic(
+  await writeCourseJsonFile(
     sectionDefinitionPath,
-    JSON.stringify(
-      {
-        id: existingIdentity.id,
-        slug: existingIdentity.slug,
-        locales: input.locales,
-      },
-      null,
-      2,
-    ),
+    {
+      id: existingIdentity.id,
+      slug: existingIdentity.slug,
+      locales: input.locales,
+    },
+    manifest,
   );
 
   await writeCourseManifest(courseDirectoryPath, {
@@ -1296,17 +1369,14 @@ export async function createLocalCourseLesson(
   );
   const nowIso = new Date().toISOString();
 
-  await writeFileAtomic(
+  await writeCourseJsonFile(
     path.join(sectionDirectoryPath, `${lessonId}.json`),
-    JSON.stringify(
-      {
-        id: lessonId,
-        slug: lessonId.replace(/^lesson-\d{2}-/, ""),
-        locales: localizedLessonMetadata,
-      },
-      null,
-      2,
-    ),
+    {
+      id: lessonId,
+      slug: lessonId.replace(/^lesson-\d{2}-/, ""),
+      locales: localizedLessonMetadata,
+    },
+    manifest,
   );
 
   await Promise.all(
@@ -1324,6 +1394,26 @@ export async function createLocalCourseLesson(
   });
 
   return { lessonId };
+}
+
+// A lesson body save with the generated Serbian body replaced by one made
+// from the source body (the generated side is read-only; anything sent for it
+// is ignored). Without a source body in the save, the generated one is left.
+function withGeneratedLessonBody(
+  entries: [Locale, { body: string } | undefined][],
+  setting: SerbianScriptSetting | undefined,
+): [Locale, { body: string } | undefined][] {
+  if (!setting) {
+    return entries;
+  }
+
+  const target = otherSerbianLocale(setting.source);
+  const sourceEntry = entries.find(([locale]) => locale === setting.source)?.[1];
+  const withoutTarget = entries.filter(([locale]) => locale !== target);
+
+  return sourceEntry
+    ? [...withoutTarget, [target, { body: transliterateSerbianMarkdown(sourceEntry.body, setting) }]]
+    : withoutTarget;
 }
 
 export async function updateLocalCourseLessonContent(
@@ -1352,10 +1442,10 @@ export async function updateLocalCourseLessonContent(
     throw new Error(`Lesson "${input.lessonId}" does not exist`);
   }
 
-  const localeEntries = Object.entries(input.locales) as [
-    Locale,
-    { body: string } | undefined,
-  ][];
+  const localeEntries = withGeneratedLessonBody(
+    Object.entries(input.locales) as [Locale, { body: string } | undefined][],
+    manifest.serbianScript,
+  );
 
   await Promise.all(
     localeEntries.map(async ([locale, localeContent]) => {
@@ -1410,10 +1500,7 @@ export async function updateLocalCourseLessonTest(
 
   const testId = resolveTestIdForLesson(input.lessonId);
 
-  await writeFileAtomic(
-    path.join(sectionDirectoryPath, `${testId}.json`),
-    JSON.stringify(input.test, null, 2),
-  );
+  await writeCourseJsonFile(path.join(sectionDirectoryPath, `${testId}.json`), input.test, manifest);
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,
@@ -1509,17 +1596,14 @@ export async function createLocalCourseSectionTest(
   // a single exercise, mirroring how a lesson's own `.json` exists before its
   // body/test do. See `getLocalCourseSectionTestDraft`'s comment for the
   // resulting read-side difference from a lesson-attached test.
-  await writeFileAtomic(
+  await writeCourseJsonFile(
     path.join(sectionDirectoryPath, `${testId}.json`),
-    JSON.stringify(
-      {
-        id: testId,
-        slug: testId.replace(/^section-test-\d{2}-/, ""),
-        locales: localizedTestMetadata,
-      },
-      null,
-      2,
-    ),
+    {
+      id: testId,
+      slug: testId.replace(/^section-test-\d{2}-/, ""),
+      locales: localizedTestMetadata,
+    },
+    manifest,
   );
 
   await writeCourseManifest(courseDirectoryPath, {
@@ -1571,18 +1655,15 @@ export async function updateLocalCourseSectionTest(
     slug: string;
   };
 
-  await writeFileAtomic(
+  await writeCourseJsonFile(
     testDefinitionPath,
-    JSON.stringify(
-      {
-        id: existingIdentity.id,
-        slug: existingIdentity.slug,
-        locales: existingIdentity.locales,
-        ...input.test,
-      },
-      null,
-      2,
-    ),
+    {
+      id: existingIdentity.id,
+      slug: existingIdentity.slug,
+      locales: existingIdentity.locales,
+      ...input.test,
+    },
+    manifest,
   );
 
   await writeCourseManifest(courseDirectoryPath, {
@@ -1634,16 +1715,13 @@ export async function updateLocalCourseSectionTestMetadata(
 
   const existingDefinition = JSON.parse(existingFileContents) as Record<string, unknown>;
 
-  await writeFileAtomic(
+  await writeCourseJsonFile(
     testDefinitionPath,
-    JSON.stringify(
-      {
-        ...existingDefinition,
-        locales: input.locales,
-      },
-      null,
-      2,
-    ),
+    {
+      ...existingDefinition,
+      locales: input.locales,
+    },
+    manifest,
   );
 
   await writeCourseManifest(courseDirectoryPath, {
@@ -1819,9 +1897,24 @@ export async function updateLocalCourseDraftMetadata(
     throw new Error(`Course "${input.courseId}" is not a draft`);
   }
 
+  // Omitted keeps the course's setting, unless Serbian was taken off the
+  // course; choosing a source puts both Serbian locales on it (SLJ-17).
+  const keepsBothSerbianLocales =
+    input.supportedLocales.includes("sr") && input.supportedLocales.includes("sr-Cyrl");
+  const serbianScript =
+    input.serbianScript === undefined
+      ? keepsBothSerbianLocales
+        ? (manifest.serbianScript ?? null)
+        : null
+      : input.serbianScript;
+
+  if (serbianScript !== null && !isSerbianScriptSetting(serbianScript)) {
+    throw new Error("Serbian script setting is invalid");
+  }
+
   const supportedLocales = normalizeSupportedLocales(
     input.defaultLocale,
-    input.supportedLocales,
+    serbianScript ? [...input.supportedLocales, "sr", "sr-Cyrl"] : input.supportedLocales,
   );
   const fallbackDefaultLocaleMetadata = manifest.locales[input.defaultLocale] ?? {
     description: "",
@@ -1843,15 +1936,25 @@ export async function updateLocalCourseDraftMetadata(
     ]),
   ) as CourseManifest["locales"];
 
+  const { serbianScript: previousSerbianScript, ...manifestWithoutSerbianScript } = manifest;
+
   await writeCourseManifest(courseDirectoryPath, {
-    ...manifest,
+    ...manifestWithoutSerbianScript,
     contentRating: normalizeContentRating(input.contentRating),
     defaultLocale: input.defaultLocale,
     descriptiveTags: input.descriptiveTags,
-    locales: nextLocales,
+    locales: syncSerbianLocales(nextLocales, serbianScript),
+    ...(serbianScript ? { serbianScript } : {}),
     supportedLocales,
     updatedAt: new Date().toISOString(),
   });
+
+  if (
+    serbianScript &&
+    JSON.stringify(serbianScript) !== JSON.stringify(previousSerbianScript ?? null)
+  ) {
+    await regenerateSerbianScript(courseDirectoryPath, serbianScript);
+  }
 }
 
 // Lands a new asset under its content-addressed name (see `createAssetFilename`).

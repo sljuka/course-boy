@@ -911,6 +911,45 @@ describe('discard changes', () => {
     )
     expect(lessons).toEqual(['Kept'])
   })
+
+  // SLJ-17: choosing a source script regenerates the other one, after asking,
+  // and its language tab shows a notice instead of its fields.
+  it('generates Cyrillic from Latin once chosen in the course settings', async () => {
+    const { page } = harness
+    const courseId = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'sr',
+        locales: {
+          sr: { description: '', title: 'Brojevi' },
+          'sr-Cyrl': { description: '', title: 'Ручно' },
+        },
+        supportedLocales: ['sr', 'sr-Cyrl'],
+      })
+      return courseId
+    })
+    const course = () => page.evaluate((id) => window.courses.get(id, 'sr'), courseId)
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, courseId)
+    await page.getByRole('button', { name: 'Serbian scripts', expanded: true }).waitFor()
+    await page.getByText('Write in Latin, Cyrillic generated').click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Generate Cyrillic' }).click()
+
+    await expect.poll(async () => (await course()).serbianScript, { timeout: 10_000 }).toEqual({ source: 'sr' })
+    expect((await course()).locales['sr-Cyrl'].title).toBe('Бројеви')
+
+    await page.getByRole('tab', { name: /Српски/ }).click()
+    await page.getByText('Generated from the Latin text').waitFor()
+    await page.getByRole('button', { name: 'Edit Latin' }).click()
+    await page.locator('#draft-course-title-sr').waitFor()
+
+    // Leave the course: its language picker would otherwise be what the i18n
+    // tests below find when they look for "English".
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+  })
 })
 
 describe('i18n', () => {
