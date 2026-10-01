@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -13,7 +12,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useDraftChangesPreviewQuery } from "@/lib/course-queries";
-import { describeCourseChange, describeCourseLocation } from "@/lib/describe-course-change";
+import { describeCourseChange } from "@/lib/describe-course-change";
+import { MissingAssetsAlert } from "./missing-assets-alert";
 
 type CommitReleaseNotesProps = {
   courseId: string;
@@ -46,24 +46,7 @@ export function CommitReleaseNotes({
   return (
     <div className="flex flex-col gap-4">
       {preview.missingAssets.length > 0 && (
-        <Alert variant="warning">
-          <AlertTitle>
-            {t("courseVersions.missingTitle", { count: preview.missingAssets.length })}
-          </AlertTitle>
-          <AlertDescription>
-            <p>{t("courseVersions.missingDescription")}</p>
-            <ul className="flex flex-col gap-0.5">
-              {preview.missingAssets.map((missing) => (
-                <li key={`${missing.filename}-${describeCourseLocation(missing.location, t)}`}>
-                  {t("courseVersions.missingItem", {
-                    filename: missing.filename,
-                    location: describeCourseLocation(missing.location, t),
-                  })}
-                </li>
-              ))}
-            </ul>
-          </AlertDescription>
-        </Alert>
+        <MissingAssetsAlert missingAssets={preview.missingAssets} />
       )}
 
       <div className="flex flex-col gap-1.5">
