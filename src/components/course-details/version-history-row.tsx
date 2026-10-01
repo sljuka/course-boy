@@ -5,23 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import type { CourseVersionHistoryEntry } from "@/lib/course-package";
 
+// One cut version in the course details page's Version history dialog, with
+// Revert. Publishing lives in the editor's Versions panel.
 type VersionHistoryRowProps = {
-  canPublish: boolean;
   entry: CourseVersionHistoryEntry;
   isActive: boolean;
-  isPublishPending: boolean;
   isRevertPending: boolean;
-  onPublish: () => void;
   onRevert: () => void;
 };
 
 export function VersionHistoryRow({
-  canPublish,
   entry,
   isActive,
-  isPublishPending,
   isRevertPending,
-  onPublish,
   onRevert,
 }: VersionHistoryRowProps) {
   const { t } = useTranslation();
@@ -55,13 +51,6 @@ export function VersionHistoryRow({
             {isRevertPending
               ? t("courseVersions.reverting")
               : t("courseVersions.revertButton")}
-          </Button>
-        )}
-        {canPublish && !entry.isEverPublished && (
-          <Button disabled={isPublishPending} onClick={onPublish} size="sm">
-            {isPublishPending
-              ? t("courseVersions.publishing")
-              : t("courseVersions.publishButton")}
           </Button>
         )}
       </div>

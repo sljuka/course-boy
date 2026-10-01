@@ -73,6 +73,7 @@ describe('launch', () => {
       'getVersionHistory',
       'list',
       'openInFileSystem',
+      'previewDraftChanges',
       'publishVersion',
       'remove',
       'revertToVersion',
@@ -797,6 +798,113 @@ describe('show Getting Started course', () => {
     } finally {
       await page.evaluate(() => window.preferences.set({ showBundledCourses: true }))
     }
+  })
+})
+
+// SLJ-27 / SLJ-29: the Commit dialog previews what changed, warns about
+// missing files, and saves the author's notes into the version's changelog,
+// which the Versions panel shows when a version is expanded.
+describe('release notes', () => {
+  it('previews changes, warns about missing files, and keeps the notes', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Release Notes' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Numbers' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Addition' })
+      const first = await window.courses.cutVersion({ courseId, releaseType: 'patch' })
+      await window.courses.createLesson({ courseId, sectionId, title: 'Subtraction' })
+      // A lesson that refers to a file that doesn't exist.
+      await window.courses.updateLessonContent({
+        courseId,
+        lessonId,
+        locales: { en: { body: '![Gone](diagram-0123456789abcdef.svg)' } },
+        sectionId,
+      })
+      return { courseId, first: first.version }
+    })
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await page.getByRole('button', { name: 'Commit new version' }).first().click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByText(`Changes since ${ids.first}`).waitFor()
+    expect(await dialog.innerText()).toContain('Added lesson "Subtraction" in "Numbers"')
+    expect(await dialog.innerText()).toContain('diagram-0123456789abcdef.svg, used in lesson "Addition" in "Numbers"')
+
+    await dialog.getByLabel('Release notes').fill('Added subtraction.')
+    await dialog.locator('label[for="commit-recommended"]').click()
+    await dialog.getByRole('button', { name: 'Cut new version' }).click()
+    await expect
+      .poll(() => page.evaluate((id) => window.courses.getVersionHistory(id).then((h) => h.changelog.length), ids.courseId))
+      .toBe(2)
+    await page.keyboard.press('Escape')
+
+    const history = await page.evaluate((id) => window.courses.getVersionHistory(id), ids.courseId)
+    expect(history.changelog[0]).toMatchObject({ notes: 'Added subtraction.', recommended: true })
+    expect(history.changelog[0].changes).toContainEqual({
+      kind: 'added',
+      section: 'Numbers',
+      target: 'lesson',
+      title: 'Subtraction',
+    })
+
+    // Expanding the version in the Versions panel shows its notes.
+    const newest = history.changelog[0].version
+    await page.getByRole('button', { name: `Show changes for ${newest}` }).click()
+    const panel = page.locator('[data-slot=page-side-panel][data-side=right]')
+    await panel.getByText('Added subtraction.').waitFor()
+    expect(await panel.innerText()).toContain('Recommended update')
+  })
+})
+
+// Discarding changes (the Draft row's context menu) asks first, then puts the
+// draft back to the version it's based on.
+describe('discard changes', () => {
+  it('asks, then clears the draft back to its current version', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Discard' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      await window.courses.createLesson({ courseId, sectionId, title: 'Kept' })
+      const cut = await window.courses.cutVersion({ courseId, releaseType: 'patch' })
+      await window.courses.createLesson({ courseId, sectionId, title: 'Thrown away' })
+      return { courseId, version: cut.version }
+    })
+    const history = () => page.evaluate((id) => window.courses.getVersionHistory(id), ids.courseId)
+    const openDiscard = async () => {
+      await page.locator('[data-slot=list-row]').filter({ hasText: /^Draft/ }).click({ button: 'right' })
+      await page.getByRole('menuitem', { name: 'Discard changes' }).click()
+    }
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await page.locator('[data-slot=list-row]').filter({ hasText: /^Draft/ }).waitFor()
+    expect((await history()).draftMatchesCurrentVersion).toBe(false)
+
+    await openDiscard()
+    await page.getByRole('dialog').getByText(`Discard changes since ${ids.version}?`).waitFor()
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click()
+    expect((await history()).draftMatchesCurrentVersion).toBe(false)
+
+    await openDiscard()
+    await page.getByRole('dialog').getByRole('button', { name: 'Discard' }).click()
+    await expect.poll(async () => (await history()).draftMatchesCurrentVersion).toBe(true)
+    expect((await history()).currentDraftVersion).toBe(ids.version)
+    const lessons = await page.evaluate(
+      (id) => window.courses.get(id, 'en').then((c) => c.sections[0].lessons.map((l) => l.title)),
+      ids.courseId,
+    )
+    expect(lessons).toEqual(['Kept'])
   })
 })
 

@@ -74,3 +74,20 @@ export function compareCourseVersions(
     left.patch - right.patch
   );
 }
+
+// The version a cut with `releaseType` creates: counted up from the newer of
+// the draft's own number and the newest version already cut (a revert puts an
+// older number in the draft, and bumping from that would hit an existing
+// version). Shared by the cut (electron/course-paths.ts) and the Commit
+// dialog's preview, so the number shown is the number made.
+export function nextCourseVersion(
+  draftVersion: string,
+  newestCutVersion: string | null,
+  releaseType: Exclude<CourseVersionReleaseType, "initial">,
+): string {
+  const draft = parseCourseVersion(draftVersion);
+  const newest = newestCutVersion ? parseCourseVersion(newestCutVersion) : null;
+  const base = newest && compareCourseVersions(newest, draft) > 0 ? newest : draft;
+
+  return formatCourseVersion(bumpCourseVersion(base, releaseType));
+}

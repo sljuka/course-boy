@@ -13,6 +13,7 @@ import type {
   CourseDetails,
   CourseSummary,
   CourseVersionHistory,
+  DraftChangesPreview,
   CutCourseVersionInput,
   CutCourseVersionResult,
   UnusedDraftAsset,
@@ -125,6 +126,10 @@ contextBridge.exposeInMainWorld('courses', {
   },
   getVersionHistory(courseId: string) {
     return ipcRenderer.invoke('courses:get-version-history', courseId) as Promise<CourseVersionHistory | null>
+  },
+  // What committing the draft now would record (release notes), read-only.
+  previewDraftChanges(courseId: string) {
+    return ipcRenderer.invoke('courses:preview-draft-changes', courseId) as Promise<DraftChangesPreview>
   },
   cutVersion(input: CutCourseVersionInput) {
     return ipcRenderer.invoke('courses:cut-version', input) as Promise<CutCourseVersionResult>

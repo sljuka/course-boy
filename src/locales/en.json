@@ -128,7 +128,6 @@
     "previewCourse": "Preview course",
     "publishButton": "Publish this version",
     "publishedBadge": "Published",
-    "publishing": "Publishing...",
     "releaseTypeLabel": "Bump type",
     "releaseTypeMajor": "Major",
     "releaseTypeMinor": "Minor",
@@ -148,7 +147,25 @@
     "cancel": "Cancel",
     "confirmRevertTitle": "Revert to {{version}}?",
     "confirmRevertDescription": "Your changes since {{version}} haven't been committed and will be lost.",
-    "confirmRevertButton": "Revert"
+    "confirmRevertButton": "Revert",
+    "changesTitle": "Changes since {{version}}",
+    "firstVersion": "This is the course's first version.",
+    "noChanges": "No changes since {{version}}.",
+    "notesLabel": "Release notes",
+    "notesPlaceholder": "What's new or fixed, in your words (optional)",
+    "recommendedLabel": "This version fixes mistakes (recommend updating)",
+    "recommendedDescription": "Students see it as a recommended update. Say in the notes what was wrong.",
+    "missingDescription": "They'll show as broken for students. You can still commit.",
+    "missingItem": "{{filename}}, used in {{location}}",
+    "recommendedBadge": "Recommended update",
+    "showDetails": "Show changes for {{version}}",
+    "missingTitle": "Missing files used in the course: {{count}}",
+    "discardChanges": "Discard changes",
+    "confirmDiscardTitle": "Discard changes since {{version}}?",
+    "confirmDiscardDescription": "Your uncommitted changes will be lost, and the draft goes back to {{version}}.",
+    "confirmDiscardButton": "Discard",
+    "releaseTypeWithVersion": "{{name}} · {{version}}",
+    "cutButtonWithVersion": "Cut new version {{version}}"
   },
   "courseTags": {
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."
@@ -427,13 +444,17 @@
       "published": "Published",
       "local": "Local"
     },
-    "unpublishedChanges": "Unpublished changes",
     "edited": "Edited {{date}}",
     "viewOptions": "View options",
     "layout": "Layout",
     "layoutTable": "Table",
     "layoutList": "List",
-    "lastCommitted": "Committed {{date}}"
+    "lastCommitted": "Committed {{date}}",
+    "status": {
+      "changed": "Uncommitted changes",
+      "published": "Published",
+      "local": "Local only"
+    }
   },
   "sidebar": {
     "createCourse": "Create new course",
@@ -493,5 +514,43 @@
   },
   "drawer": {
     "close": "Close"
+  },
+  "courseChanges": {
+    "section": {
+      "added": "Added section \"{{title}}\"",
+      "edited": "Edited section \"{{title}}\"",
+      "removed": "Removed section \"{{title}}\""
+    },
+    "lesson": {
+      "added": "Added lesson \"{{title}}\" in \"{{section}}\"",
+      "edited": "Edited lesson \"{{title}}\" in \"{{section}}\"",
+      "removed": "Removed lesson \"{{title}}\" from \"{{section}}\""
+    },
+    "test": {
+      "added": "Added test \"{{title}}\" in \"{{section}}\"",
+      "edited": "Edited test \"{{title}}\" in \"{{section}}\"",
+      "removed": "Removed test \"{{title}}\" from \"{{section}}\""
+    },
+    "course": {
+      "title": "Changed the course title",
+      "description": "Changed the course description",
+      "contentRating": "Changed the content rating",
+      "tags": "Changed the course tags",
+      "defaultLocale": "Changed the main language"
+    },
+    "language": {
+      "added": "Added language: {{language}}",
+      "removed": "Removed language: {{language}}"
+    },
+    "files": {
+      "added": "Files added: {{count}}",
+      "removed": "Files removed: {{count}}"
+    },
+    "location": {
+      "course": "the course",
+      "section": "section \"{{title}}\"",
+      "lesson": "lesson \"{{title}}\" in \"{{section}}\"",
+      "test": "test \"{{title}}\" in \"{{section}}\""
+    }
   }
 }

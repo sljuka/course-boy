@@ -23,6 +23,7 @@ import {
   publishLocalCourseVersion,
   removeLocalCourse,
   revertLocalCourseDraftToVersion,
+  previewLocalCourseDraftChanges,
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
   updateLocalCourseLessonTest,
@@ -221,6 +222,10 @@ ipcMain.handle('preferences:reset-onboarding', () => {
 
   return preferencesStore.store
 })
+
+ipcMain.handle('courses:preview-draft-changes', (_event, courseId: string) =>
+  previewLocalCourseDraftChanges(courseId),
+)
 
 ipcMain.handle('courses:list', (_event, locale?: Locale) => {
   return ensureLocalCoursesRoot().then((coursesRoot) =>

@@ -39,6 +39,7 @@ import {
   isBundledSeedCourseId,
   listFilesRecursively,
 } from "./course-paths";
+import { readChangelog } from "./course-changes";
 import { createReferencedFilesFilter, getCourseAssetUsage } from "./course-asset-usage";
 import { isValidCourseId } from "../src/lib/course-id";
 import {
@@ -1021,11 +1022,15 @@ async function hashDirectoryContents(
 }
 
 // Excluded from the draft-vs-cut-version file-hash comparison:
-// `version-meta.json` only exists inside `versions/<x.y.z>/`, never in
-// `draft/`; `course.json` is compared separately by
+// `version-meta.json` and `changelog.json` only exist inside
+// `versions/<x.y.z>/`, never in `draft/`; `course.json` is compared separately by
 // `areManifestContentsEqual`, because it mixes content (titles, languages,
 // tags) with bookkeeping every draft write or cut changes.
-const VERSION_BADGE_COMPARISON_EXCLUDED_FILES = new Set(["course.json", "version-meta.json"]);
+const VERSION_BADGE_COMPARISON_EXCLUDED_FILES = new Set([
+  "changelog.json",
+  "course.json",
+  "version-meta.json",
+]);
 
 // course.json fields that record *when* or *which version*, not what the
 // course says. `updatedAt` changes on every draft write; the others change on
@@ -1406,7 +1411,15 @@ export async function getCourseVersionHistory(
       })
     : false;
 
+  // The newest version's changelog is cumulative, so it holds every version's
+  // changes and notes (SLJ-27).
+  const newestVersion = versionEntries[0]?.version;
+  const changelog = newestVersion
+    ? await readChangelog(path.join(versionsDirectoryPath, newestVersion))
+    : [];
+
   return {
+    changelog,
     currentDraftVersion: draftManifest.version,
     draftMatchesCurrentVersion,
     publishedVersion: releaseState.publishedVersion,

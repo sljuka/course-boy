@@ -1,0 +1,35 @@
+import { useTranslation } from "react-i18next";
+
+import { Badge } from "@/components/ui/badge";
+import { CardDescription } from "@/components/ui/card";
+import type { CourseChangelogEntry } from "@/lib/course-package";
+import { describeCourseChange } from "@/lib/describe-course-change";
+
+// One version's release notes, expanded under its row in the Versions panel:
+// "recommended update" if it fixes mistakes, the author's notes, then the
+// generated list of changes (in the reader's language).
+export function VersionNotes({ entry }: { entry: CourseChangelogEntry }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex flex-col gap-1.5 pt-1 pr-1.5 pb-2 pl-7.5">
+      {entry.recommended && (
+        <Badge className="self-start" variant="warning">
+          {t("courseVersions.recommendedBadge")}
+        </Badge>
+      )}
+      {entry.notes && (
+        <CardDescription className="whitespace-pre-wrap text-foreground">{entry.notes}</CardDescription>
+      )}
+      {entry.changes.length > 0 && (
+        <ul className="flex list-disc flex-col gap-0.5 pl-4">
+          {entry.changes.map((change, index) => (
+            <li key={index}>
+              <CardDescription className="text-xs">{describeCourseChange(change, t)}</CardDescription>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

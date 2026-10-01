@@ -1,9 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import { Badge } from "@/components/ui/badge";
 import { ListRow, ListRowLink, ListRowMeta } from "@/components/ui/list-row";
-import { StatusIcon } from "@/components/ui/status-icon";
+import { CourseStatusIcon } from "@/components/my-courses/course-status-icon";
 import type { CourseSummary } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { formatShortDate } from "@/lib/format-date";
@@ -14,29 +13,34 @@ type MyCourseRowProps = {
   locale: Locale;
 };
 
-// One course on My courses: status, title, changes, languages, version and
+// One course on My courses: status (incl. uncommitted changes), title, languages, version and
 // last edit. The whole row opens the editor, where the course's own menu is.
 export function MyCourseRow({ course, locale }: MyCourseRowProps) {
   const { t } = useTranslation();
-  const isPublished = course.publishedVersion !== null;
-  const hasUnpublishedChanges = isPublished && course.versionBadge.kind === "draft";
 
   return (
     <ListRow>
-      <StatusIcon status={isPublished ? "published" : "local"} />
+      <CourseStatusIcon course={course} />
       <ListRowLink render={<Link to={`/drafts/${course.id}`} />}>{course.title}</ListRowLink>
-      {hasUnpublishedChanges && (
-        <Badge variant="warning">{t("myCourses.unpublishedChanges")}</Badge>
-      )}
-      <ListRowMeta aria-label={t("courseSearch.localesLabel")}>
+      {/* Fixed-width, right-aligned columns, so every row's columns line up
+          whatever the text width ("Oct 1" vs "Sep 29"), like Linear. */}
+      <ListRowMeta align="end" aria-label={t("courseSearch.localesLabel")} className="w-14">
         {[...new Set(course.supportedLocales.map((supportedLocale) => getLocaleFlag(supportedLocale)))].join(" ")}
       </ListRowMeta>
-      <ListRowMeta>{course.publishedVersion ?? course.version}</ListRowMeta>
-      {course.updatedAt && (
-        <ListRowMeta title={t("myCourses.edited", { date: new Date(course.updatedAt).toLocaleString(locale) })}>
-          {formatShortDate(course.updatedAt, locale)}
-        </ListRowMeta>
-      )}
+      <ListRowMeta align="end" className="w-12">
+        {course.publishedVersion ?? course.version}
+      </ListRowMeta>
+      <ListRowMeta
+        align="end"
+        className="w-16"
+        title={
+          course.updatedAt
+            ? t("myCourses.edited", { date: new Date(course.updatedAt).toLocaleString(locale) })
+            : undefined
+        }
+      >
+        {course.updatedAt ? formatShortDate(course.updatedAt, locale) : null}
+      </ListRowMeta>
     </ListRow>
   );
 }

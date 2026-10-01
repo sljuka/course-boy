@@ -128,7 +128,6 @@
     "previewCourse": "Прегледај курс",
     "publishButton": "Објави ову верзију",
     "publishedBadge": "Објављена",
-    "publishing": "Објављивање...",
     "releaseTypeLabel": "Тип измене",
     "releaseTypeMajor": "Велика",
     "releaseTypeMinor": "Мања",
@@ -148,7 +147,25 @@
     "cancel": "Откажи",
     "confirmRevertTitle": "Вратити на {{version}}?",
     "confirmRevertDescription": "Твоје измене од {{version}} нису сачуване као верзија и биће изгубљене.",
-    "confirmRevertButton": "Врати"
+    "confirmRevertButton": "Врати",
+    "changesTitle": "Измене од {{version}}",
+    "firstVersion": "Ово је прва верзија курса.",
+    "noChanges": "Нема измена од {{version}}.",
+    "notesLabel": "Белешке о верзији",
+    "notesPlaceholder": "Шта је ново или исправљено, твојим речима (опционо)",
+    "recommendedLabel": "Ова верзија исправља грешке (препоручи ажурирање)",
+    "recommendedDescription": "Ученици је виде као препоручено ажурирање. У белешкама напиши шта је било погрешно.",
+    "missingDescription": "Ученицима ће се приказати као неисправни. Ипак можеш да сачуваш верзију.",
+    "missingItem": "{{filename}}, користи се у: {{location}}",
+    "recommendedBadge": "Препоручено ажурирање",
+    "showDetails": "Прикажи измене за {{version}}",
+    "missingTitle": "Фајлови који се користе у курсу, а недостају: {{count}}",
+    "discardChanges": "Одбаци измене",
+    "confirmDiscardTitle": "Одбацити измене од {{version}}?",
+    "confirmDiscardDescription": "Несачуване измене биће изгубљене, а нацрт се враћа на {{version}}.",
+    "confirmDiscardButton": "Одбаци",
+    "releaseTypeWithVersion": "{{name}} · {{version}}",
+    "cutButtonWithVersion": "Исеци нову верзију {{version}}"
   },
   "courseTags": {
     "helpTooltip": "Ово се може користити за означавање тежине вежби, али и других делова курса."
@@ -427,13 +444,17 @@
       "published": "Објављени",
       "local": "Локални"
     },
-    "unpublishedChanges": "Необјављене измене",
     "edited": "Измењено {{date}}",
     "viewOptions": "Опције приказа",
     "layout": "Распоред",
     "layoutTable": "Табела",
     "layoutList": "Листа",
-    "lastCommitted": "Сачувано {{date}}"
+    "lastCommitted": "Сачувано {{date}}",
+    "status": {
+      "changed": "Несачуване измене",
+      "published": "Објављен",
+      "local": "Само на овом уређају"
+    }
   },
   "sidebar": {
     "createCourse": "Направи нови курс",
@@ -493,5 +514,43 @@
   },
   "drawer": {
     "close": "Затвори"
+  },
+  "courseChanges": {
+    "section": {
+      "added": "Додата секција „{{title}}“",
+      "edited": "Измењена секција „{{title}}“",
+      "removed": "Уклоњена секција „{{title}}“"
+    },
+    "lesson": {
+      "added": "Додата лекција „{{title}}“ у „{{section}}“",
+      "edited": "Измењена лекција „{{title}}“ у „{{section}}“",
+      "removed": "Уклоњена лекција „{{title}}“ из „{{section}}“"
+    },
+    "test": {
+      "added": "Додат тест „{{title}}“ у „{{section}}“",
+      "edited": "Измењен тест „{{title}}“ у „{{section}}“",
+      "removed": "Уклоњен тест „{{title}}“ из „{{section}}“"
+    },
+    "course": {
+      "title": "Измењен наслов курса",
+      "description": "Измењен опис курса",
+      "contentRating": "Измењена оцена садржаја",
+      "tags": "Измењене ознаке курса",
+      "defaultLocale": "Измењен главни језик"
+    },
+    "language": {
+      "added": "Додат језик: {{language}}",
+      "removed": "Уклоњен језик: {{language}}"
+    },
+    "files": {
+      "added": "Додатих фајлова: {{count}}",
+      "removed": "Уклоњених фајлова: {{count}}"
+    },
+    "location": {
+      "course": "курс",
+      "section": "секција „{{title}}“",
+      "lesson": "лекција „{{title}}“ у „{{section}}“",
+      "test": "тест „{{title}}“ у „{{section}}“"
+    }
   }
 }

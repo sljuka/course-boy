@@ -239,8 +239,8 @@ hashes every file under `draft/` (minus assets nothing in the draft references, 
 a cut leaves out of the version too) and compares against the file hashes already
 stored in the latest `versions/<x.y.z>/version-meta.json` (written by
 `cutLocalCourseVersion` for its own hardlink-dedup optimization — reused here
-for a second purpose). `version-meta.json` is excluded (it only ever exists
-inside a `versions/` snapshot, never in `draft/`). `course.json` is compared
+for a second purpose). `version-meta.json` and `changelog.json` are excluded (they only
+ever exist inside a `versions/` snapshot, never in `draft/`; see contracts §5). `course.json` is compared
 separately, as parsed content rather than by hash: it holds real content — the
 course title and description, supported languages, descriptive tags, content
 rating — mixed with bookkeeping that every draft write or cut changes

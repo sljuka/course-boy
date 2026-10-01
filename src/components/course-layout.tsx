@@ -211,10 +211,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
 
   return (
     <OnboardingGuard>
-      <SidebarProvider
-        className="page-fade-in"
-        style={{ "--sidebar-width": "14rem" } as React.CSSProperties}
-      >
+      <SidebarProvider style={{ "--sidebar-width": "14rem" } as React.CSSProperties}>
         <RegisterTitleBarSidebarToggle />
         <AppSidebar />
         <PageSidePanelsContext.Provider value={sidePanels}>

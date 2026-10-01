@@ -50,13 +50,16 @@ function ListRowLink({ className, render, ...props }: useRender.ComponentProps<"
 
 // Secondary information: small, muted, never wraps. `fill` lets it take the
 // row's free space and truncate (a sentence rather than a short value);
-// `emphasized` drops the muting for something that needs attention.
+// `emphasized` drops the muting for something that needs attention. As a
+// table column, give it a fixed width (`className="w-14"`) and `align="end"`
+// so every row's column ends at the same place, like Linear's date column.
 function ListRowMeta({
+  align = "start",
   className,
   emphasized = false,
   fill = false,
   ...props
-}: React.ComponentProps<"span"> & { emphasized?: boolean; fill?: boolean }) {
+}: React.ComponentProps<"span"> & { align?: "start" | "end"; emphasized?: boolean; fill?: boolean }) {
   return (
     <span
       data-slot="list-row-meta"
@@ -64,6 +67,7 @@ function ListRowMeta({
         "text-xs whitespace-nowrap tabular-nums",
         emphasized ? "text-foreground" : "text-muted-foreground",
         fill ? "min-w-0 flex-1 truncate" : "shrink-0",
+        align === "end" && "text-right",
         className
       )}
       {...props}

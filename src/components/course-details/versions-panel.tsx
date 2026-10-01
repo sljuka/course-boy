@@ -1,4 +1,4 @@
-import { History, Plus, Undo2, Upload } from "lucide-react";
+import { History, Plus, Trash2, Undo2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -23,6 +23,7 @@ import {
 import { formatShortDate } from "@/lib/format-date";
 import { useAppState } from "@/lib/use-app-state";
 import { useRevertWithConfirmation } from "./use-revert-with-confirmation";
+import { VersionNotes } from "./version-notes";
 import { VersionHistoryDialog } from "./version-history-dialog";
 
 // The course editor's right panel. A Draft row first (like Git's working copy:
@@ -45,11 +46,25 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
       void refetchHistory();
     }
   }, [courseUpdatedAt, refetchHistory]);
-  const { confirmationDialog, requestRevert, revertMutation } = useRevertWithConfirmation(courseId);
+  const { confirmationDialog, requestDiscard, requestRevert, revertMutation } =
+    useRevertWithConfirmation(courseId);
   const publishMutation = usePublishCourseVersionMutation();
   const [isCommitOpen, setIsCommitOpen] = useState(false);
   const error = revertMutation.error ?? publishMutation.error;
   const versions = history?.versions ?? [];
+  // Release notes per version (SLJ-27), shown by clicking a row.
+  const changelogByVersion = new Map((history?.changelog ?? []).map((entry) => [entry.version, entry]));
+  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set());
+  const toggleExpanded = (version: string) =>
+    setExpandedVersions((current) => {
+      const next = new Set(current);
+      if (next.has(version)) {
+        next.delete(version);
+      } else {
+        next.add(version);
+      }
+      return next;
+    });
   // Anything not yet in a version: no version at all, or the draft differs
   // from the one it's based on.
   const hasUncommittedChanges =
@@ -95,6 +110,14 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
             <History aria-hidden="true" />
             {t("courseVersions.commitButton")}
           </ContextMenuItem>
+          <ContextMenuItem
+            disabled={!hasUncommittedChanges || versions.length === 0 || revertMutation.isPending}
+            onClick={requestDiscard}
+            variant="destructive"
+          >
+            <Trash2 aria-hidden="true" />
+            {t("courseVersions.discardChanges")}
+          </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>
       {versions.length === 0 ? (
@@ -102,11 +125,31 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
       ) : (
         versions.map((entry) => {
           const isDraftBase = entry.version === history?.currentDraftVersion;
+          const notes = changelogByVersion.get(entry.version);
+          const isExpanded = expandedVersions.has(entry.version);
 
           return (
             <ContextMenu key={entry.version}>
               <ContextMenuTrigger>
-                <ListRow className="h-9 gap-2 px-1.5" selected={isDraftBase}>
+                <ListRow
+                  aria-expanded={notes ? isExpanded : undefined}
+                  aria-label={notes ? t("courseVersions.showDetails", { version: entry.version }) : undefined}
+                  className="h-9 gap-2 px-1.5"
+                  onClick={notes ? () => toggleExpanded(entry.version) : undefined}
+                  onKeyDown={
+                    notes
+                      ? (event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            toggleExpanded(entry.version);
+                          }
+                        }
+                      : undefined
+                  }
+                  role={notes ? "button" : undefined}
+                  selected={isDraftBase}
+                  tabIndex={notes ? 0 : undefined}
+                >
                   <StatusIcon status={entry.isCurrentlyPublished ? "published" : "local"} />
                   <span className="shrink-0 font-medium">{entry.version}</span>
                   {isDraftBase && <Badge variant="outline">{t("courseVersions.activeBadge")}</Badge>}
@@ -120,6 +163,7 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
                   )}
                 </ListRow>
               </ContextMenuTrigger>
+              {notes && isExpanded && <VersionNotes entry={notes} />}
               <ContextMenuContent className="w-52">
                 <ContextMenuItem
                   disabled={isDraftBase || revertMutation.isPending}

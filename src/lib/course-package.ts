@@ -617,7 +617,51 @@ export type ApplyCourseSvgPresetResult = {
 
 export type CutCourseVersionInput = {
   courseId: string;
+  // The author's own release notes (markdown, their language); optional.
+  notes?: string;
+  // "This version fixes mistakes": followers see it as a recommended update.
+  recommended?: boolean;
   releaseType: Exclude<CourseVersionReleaseType, "initial">;
+};
+
+// Where something in a course is, by the titles people know it by (in the
+// course's default language at the time).
+export type CourseChangeLocation =
+  | { target: "course" }
+  | { target: "section"; title: string }
+  | { target: "lesson" | "test"; title: string; section: string };
+
+// One change between two versions of a course, stored as data so each reader
+// sees it in their own language (see `describeCourseChange` in the renderer).
+// A test change names its lesson (`title`) when it's a lesson's test.
+export type CourseChange =
+  | { kind: "added" | "edited" | "removed"; target: "section"; title: string }
+  | { kind: "added" | "edited" | "removed"; target: "lesson" | "test"; title: string; section: string }
+  | {
+      kind: "edited";
+      target: "course";
+      field: "contentRating" | "defaultLocale" | "description" | "tags" | "title";
+    }
+  | { kind: "added" | "removed"; target: "language"; locale: string }
+  | { kind: "added" | "removed"; target: "files"; count: number };
+
+// What committing the draft now would contain, for the Commit dialog.
+export type DraftChangesPreview = {
+  // The version the changes are measured against (the newest one), or null
+  // before the first commit.
+  baseVersion: string | null;
+  changes: CourseChange[];
+  // Files the content refers to that aren't in the draft's assets/.
+  missingAssets: Array<{ filename: string; location: CourseChangeLocation }>;
+};
+
+// One entry of a version's cumulative changelog.json (newest first).
+export type CourseChangelogEntry = {
+  changes: CourseChange[];
+  cutAt: string;
+  notes?: string;
+  recommended?: boolean;
+  version: string;
 };
 
 export type CutCourseVersionResult = {
@@ -653,6 +697,9 @@ export type CourseVersionHistoryEntry = {
 };
 
 export type CourseVersionHistory = {
+  // Every version's changes and notes, newest first (from the newest
+  // version's changelog.json); empty for versions cut before changelogs.
+  changelog: CourseChangelogEntry[];
   currentDraftVersion: string;
   // Whether the draft's content still equals `currentDraftVersion` (the version
   // it was cut or reverted from). False when that version doesn't exist.

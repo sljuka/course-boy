@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 
 import { CourseLoadingCard } from "@/components/course-loading-card";
 import { CourseCard } from "@/components/course-search/course-card";
+import { CourseStatusIcon } from "@/components/my-courses/course-status-icon";
 import { MyCourseRow } from "@/components/my-courses/my-course-row";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription } from "@/components/ui/card";
@@ -91,6 +92,7 @@ export function MyCoursesList({ query, view }: { query: string; view: CourseList
                     course={course}
                     href={`/drafts/${course.id}`}
                     key={course.id}
+                    leading={<CourseStatusIcon course={course} />}
                   />
                 ) : (
                   <MyCourseRow

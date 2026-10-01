@@ -16,6 +16,7 @@ import type {
   CreateCourseSectionTestResult,
   CutCourseVersionInput,
   CutCourseVersionResult,
+  DraftChangesPreview,
   UnusedDraftAsset,
   DeleteCourseLessonInput,
   DeleteCourseSectionInput,
@@ -341,6 +342,17 @@ export function useCutCourseVersionMutation() {
 // The draft's unused assets — what the next cut will remove. Always refetched
 // when the cut dialog opens (`enabled` flips on) since any lesson edit can
 // change it.
+// What committing the draft now would record (release notes) and any files its
+// content refers to that are missing; fetched fresh each time the dialog opens.
+export function useDraftChangesPreviewQuery(courseId: string, enabled: boolean) {
+  return useQuery<DraftChangesPreview>({
+    enabled,
+    queryKey: ["courses", "draft-changes", courseId],
+    queryFn: () => window.courses.previewDraftChanges(courseId),
+    refetchOnMount: "always",
+  });
+}
+
 export function useUnusedDraftAssetsQuery(courseId: string, enabled: boolean) {
   return useQuery<UnusedDraftAsset[]>({
     enabled,

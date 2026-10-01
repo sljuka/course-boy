@@ -1,3 +1,4 @@
+import type * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -18,9 +19,11 @@ import { getLocaleFlag } from "@/lib/locale-flags";
 type CourseCardProps = {
   course: CourseSummary;
   href: string;
+  // An icon before the title (My courses: published / local / changed).
+  leading?: React.ReactNode;
 };
 
-export function CourseCard({ course, href }: CourseCardProps) {
+export function CourseCard({ course, href, leading }: CourseCardProps) {
   const { t } = useTranslation();
   const { locale } = useAppState();
 
@@ -28,7 +31,8 @@ export function CourseCard({ course, href }: CourseCardProps) {
     <Card className="min-w-0 overflow-hidden">
       <CardContent className="min-w-0">
         <CardHeader className="min-w-0">
-          <CardTitle className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+          <CardTitle className="flex min-w-0 flex-wrap items-center gap-x-2">
+            {leading}
             <Link className="min-w-0 wrap-break-word transition-colors hover:text-foreground" to={href}>
               {course.title}
             </Link>

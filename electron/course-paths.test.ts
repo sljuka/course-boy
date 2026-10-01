@@ -136,6 +136,37 @@ describe("cutLocalCourseVersion", () => {
   // A revert copies the old version's course.json (and its version number) into
   // the draft, so the next cut must count up from the newest version, not from
   // the draft's own number (SLJ-23).
+  // A revert used to copy the version's own version-meta.json into the draft
+  // as a hardlink; the next cut copied it on into the new version and then
+  // rewrote it in place, overwriting the old version's file hashes too.
+  it("never changes an older version's version-meta.json when cutting after a revert", async () => {
+    const courseId = await seedDraftCourse();
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const firstMetaPath = path.join(localCoursesRoot, courseId, "versions", first.version, "version-meta.json");
+    const firstMetaBefore = await fs.readFile(firstMetaPath, "utf8");
+
+    await revertLocalCourseDraftToVersion({ courseId, version: first.version });
+    await updateLocalCourseDraftMetadata({
+      contentRating: "all-ages",
+      courseId,
+      defaultLocale: "en",
+      descriptiveTags: [],
+      locales: { en: { description: "A test course", title: "After revert" } },
+      supportedLocales: ["en"],
+    });
+    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+
+    expect(await fs.readFile(firstMetaPath, "utf8")).toBe(firstMetaBefore);
+    expect(
+      await fs.stat(path.join(localCoursesRoot, courseId, "draft", "version-meta.json")).then(
+        () => true,
+        () => false,
+      ),
+    ).toBe(false);
+  });
+
   it("cuts past the newest version after reverting to an older one", async () => {
     const courseId = await seedDraftCourse();
     const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
@@ -147,6 +178,49 @@ describe("cutLocalCourseVersion", () => {
 
     expect(third.version).toBe("0.1.3");
     expect(afterRevert.version).toBe("0.1.4");
+  });
+
+  // SLJ-27: each version carries the whole history, newest first, as data.
+  it("writes a cumulative, hashed changelog.json into each version", async () => {
+    const courseId = await seedDraftCourse();
+    const localCoursesRoot = await ensureLocalCoursesRoot();
+    const versionDir = (version: string) => path.join(localCoursesRoot, courseId, "versions", version);
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+
+    await updateLocalCourseDraftMetadata({
+      contentRating: "all-ages",
+      courseId,
+      defaultLocale: "en",
+      descriptiveTags: [],
+      locales: { en: { description: "A test course", title: "Renamed" } },
+      supportedLocales: ["en"],
+    });
+    const second = await cutLocalCourseVersion({
+      courseId,
+      notes: "  Fixed the title.  ",
+      recommended: true,
+      releaseType: "patch",
+    });
+
+    const changelog = JSON.parse(await fs.readFile(path.join(versionDir(second.version), "changelog.json"), "utf8"));
+    expect(changelog.map((entry: { version: string }) => entry.version)).toEqual([second.version, first.version]);
+    expect(changelog[0]).toMatchObject({
+      changes: [{ field: "title", kind: "edited", target: "course" }],
+      notes: "Fixed the title.",
+      recommended: true,
+    });
+    expect(changelog[1]).toMatchObject({ changes: [], version: first.version });
+    expect(changelog[1].notes).toBeUndefined();
+
+    // Hashed like every file, and never a reason for the draft badge to flip.
+    const meta = JSON.parse(await fs.readFile(path.join(versionDir(second.version), "version-meta.json"), "utf8"));
+    expect(meta.fileHashes["changelog.json"]).toBe(
+      await hashFileContents(path.join(versionDir(second.version), "changelog.json")),
+    );
+    const course = (await listCourses(localCoursesRoot)).find((entry) => entry.id === courseId);
+    expect(course?.versionBadge).toEqual({ kind: "version", version: second.version });
+    const history = await getCourseVersionHistory(localCoursesRoot, courseId);
+    expect(history?.changelog.map((entry) => entry.version)).toEqual([second.version, first.version]);
   });
 
   it("shares unchanged files between cuts via hardlinks", async () => {

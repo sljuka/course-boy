@@ -22,9 +22,9 @@ import {
 import {
   useCourseVersionHistoryQuery,
   useCutCourseVersionMutation,
-  usePublishCourseVersionMutation,
 } from "@/lib/course-queries";
-import type { CourseVersionReleaseType } from "@/lib/course-versioning";
+import { nextCourseVersion, type CourseVersionReleaseType } from "@/lib/course-versioning";
+import { CommitReleaseNotes } from "./commit-release-notes";
 import { UnusedAssetsWarning } from "./unused-assets-warning";
 import { useRevertWithConfirmation } from "./use-revert-with-confirmation";
 import { VersionHistoryRow } from "./version-history-row";
@@ -35,12 +35,11 @@ type VersionHistoryDialogProps = {
   courseId: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
-  // "editor" (the drafts editor's "Commit new version" button) gets the
-  // full authoring workflow — cut, revert, publish. "history" (the
-  // read-only course-details page's "Version history" button) only ever
-  // looks at cut versions already on disk, so it's revert-only: cutting
-  // and publishing are authoring actions that belong in the editor, and a
-  // bundled course (no `draft/` to speak of) can't do either anyway.
+  // "editor" is the Commit dialog (the editor's "Commit new version"): only
+  // committing — release notes, bump type, Cut. Publishing and reverting live
+  // in the editor's Versions panel. "history" (the course details page's
+  // "Version history") lists the cut versions with Revert; a bundled course
+  // (no `draft/`) can't commit or publish anyway.
   mode: "editor" | "history";
 };
 
@@ -52,19 +51,24 @@ export function VersionHistoryDialog({
 }: VersionHistoryDialogProps) {
   const { t } = useTranslation();
   const [releaseType, setReleaseType] = useState<ReleaseType>("patch");
+  const [notes, setNotes] = useState("");
+  const [recommended, setRecommended] = useState(false);
   const { data: history } = useCourseVersionHistoryQuery(open ? courseId : undefined);
   const cutMutation = useCutCourseVersionMutation();
   const { confirmationDialog, requestRevert, revertMutation } = useRevertWithConfirmation(courseId);
-  const publishMutation = usePublishCourseVersionMutation();
   const canCut = mode === "editor";
-  const canPublish = mode === "editor";
+  // The version each bump type would create, as the cut computes it.
+  const nextVersionFor = (type: ReleaseType) =>
+    history ? nextCourseVersion(history.currentDraftVersion, history.versions[0]?.version ?? null, type) : null;
+  const releaseTypeLabel = (type: ReleaseType) => {
+    const name = t(`courseVersions.releaseType${type[0].toUpperCase()}${type.slice(1)}`);
+    const next = nextVersionFor(type);
 
-  const isBusy =
-    (canCut && cutMutation.isPending) || revertMutation.isPending || (canPublish && publishMutation.isPending);
-  const activeError =
-    (canCut ? cutMutation.error : undefined) ??
-    revertMutation.error ??
-    (canPublish ? publishMutation.error : undefined);
+    return next ? t("courseVersions.releaseTypeWithVersion", { name, version: next }) : name;
+  };
+
+  const isBusy = (canCut && cutMutation.isPending) || revertMutation.isPending;
+  const activeError = (canCut ? cutMutation.error : undefined) ?? revertMutation.error;
 
   return (
     <Dialog
@@ -75,20 +79,31 @@ export function VersionHistoryDialog({
 
         cutMutation.reset();
         revertMutation.reset();
-        publishMutation.reset();
         onOpenChange(nextOpen);
       }}
       open={open}
     >
-      <DialogContent className="w-[min(36rem,calc(100vw-2rem))]">
+      <DialogContent className="max-h-[calc(100vh-4rem)] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>{t("courseVersions.title")}</DialogTitle>
+          <DialogTitle>
+            {canCut ? t("courseVersions.commitButton") : t("courseVersions.title")}
+          </DialogTitle>
           <DialogDescription>
             {t("courseVersions.currentDraftVersion", {
               version: history?.currentDraftVersion ?? "",
             })}
           </DialogDescription>
         </DialogHeader>
+        {canCut && (
+          <CommitReleaseNotes
+            courseId={courseId}
+            notes={notes}
+            onNotesChange={setNotes}
+            onRecommendedChange={setRecommended}
+            open={open}
+            recommended={recommended}
+          />
+        )}
         {canCut && <UnusedAssetsWarning courseId={courseId} open={open} />}
         {canCut && (
           <div className="flex items-end gap-2">
@@ -99,22 +114,37 @@ export function VersionHistoryDialog({
                 value={releaseType}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue />
+                  <SelectValue>{releaseTypeLabel(releaseType)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="patch">{t("courseVersions.releaseTypePatch")}</SelectItem>
-                  <SelectItem value="minor">{t("courseVersions.releaseTypeMinor")}</SelectItem>
-                  <SelectItem value="major">{t("courseVersions.releaseTypeMajor")}</SelectItem>
+                  {(["patch", "minor", "major"] as const).map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {releaseTypeLabel(type)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <Button
               disabled={cutMutation.isPending}
-              onClick={() => cutMutation.mutate({ courseId, releaseType })}
+              onClick={() =>
+                cutMutation.mutate(
+                  { courseId, notes, recommended, releaseType },
+                  {
+                    onSuccess: () => {
+                      setNotes("");
+                      setRecommended(false);
+                      onOpenChange(false);
+                    },
+                  },
+                )
+              }
             >
               {cutMutation.isPending
                 ? t("courseVersions.cutting")
-                : t("courseVersions.cutButton")}
+                : nextVersionFor(releaseType)
+                  ? t("courseVersions.cutButtonWithVersion", { version: nextVersionFor(releaseType) })
+                  : t("courseVersions.cutButton")}
             </Button>
           </div>
         )}
@@ -124,31 +154,28 @@ export function VersionHistoryDialog({
             <AlertDescription>{activeError.message}</AlertDescription>
           </Alert>
         )}
-        <div className="flex max-h-80 flex-col gap-2 overflow-y-auto">
-          {history?.versions.length ? (
-            history.versions.map((entry) => (
-              <VersionHistoryRow
-                canPublish={canPublish}
-                entry={entry}
-                isActive={entry.version === history.currentDraftVersion}
-                isPublishPending={
-                  canPublish &&
-                  publishMutation.isPending &&
-                  publishMutation.variables?.version === entry.version
-                }
-                isRevertPending={
-                  revertMutation.isPending &&
-                  revertMutation.variables?.version === entry.version
-                }
-                key={entry.version}
-                onPublish={() => publishMutation.mutate({ courseId, version: entry.version })}
-                onRevert={() => requestRevert(entry.version)}
-              />
-            ))
-          ) : (
-            <CardDescription>{t("courseVersions.emptyState")}</CardDescription>
-          )}
-        </div>
+        {/* The Commit dialog is only for committing; publishing and reverting
+            live in the Versions panel. The history dialog lists versions. */}
+        {!canCut && (
+          <div className="flex max-h-80 flex-col gap-2 overflow-y-auto">
+            {history?.versions.length ? (
+              history.versions.map((entry) => (
+                <VersionHistoryRow
+                  entry={entry}
+                  isActive={entry.version === history.currentDraftVersion}
+                  isRevertPending={
+                    revertMutation.isPending &&
+                    revertMutation.variables?.version === entry.version
+                  }
+                  key={entry.version}
+                  onRevert={() => requestRevert(entry.version)}
+                />
+              ))
+            ) : (
+              <CardDescription>{t("courseVersions.emptyState")}</CardDescription>
+            )}
+          </div>
+        )}
         {confirmationDialog}
       </DialogContent>
     </Dialog>

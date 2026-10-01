@@ -90,6 +90,9 @@ interface Window {
     getVersionHistory: (
       courseId: string,
     ) => Promise<import('../src/lib/course-package').CourseVersionHistory | null>
+    previewDraftChanges: (
+      courseId: string,
+    ) => Promise<import('../src/lib/course-package').DraftChangesPreview>
     cutVersion: (
       input: import('../src/lib/course-package').CutCourseVersionInput,
     ) => Promise<import('../src/lib/course-package').CutCourseVersionResult>

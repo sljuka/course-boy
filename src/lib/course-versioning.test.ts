@@ -5,6 +5,7 @@ import {
   compareCourseVersions,
   createInitialCourseVersion,
   formatCourseVersion,
+  nextCourseVersion,
   parseCourseVersion,
 } from "@/lib/course-versioning";
 
@@ -49,5 +50,21 @@ describe("course versioning", () => {
     expect(compareCourseVersions(parseCourseVersion("1.9.0"), parseCourseVersion("1.10.0"))).toBeLessThan(0);
     expect(compareCourseVersions(parseCourseVersion("2.0.0"), parseCourseVersion("1.99.99"))).toBeGreaterThan(0);
     expect(compareCourseVersions(parseCourseVersion("1.2.9"), parseCourseVersion("1.2.10"))).toBeLessThan(0);
+  });
+});
+
+describe("nextCourseVersion", () => {
+  it("bumps the draft's number when it is the newest", () => {
+    expect(nextCourseVersion("0.2.3", "0.2.3", "patch")).toBe("0.2.4");
+    expect(nextCourseVersion("0.2.3", "0.2.3", "minor")).toBe("0.3.0");
+    expect(nextCourseVersion("0.2.3", "0.2.3", "major")).toBe("1.0.0");
+  });
+
+  it("counts up from the newest cut version after a revert", () => {
+    expect(nextCourseVersion("0.1.1", "0.1.3", "patch")).toBe("0.1.4");
+  });
+
+  it("bumps the draft's number before any version exists", () => {
+    expect(nextCourseVersion("0.1.0", null, "patch")).toBe("0.1.1");
   });
 });

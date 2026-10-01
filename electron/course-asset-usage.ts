@@ -19,7 +19,7 @@ const ASSETS_DIRECTORY_NAME = "assets";
 
 // `version-meta.json` lists every file of a cut version by path, `assets/…`
 // included — scanning it would mark every asset as referenced.
-const NON_REFERENCING_FILENAMES = new Set(["version-meta.json"]);
+const NON_REFERENCING_FILENAMES = new Set(["version-meta.json", "changelog.json"]);
 
 const REFERENCING_EXTENSIONS = new Set([".json", ".md"]);
 

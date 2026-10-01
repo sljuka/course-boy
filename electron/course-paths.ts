@@ -5,6 +5,8 @@ import path from "node:path";
 import { app, dialog, shell } from "electron";
 import type {
   ApplyCourseSvgPresetInput,
+  CourseChangelogEntry,
+  DraftChangesPreview,
   ApplyCourseSvgPresetResult,
   ContentRating,
   CreateCourseDraftInput,
@@ -51,15 +53,16 @@ import {
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import { isLocale, locales, type Locale } from "../src/lib/i18n";
 import {
-  bumpCourseVersion,
   compareCourseVersions,
   createInitialCourseVersion,
   formatCourseVersion,
+  nextCourseVersion,
   parseCourseVersion,
   type CourseVersionReleaseType,
 } from "../src/lib/course-versioning";
 import { createCourseId, isValidCourseId } from "../src/lib/course-id";
 import { slugifyCourseName } from "../src/lib/course-slug";
+import { computeCourseChanges, findMissingAssets, readChangelog } from "./course-changes";
 import { createReferencedFilesFilter, getCourseAssetUsage } from "./course-asset-usage";
 import { transliterateSerbianLatinToCyrillic } from "../src/lib/serbian-transliteration";
 
@@ -570,6 +573,16 @@ type CourseVersionMeta = {
 
 function isCourseVersionReleaseTypeValue(value: unknown): value is CourseVersionReleaseType {
   return value === "initial" || value === "major" || value === "minor" || value === "patch";
+}
+
+// Files only a cut version has (written by the cut itself), never part of a
+// draft: a revert leaves them out, and a cut never copies them from the draft.
+// Copying them across as hardlinks once let a cut rewrite an older version's
+// version-meta.json in place.
+const VERSION_ONLY_FILES = new Set(["version-meta.json", "changelog.json"]);
+
+function isDraftFile(relativePath: string): boolean {
+  return !VERSION_ONLY_FILES.has(relativePath);
 }
 
 function getVersionMetaPath(versionDirectoryPath: string): string {
@@ -2037,6 +2050,21 @@ export async function applyCourseSvgPreset(
   return { mimeType: assetMimeTypesByExtension[".svg"], path: filename };
 }
 
+// What committing the draft now would record (SLJ-27 / SLJ-29): its changes
+// since the newest version, and files its content refers to that are missing.
+export async function previewLocalCourseDraftChanges(courseId: string): Promise<DraftChangesPreview> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseRootPath = resolveCourseRootPath(localCoursesRoot, courseId);
+  const draftDirectoryPath = getDraftDirectoryPath(courseRootPath);
+  const newest = await findMostRecentSnapshot(path.join(courseRootPath, "versions"));
+
+  return {
+    baseVersion: newest ? path.basename(newest.directoryPath) : null,
+    changes: await computeCourseChanges(draftDirectoryPath, newest?.directoryPath ?? null),
+    missingAssets: await findMissingAssets(draftDirectoryPath),
+  };
+}
+
 export async function cutLocalCourseVersion(
   input: CutCourseVersionInput,
 ): Promise<CutCourseVersionResult> {
@@ -2052,18 +2080,17 @@ export async function cutLocalCourseVersion(
   const versionsDirectoryPath = path.join(courseRootPath, "versions");
   const previousSnapshot = await findMostRecentSnapshot(versionsDirectoryPath);
   // Count up from the newest version already cut, not only from the draft's own
-  // number: a revert copies an older version's course.json (and its number)
-  // into the draft, and bumping from that would land on a version that exists.
-  const draftVersionInfo = manifest.versionInfo ?? parseCourseVersion(manifest.version);
-  const newestCutVersionInfo = previousSnapshot
-    ? parseCourseVersion(path.basename(previousSnapshot.directoryPath))
-    : null;
-  const currentVersionInfo =
-    newestCutVersionInfo && compareCourseVersions(newestCutVersionInfo, draftVersionInfo) > 0
-      ? newestCutVersionInfo
-      : draftVersionInfo;
-  const nextVersionInfo = bumpCourseVersion(currentVersionInfo, input.releaseType);
-  const nextVersion = formatCourseVersion(nextVersionInfo);
+  // number (a revert copies an older version's number into the draft). The
+  // Commit dialog previews the same `nextCourseVersion`.
+  const draftVersion = formatCourseVersion(
+    manifest.versionInfo ?? parseCourseVersion(manifest.version),
+  );
+  const nextVersion = nextCourseVersion(
+    draftVersion,
+    previousSnapshot ? path.basename(previousSnapshot.directoryPath) : null,
+    input.releaseType,
+  );
+  const nextVersionInfo = { ...parseCourseVersion(nextVersion), releaseType: input.releaseType };
   const targetSnapshotPath = path.join(versionsDirectoryPath, nextVersion);
 
   if (await pathExists(targetSnapshotPath)) {
@@ -2075,12 +2102,27 @@ export async function cutLocalCourseVersion(
   // A version holds only the assets its content references (unused uploads stay
   // behind in the draft), and every file is hardlinked rather than copied —
   // from the previous version when unchanged since then, else from the draft.
+  // Release notes (SLJ-27): what changed since the newest version, measured
+  // before the copy, plus that version's changelog to extend.
+  const changes = await computeCourseChanges(
+    draftDirectoryPath,
+    previousSnapshot?.directoryPath ?? null,
+  );
+  const previousChangelog = previousSnapshot
+    ? await readChangelog(previousSnapshot.directoryPath)
+    : [];
+
   const assetUsage = await getCourseAssetUsage(draftDirectoryPath);
+  const isReferencedFile = createReferencedFilesFilter(assetUsage);
   const fileHashes = await copyDirectoryWithDedup(
     draftDirectoryPath,
     tempSnapshotPath,
     previousSnapshot,
-    { hardlinkFromSource: true, includeFile: createReferencedFilesFilter(assetUsage) },
+    {
+      hardlinkFromSource: true,
+      includeFile: (relativePath) =>
+        isDraftFile(relativePath) && isReferencedFile(relativePath),
+    },
   );
 
   const nowIso = new Date().toISOString();
@@ -2097,7 +2139,30 @@ export async function cutLocalCourseVersion(
   fileHashes["course.json"] = await hashFileContents(
     path.join(tempSnapshotPath, "course.json"),
   );
-  await fs.writeFile(
+
+  // The cumulative changelog, newest first: a student who keeps only the
+  // latest few versions still has the whole history. Hashed like every file.
+  const notes = input.notes?.trim();
+  const changelog: CourseChangelogEntry[] = [
+    {
+      changes,
+      cutAt: nowIso,
+      ...(notes ? { notes } : {}),
+      ...(input.recommended ? { recommended: true } : {}),
+      version: nextVersion,
+    },
+    ...previousChangelog,
+  ];
+  await writeFileAtomic(
+    path.join(tempSnapshotPath, "changelog.json"),
+    JSON.stringify(changelog, null, 2),
+  );
+  fileHashes["changelog.json"] = await hashFileContents(
+    path.join(tempSnapshotPath, "changelog.json"),
+  );
+  // Atomic (temp file + rename), never an in-place write: a file in a new
+  // version may be a hardlink shared with an older one.
+  await writeFileAtomic(
     getVersionMetaPath(tempSnapshotPath),
     JSON.stringify(
       { cutAt: nowIso, fileHashes, releaseType: input.releaseType } satisfies CourseVersionMeta,
@@ -2123,6 +2188,14 @@ export async function cutLocalCourseVersion(
   });
 
   const removedAssets = await removeUnusedDraftAssets(draftDirectoryPath);
+
+  // Drafts reverted before VERSION_ONLY_FILES existed can still hold a
+  // version's own files (as hardlinks into that version); drop them.
+  await Promise.all(
+    [...VERSION_ONLY_FILES].map((filename) =>
+      fs.rm(path.join(draftDirectoryPath, filename), { force: true }),
+    ),
+  );
 
   return { removedAssets, version: nextVersion };
 }
@@ -2179,6 +2252,7 @@ export async function revertLocalCourseDraftToVersion(
   // draft's own writers only ever replace files, so sharing inodes is safe.
   await copyDirectoryWithDedup(snapshotPath, stagingDraftPath, null, {
     hardlinkFromSource: true,
+    includeFile: isDraftFile,
   });
 
   const snapshotManifest = await readCourseManifest(stagingDraftPath);

@@ -173,8 +173,8 @@ deduplicated.
 
 A cut version contains **only the assets its content references**: an asset counts as
 referenced when its filename appears anywhere in the package's `.json`/`.md` text
-(`getCourseAssetUsage` in `electron/course-asset-usage.ts`; `version-meta.json` excluded,
-since it lists every path). The draft-vs-version badge ignores unreferenced assets for
+(`getCourseAssetUsage` in `electron/course-asset-usage.ts`; `version-meta.json` and
+`changelog.json` excluded, since they list paths and notes rather than content). The draft-vs-version badge ignores unreferenced assets for
 the same reason. **After a successful cut, unreferenced assets are deleted from
 `draft/assets/`** (`removeUnusedDraftAssets`; never from `versions/` — an older version
 that still uses a file keeps its own hardlinked copy, and reverting to it brings the file
@@ -189,6 +189,25 @@ share one inode. Every writer goes through `writeFileAtomic`/`copyFileAtomic`/
 leaves the version untouched. A write that truncates an existing draft file in place
 (`fs.writeFile` on an existing path, or an external editor that saves in place) would
 silently change every version hardlinked to it.
+
+**Some files belong only to a cut version and never enter a draft:** `version-meta.json`
+(file hashes) and `changelog.json` (release notes), both written by the cut itself
+(`VERSION_ONLY_FILES` in `course-paths.ts`). A revert leaves them out, a cut never copies
+them from the draft (and deletes any an older revert left behind), and the cut writes them
+atomically. Until 2026-10-01 a revert copied `version-meta.json` into the draft as a
+hardlink, and the next cut rewrote it in place, overwriting the older version's hashes.
+
+**`changelog.json` (release notes, SLJ-27)** is cumulative and newest first:
+`[{ version, cutAt, changes, notes?, recommended? }, …]` (`CourseChangelogEntry`). Each cut
+writes the previous version's list plus a new entry, so the newest version alone holds the
+whole history (a student who keeps only a few versions keeps it all). `changes` is data,
+not prose (`CourseChange`: added/edited/removed section, lesson or test by title, course
+fields, languages, file counts), computed by `computeCourseChanges`
+(`electron/course-changes.ts`) against the newest version and rendered in the reader's
+language (`describeCourseChange`). `notes` is the author's own text in their language;
+`recommended` means "this version fixes mistakes". Its hash is in `version-meta.json` like
+every file. Versions cut before 2026-10-01 have no changelog; the first cut afterwards
+starts it.
 
 That handler must answer a `Range` request with a real `206 Partial Content` (status,
 `Content-Range`, `Content-Length`, read via `fs/promises`' `open`/`read` at the requested
