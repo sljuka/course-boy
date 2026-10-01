@@ -1,4 +1,4 @@
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { EyeOff, MoreHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -11,21 +11,27 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { CourseDistribution } from "@/lib/course-package";
+import { useShowBundledCourses } from "@/lib/show-bundled-courses-queries";
 
 // A course's own menu (⋯), at the end of the page's action bar: after Commit
 // new version in the editor's course page, after Share on the course details
 // page. Remove course asks first, then leaves for `afterRemovePath` (the
-// course is gone).
+// course is gone). The bundled course offers Hide instead.
 export function CourseActionsMenu({
   afterRemovePath,
   course,
 }: {
   afterRemovePath: string;
-  course: { id: string; title: string };
+  course: { distribution?: CourseDistribution; id: string; title: string };
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
+  const [, setShowBundledCourses] = useShowBundledCourses();
+  // The bundled course (Getting Started) is hidden, not deleted: the same
+  // switch as Settings' "Show Getting Started course", so it can come back.
+  const isBundled = course.distribution === "bundled";
 
   return (
     <>
@@ -44,10 +50,22 @@ export function CourseActionsMenu({
           <MoreHorizontal aria-hidden="true" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-44">
-          <DropdownMenuItem onClick={() => setIsRemoveOpen(true)} variant="destructive">
-            <Trash2 aria-hidden="true" />
-            {t("courseSearch.removeCourse")}
-          </DropdownMenuItem>
+          {isBundled ? (
+            <DropdownMenuItem
+              onClick={() => {
+                setShowBundledCourses(false);
+                navigate("/", { replace: true });
+              }}
+            >
+              <EyeOff aria-hidden="true" />
+              {t("courseSearch.hideCourse")}
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onClick={() => setIsRemoveOpen(true)} variant="destructive">
+              <Trash2 aria-hidden="true" />
+              {t("courseSearch.removeCourse")}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
       <RemoveCourseDialog

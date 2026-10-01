@@ -26,6 +26,8 @@ export type UserPreferences = {
   persona?: Persona
   recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
+  // Bundled courses (Getting Started) on Home and in recently viewed; on when unset.
+  showBundledCourses?: boolean
   // The course editor's right panel (Versions): open or closed.
   versionsPanel?: ExplorerPanelPreference
   theme?: Theme

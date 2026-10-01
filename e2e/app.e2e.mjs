@@ -762,6 +762,44 @@ describe('revert confirmation', () => {
   })
 })
 
+// SLJ-30: the bundled course can be hidden from Home (Settings, or Hide in its
+// own ⋯ menu) and brought back; hiding never deletes it.
+describe('show Getting Started course', () => {
+  it('hides the bundled course from Home and brings it back', async () => {
+    const { page } = harness
+    const homeShows = (title) =>
+      page.evaluate((t) => {
+        location.hash = '#/'
+        return new Promise((resolve) => setTimeout(() => resolve(document.body.innerText.includes(t)), 600))
+      }, title)
+
+    try {
+      // Hide it from its own menu on the course details page.
+      await page.evaluate((id) => {
+        location.hash = `#/courses/${id}`
+      }, BUNDLED_COURSE_ID)
+      await page.getByRole('button', { name: 'Course actions for Getting Started with Matko' }).click()
+      await page.getByRole('menuitem', { name: 'Hide course' }).click()
+      await waitForUrl(page, '#/')
+      expect(await homeShows('Getting Started with Matko')).toBe(false)
+      expect((await page.evaluate(() => window.preferences.get())).showBundledCourses).toBe(false)
+      // Not deleted: still in the course list.
+      const ids = (await page.evaluate(() => window.courses.list('en'))).map((c) => c.id)
+      expect(ids).toContain(BUNDLED_COURSE_ID)
+
+      // Bring it back from Settings.
+      await page.evaluate(() => {
+        location.hash = '#/settings'
+      })
+      await page.locator('label[for="settings-show-bundled-courses"]').click()
+      await expect.poll(async () => (await page.evaluate(() => window.preferences.get())).showBundledCourses).toBe(true)
+      expect(await homeShows('Getting Started with Matko')).toBe(true)
+    } finally {
+      await page.evaluate(() => window.preferences.set({ showBundledCourses: true }))
+    }
+  })
+})
+
 describe('i18n', () => {
   it('translates the app when the locale is switched and persists the choice', async () => {
     const pickerIdx = await findIndex(harness.page, (e) => e.text.includes('English'))

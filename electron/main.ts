@@ -118,6 +118,7 @@ type UserPreferences = {
   myCoursesView?: CourseListView
   versionsPanel?: ExplorerPanelPreference
   hasAcknowledgedCreatorKey?: boolean
+  showBundledCourses?: boolean
   locale?: Locale
   nickname?: string
   persona?: Persona
@@ -179,6 +180,10 @@ ipcMain.handle(
 
     if (typeof preferences.theme === 'string') {
       preferencesStore.set('theme', preferences.theme)
+    }
+
+    if (typeof preferences.showBundledCourses === 'boolean') {
+      preferencesStore.set('showBundledCourses', preferences.showBundledCourses)
     }
 
     if (typeof preferences.hasAcknowledgedCreatorKey === 'boolean') {

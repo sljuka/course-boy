@@ -53,7 +53,8 @@
     "testTile": "Test {{index}}",
     "title": "Pretraga kurseva",
     "version": "{{version}}",
-    "versionTooltip": "Verzija kursa"
+    "versionTooltip": "Verzija kursa",
+    "hideCourse": "Sakrij kurs"
   },
   "courseDescriptions": {
     "preSchoolDescription": "Rano učenje kroz igru, jezik, brojanje i kreativne aktivnosti.",
@@ -483,6 +484,11 @@
       "description": "Menja šta ti Matko prikazuje. Možeš je promeniti u bilo kom trenutku.",
       "studentDescription": "Prati kurseve koji su podeljeni sa tobom.",
       "teacherDescription": "Pravi, uređuj, štampaj i deli svoje kurseve, a možeš i da pratiš kurseve."
+    },
+    "home": {
+      "title": "Početna",
+      "showBundledCourses": "Prikaži uvodni kurs o Matku",
+      "showBundledCoursesDescription": "Kratak vodič kroz Matka, na početnoj strani. Skriven kurs ostaje na ovom uređaju, pa ga ovde možeš vratiti kad god želiš."
     }
   },
   "drawer": {

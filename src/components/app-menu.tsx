@@ -1,4 +1,4 @@
-import { Menu } from 'lucide-react'
+import { MoreHorizontal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
@@ -30,13 +30,14 @@ function AppMenu() {
         render={
           <Button
             aria-label={t('menu.open')}
+            shape="circle"
             size="icon"
             title={t('menu.open')}
             variant="subtle"
           />
         }
       >
-        <Menu aria-hidden="true" />
+        <MoreHorizontal aria-hidden="true" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-44">
         <DropdownMenuItem onClick={() => navigate('/settings')}>{t('menu.settings')}</DropdownMenuItem>

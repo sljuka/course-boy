@@ -53,7 +53,8 @@
     "testTile": "Test {{index}}",
     "title": "Search courses",
     "version": "{{version}}",
-    "versionTooltip": "Course version"
+    "versionTooltip": "Course version",
+    "hideCourse": "Hide course"
   },
   "courseDescriptions": {
     "preSchoolDescription": "Early learning through play, language, counting, and creative activities.",
@@ -483,6 +484,11 @@
       "description": "Changes what Matko shows you. You can switch at any time.",
       "studentDescription": "Take courses shared with you.",
       "teacherDescription": "Create, edit, print and share your own courses, and take courses too."
+    },
+    "home": {
+      "title": "Home",
+      "showBundledCourses": "Show Getting Started course",
+      "showBundledCoursesDescription": "A short guide to Matko, on Home. Hiding it keeps it on this device, so you can bring it back here any time."
     }
   },
   "drawer": {

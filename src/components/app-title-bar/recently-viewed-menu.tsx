@@ -14,6 +14,7 @@ import { WindowTitleBarButton } from "@/components/ui/window-title-bar";
 import { useCoursesQuery } from "@/lib/course-queries";
 import type { RecentlyViewedKind } from "@/lib/recently-viewed";
 import { useRecentlyViewedQuery } from "@/lib/recently-viewed-queries";
+import { useShowBundledCourses } from "@/lib/show-bundled-courses-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 const kindIcons: Record<RecentlyViewedKind, LucideIcon> = {
@@ -29,10 +30,15 @@ function RecentlyViewedMenu() {
   const recentlyViewedQuery = useRecentlyViewedQuery();
   const coursesQuery = useCoursesQuery(locale);
   const coursesById = new Map((coursesQuery.data ?? []).map((course) => [course.id, course]));
-  // A course deleted since it was viewed simply drops out of the list, and
-  // drafts (teacher-only pages, see RoleRoute) are hidden from students.
+  // A course deleted since it was viewed simply drops out of the list, drafts
+  // (teacher-only pages, see RoleRoute) are hidden from students, and bundled
+  // courses follow Settings' "Show Getting Started course".
+  const [showBundledCourses] = useShowBundledCourses();
   const entries = (recentlyViewedQuery.data ?? []).filter(
-    (entry) => coursesById.has(entry.courseId) && (entry.kind !== "draft" || role === "teacher"),
+    (entry) =>
+      coursesById.has(entry.courseId) &&
+      (entry.kind !== "draft" || role === "teacher") &&
+      (showBundledCourses || coursesById.get(entry.courseId)?.distribution !== "bundled"),
   );
   const label = t("titleBar.recentlyViewed");
 
