@@ -283,9 +283,18 @@ Changing it is a migration, not a refactor: existing course directories in users
 `userData` already use the current layout.
 
 `course.json` carries **no `publisher` and no `distribution`** (removed 2026-09-28).
-Where a course was published from — its share address and the publisher's creator key —
-goes in a `source.json` the Bare worker writes next to a version when sharing it (SLJ-9,
-not built yet). Whose course it is *on this device* is never stored in the package, since
+Where a course was published from goes in **`source.json`**,
+`{ "driveKey": "<z32>", "publisher": { "id": "<z32 creator key>" } }`. The Bare worker
+writes it into the course's drive root on every publish (SLJ-38), next to the version's
+files but never into the teacher's `versions/<v>/`, so a version's hashes in
+`version-meta.json` stay valid. An imported course therefore has one at its root. Import
+refuses a course without one, or one whose `driveKey` isn't the code actually used
+(`workers/course-source.cjs`). That proves consistency, not authorship: `publisher.id`
+is a claim until SLJ-18 signs versions, so the app never shows it as verified. Where a
+course comes from *on this device* (the code used at import) is app state, kept in the
+main-process-only `course-sharing.json` electron-store file, never re-read from
+`source.json` (see `electron/course-sharing.ts`). Whose course it is *on this device* is
+never stored in the package, since
 the same package is authored on one machine and imported on another:
 `resolveCourseDistribution` in
 [electron/course-registry.ts](../electron/course-registry.ts:1) derives

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, Folder, History, Home, Play, Share2, Star } from "lucide-react";
+import { BookOpen, Folder, History, Home, Play, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -18,7 +18,7 @@ import { Button, ButtonLabel } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
-import { ShareCourseDialog } from "@/components/course-details/share-course-dialog";
+import { ShareCourseButton } from "@/components/course-details/share-course-button";
 import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
 import {
   buildLessonPath,
@@ -33,7 +33,6 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   const { t } = useTranslation();
   const [isFavorite, setIsFavorite] = useState(false);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
-  const [isShareOpen, setIsShareOpen] = useState(false);
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
     throwOnError: true,
   });
@@ -95,15 +94,8 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         <Play aria-hidden="true" />
         <ButtonLabel>{t("courseDetails.startCourse")}</ButtonLabel>
       </Button>
-      <Button
-        onClick={() => setIsShareOpen(true)}
-        size="sm"
-        title={t("shareCourse.openButton")}
-        variant="secondary"
-      >
-        <Share2 aria-hidden="true" />
-        <ButtonLabel>{t("shareCourse.openButton")}</ButtonLabel>
-      </Button>
+      {/* Only the teacher's own courses have a code to hand out. */}
+      {resolvedCourse.distribution === "local" && <ShareCourseButton courseId={courseId} />}
       <CourseActionsMenu
         afterRemovePath={resolvedCourse.distribution === "local" ? "/my-courses" : "/"}
         course={resolvedCourse}
@@ -207,11 +199,6 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         mode="history"
         onOpenChange={setIsVersionHistoryOpen}
         open={isVersionHistoryOpen}
-      />
-      <ShareCourseDialog
-        courseId={courseId}
-        onOpenChange={setIsShareOpen}
-        open={isShareOpen}
       />
     </PageContent>
   );

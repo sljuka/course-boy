@@ -441,3 +441,41 @@ only publishers ever touch, not an onboarding step every user sees.
    - **Still open: a local "creator profile page"** (background image + course
      collection), if built later, is the natural page a resolved key points to — not
      scoped here.
+
+7. **Courses stay shared across restarts; Publish is the share action. Done, 2026-10-03
+   (SLJ-38, part 1 of SLJ-9).** Verified by `e2e/sharing.e2e.mjs`: a teacher and three
+   students as separate app instances on a local `hyperdht/testnet`. The teacher publishes
+   twice (same code), student 1 imports, and both restart. With the teacher offline,
+   student 2 imports from student 1. The teacher then restarts alone and student 3
+   imports from it.
+   - **Publish puts the current published version online**; the Share dialog and its
+     version picker are gone (sharing an older version would have pushed a downgrade to
+     every follower). The code is the drive key of the per-course namespace
+     (`course-<id>`), so it never changes across versions; it's shown in the Publish
+     confirmation and under "Share" in the course editor and on the course page.
+   - **Consent moved to the first Publish.** The `hasAcknowledgedCreatorKey` dialog now
+     appears on the first Publish, with text saying that every published course is
+     shared automatically and stays unlisted (reachable only with its code). Nothing is
+     shared before it; giving it shares everything already published. Creating, editing
+     and printing never ask.
+   - **`electron/course-sharing.ts`** (unit-tested with fakes) reshares every published
+     course and follows every imported course at startup. Publish never fails because
+     sharing does: a failed attempt leaves the course "waiting" and retries with backoff
+     (30 s doubling to 10 min). State lives in a main-process-only electron-store file,
+     `course-sharing.json`: each published course's code, and each imported course's
+     `driveKey` + claimed `publisherId`, recorded once at import and never re-read
+     from the course's files. Removing a course stops sharing and forgets it.
+   - **`source.json`** is written into the drive root by the worker on every publish
+     (public and gated), never into the version. mirror-drive's own pruning would delete
+     it on every run (it isn't in the version folder) and re-adding it would grow the
+     drive on every app start. So `mirrorVersionIntoDrive` mirrors with `prune: false`
+     and prunes by hand, skipping `source.json`, which is only rewritten when it changes.
+     Import refuses a course without one, or one naming another drive
+     (`workers/course-source.cjs`).
+   - **New worker commands:** `followCourse` (reopen an imported drive and rejoin the swarm,
+     without awaiting `flushed()`, so offline startup doesn't block) and `stopSharing`.
+     The worker keeps its open drives in maps, so a repeat publish reuses the drive
+     instead of opening a second instance.
+   - **Test-only `MATKO_DHT_BOOTSTRAP`** (comma-separated `host:port`) is passed by
+     `electron/bare-worker.ts` as the worker's third argument and becomes Hyperswarm's
+     `bootstrap`. Unset in the app.

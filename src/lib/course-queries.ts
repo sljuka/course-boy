@@ -325,6 +325,8 @@ export function useCutCourseVersionMutation() {
     mutationFn: (input) => window.courses.cutVersion(input),
     onSuccess: async (_result, input) => {
       await Promise.all([
+        // My courses shows each course's version, published version and cut date.
+        queryClient.invalidateQueries({ queryKey: ["courses", "list"] }),
         queryClient.invalidateQueries({
           queryKey: ["courses", "detail", input.courseId],
         }),
@@ -367,6 +369,8 @@ export function useRevertCourseDraftMutation() {
     mutationFn: (input) => window.courses.revertToVersion(input),
     onSuccess: async (_result, input) => {
       await Promise.all([
+        // My courses shows each course's version, published version and cut date.
+        queryClient.invalidateQueries({ queryKey: ["courses", "list"] }),
         queryClient.invalidateQueries({
           queryKey: ["courses", "detail", input.courseId],
         }),
@@ -382,9 +386,18 @@ export function usePublishCourseVersionMutation() {
   return useMutation<void, Error, PublishCourseVersionInput>({
     mutationFn: (input) => window.courses.publishVersion(input),
     onSuccess: async (_result, input) => {
-      await queryClient.invalidateQueries({
-        queryKey: ["courses", "version-history", input.courseId],
-      });
+      await Promise.all([
+        // My courses shows each course's version, published version and cut date.
+        queryClient.invalidateQueries({ queryKey: ["courses", "list"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["courses", "detail", input.courseId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["courses", "version-history", input.courseId],
+        }),
+        // Publish puts the version online in the background (SLJ-38).
+        queryClient.invalidateQueries({ queryKey: ["sharing", "course", input.courseId] }),
+      ]);
     },
   });
 }

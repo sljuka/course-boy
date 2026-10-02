@@ -1,10 +1,9 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import type {
+  CourseSharingInfo,
   ImportCourseInput,
   ImportCourseResult,
-  ShareCourseInput,
-  ShareCourseResult,
 } from "@/lib/sharing";
 import { queryClient } from "@/lib/query-client";
 
@@ -29,9 +28,17 @@ export function useAcknowledgeCreatorKeyMutation() {
   });
 }
 
-export function useShareCourseMutation() {
-  return useMutation<ShareCourseResult, Error, ShareCourseInput>({
-    mutationFn: (input) => window.sharing.shareCourse(input),
+// A course's code and whether it's online. Sharing runs in the background after
+// Publish (see electron/course-sharing.ts), so poll while it's still going.
+export function useCourseSharingQuery(courseId: string | undefined) {
+  return useQuery<CourseSharingInfo>({
+    enabled: Boolean(courseId),
+    queryKey: ["sharing", "course", courseId],
+    queryFn: () => window.sharing.getCourseSharing(courseId!),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "sharing" ? 1_000 : status === "waiting" ? 5_000 : false;
+    },
   });
 }
 

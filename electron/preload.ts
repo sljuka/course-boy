@@ -41,8 +41,7 @@ import type { UserPreferences } from '../src/lib/preferences'
 import type {
   ImportCourseInput,
   ImportCourseResult,
-  ShareCourseInput,
-  ShareCourseResult,
+  CourseSharingInfo,
 } from '../src/lib/sharing'
 
 contextBridge.exposeInMainWorld('preferences', {
@@ -149,8 +148,8 @@ contextBridge.exposeInMainWorld('sharing', {
   getCreatorKey() {
     return ipcRenderer.invoke('sharing:get-creator-key') as Promise<string>
   },
-  shareCourse(input: ShareCourseInput) {
-    return ipcRenderer.invoke('sharing:share-course', input) as Promise<ShareCourseResult>
+  getCourseSharing(courseId: string) {
+    return ipcRenderer.invoke('sharing:get-course-sharing', courseId) as Promise<CourseSharingInfo>
   },
   importCourse(input: ImportCourseInput) {
     return ipcRenderer.invoke('sharing:import-course', input) as Promise<ImportCourseResult>

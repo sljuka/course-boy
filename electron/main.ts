@@ -3,7 +3,15 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { open as openFile, stat as statFile } from 'node:fs/promises'
 import path from 'node:path'
 import Store from 'electron-store'
-import { getCreatorKey, importCourse, publishCourse, spawnBareWorker } from './bare-worker'
+import {
+  followCourse,
+  getCreatorKey,
+  importCourse,
+  publishCourse,
+  spawnBareWorker,
+  stopSharing,
+} from './bare-worker'
+import { createCourseSharing, type CourseSharingState } from './course-sharing'
 import { getCourseDetails, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
   applyCourseSvgPreset,
@@ -19,6 +27,7 @@ import {
   ensureLocalCoursesRoot,
   getLocalCourseLessonTestDraft,
   getLocalCourseSectionTestDraft,
+  listPublishedLocalCourseIds,
   openCourseDirectoryInFileSystem,
   publishLocalCourseVersion,
   removeLocalCourse,
@@ -63,10 +72,9 @@ import type {
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 import type {
+  CourseSharingInfo,
   ImportCourseInput,
   ImportCourseResult,
-  ShareCourseInput,
-  ShareCourseResult,
 } from '../src/lib/sharing'
 
 // Two windows against the same userData directory raced their own
@@ -130,6 +138,27 @@ type UserPreferences = {
 
 const preferencesStore = new Store<UserPreferences>()
 
+// Where shared courses stand: the teacher's published courses (with their code) and
+// the student's imported courses (where each came from). Main-process only: the
+// renderer can read a course's status but never write where a course comes from.
+const courseSharingStore = new Store<CourseSharingState>({
+  defaults: { followed: {}, published: {} },
+  name: 'course-sharing',
+})
+
+const courseSharing = createCourseSharing({
+  hasConsent: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
+  listPublishedCourseIds: listPublishedLocalCourseIds,
+  store: {
+    read: () => ({
+      followed: courseSharingStore.get('followed'),
+      published: courseSharingStore.get('published'),
+    }),
+    write: (state) => courseSharingStore.set(state),
+  },
+  worker: { followCourse, importCourse, publishCourse, stopSharing },
+})
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // The built directory structure
@@ -188,7 +217,12 @@ ipcMain.handle(
     }
 
     if (typeof preferences.hasAcknowledgedCreatorKey === 'boolean') {
+      const hadConsent = preferencesStore.get('hasAcknowledgedCreatorKey') === true
       preferencesStore.set('hasAcknowledgedCreatorKey', preferences.hasAcknowledgedCreatorKey)
+
+      if (!hadConsent && preferences.hasAcknowledgedCreatorKey) {
+        courseSharing.onConsentGiven()
+      }
     }
 
     // Validated rather than trusted: it's a list the renderer builds, and only
@@ -308,8 +342,9 @@ ipcMain.handle(
   },
 )
 
-ipcMain.handle('courses:remove', (_event, courseId: string) => {
-  return removeLocalCourse(courseId)
+ipcMain.handle('courses:remove', async (_event, courseId: string) => {
+  await removeLocalCourse(courseId)
+  await courseSharing.forgetCourse(courseId)
 })
 
 ipcMain.handle('courses:open-in-file-system', (_event, courseId: string) => {
@@ -346,21 +381,27 @@ ipcMain.handle('courses:revert-to-version', (_event, input: RevertCourseDraftInp
   return revertLocalCourseDraftToVersion(input)
 })
 
-ipcMain.handle('courses:publish-version', (_event, input: PublishCourseVersionInput) => {
-  return publishLocalCourseVersion(input)
+ipcMain.handle('courses:publish-version', async (_event, input: PublishCourseVersionInput) => {
+  await publishLocalCourseVersion(input)
+  // Publish puts the version online; that runs in the background and can't make
+  // Publish fail (see electron/course-sharing.ts).
+  courseSharing.onPublished(input.courseId)
 })
 
 ipcMain.handle('sharing:get-creator-key', () => {
   return getCreatorKey()
 })
 
-ipcMain.handle('sharing:share-course', async (_event, input: ShareCourseInput) => {
-  const code = await publishCourse(input.courseId, input.version)
-  return { code } satisfies ShareCourseResult
+ipcMain.handle('sharing:get-course-sharing', (_event, courseId: string) => {
+  if (!isValidCourseId(courseId)) {
+    throw new Error(`Invalid course id "${courseId}"`)
+  }
+
+  return courseSharing.getInfo(courseId) satisfies CourseSharingInfo
 })
 
 ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput) => {
-  const { courseId } = await importCourse(input.code)
+  const { courseId } = await courseSharing.importCourse(input.code)
   return { courseId } satisfies ImportCourseResult
 })
 
@@ -531,4 +572,5 @@ app.whenReady().then(() => {
   protocol.handle('matko-asset', handleCourseAssetRequest)
   createWindow()
   spawnBareWorker()
+  void courseSharing.start()
 })

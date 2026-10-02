@@ -13,6 +13,7 @@ const BlindPairing = require('blind-pairing')
 const fsp = require('bare-fs/promises')
 const path = require('bare-path')
 const { isValidCourseId } = require('./course-id.cjs')
+const { verifySource } = require('./course-source.cjs')
 
 const CMD_GET_CREATOR_KEY = 1 // must match electron/bare-worker.ts
 const CMD_PUBLISH_COURSE = 2 // must match electron/bare-worker.ts
@@ -20,8 +21,23 @@ const CMD_IMPORT_COURSE = 3 // must match electron/bare-worker.ts
 const CMD_PUBLISH_GATED_COURSE = 4 // must match electron/bare-worker.ts
 const CMD_CREATE_INVITE = 5 // must match electron/bare-worker.ts
 const CMD_REDEEM_INVITE = 6 // must match electron/bare-worker.ts
+const CMD_FOLLOW_COURSE = 7 // must match electron/bare-worker.ts
+const CMD_STOP_SHARING = 8 // must match electron/bare-worker.ts
+
+// Written into every shared course's drive next to the version's files (never into
+// the version itself, so its hashes stay valid): where the course is shared from.
+// See "source.json" in docs/contracts.md §5.
+const SOURCE_FILE_KEY = '/source.json'
 
 const storagePath = Bare.argv[2]
+// Test-only: a comma-separated list of `host:port` DHT bootstrap nodes (a local
+// `hyperdht/testnet`), so e2e tests never touch the public DHT. Empty in the app.
+const bootstrap = Bare.argv[3]
+  ? Bare.argv[3].split(',').map((address) => {
+      const [host, port] = address.split(':')
+      return { host, port: Number(port) }
+    })
+  : undefined
 const store = new Corestore(storagePath)
 // Separate from `store`, not a `.namespace()` of it: a Corestore's `.replicate()`
 // serves every namespace sharing its root `cores`/`storage`, and Protomux only keeps
@@ -38,13 +54,18 @@ async function start() {
   // the Corestore identity, the same way `createKeyPair('creator')` already does,
   // makes that possible.
   const swarmKeyPair = await store.createKeyPair('swarm')
-  const swarm = new Hyperswarm({ keyPair: swarmKeyPair })
+  const swarm = new Hyperswarm({ bootstrap, keyPair: swarmKeyPair })
   const pairing = new BlindPairing(swarm)
 
   const allowlist = new Set() // hex-encoded stable swarm public keys, vetted for gated content
   const connectionsByPeerKey = new Map() // hex peer key -> live conn, for upgrading an already-open one
   const invites = new Map() // hex invite id -> { driveKey, expiresAt, invitePublicKey, maxUses, usedCount }
   const gatedMembers = new Map() // hex discoveryKey -> blind-pairing Member (one per gated course)
+  // Drives this worker is serving, so a repeat publish/follow reuses the open drive
+  // and stopSharing can leave the swarm. Teacher-side drives by course id, imported
+  // (followed) drives by hex drive key.
+  const publishedDrives = new Map() // courseId -> { drive, discovery }
+  const followedDrives = new Map() // hex driveKey -> { drive, discovery }
 
   swarm.on('connection', (conn, peerInfo) => {
     const peerKeyHex = peerInfo.publicKey.toString('hex')
@@ -93,21 +114,102 @@ async function start() {
     }
   }
 
-  async function publishCourse(courseId, coursePath) {
+  async function openPublishedDrive(courseId) {
+    const existing = publishedDrives.get(courseId)
+    if (existing) {
+      return existing
+    }
+
     // Namespaced, not the identity keypair itself: each course gets its own key
     // derived from the same root seed, rather than reusing one Ed25519 key across two
-    // independent append-only logs.
+    // independent append-only logs. The namespace is per course, not per version, so
+    // the drive key (the code students use) never changes across publishes.
     const drive = new Hyperdrive(store.namespace(`course-${courseId}`))
     await drive.ready()
-
-    await new Localdrive(coursePath).mirror(drive).done()
 
     // A fresh course has nothing to download, so client discovery is unnecessary here
     // — but keep seeding it for as long as this worker process runs.
     const discovery = swarm.join(drive.discoveryKey, { server: true, client: false })
+    const entry = { discovery, drive }
+    publishedDrives.set(courseId, entry)
+    return entry
+  }
+
+  // Makes `drive` hold exactly the files under `coursePath`, plus source.json.
+  // mirror-drive's own pruning would delete source.json on every run (it isn't in
+  // the version folder) and re-adding it would grow the drive on every app start,
+  // so prune by hand and leave source.json alone.
+  async function mirrorVersionIntoDrive(coursePath, drive) {
+    const local = new Localdrive(coursePath)
+    await local.mirror(drive, { prune: false }).done()
+
+    for await (const entry of drive.list('/')) {
+      if (entry.key === SOURCE_FILE_KEY) continue
+      if (!(await local.entry(entry.key))) {
+        await drive.del(entry.key)
+      }
+    }
+  }
+
+  async function writeSourceFile(drive) {
+    const creatorKeyPair = await store.createKeyPair('creator')
+    const source = Buffer.from(
+      JSON.stringify(
+        {
+          driveKey: IdEncoding.normalize(drive.key),
+          publisher: { id: IdEncoding.normalize(creatorKeyPair.publicKey) },
+        },
+        null,
+        2,
+      ),
+    )
+    const current = await drive.get(SOURCE_FILE_KEY)
+
+    if (!current || !current.equals(source)) {
+      await drive.put(SOURCE_FILE_KEY, source)
+    }
+  }
+
+  async function publishCourse(courseId, coursePath) {
+    const { discovery, drive } = await openPublishedDrive(courseId)
+
+    await mirrorVersionIntoDrive(coursePath, drive)
+    await writeSourceFile(drive)
     await discovery.flushed()
 
     return drive
+  }
+
+  // At startup, an imported course's drive is reopened and announced again, so
+  // students keep sharing it with each other (and, in SLJ-9 part 2, see updates).
+  // Its blocks are already in this Corestore; nothing is downloaded here.
+  async function followCourse(driveKey) {
+    const keyHex = IdEncoding.decode(driveKey).toString('hex')
+    if (followedDrives.has(keyHex)) {
+      return
+    }
+
+    const drive = new Hyperdrive(store, driveKey)
+    await drive.ready()
+    // Server + client, the same "leech becomes a seed" default as importCourse. Not
+    // awaiting `flushed()`: offline, the announce only completes later, and nothing
+    // here waits on it.
+    const discovery = swarm.join(drive.discoveryKey)
+    followedDrives.set(keyHex, { discovery, drive })
+  }
+
+  async function stopSharing({ courseId, driveKey }) {
+    const map = courseId ? publishedDrives : followedDrives
+    const key = courseId ?? IdEncoding.decode(driveKey).toString('hex')
+    const entry = map.get(key)
+
+    if (!entry) {
+      return
+    }
+
+    map.delete(key)
+    await swarm.leave(entry.drive.discoveryKey)
+    await entry.drive.close()
   }
 
   // A real import only ever has the code (the driveKey/invite) — it doesn't know the
@@ -115,10 +217,13 @@ async function start() {
   // staging directory first, then discover the id from the fetched course.json, and
   // land it as a course root of its own (no draft/ wrapper — the same shape the
   // bundled seed course already uses for "finished content you consume, not author").
-  async function finalizeImportedCourse(stagingPath, coursesRoot) {
+  async function finalizeImportedCourse(stagingPath, coursesRoot, driveKey) {
     let courseId
+    let publisherId
 
     try {
+      publisherId = await readVerifiedSource(stagingPath, driveKey)
+
       const manifestPath = path.join(stagingPath, 'course.json')
       const manifest = JSON.parse(await fsp.readFile(manifestPath, 'utf8'))
       courseId = manifest.id
@@ -160,7 +265,16 @@ async function start() {
     }
 
     await fsp.rename(stagingPath, finalPath)
-    return courseId
+    return { courseId, publisherId }
+  }
+
+  // See workers/course-source.cjs. Returns the claimed publisher id.
+  async function readVerifiedSource(stagingPath, driveKey) {
+    const sourceText = await fsp
+      .readFile(path.join(stagingPath, 'source.json'), 'utf8')
+      .catch(() => null)
+
+    return verifySource(sourceText, driveKey)
   }
 
   function stagingPathFor(coursesRoot) {
@@ -170,20 +284,32 @@ async function start() {
   async function importCourse(driveKey, coursesRoot) {
     const drive = new Hyperdrive(store, driveKey)
     await drive.ready()
+    const keyHex = drive.key.toString('hex')
 
     // No override: once this finishes, our Corestore holds a real replica, so we keep
     // announcing it (the default, server + client both true) rather than stopping
     // after download — the same "leech becomes a seed" convention that keeps the
     // swarm alive.
     const discovery = swarm.join(drive.discoveryKey)
-    await discovery.flushed()
-    await swarm.flush()
 
-    const stagingPath = stagingPathFor(coursesRoot)
-    await drive.mirror(new Localdrive(stagingPath)).done()
+    try {
+      await discovery.flushed()
+      await swarm.flush()
 
-    const courseId = await finalizeImportedCourse(stagingPath, coursesRoot)
-    return { courseId, driveKey: drive.key }
+      const stagingPath = stagingPathFor(coursesRoot)
+      await drive.mirror(new Localdrive(stagingPath)).done()
+
+      const { courseId, publisherId } = await finalizeImportedCourse(stagingPath, coursesRoot, drive.key)
+      followedDrives.set(keyHex, { discovery, drive })
+      return { courseId, driveKey: drive.key, publisherId }
+    } catch (error) {
+      // Don't keep seeding a course that didn't land.
+      if (!followedDrives.has(keyHex)) {
+        await swarm.leave(drive.discoveryKey).catch(() => {})
+        await drive.close().catch(() => {})
+      }
+      throw error
+    }
   }
 
   async function publishGatedCourse(courseId, coursePath) {
@@ -194,7 +320,8 @@ async function start() {
     const drive = new Hyperdrive(gatedStore.namespace(`course-${courseId}`))
     await drive.ready()
 
-    await new Localdrive(coursePath).mirror(drive).done()
+    await mirrorVersionIntoDrive(coursePath, drive)
+    await writeSourceFile(drive)
 
     return drive
   }
@@ -264,8 +391,8 @@ async function start() {
     const stagingPath = stagingPathFor(coursesRoot)
     await drive.mirror(new Localdrive(stagingPath)).done()
 
-    const courseId = await finalizeImportedCourse(stagingPath, coursesRoot)
-    return { courseId, driveKey: drive.key }
+    const { courseId, publisherId } = await finalizeImportedCourse(stagingPath, coursesRoot, drive.key)
+    return { courseId, driveKey: drive.key, publisherId }
   }
 
   const rpc = new RPC(new Pipe(3), async (req) => {
@@ -299,7 +426,11 @@ async function start() {
       try {
         const result = await importCourse(driveKey, coursesRoot)
         req.reply(
-          JSON.stringify({ courseId: result.courseId, driveKey: IdEncoding.normalize(result.driveKey) }),
+          JSON.stringify({
+            courseId: result.courseId,
+            driveKey: IdEncoding.normalize(result.driveKey),
+            publisherId: result.publisherId,
+          }),
         )
       } catch (error) {
         console.error('[worker] failed to import course:', error)
@@ -353,11 +484,41 @@ async function start() {
       try {
         const result = await redeemInvite(Buffer.from(invite, 'base64'), coursesRoot)
         req.reply(
-          JSON.stringify({ courseId: result.courseId, driveKey: IdEncoding.normalize(result.driveKey) }),
+          JSON.stringify({
+            courseId: result.courseId,
+            driveKey: IdEncoding.normalize(result.driveKey),
+            publisherId: result.publisherId,
+          }),
         )
       } catch (error) {
         console.error('[worker] failed to redeem invite:', error)
         req.reply(JSON.stringify({ error: error.message, code: error.code }))
+      }
+      return
+    }
+
+    if (req.command === CMD_FOLLOW_COURSE) {
+      const { driveKey } = JSON.parse(req.data.toString())
+
+      try {
+        await followCourse(driveKey)
+        req.reply(JSON.stringify({}))
+      } catch (error) {
+        console.error('[worker] failed to follow course:', error)
+        req.reply(JSON.stringify({ error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_STOP_SHARING) {
+      const { courseId, driveKey } = JSON.parse(req.data.toString())
+
+      try {
+        await stopSharing({ courseId, driveKey })
+        req.reply(JSON.stringify({}))
+      } catch (error) {
+        console.error('[worker] failed to stop sharing:', error)
+        req.reply(JSON.stringify({ error: error.message }))
       }
     }
   })

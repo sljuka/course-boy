@@ -2404,6 +2404,32 @@ export async function publishLocalCourseVersion(
   });
 }
 
+// The teacher's own courses (they have a `draft/`) that have a published version:
+// the ones the app keeps shared (see electron/course-sharing.ts).
+export async function listPublishedLocalCourseIds(): Promise<string[]> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const entries = await fs.readdir(localCoursesRoot, { withFileTypes: true });
+  const courseIds: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !isValidCourseId(entry.name)) {
+      continue;
+    }
+
+    const courseRootPath = path.join(localCoursesRoot, entry.name);
+
+    if (!(await pathExists(path.join(courseRootPath, "draft")))) {
+      continue;
+    }
+
+    if ((await readCourseReleaseState(courseRootPath)).publishedVersion) {
+      courseIds.push(entry.name);
+    }
+  }
+
+  return courseIds;
+}
+
 export async function getPublishedCoursePackagePath(courseId: string): Promise<string | null> {
   const localCoursesRoot = await ensureLocalCoursesRoot();
   const courseRootPath = resolveCourseRootPath(localCoursesRoot, courseId);

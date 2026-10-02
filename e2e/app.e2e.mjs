@@ -51,6 +51,7 @@ describe('launch', () => {
     const surface = await harness.page.evaluate(() => ({
       courses: Object.keys(window.courses ?? {}).sort(),
       preferences: Object.keys(window.preferences ?? {}).sort(),
+      sharing: Object.keys(window.sharing ?? {}).sort(),
     }))
 
     expect(surface.courses).toEqual([
@@ -87,6 +88,7 @@ describe('launch', () => {
       'uploadAssetBytes',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
+    expect(surface.sharing).toEqual(['getCourseSharing', 'getCreatorKey', 'importCourse'])
   })
 })
 

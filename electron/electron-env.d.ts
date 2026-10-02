@@ -115,9 +115,7 @@ interface Window {
   }
   sharing: {
     getCreatorKey: () => Promise<string>
-    shareCourse: (
-      input: import('../src/lib/sharing').ShareCourseInput,
-    ) => Promise<import('../src/lib/sharing').ShareCourseResult>
+    getCourseSharing: (courseId: string) => Promise<import('../src/lib/sharing').CourseSharingInfo>
     importCourse: (
       input: import('../src/lib/sharing').ImportCourseInput,
     ) => Promise<import('../src/lib/sharing').ImportCourseResult>

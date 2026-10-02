@@ -3,6 +3,7 @@ import { Eye, History, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import { ShareCourseButton } from "@/components/course-details/share-course-button";
 import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
 import {
   getLocaleLabel,
@@ -281,6 +282,7 @@ export function CourseMetadataEditor({
         <Eye aria-hidden="true" />
         <ButtonLabel>{t("courseVersions.previewCourse")}</ButtonLabel>
       </Button>
+      <ShareCourseButton courseId={courseId} />
       <Tooltip>
         <TooltipTrigger render={<span className="inline-flex" />}>
           <Button

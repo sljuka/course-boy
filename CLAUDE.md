@@ -18,7 +18,7 @@ npm run typecheck    # tsc --noEmit
 npm run lint         # eslint, --max-warnings 0 (includes shadcn/no-restyle — see below)
 npm test             # vitest run
 npm run check:i18n   # locale key parity against en.json
-npm run check:e2e    # vite build + real Electron app driven by Playwright (~15s)
+npm run check:e2e    # vite build + real Electron app driven by Playwright (~1 min)
 npm run check:packaged # electron-builder --dir (unsigned, unpublished) + checks the packaged app
 npm run build        # tsc + vite build + electron-builder
 ```
@@ -55,7 +55,9 @@ bundles (all renderer libraries, and main-process ones like `electron-store`) is
   ([.claude/skills/run-desktop/SKILL.md](.claude/skills/run-desktop/SKILL.md:1)) — a REPL
   that launches Electron and gives you `ui` / `hit` / `fill` / `ipc` / `ss` against an
   isolated userData directory.
-- **Automated:** `e2e/app.e2e.mjs` via `npm run check:e2e`.
+- **Automated:** `e2e/app.e2e.mjs` via `npm run check:e2e`. Sharing between app
+  instances is `e2e/sharing.e2e.mjs`: a teacher and students as separate instances on a
+  local DHT testnet (`MATKO_DHT_BOOTSTRAP`), never the public network.
 
 Both share `e2e/launch.mjs`, so the REPL and the assertions behave identically. Prefer
 adding a case to the e2e suite over one-off manual checking.
@@ -71,7 +73,7 @@ adding a case to the e2e suite over one-off manual checking.
 - [docs/persistence-notes.md](docs/persistence-notes.md:1) — read when making decisions
   about draft storage, publishing, local state, or sharing architecture.
 - [docs/pear-integration-notes.md](docs/pear-integration-notes.md:1) — the planned
-  peer-to-peer work. Phases 0–6 are built: `electron/bare-worker.ts` +
+  peer-to-peer work. Phases 0–7 are built: `electron/bare-worker.ts` +
   `workers/main.cjs` spawn a Bare worker, derive and persist a Corestore-backed local
   identity keypair over `bare-rpc`, mirror a course's *published version* (see
   [docs/persistence-notes.md](docs/persistence-notes.md:1)) into a Hyperdrive
@@ -81,11 +83,13 @@ adding a case to the e2e suite over one-off manual checking.
   a root-only published course like the bundled seed, and keeps seeding for as long as
   the worker runs), and can gate a course to only vetted peers via a second Corestore
   plus `blind-pairing` invites (`publishGatedCourse` / `createInvite` / `redeemInvite`,
-  driver-only for now). A real `window.sharing` IPC surface and Share/Import UI (public
-  link only; gated UI is a fast-follow) now exist — a "Share" button on the course
-  details page (with a version picker, defaulting to latest published) and an "Import
-  course" button on My Courses, gated behind a one-time creator-key acknowledgment
-  dialog. No `pear-runtime`, no OTA updates.
+  driver-only for now). Publish is the share action (SLJ-38): publishing a version puts
+  it online (unlisted, reachable only with the course's code, which never changes across
+  versions), and `electron/course-sharing.ts` reshares published courses and follows
+  imported ones at every startup. The code shows in the Publish confirmation and under
+  "Share" (course editor and course page); the first Publish asks for the one-time
+  sharing consent. "Import course" on My Courses takes a code. `source.json` in the drive records
+  where a course is shared from. No `pear-runtime`, no OTA updates.
 
 ## Architecture rules
 

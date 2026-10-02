@@ -15,13 +15,10 @@ import {
 import { ListRow, ListRowMeta } from "@/components/ui/list-row";
 import { PanelCard } from "@/components/ui/panel-card";
 import { StatusIcon } from "@/components/ui/status-icon";
-import {
-  useCourseDetailsQuery,
-  useCourseVersionHistoryQuery,
-  usePublishCourseVersionMutation,
-} from "@/lib/course-queries";
+import { useCourseDetailsQuery, useCourseVersionHistoryQuery } from "@/lib/course-queries";
 import { formatShortDate } from "@/lib/format-date";
 import { useAppState } from "@/lib/use-app-state";
+import { usePublishWithConsent } from "./use-publish-with-consent";
 import { useRevertWithConfirmation } from "./use-revert-with-confirmation";
 import { ReleaseNotesDialog } from "./release-notes-dialog";
 import { VersionHistoryDialog } from "./version-history-dialog";
@@ -32,7 +29,7 @@ import { VersionHistoryDialog } from "./version-history-dialog";
 // first. The version the draft is based on is highlighted and marked Current —
 // after a revert that's an older one; the published one has its own badge.
 // Revert / Publish are in each row's context menu (right-click, like the
-// explorer). "+" and the Draft row's context menu open the same Commit dialog
+// explorer). Publish also puts the version online (see use-publish-with-consent). "+" and the Draft row's context menu open the same Commit dialog
 // as the action bar, from any page of the editor.
 export function VersionsPanel({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
@@ -49,7 +46,7 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
   }, [courseUpdatedAt, refetchHistory]);
   const { confirmationDialog, requestDiscard, requestRevert, revertMutation } =
     useRevertWithConfirmation(courseId);
-  const publishMutation = usePublishCourseVersionMutation();
+  const { dialogs: publishDialogs, publishMutation, requestPublish } = usePublishWithConsent(courseId);
   const [isCommitOpen, setIsCommitOpen] = useState(false);
   const error = revertMutation.error ?? publishMutation.error;
   const versions = history?.versions ?? [];
@@ -158,7 +155,7 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
                 </ContextMenuItem>
                 <ContextMenuItem
                   disabled={entry.isEverPublished || publishMutation.isPending}
-                  onClick={() => publishMutation.mutate({ courseId, version: entry.version })}
+                  onClick={() => requestPublish(entry.version)}
                 >
                   <Upload aria-hidden="true" />
                   {t("courseVersions.publishButton")}
@@ -169,6 +166,7 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
         })
       )}
       {confirmationDialog}
+      {publishDialogs}
       <ReleaseNotesDialog
         entry={notesVersion ? (changelogByVersion.get(notesVersion) ?? null) : null}
         onClose={() => setNotesVersion(null)}

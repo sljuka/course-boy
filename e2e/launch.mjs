@@ -39,6 +39,9 @@ export async function launchApp({
   // A packaged app's executable (see scripts/check-packaged.mjs). It carries its
   // own code, so no repo path is passed and no dev build is needed.
   packagedExecutable = null,
+  // Extra environment variables for the app, e.g. MATKO_DHT_BOOTSTRAP to keep a
+  // sharing test on a local DHT testnet (see e2e/sharing.e2e.mjs).
+  env = {},
 } = {}) {
   if (!packagedExecutable) {
     const mainJs = path.join(APP_DIR, 'dist-electron/main.js')
@@ -53,11 +56,17 @@ export async function launchApp({
 
   const app = await electron.launch(
     packagedExecutable
-      ? { executablePath: packagedExecutable, args: [`--user-data-dir=${userData}`], timeout }
+      ? {
+          executablePath: packagedExecutable,
+          args: [`--user-data-dir=${userData}`],
+          env: { ...process.env, ...env },
+          timeout,
+        }
       : {
           executablePath: electronBinary(),
           args: [`--user-data-dir=${userData}`, APP_DIR],
           cwd: APP_DIR,
+          env: { ...process.env, ...env },
           timeout,
         },
   )

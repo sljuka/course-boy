@@ -31,16 +31,20 @@ const CMD_IMPORT_COURSE = 3
 const CMD_PUBLISH_GATED_COURSE = 4
 const CMD_CREATE_INVITE = 5
 const CMD_REDEEM_INVITE = 6
+const CMD_FOLLOW_COURSE = 7
+const CMD_STOP_SHARING = 8
 
 declare global {
   var __creatorPublicKeyPhase1: string
   var __matkoBareWorker: {
     createInvite: typeof createInvite
+    followCourse: typeof followCourse
     getCreatorKey: typeof getCreatorKey
     importCourse: typeof importCourse
     publishCourse: typeof publishCourse
     publishGatedCourse: typeof publishGatedCourse
     redeemInvite: typeof redeemInvite
+    stopSharing: typeof stopSharing
   }
 }
 
@@ -81,42 +85,64 @@ async function resolveSharedCoursePackagePath(
   return coursePath
 }
 
-export async function publishCourse(courseId: string, version?: string): Promise<string> {
-  const coursePath = await resolveSharedCoursePackagePath(courseId, version)
-
-  const request = requireRpc().request(CMD_PUBLISH_COURSE)
-  request.send(JSON.stringify({ courseId, coursePath }))
+// Every reply is JSON with an optional `error`; turn that into a thrown Error.
+async function sendCommand<T>(command: number, payload: unknown): Promise<T> {
+  const request = requireRpc().request(command)
+  request.send(JSON.stringify(payload))
 
   const reply = await request.reply('utf-8')
-  const result = JSON.parse(reply ? reply.toString() : '{}') as {
-    driveKey?: string
-    error?: string
-  }
+  const result = JSON.parse(reply ? reply.toString() : '{}') as T & { error?: string }
 
   if (result.error) {
     throw new Error(result.error)
   }
+
+  return result
+}
+
+// Mirrors the course's *current published version* into its drive (plus
+// source.json) and announces it. Returns the drive key — the course's code, which
+// is the same for every version.
+export async function publishCourse(courseId: string): Promise<string> {
+  const coursePath = await resolveSharedCoursePackagePath(courseId)
+  const result = await sendCommand<{ driveKey?: string }>(CMD_PUBLISH_COURSE, {
+    courseId,
+    coursePath,
+  })
 
   return result.driveKey ?? ''
 }
 
-export async function importCourse(driveKey: string): Promise<{ courseId: string }> {
+export type ImportedCourseSource = {
+  courseId: string
+  driveKey: string
+  // Claimed by the course's source.json; unverified until SLJ-18.
+  publisherId: string
+}
+
+export async function importCourse(driveKey: string): Promise<ImportedCourseSource> {
   const coursesRoot = path.join(app.getPath('userData'), 'courses')
+  const result = await sendCommand<Partial<ImportedCourseSource>>(CMD_IMPORT_COURSE, {
+    coursesRoot,
+    driveKey,
+  })
 
-  const request = requireRpc().request(CMD_IMPORT_COURSE)
-  request.send(JSON.stringify({ coursesRoot, driveKey }))
-
-  const reply = await request.reply('utf-8')
-  const result = JSON.parse(reply ? reply.toString() : '{}') as {
-    courseId?: string
-    error?: string
+  return {
+    courseId: result.courseId ?? '',
+    driveKey: result.driveKey ?? '',
+    publisherId: result.publisherId ?? '',
   }
+}
 
-  if (result.error) {
-    throw new Error(result.error)
-  }
+// Reopens an imported course's drive and announces it again (after a restart).
+export async function followCourse(driveKey: string): Promise<void> {
+  await sendCommand(CMD_FOLLOW_COURSE, { driveKey })
+}
 
-  return { courseId: result.courseId ?? '' }
+// Leaves the swarm for a course: a published one by `courseId`, an imported
+// (followed) one by `driveKey`.
+export async function stopSharing(target: { courseId: string } | { driveKey: string }): Promise<void> {
+  await sendCommand(CMD_STOP_SHARING, target)
 }
 
 export async function publishGatedCourse(
@@ -196,11 +222,13 @@ export async function redeemInvite(invite: string): Promise<{ courseId: string }
 // same idea as Phase 0/1's `globalThis.__*Phase*Status` values.
 globalThis.__matkoBareWorker = {
   createInvite,
+  followCourse,
   getCreatorKey,
   importCourse,
   publishCourse,
   publishGatedCourse,
   redeemInvite,
+  stopSharing,
 }
 
 export function spawnBareWorker(): void {
@@ -210,8 +238,12 @@ export function spawnBareWorker(): void {
     const workerPath = path.join(process.env.APP_ROOT, 'workers/main.cjs')
     const storagePath = path.join(app.getPath('userData'), 'p2p')
 
+    // Test-only: point the worker's swarm at a local DHT testnet instead of the
+    // public one (see e2e/sharing.e2e.mjs). Unset in the app.
+    const bootstrap = process.env.MATKO_DHT_BOOTSTRAP ?? ''
+
     const worker = spawnBare('bare', {
-      args: [workerPath, storagePath],
+      args: bootstrap ? [workerPath, storagePath, bootstrap] : [workerPath, storagePath],
       stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
     })
 
