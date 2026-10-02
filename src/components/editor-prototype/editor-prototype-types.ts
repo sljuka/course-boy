@@ -47,13 +47,27 @@ export type ExerciseBlock = {
   type: "exercise";
 };
 
+// A block this app version can't read: a block type added by a newer
+// version, or an exercise of a kind it doesn't have. Kept exactly as it was
+// read (`blockType` is the marker's type name, `source` its body), so saving
+// the lesson writes it back unchanged. Students see nothing for it; the
+// editor shows a read-only placeholder. See "Lesson block markers" in
+// docs/contracts.md.
+export type UnknownBlock = {
+  blockType: string;
+  id: string;
+  source: string;
+  type: "unknown";
+};
+
 export type EditorPrototypeBlock =
   | HeadingBlock
   | MarkdownBlock
   | ImageBlock
   | VideoBlock
   | AudioBlock
-  | ExerciseBlock;
+  | ExerciseBlock
+  | UnknownBlock;
 
 export type EditorPrototypeBlockType = EditorPrototypeBlock["type"];
 

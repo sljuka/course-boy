@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { blocksToMarkdown, markdownToBlocks } from "@/lib/lesson-content-markdown"
+import {
+  blocksToMarkdown,
+  hasUnknownBlocks,
+  markdownToBlocks,
+} from "@/lib/lesson-content-markdown"
 import type { EditorPrototypeBlock } from "@/components/editor-prototype/editor-prototype-types"
 
 describe("blocksToMarkdown / markdownToBlocks", () => {
@@ -145,5 +149,57 @@ describe("blocksToMarkdown / markdownToBlocks", () => {
         type: "exercise",
       },
     ])
+  })
+})
+
+describe("blocks this version can't read", () => {
+  // What a newer app version might write: a block type this one doesn't know,
+  // between two it does.
+  const lessonFromNewerVersion = [
+    "[matko-block]: <> (heading)",
+    "## Intro",
+    "",
+    "[matko-block]: <> (timeline-milestone)",
+    '{"label":"1066","caption":"Battle of Hastings"}',
+    "",
+    "[matko-block]: <> (markdown)",
+    "Some **bold** text.",
+  ].join("\n")
+
+  it("keeps the blocks around an unknown one instead of collapsing the lesson", () => {
+    expect(markdownToBlocks(lessonFromNewerVersion)).toMatchObject([
+      { text: "Intro", type: "heading" },
+      {
+        blockType: "timeline-milestone",
+        source: '{"label":"1066","caption":"Battle of Hastings"}',
+        type: "unknown",
+      },
+      { source: "Some **bold** text.", type: "markdown" },
+    ])
+  })
+
+  it("writes an unknown block back exactly as it was read", () => {
+    expect(blocksToMarkdown(markdownToBlocks(lessonFromNewerVersion))).toBe(lessonFromNewerVersion)
+  })
+
+  it("keeps an exercise of a kind this version doesn't have as an unknown block", () => {
+    const lesson = [
+      "[matko-block]: <> (exercise)",
+      '{"kind":"kind-from-the-future","locales":{}}',
+    ].join("\n")
+
+    const blocks = markdownToBlocks(lesson)
+
+    expect(blocks).toMatchObject([
+      { blockType: "exercise", source: '{"kind":"kind-from-the-future","locales":{}}', type: "unknown" },
+    ])
+    expect(blocksToMarkdown(blocks)).toBe(lesson)
+  })
+
+  it("reports whether a lesson has unknown blocks", () => {
+    expect(hasUnknownBlocks(markdownToBlocks(lessonFromNewerVersion))).toBe(true)
+    expect(
+      hasUnknownBlocks(markdownToBlocks("[matko-block]: <> (heading)\n## Intro")),
+    ).toBe(false)
   })
 })

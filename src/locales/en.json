@@ -580,5 +580,12 @@
     "generatedDescription": "It's updated every time you save, so it isn't edited here. You can change which script you write in the course settings.",
     "editLatin": "Edit Latin",
     "editCyrillic": "Edit Cyrillic"
+  },
+  "lessonContent": {
+    "unsupportedNoticeTitle": "Part of this lesson needs a newer version of Matko",
+    "unsupportedNoticeDescription": "This lesson uses features your version doesn't support yet, so some content may be missing. Update Matko to see the full lesson.",
+    "dismissUnsupportedNotice": "Dismiss",
+    "unsupportedBlockTitle": "Content from a newer version of Matko",
+    "unsupportedBlockDescription": "This block can't be shown or edited in your version. It's kept as it is when you save. Update Matko to edit it."
   }
 }

@@ -61,34 +61,50 @@ Enforced by `npm run check:i18n`. Adding a locale is therefore a five-place chan
 JSON file, `locales` array, `resources` map, `detectLocale()` branch, and
 `src/lib/locale-flags.ts`.
 
-## 4. Lesson block markers are a hand-maintained allowlist, not a type
+## 4. Lesson block markers: known types are checked, unknown types are kept
 
 [src/lib/lesson-content-markdown.ts](../src/lib/lesson-content-markdown.ts:1) serializes
 each `EditorPrototypeBlock` as a `[matko-block]: <> (type)` CommonMark link-reference
 line followed by the block's body, and `markdownToBlocks` parses a lesson's stored
-markdown back into blocks by matching that marker against `blockMarkerPattern`:
-
-```ts
-const blockMarkerPattern =
-  /^\[matko-block\]: <> \((heading|markdown|image|video|audio|exercise)\)$/;
-```
+markdown back into blocks by matching that marker against `BLOCK_MARKER_PATTERN` in
+[src/lib/lesson-block-markers.ts](../src/lib/lesson-block-markers.ts:1). The pattern
+accepts **any** type name; whether this app version can read it is a separate check,
+`isKnownBlockType`, backed by a `Record` over the block-type union, so adding a block type
+without listing it there is a compile error.
 
 This `EditorPrototypeBlock[]` model (not BlockNote's own block JSON) is still the
 canonical, on-disk representation of a lesson's content — see "BlockNote is an editing
 surface, not the format" below. `serializeBlock`/`parseBlockContent`'s switches over
 `EditorPrototypeBlockType` have no `default` case, so TypeScript forces every block type
-to be handled there — but `blockMarkerPattern` is a plain regex string, not checked
-against the union. Add a new block type, forget to add its name to `blockMarkerPattern`'s
-alternation, and there is no compile error: the marker line for that block simply never
-matches, `markdownToBlocks` falls through to its "no markers found" fallback, and the
-entire lesson body — every block, not just the new one — collapses into a single opaque
-markdown block. `npm run typecheck` and `npm run lint` both pass; only
-`src/lib/lesson-content-markdown.test.ts`'s round-trip tests catch it, so extend those
-tests in the same commit that adds a block type. The same is true, separately, of
+to be handled there.
+
+**Unknown blocks (SLJ-36).** Lessons travel between app versions (P2P import), so a lesson
+can contain a block type this version doesn't know, or an `exercise` of a kind it doesn't
+have. Such a block becomes an `UnknownBlock` holding the marker's type name and its body
+**exactly as read**, and `serializeBlock` writes it back unchanged. That round trip is the
+contract: a version that drops or rewrites a block it doesn't understand destroys a newer
+version's content the first time an older app saves the lesson. Along the way:
+
+- [blocknote-translation.ts](../src/components/editor-prototype/blocknote-translation.ts:1)
+  carries it as the `unsupported` BlockNote block
+  ([unsupported-block.tsx](../src/components/editor-prototype/unsupported-block.tsx:1)),
+  with the original type and body in its props. The editor shows it as a read-only
+  placeholder; students see nothing for it, and
+  [lesson-blocks.tsx](../src/components/course-player/lesson-blocks.tsx:1) shows a notice
+  above the lesson instead.
+- `transliterateSerbianMarkdown` ([src/lib/serbian-script.ts](../src/lib/serbian-script.ts:1))
+  copies an unknown block's body unchanged rather than treating it as prose.
+
+Only versions that already have this handling degrade gracefully, which is why it shipped
+before any new block type. Earlier versions collapse the whole lesson into one markdown
+block when they meet an unknown marker.
+
 `blockNoteBlocksToEditorPrototype`'s if-chain in
 [blocknote-translation.ts](../src/components/editor-prototype/blocknote-translation.ts:1)
-— its "everything else becomes a markdown run" fallback means a forgotten case there
-degrades silently too, rather than failing to compile.
+is still not exhaustive: its "everything else becomes a markdown run" fallback means a
+forgotten case for a new block type degrades silently instead of failing to compile.
+Extend `src/lib/lesson-content-markdown.test.ts`'s round-trip tests in the same commit
+that adds a block type.
 
 ### BlockNote is an editing surface, not the format
 

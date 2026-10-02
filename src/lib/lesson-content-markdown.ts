@@ -1,24 +1,28 @@
 import type {
   EditorPrototypeBlock,
-  EditorPrototypeBlockType,
+  ExerciseBlock,
+  UnknownBlock,
 } from "@/components/editor-prototype/editor-prototype-types";
 import {
   fromSharedTestExerciseDefinition,
   toSharedTestExerciseDefinition,
 } from "@/components/test-editor-prototype-persistence";
+import {
+  BLOCK_MARKER_PATTERN,
+  type KnownBlockType,
+  blockMarker,
+  isKnownBlockType,
+} from "@/lib/lesson-block-markers";
 
-// Keep in sync with `EditorPrototypeBlockType` — see "Lesson block markers
-// are a hand-maintained allowlist, not a type" in docs/contracts.md: this
-// regex isn't checked against the union, so a new block type that isn't
-// added here silently collapses the *entire* lesson body into one opaque
-// markdown block on read, with no compile error.
-const blockMarkerPattern =
-  /^\[matko-block\]: <> \((heading|markdown|image|video|audio|exercise)\)$/;
 const imageBlockContentPattern = /^!\[([^\]]*)\]\(([^\s)]+)(?:\s+"([^"]*)")?\)$/;
 const linkBlockContentPattern = /^\[([^\]]*)\]\(([^\s)]+)\)$/;
 
 function serializeBlock(block: EditorPrototypeBlock): string {
-  const marker = `[matko-block]: <> (${block.type})`;
+  if (block.type === "unknown") {
+    return `${blockMarker(block.blockType)}\n${block.source}`;
+  }
+
+  const marker = blockMarker(block.type);
 
   switch (block.type) {
     case "heading":
@@ -42,10 +46,19 @@ export function blocksToMarkdown(blocks: EditorPrototypeBlock[]): string {
   return blocks.map(serializeBlock).join("\n\n");
 }
 
-function parseBlockContent(
-  type: EditorPrototypeBlockType,
-  content: string,
-): EditorPrototypeBlock {
+function parseBlockContent(type: string, content: string): EditorPrototypeBlock {
+  if (!isKnownBlockType(type)) {
+    return unknownBlock(type, content);
+  }
+
+  return parseKnownBlockContent(type, content);
+}
+
+function unknownBlock(blockType: string, content: string): UnknownBlock {
+  return { blockType, id: crypto.randomUUID(), source: content.trim(), type: "unknown" };
+}
+
+function parseKnownBlockContent(type: KnownBlockType, content: string): EditorPrototypeBlock {
   const id = crypto.randomUUID();
   const trimmedContent = content.trim();
 
@@ -77,22 +90,33 @@ function parseBlockContent(
       };
     }
     case "exercise":
-      return {
-        exercise: fromSharedTestExerciseDefinition(JSON.parse(trimmedContent)),
-        id,
-        type,
-      };
+      return parseExerciseBlock(id, trimmedContent) ?? unknownBlock(type, content);
+  }
+}
+
+// An exercise this version can't read (a kind added by a newer version, or
+// JSON it can't parse) is kept as an unknown block rather than failing the
+// whole lesson.
+function parseExerciseBlock(id: string, content: string): ExerciseBlock | null {
+  try {
+    return {
+      exercise: fromSharedTestExerciseDefinition(JSON.parse(content)),
+      id,
+      type: "exercise",
+    };
+  } catch {
+    return null;
   }
 }
 
 export function markdownToBlocks(markdown: string): EditorPrototypeBlock[] {
   const lines = markdown.split("\n");
-  const markerLineIndexes: { index: number; type: EditorPrototypeBlockType }[] = [];
+  const markerLineIndexes: { index: number; type: string }[] = [];
 
   lines.forEach((line, index) => {
-    const match = line.match(blockMarkerPattern);
+    const match = line.match(BLOCK_MARKER_PATTERN);
     if (match) {
-      markerLineIndexes.push({ index, type: match[1] as EditorPrototypeBlockType });
+      markerLineIndexes.push({ index, type: match[1] });
     }
   });
 
@@ -107,4 +131,8 @@ export function markdownToBlocks(markdown: string): EditorPrototypeBlock[] {
 
     return parseBlockContent(type, content);
   });
+}
+
+export function hasUnknownBlocks(blocks: EditorPrototypeBlock[]): boolean {
+  return blocks.some((block) => block.type === "unknown");
 }

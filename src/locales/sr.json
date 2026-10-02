@@ -580,5 +580,12 @@
     "generatedDescription": "Osvežava se pri svakom čuvanju, pa se ne menja ovde. Pismo kojim pišeš biraš u podešavanjima kursa.",
     "editLatin": "Uredi latinicu",
     "editCyrillic": "Uredi ćirilicu"
+  },
+  "lessonContent": {
+    "unsupportedNoticeTitle": "Deo ove lekcije zahteva noviju verziju Matka",
+    "unsupportedNoticeDescription": "Ova lekcija koristi mogućnosti koje tvoja verzija još ne podržava, pa neki sadržaj možda nedostaje. Ažuriraj Matko da vidiš celu lekciju.",
+    "dismissUnsupportedNotice": "Zatvori",
+    "unsupportedBlockTitle": "Sadržaj iz novije verzije Matka",
+    "unsupportedBlockDescription": "Ovaj blok ne može da se prikaže ni izmeni u tvojoj verziji. Pri čuvanju ostaje nepromenjen. Za izmenu ažuriraj Matko."
   }
 }

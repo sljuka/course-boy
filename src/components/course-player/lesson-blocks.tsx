@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import { useCreateBlockNote } from "@blocknote/react";
@@ -5,7 +6,8 @@ import { useCreateBlockNote } from "@blocknote/react";
 import { documentEditorSchema } from "@/components/editor-prototype/blocknote-schema";
 import { DocumentEditorContextProvider } from "@/components/editor-prototype/document-editor-context";
 import { editorPrototypeBlocksToBlockNote } from "@/components/editor-prototype/blocknote-translation";
-import { markdownToBlocks } from "@/lib/lesson-content-markdown";
+import { UnsupportedContentNotice } from "@/components/course-player/unsupported-content-notice";
+import { hasUnknownBlocks, markdownToBlocks } from "@/lib/lesson-content-markdown";
 import { useAppState } from "@/lib/use-app-state";
 
 /**
@@ -18,23 +20,33 @@ import { useAppState } from "@/lib/use-app-state";
  */
 export function LessonBlocks({ courseId, source }: { courseId: string; source: string }) {
   const { theme } = useAppState();
+  const blocks = useMemo(() => markdownToBlocks(source), [source]);
+  // The source the notice was dismissed for, so it shows again on the next
+  // lesson without needing a remount.
+  const [dismissedForSource, setDismissedForSource] = useState<string | null>(null);
+  const showUnsupportedNotice = hasUnknownBlocks(blocks) && dismissedForSource !== source;
   // Recreated whenever the lesson's own content changes (source or the
   // course it belongs to) — this component isn't necessarily remounted when
   // the student navigates to a different lesson, so `initialContent` (only
   // read once by `useCreateBlockNote`) needs deps to stay in sync.
   const editor = useCreateBlockNote(
     {
-      initialContent: editorPrototypeBlocksToBlockNote(markdownToBlocks(source), courseId),
+      initialContent: editorPrototypeBlocksToBlockNote(blocks, courseId),
       schema: documentEditorSchema,
     },
     [courseId, source],
   );
 
   return (
-    <div className="typeset typeset-course">
-      <DocumentEditorContextProvider courseId={courseId} supportedLocales={[]}>
-        <BlockNoteView editable={false} editor={editor} theme={theme} />
-      </DocumentEditorContextProvider>
+    <div className="flex flex-col gap-4">
+      {showUnsupportedNotice && (
+        <UnsupportedContentNotice onDismiss={() => setDismissedForSource(source)} />
+      )}
+      <div className="typeset typeset-course">
+        <DocumentEditorContextProvider courseId={courseId} supportedLocales={[]}>
+          <BlockNoteView editable={false} editor={editor} theme={theme} />
+        </DocumentEditorContextProvider>
+      </div>
     </div>
   );
 }

@@ -50,6 +50,26 @@ describe("transliterateSerbianText", () => {
 });
 
 describe("transliterateSerbianMarkdown", () => {
+  it("copies a block type it doesn't know unchanged", () => {
+    const markdown = [
+      "[matko-block]: <> (timeline-milestone)",
+      '{"label":"Bitka kod Kosova"}',
+      "",
+      "[matko-block]: <> (markdown)",
+      "Tekst.",
+    ].join("\n");
+
+    expect(transliterateSerbianMarkdown(markdown, { source: "sr" })).toBe(
+      [
+        "[matko-block]: <> (timeline-milestone)",
+        '{"label":"Bitka kod Kosova"}',
+        "",
+        "[matko-block]: <> (markdown)",
+        "Текст.",
+      ].join("\n"),
+    );
+  });
+
   it("keeps block markers and fenced code, and converts the prose", () => {
     const markdown = [
       "[matko-block]: <> (heading)",

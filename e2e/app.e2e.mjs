@@ -679,6 +679,90 @@ describe('lesson editor line breaks', () => {
   })
 })
 
+// SLJ-36: a lesson written by a newer app version can contain block types this
+// version doesn't know. The rest of the lesson must still show, the student is
+// told something is missing, and saving in the editor keeps the block as is.
+describe('lessons from a newer app version', () => {
+  const unknownBlock = '[matko-block]: <> (timeline-milestone)\n{"label":"1066","caption":"Battle of Hastings"}'
+  const body = [
+    '[matko-block]: <> (heading)\n## Newer lesson',
+    unknownBlock,
+    '[matko-block]: <> (markdown)\nText after the unknown block.',
+  ].join('\n\n')
+  let ids
+
+  it('keeps an unknown block unchanged when the lesson is edited and saved', async () => {
+    const { page } = harness
+    ids = await page.evaluate(async (body) => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Newer Version' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Newer version lesson' })
+      await window.courses.updateLessonContent({ courseId, lessonId, locales: { en: { body } }, sectionId })
+      return { courseId, lessonId }
+    }, body)
+    const draftDir = path.join(USER_DATA, 'courses', ids.courseId, 'draft')
+    const lessonFile = path.join(
+      draftDir,
+      fs.readdirSync(draftDir, { recursive: true }).map(String).find((file) => file.endsWith(`${ids.lessonId}.md`)),
+    )
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await waitFor(page, () =>
+      [...document.querySelectorAll('span,button,div')].some((el) => el.textContent === 'Newer version lesson'),
+    )
+    await page.evaluate(() =>
+      [...document.querySelectorAll('span,button,div')]
+        .filter((el) => el.textContent === 'Newer version lesson')
+        .pop()
+        .click(),
+    )
+    await waitFor(page, () => {
+      const editor = document.querySelector('.bn-editor')
+      return editor?.getAttribute('contenteditable') === 'true' && editor.innerText.includes('Text after the unknown block.')
+    })
+    expect(await bodyText(page)).toContain('Content from a newer version of Matko')
+
+    // Type at the end of the lesson so autosave writes it back to disk.
+    await page.click('.bn-editor')
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End')
+    await page.keyboard.press('End')
+    await page.keyboard.type(' Edited.')
+    const saved = await expect
+      .poll(() => fs.readFileSync(lessonFile, 'utf8'), { interval: 250, timeout: 15_000 })
+      .toContain('Edited.')
+      .then(() => fs.readFileSync(lessonFile, 'utf8'))
+    expect(saved).toContain(unknownBlock)
+  })
+
+  it('shows the rest of the lesson to a student, with a dismissible notice', async () => {
+    const { page } = harness
+    await page.evaluate(({ courseId, lessonId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${lessonId}`
+    }, ids)
+    await waitFor(page, () => document.querySelector('[data-testid="unsupported-content-notice"]') !== null)
+
+    const text = await bodyText(page)
+    expect(text).toContain('Part of this lesson needs a newer version of Matko')
+    expect(text).toContain('Text after the unknown block. Edited.')
+    expect(text).not.toContain('Battle of Hastings')
+
+    await page.click('[data-testid="unsupported-content-notice"] button[aria-label="Dismiss"]')
+    await waitFor(page, () => document.querySelector('[data-testid="unsupported-content-notice"]') === null)
+
+    // Leave the player's BlankLayout so later describe blocks land on normal app chrome.
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    await waitForText(page, 'English')
+  })
+})
+
 // Removing a course lives in the course's own ⋯ menu (end of the action bar),
 // not on list rows or cards.
 describe('remove a course', () => {

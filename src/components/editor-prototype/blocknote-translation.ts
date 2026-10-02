@@ -113,6 +113,12 @@ export function editorPrototypeBlocksToBlockNote(
       case "markdown":
         result.push(...markdownRunToBlockNoteBlocks(block.source));
         break;
+      case "unknown":
+        result.push({
+          type: "unsupported",
+          props: { blockType: block.blockType, source: block.source },
+        });
+        break;
     }
   }
 
@@ -141,7 +147,7 @@ function extractPlainText(block: DocumentEditorBlock): string {
  * BlockNote's current document back into our own `EditorPrototypeBlock[]`
  * for persistence — the inverse of `editorPrototypeBlocksToBlockNote`.
  * Anything that isn't one of our own structurally-recognized types (the
- * document's first heading, image/video/audio, exercise) is coalesced into
+ * document's first heading, image/video/audio, exercise, unsupported) is coalesced into
  * contiguous runs and stored as a catch-all `MarkdownBlock`, matching that
  * type's existing role for arbitrary content.
  */
@@ -200,6 +206,17 @@ export function blockNoteBlocksToEditorPrototype(
       if (data) {
         result.push({ exercise: JSON.parse(data), id: crypto.randomUUID(), type: "exercise" });
       }
+      continue;
+    }
+
+    if (block.type === "unsupported") {
+      flushMarkdownRun();
+      result.push({
+        blockType: block.props.blockType as string,
+        id: crypto.randomUUID(),
+        source: block.props.source as string,
+        type: "unknown",
+      });
       continue;
     }
 

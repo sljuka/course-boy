@@ -1,5 +1,6 @@
 import { transliterateSerbianCyrillicToLatin } from "./course-slug";
 import type { Locale } from "./i18n";
+import { BLOCK_MARKER_PATTERN, isKnownBlockType } from "./lesson-block-markers";
 import { transliterateSerbianLatinToCyrillic } from "./serbian-transliteration";
 
 // SLJ-17: a course can be written in one Serbian script and have the other
@@ -148,13 +149,14 @@ export function transliterateSerbianText(
   return result + transliterateProse(text.slice(lastIndex), from, keep);
 }
 
-const BLOCK_MARKER_PATTERN = /^\[matko-block\]: <> \((\w+)\)$/;
 const CODE_FENCE_PATTERN = /^\s*(```|~~~)/;
 
 /**
  * A lesson body (`locales/<lang>/lesson-….md`). Like `transliterateSerbianText`
  * per line, but also keeps block markers and fenced code as they are, and
- * fills an embedded exercise block's JSON with its generated locale.
+ * fills an embedded exercise block's JSON with its generated locale. A block
+ * type this version doesn't know is copied unchanged: its body may not be
+ * prose, so transliterating it could break it.
  */
 export function transliterateSerbianMarkdown(
   markdown: string,
@@ -164,13 +166,20 @@ export function transliterateSerbianMarkdown(
   const output: string[] = [];
   let inFence = false;
   let inExerciseBlock = false;
+  let inUnknownBlock = false;
 
   for (const line of lines) {
     const marker = line.match(BLOCK_MARKER_PATTERN);
 
     if (marker) {
       inExerciseBlock = marker[1] === "exercise";
+      inUnknownBlock = !isKnownBlockType(marker[1]);
       inFence = false;
+      output.push(line);
+      continue;
+    }
+
+    if (inUnknownBlock) {
       output.push(line);
       continue;
     }
