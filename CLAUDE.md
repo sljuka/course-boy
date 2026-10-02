@@ -35,6 +35,12 @@ its own folder (`workers/`, `courses/`, `presets/`), asar staying off, and the B
 starting outside the repo. Run it when you touch `electron-builder.json5`, dependencies,
 the worker, or anything read from `APP_ROOT`.
 
+Release builds come from `.github/workflows/release.yml`, never from a laptop: it builds on
+one runner per OS (macOS arm64 and x64, Windows x64, Linux x64), because the Bare worker's
+runtime binary is installed per platform by npm and a cross-built package ships the wrong
+one. A `v<version>` tag matching `package.json` produces a *draft* GitHub Release; "Run
+workflow" only builds. Builds are unsigned for now (SLJ-34).
+
 `dependencies` holds only what loads from `node_modules` at runtime — the Bare worker's
 imports and `bare-runtime` — because electron-builder ships every one of them. Anything Vite
 bundles (all renderer libraries, and main-process ones like `electron-store`) is a

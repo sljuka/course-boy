@@ -24,7 +24,9 @@
     "target": [
       "dmg"
     ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    // One DMG per architecture (built on separate runners, see
+    // .github/workflows/release.yml), so the name must say which.
+    "artifactName": "${productName}-Mac-${version}-${arch}-Installer.${ext}"
   },
   "win": {
     "target": [

@@ -21,7 +21,7 @@ function fail(message) {
 
 // electron-builder --dir writes release/<version>/<platform dir>/…
 function findPackagedApp() {
-  const { version } = JSON.parse(fs.readFileSync(path.join(APP_DIR, 'package.json'), 'utf8'))
+  const { name: packageName, version } = JSON.parse(fs.readFileSync(path.join(APP_DIR, 'package.json'), 'utf8'))
   const releaseDir = path.join(APP_DIR, 'release', version)
   const platformDirs = fs.existsSync(releaseDir)
     ? fs.readdirSync(releaseDir, { withFileTypes: true }).filter((entry) => entry.isDirectory())
@@ -40,10 +40,18 @@ function findPackagedApp() {
         }
       }
     } else if (platformDir.name.endsWith('-unpacked')) {
+      // The app's own executable is named after the product/package (`Matko.exe`,
+      // `matko`); match it by name, because Chromium ships other executables
+      // next to it (`chrome-sandbox`, `chrome_crashpad_handler`).
       const executable = fs
         .readdirSync(dir)
         .map((name) => path.join(dir, name))
-        .find((file) => fs.statSync(file).isFile() && (process.platform === 'win32' ? file.endsWith('.exe') : (fs.statSync(file).mode & 0o111) !== 0 && !path.extname(file)))
+        .find(
+          (file) =>
+            fs.statSync(file).isFile() &&
+            path.basename(file, '.exe').toLowerCase() === packageName.toLowerCase() &&
+            (process.platform === 'win32' ? file.endsWith('.exe') : (fs.statSync(file).mode & 0o111) !== 0),
+        )
       if (executable) return { executable, resources: path.join(dir, 'resources') }
     }
   }

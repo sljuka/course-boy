@@ -1,0 +1,123 @@
+# Builds the desktop app on each OS and, for a version tag, attaches the
+# installers to a *draft* GitHub Release. Publishing that release is a manual
+# step on GitHub; nothing here publishes.
+#
+# Why one runner per OS and not cross-building from one machine: the Bare
+# worker's runtime (`bare-runtime-<platform>-<arch>`) is an optional dependency
+# that npm only installs for the machine it runs on. A package built anywhere
+# else ships the wrong `bare` binary and peer-to-peer sharing fails to start.
+#
+# Builds are unsigned for now (SLJ-34): macOS Gatekeeper and Windows SmartScreen
+# will warn on first launch.
+#
+# Triggers:
+#   - push a tag `v<version>` matching package.json's version → build + draft release
+#   - "Run workflow" on the Actions tab → build only; installers are kept as
+#     workflow artifacts for a week
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run check
+
+  build:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos-arm64
+            os: macos-15
+            builder-args: --mac --arm64
+          - name: macos-x64
+            os: macos-15-intel
+            builder-args: --mac --x64
+          - name: windows-x64
+            os: windows-latest
+            builder-args: --win --x64
+          - name: linux-x64
+            os: ubuntu-latest
+            builder-args: --linux --x64
+    runs-on: ${{ matrix.os }}
+    name: build (${{ matrix.name }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vite build
+      - name: Package (unsigned)
+        run: npx electron-builder ${{ matrix.builder-args }} --publish never -c.mac.identity=null
+        shell: bash
+
+      # Launch the packaged app: bundled files present, asar off, Bare worker
+      # starts. See scripts/check-packaged.mjs.
+      - name: Check packaged app (macOS, Windows)
+        if: runner.os != 'Linux'
+        run: node scripts/check-packaged.mjs
+      - name: Check packaged app (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # Ubuntu 24.04 blocks the unprivileged user namespaces Electron's
+          # sandbox needs; allow them on this throwaway runner only.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          xvfb-run --auto-servernum node scripts/check-packaged.mjs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: matko-${{ matrix.name }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            release/*/*.dmg
+            release/*/*.exe
+            release/*/*.AppImage
+
+  draft-release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          find artifacts -type f -print0 \
+            | xargs -0 gh release create "$GITHUB_REF_NAME" \
+                --repo "$GITHUB_REPOSITORY" \
+                --draft \
+                --title "Matko $GITHUB_REF_NAME" \
+                --generate-notes
