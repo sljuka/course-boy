@@ -24,6 +24,9 @@ export type UserPreferences = {
   myCoursesView?: CourseListView
   nickname?: string
   persona?: Persona
+  // Imported courses: how many versions before the current one are kept on this
+  // device, for going back (SLJ-40). 2 when unset; 0–10.
+  previousVersionsToKeep?: number
   recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
   // Bundled courses (Getting Started) on Home and in recently viewed; on when unset.

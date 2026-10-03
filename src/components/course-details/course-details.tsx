@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/c
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { CourseUpdateNotice } from "@/components/course-details/course-update-notice";
+import { CourseVersionMenu } from "@/components/course-details/course-version-menu";
 import { ShareCourseButton } from "@/components/course-details/share-course-button";
 import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
 import {
@@ -136,16 +137,20 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <CardTitle size="lg">{resolvedCourse.title}</CardTitle>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Badge className="font-normal" variant="secondary">
-                  {t("courseSearch.version", { version: resolvedCourse.version })}
-                </Badge>
-              }
-            />
-            <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
-          </Tooltip>
+          {resolvedCourse.distribution === "imported" ? (
+            <CourseVersionMenu courseId={courseId} version={resolvedCourse.version} />
+          ) : (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Badge className="font-normal" variant="secondary">
+                    {t("courseSearch.version", { version: resolvedCourse.version })}
+                  </Badge>
+                }
+              />
+              <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
+            </Tooltip>
+          )}
           {resolvedCourse.distribution === "local" && (
             <Button
               onClick={() => setIsVersionHistoryOpen(true)}

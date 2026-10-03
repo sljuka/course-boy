@@ -232,6 +232,7 @@ async function setUpLocalCoursesRoot(localCoursesRoot: string): Promise<string> 
   }
 
   await migrateNonBundledCoursesToDrafts(localCoursesRoot);
+  await migrateImportedCoursesToVersionedLayout(localCoursesRoot);
   await recoverInterruptedDraftReplacements(localCoursesRoot);
 
   return localCoursesRoot;
@@ -2404,6 +2405,21 @@ export async function publishLocalCourseVersion(
   });
 }
 
+// ─── Imported courses (SLJ-40) ─────────────────────────────────────────────
+//
+// An imported course uses the teacher's layout minus the draft:
+//   courses/<id>/release.json        { publishedVersion: <current> }
+//   courses/<id>/versions/<v>/...    one folder per kept version
+// The current version plus a number of previous ones (the student's
+// "Previous versions to keep" setting) are kept; going back to one only
+// repoints release.json. Versions share unchanged files through hardlinks, so a
+// kept version costs only the files that changed in it. See docs/contracts.md §5.
+
+export const DEFAULT_PREVIOUS_VERSIONS_TO_KEEP = 2;
+export const MAX_PREVIOUS_VERSIONS_TO_KEEP = 10;
+
+const VERSION_STAGING_PREFIX = ".staging-";
+
 export type ImportedCourseUpdateExpectation = {
   courseId: string;
   // Where the course was recorded as coming from at import (course-sharing.json).
@@ -2412,15 +2428,123 @@ export type ImportedCourseUpdateExpectation = {
   version: string;
 };
 
-// The version an imported course is at (its root course.json), or null if it
-// isn't an imported course on this device.
-export async function readImportedCourseVersion(courseId: string): Promise<string | null> {
+async function resolveImportedCourseRoot(courseId: string): Promise<string | null> {
   assertValidCourseId(courseId);
   const localCoursesRoot = await ensureLocalCoursesRoot();
   const courseRootPath = resolveCourseRootPath(localCoursesRoot, courseId);
 
-  if (await pathExists(path.join(courseRootPath, "draft"))) {
+  if (bundledSeedCourseIdSet.has(courseId) || (await pathExists(path.join(courseRootPath, "draft")))) {
     return null;
+  }
+
+  return (await pathExists(courseRootPath)) ? courseRootPath : null;
+}
+
+function compareVersionStrings(left: string, right: string): number {
+  return compareCourseVersions(parseCourseVersion(left), parseCourseVersion(right));
+}
+
+async function listKeptVersions(courseRootPath: string): Promise<string[]> {
+  const entries = await fs.readdir(path.join(courseRootPath, "versions"), { withFileTypes: true }).catch(() => []);
+  const versions: string[] = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+    try {
+      parseCourseVersion(entry.name);
+    } catch {
+      continue;
+    }
+    if (await pathExists(path.join(courseRootPath, "versions", entry.name, "course.json"))) {
+      versions.push(entry.name);
+    }
+  }
+
+  return versions.sort((left, right) => compareVersionStrings(right, left));
+}
+
+async function setCurrentImportedVersion(courseRootPath: string, version: string): Promise<void> {
+  const state = await readCourseReleaseState(courseRootPath);
+  await writeCourseReleaseState(courseRootPath, {
+    everPublishedVersions: [...new Set([...state.everPublishedVersions, version])],
+    publishedAt: new Date().toISOString(),
+    publishedVersion: version,
+  });
+}
+
+// Moves a root-only imported course (how imports landed before SLJ-40, and how
+// the worker still lands a fresh import) into versions/<v>/ + release.json.
+// Crash-safe and re-runnable: release.json is written first, and course.json is
+// moved last, so an interrupted run still has a root course.json and finishes
+// on the next one. Readers fall back to the root until then.
+async function migrateRootOnlyImportedCourse(courseRootPath: string): Promise<void> {
+  const rootManifestPath = path.join(courseRootPath, "course.json");
+  let manifest: { status?: unknown; version?: unknown };
+
+  try {
+    manifest = JSON.parse(await fs.readFile(rootManifestPath, "utf8"));
+  } catch {
+    return;
+  }
+
+  // Only published (imported) content; unmigrated legacy drafts are
+  // `migrateNonBundledCoursesToDrafts`'s job.
+  if (manifest.status !== "published" || typeof manifest.version !== "string") {
+    return;
+  }
+
+  const version = manifest.version;
+  const versionPath = path.join(courseRootPath, "versions", version);
+  await fs.mkdir(versionPath, { recursive: true });
+  await setCurrentImportedVersion(courseRootPath, version);
+
+  const entries = await fs.readdir(courseRootPath, { withFileTypes: true });
+  for (const entry of entries) {
+    if (["versions", "release.json", "course.json"].includes(entry.name) || entry.name.startsWith(".")) {
+      continue;
+    }
+    await fs.rename(path.join(courseRootPath, entry.name), path.join(versionPath, entry.name));
+  }
+
+  await fs.rename(rootManifestPath, path.join(versionPath, "course.json"));
+}
+
+// Runs on every start (from ensureLocalCoursesRoot): moves every root-only
+// imported course into the versioned layout.
+async function migrateImportedCoursesToVersionedLayout(localCoursesRoot: string): Promise<void> {
+  const entries = await fs.readdir(localCoursesRoot, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !isValidCourseId(entry.name) || bundledSeedCourseIdSet.has(entry.name)) {
+      continue;
+    }
+    const courseRootPath = path.join(localCoursesRoot, entry.name);
+    if (await pathExists(path.join(courseRootPath, "draft"))) {
+      continue;
+    }
+    await migrateRootOnlyImportedCourse(courseRootPath);
+  }
+}
+
+// Right after an import lands (the worker writes it root-only).
+export async function migrateImportedCourse(courseId: string): Promise<void> {
+  const courseRootPath = await resolveImportedCourseRoot(courseId);
+  if (courseRootPath) {
+    await migrateRootOnlyImportedCourse(courseRootPath);
+  }
+}
+
+// The version an imported course is at, or null if it isn't an imported
+// course on this device.
+export async function readImportedCourseVersion(courseId: string): Promise<string | null> {
+  const courseRootPath = await resolveImportedCourseRoot(courseId);
+  if (!courseRootPath) {
+    return null;
+  }
+
+  const { publishedVersion } = await readCourseReleaseState(courseRootPath);
+  if (publishedVersion) {
+    return publishedVersion;
   }
 
   try {
@@ -2431,34 +2555,97 @@ export async function readImportedCourseVersion(courseId: string): Promise<strin
   }
 }
 
-// Replaces an imported course with a newer version, safely (SLJ-39):
-//   1. hardlink the current course into a staging folder (no data copied),
-//   2. `download` mirrors only what changed onto it (the worker writes atomically,
-//      so the hardlinked originals are never written through),
-//   3. validate: same course, the expected version, the same source as recorded
-//      at import, a readable package,
-//   4. swap it in with two renames; the old folder is removed afterwards.
-// The live course is untouched until step 4. Any failure removes the staging
-// folder and leaves the course as it was.
+// The versions of an imported course kept on this device, newest first.
+export async function listImportedCourseVersions(
+  courseId: string,
+): Promise<{ current: string | null; versions: string[] }> {
+  const courseRootPath = await resolveImportedCourseRoot(courseId);
+  if (!courseRootPath) {
+    return { current: null, versions: [] };
+  }
+
+  return {
+    current: (await readCourseReleaseState(courseRootPath)).publishedVersion,
+    versions: await listKeptVersions(courseRootPath),
+  };
+}
+
+// "Go back to <v>" (or forward again): repoints release.json, no download.
+export async function switchImportedCourseVersion(courseId: string, version: string): Promise<void> {
+  const courseRootPath = await resolveImportedCourseRoot(courseId);
+  if (!courseRootPath || !(await listKeptVersions(courseRootPath)).includes(version)) {
+    throw new Error(`Version ${version} of this course isn't on this device`);
+  }
+
+  await setCurrentImportedVersion(courseRootPath, version);
+}
+
+// Keeps the current version and the `previousToKeep` newest other versions.
+async function pruneImportedCourseVersions(courseRootPath: string, previousToKeep: number): Promise<void> {
+  const { publishedVersion } = await readCourseReleaseState(courseRootPath);
+  const others = (await listKeptVersions(courseRootPath)).filter((version) => version !== publishedVersion);
+
+  for (const version of others.slice(Math.max(0, previousToKeep))) {
+    await fs.rm(path.join(courseRootPath, "versions", version), { force: true, recursive: true });
+  }
+}
+
+export function clampPreviousVersionsToKeep(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value)
+    ? Math.min(MAX_PREVIOUS_VERSIONS_TO_KEEP, Math.max(0, value))
+    : DEFAULT_PREVIOUS_VERSIONS_TO_KEEP;
+}
+
+// Brings an imported course to a newer version (SLJ-39, SLJ-40):
+//   - already kept (the student went back and returns): just repoint;
+//   - otherwise: hardlink the current version into versions/.staging-<v>-…
+//     (no data copied), `download` mirrors only what changed onto it (the
+//     worker writes atomically, so hardlinked originals are never written
+//     through), validate (same course, expected version, recorded source,
+//     publishable), rename it to versions/<v>/ and repoint release.json.
+// Then old versions beyond the student's setting are removed. The current
+// version is untouched until release.json switches; any failure removes the
+// staging folder and leaves the course as it was. Returns `download`'s result,
+// or null when nothing had to be downloaded.
 export async function applyImportedCourseUpdate<T>(
   expected: ImportedCourseUpdateExpectation,
   download: (stagingPath: string) => Promise<T>,
-): Promise<T> {
-  assertValidCourseId(expected.courseId);
-  const localCoursesRoot = await ensureLocalCoursesRoot();
-  const courseRootPath = resolveCourseRootPath(localCoursesRoot, expected.courseId);
+  options: { previousToKeep?: number } = {},
+): Promise<T | null> {
+  await migrateImportedCourse(expected.courseId);
+  const courseRootPath = await resolveImportedCourseRoot(expected.courseId);
 
-  if (await pathExists(path.join(courseRootPath, "draft"))) {
-    throw new Error(`Course "${expected.courseId}" is your own course, not an imported one`);
+  if (!courseRootPath) {
+    throw new Error(`Course "${expected.courseId}" isn't an imported course on this device`);
   }
 
-  const suffix = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
-  const stagingPath = path.join(localCoursesRoot, `.update-staging-${expected.courseId}-${suffix}`);
-  const previousPath = path.join(localCoursesRoot, `.update-previous-${expected.courseId}-${suffix}`);
+  const previousToKeep = clampPreviousVersionsToKeep(options.previousToKeep);
+  const keptVersions = await listKeptVersions(courseRootPath);
+
+  if (keptVersions.includes(expected.version)) {
+    await setCurrentImportedVersion(courseRootPath, expected.version);
+    await pruneImportedCourseVersions(courseRootPath, previousToKeep);
+    return null;
+  }
+
+  const { publishedVersion: currentVersion } = await readCourseReleaseState(courseRootPath);
+  if (!currentVersion) {
+    throw new Error(`Course "${expected.courseId}" has no current version`);
+  }
+
+  const versionsPath = path.join(courseRootPath, "versions");
+  const stagingPath = path.join(
+    versionsPath,
+    `${VERSION_STAGING_PREFIX}${expected.version}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+  );
+
+  let result: T;
 
   try {
-    await copyDirectoryWithDedup(courseRootPath, stagingPath, null, { hardlinkFromSource: true });
-    const result = await download(stagingPath);
+    await copyDirectoryWithDedup(path.join(versionsPath, currentVersion), stagingPath, null, {
+      hardlinkFromSource: true,
+    });
+    result = await download(stagingPath);
 
     const manifestPath = path.join(stagingPath, "course.json");
     const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
@@ -2482,26 +2669,22 @@ export async function applyImportedCourseUpdate<T>(
     await writeFileAtomic(manifestPath, JSON.stringify({ ...manifest, status: "published" }, null, 2));
     await assertCoursePackageIsPublishable(stagingPath);
 
-    await fs.rename(courseRootPath, previousPath);
-    try {
-      await fs.rename(stagingPath, courseRootPath);
-    } catch (error) {
-      await fs.rename(previousPath, courseRootPath);
-      throw error;
-    }
-
-    await fs.rm(previousPath, { force: true, recursive: true });
-    return result;
+    await fs.rename(stagingPath, path.join(versionsPath, expected.version));
   } catch (error) {
     await fs.rm(stagingPath, { force: true, recursive: true }).catch(() => {});
     throw error;
   }
+
+  await setCurrentImportedVersion(courseRootPath, expected.version);
+  await pruneImportedCourseVersions(courseRootPath, previousToKeep);
+  return result;
 }
 
-// At startup: undo what an update interrupted by a crash left behind (see
-// `applyImportedCourseUpdate`). A staging folder is just deleted; a "previous"
-// folder whose course folder is missing (crash between the two renames) is put
-// back, otherwise deleted.
+// At startup: removes what an update interrupted by a crash left behind:
+// versions/.staging-* folders inside imported courses (SLJ-40), and the
+// courses-root level .update-* folders of the pre-SLJ-40 swap, where a
+// "previous" folder whose course folder is missing (a crash between that
+// swap's two renames) is put back.
 export async function cleanUpInterruptedCourseUpdates(): Promise<void> {
   const localCoursesRoot = await ensureLocalCoursesRoot();
   const entries = await fs.readdir(localCoursesRoot, { withFileTypes: true });
@@ -2522,6 +2705,17 @@ export async function cleanUpInterruptedCourseUpdates(): Promise<void> {
         await fs.rm(entryPath, { force: true, recursive: true });
       } else {
         await fs.rename(entryPath, courseRootPath);
+      }
+      continue;
+    }
+
+    if (isValidCourseId(entry.name)) {
+      const versionsPath = path.join(entryPath, "versions");
+      const versionEntries = await fs.readdir(versionsPath, { withFileTypes: true }).catch(() => []);
+      for (const versionEntry of versionEntries) {
+        if (versionEntry.isDirectory() && versionEntry.name.startsWith(VERSION_STAGING_PREFIX)) {
+          await fs.rm(path.join(versionsPath, versionEntry.name), { force: true, recursive: true });
+        }
       }
     }
   }

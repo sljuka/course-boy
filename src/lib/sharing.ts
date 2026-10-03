@@ -36,6 +36,9 @@ export type CourseSharingInfo = {
   // A newer version that claims to come from a different source than this
   // course was imported from: refused, and the student is warned.
   refusedUpdate: { version: string } | null
+  // Imported courses only: the versions kept on this device (newest first) and
+  // the one in use. Switching between them needs no download (SLJ-40).
+  versions: { current: string | null; kept: string[] } | null
 }
 
 export type ApplyCourseUpdateResult = {

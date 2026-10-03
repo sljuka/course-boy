@@ -512,6 +512,11 @@
       "title": "Home",
       "showBundledCourses": "Show Getting Started course",
       "showBundledCoursesDescription": "A short guide to Matko, on Home. Hiding it keeps it on this device, so you can bring it back here any time."
+    },
+    "courseVersions": {
+      "title": "Course versions",
+      "previousToKeep": "Previous versions to keep",
+      "previousToKeepDescription": "For courses you've imported: how many earlier versions stay on this device, so you can go back to one. Unchanged files are shared between versions, so extra versions take little space. A lower number applies at the next update."
     }
   },
   "drawer": {
@@ -608,6 +613,8 @@
     "refusedDescription": "It says it comes from a different source than this course. Your course wasn't changed.",
     "errorTitle": "Couldn't update this course",
     "availableBadge": "Update {{version}}",
-    "recommendedBadge": "Recommended update {{version}}"
+    "recommendedBadge": "Recommended update {{version}}",
+    "versionsOnDevice": "Versions on this device",
+    "newestVersion": "{{version}} (newest)"
   }
 }

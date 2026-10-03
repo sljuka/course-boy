@@ -31,9 +31,13 @@ import {
   getLocalCourseLessonTestDraft,
   getLocalCourseSectionTestDraft,
   applyImportedCourseUpdate,
+  clampPreviousVersionsToKeep,
   cleanUpInterruptedCourseUpdates,
+  listImportedCourseVersions,
   listPublishedLocalCourseIds,
+  migrateImportedCourse,
   readImportedCourseVersion,
+  switchImportedCourseVersion,
   openCourseDirectoryInFileSystem,
   publishLocalCourseVersion,
   removeLocalCourse,
@@ -139,6 +143,7 @@ type UserPreferences = {
   locale?: Locale
   nickname?: string
   persona?: Persona
+  previousVersionsToKeep?: number
   recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
   theme?: Theme
@@ -155,10 +160,15 @@ const courseSharingStore = new Store<CourseSharingState>({
 })
 
 const courseSharing = createCourseSharing({
-  applyUpdateFiles: applyImportedCourseUpdate,
+  applyUpdateFiles: (expected, download) =>
+    applyImportedCourseUpdate(expected, download, {
+      previousToKeep: clampPreviousVersionsToKeep(preferencesStore.get('previousVersionsToKeep')),
+    }),
   hasConsent: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
+  listInstalledVersions: listImportedCourseVersions,
   listPublishedCourseIds: listPublishedLocalCourseIds,
   readInstalledVersion: readImportedCourseVersion,
+  switchInstalledVersion: switchImportedCourseVersion,
   store: {
     read: () => ({
       followed: courseSharingStore.get('followed'),
@@ -222,6 +232,12 @@ ipcMain.handle(
 
     if (typeof preferences.theme === 'string') {
       preferencesStore.set('theme', preferences.theme)
+    }
+
+    // Applied at the next update, not now: lowering it never deletes a version
+    // the student might be about to go back to.
+    if (typeof preferences.previousVersionsToKeep === 'number') {
+      preferencesStore.set('previousVersionsToKeep', clampPreviousVersionsToKeep(preferences.previousVersionsToKeep))
     }
 
     if (typeof preferences.showBundledCourses === 'boolean') {
@@ -404,12 +420,15 @@ ipcMain.handle('sharing:get-creator-key', () => {
   return getCreatorKey()
 })
 
-ipcMain.handle('sharing:get-course-sharing', (_event, courseId: string) => {
+ipcMain.handle('sharing:get-course-sharing', async (_event, courseId: string) => {
   if (!isValidCourseId(courseId)) {
     throw new Error(`Invalid course id "${courseId}"`)
   }
 
-  return courseSharing.getInfo(courseId) satisfies CourseSharingInfo
+  return {
+    ...courseSharing.getInfo(courseId),
+    versions: await courseSharing.getVersions(courseId),
+  } satisfies CourseSharingInfo
 })
 
 ipcMain.handle('sharing:list-course-updates', () => {
@@ -425,6 +444,14 @@ ipcMain.handle('sharing:apply-course-update', async (_event, courseId: string) =
   return { version } satisfies ApplyCourseUpdateResult
 })
 
+ipcMain.handle('sharing:switch-course-version', async (_event, courseId: string, version: string) => {
+  if (!isValidCourseId(courseId) || typeof version !== 'string') {
+    throw new Error(`Invalid course id "${courseId}"`)
+  }
+
+  await courseSharing.switchVersion(courseId, version)
+})
+
 ipcMain.handle('sharing:finish-on-version', (_event, courseId: string) => {
   if (!isValidCourseId(courseId)) {
     throw new Error(`Invalid course id "${courseId}"`)
@@ -435,6 +462,8 @@ ipcMain.handle('sharing:finish-on-version', (_event, courseId: string) => {
 
 ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput) => {
   const { courseId } = await courseSharing.importCourse(input.code)
+  // The worker lands an import root-only; move it into versions/<v>/ (SLJ-40).
+  await migrateImportedCourse(courseId)
   return { courseId } satisfies ImportCourseResult
 })
 
@@ -458,7 +487,7 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
       return new Response(null, { status: 404 })
     }
 
-    for (const packageDirectoryPath of resolvePackageDirectoryCandidates(courseRootPath)) {
+    for (const packageDirectoryPath of await resolvePackageDirectoryCandidates(courseRootPath)) {
       const assetsDirectoryPath = path.join(packageDirectoryPath, 'assets')
       const resolvedAssetPath = path.resolve(assetsDirectoryPath, filename)
       const relativeToAssetsDirectory = path.relative(assetsDirectoryPath, resolvedAssetPath)

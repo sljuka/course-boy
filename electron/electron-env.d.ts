@@ -119,6 +119,7 @@ interface Window {
     listCourseUpdates: () => Promise<Record<string, import('../src/lib/sharing').CourseUpdateInfo>>
     applyCourseUpdate: (courseId: string) => Promise<import('../src/lib/sharing').ApplyCourseUpdateResult>
     finishOnVersion: (courseId: string) => Promise<void>
+    switchCourseVersion: (courseId: string, version: string) => Promise<void>
     importCourse: (
       input: import('../src/lib/sharing').ImportCourseInput,
     ) => Promise<import('../src/lib/sharing').ImportCourseResult>

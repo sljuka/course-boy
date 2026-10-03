@@ -424,8 +424,20 @@ export function resolveCourseDistribution(
   return isBundledSeedCourseId(courseId) ? "bundled" : "imported";
 }
 
-export function resolvePackageDirectoryCandidates(courseRootPath: string): string[] {
-  return [path.join(courseRootPath, "draft"), courseRootPath];
+// Where a course's readable package is, in order of preference:
+// - draft/ (the teacher's own course: what the editor and preview read),
+// - versions/<release.json's publishedVersion>/ (an imported course, SLJ-40;
+//   the teacher's own courses have a draft/, so never get here),
+// - the root (the bundled seed, and an imported course not migrated yet).
+export async function resolvePackageDirectoryCandidates(courseRootPath: string): Promise<string[]> {
+  const { publishedVersion } = await readCourseReleaseState(courseRootPath);
+  // Only a plain x.y.z becomes a path segment.
+  const versionPath =
+    publishedVersion && /^\d+\.\d+\.\d+$/.test(publishedVersion)
+      ? [path.join(courseRootPath, "versions", publishedVersion)]
+      : [];
+
+  return [path.join(courseRootPath, "draft"), ...versionPath, courseRootPath];
 }
 
 async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecord[]> {
@@ -450,7 +462,7 @@ async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecor
       .filter((directoryEntry) => directoryEntry.isDirectory())
       .map(async (directoryEntry) => {
         const courseRootPath = path.join(rootDirectoryPath, directoryEntry.name);
-        const packageDirectoryCandidates = resolvePackageDirectoryCandidates(courseRootPath);
+        const packageDirectoryCandidates = await resolvePackageDirectoryCandidates(courseRootPath);
 
         for (const packageDirectoryPath of packageDirectoryCandidates) {
           const manifestPath = path.join(packageDirectoryPath, "course.json");

@@ -5,6 +5,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  applyImportedCourseUpdate,
+  cleanUpInterruptedCourseUpdates,
   copyDirectoryWithDedup,
   createLocalCourseDraft,
   createLocalCourseLesson,
@@ -14,8 +16,12 @@ import {
   forgetLocalCoursesRootSetupForTests,
   getUnusedDraftAssets,
   hashFileContents,
+  listImportedCourseVersions,
+  migrateImportedCourse,
   publishLocalCourseVersion,
+  readImportedCourseVersion,
   revertLocalCourseDraftToVersion,
+  switchImportedCourseVersion,
   updateLocalCourseDraftMetadata,
   uploadCourseAssetFromBytes,
 } from "./course-paths";
@@ -836,5 +842,191 @@ describe("course ids", () => {
     await expect(
       cutLocalCourseVersion({ courseId: "../../escape", releaseType: "patch" }),
     ).rejects.toThrow(/Invalid course id/);
+  });
+});
+
+// SLJ-40: an imported course is kept as versions/<v>/ + release.json.
+describe("imported courses", () => {
+  const source = { driveKey: "drive-key", publisher: { id: "teacher-key" } };
+  const expectation = (courseId: string, version: string) => ({
+    courseId,
+    driveKey: source.driveKey,
+    publisherId: source.publisher.id,
+    version,
+  });
+
+  async function listFiles(directory: string): Promise<string[]> {
+    return (await fs.readdir(directory, { recursive: true, withFileTypes: true }))
+      .filter((entry) => entry.isFile())
+      .map((entry) => path.relative(directory, path.join(entry.parentPath, entry.name)))
+      .sort();
+  }
+
+  // A teacher's course with two cut versions, then turned into what an import
+  // lands as on another device: the first version, root-only, "published",
+  // with source.json. Returns the course id and a copy of each version as a
+  // stand-in for the drive.
+  async function seedImportedCourse(): Promise<{ courseId: string; drive: Record<string, string> }> {
+    const courseId = await seedDraftCourse();
+    const root = await ensureLocalCoursesRoot();
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    const second = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    const drive: Record<string, string> = {};
+
+    for (const version of [first.version, second.version]) {
+      const copy = await fs.mkdtemp(path.join(os.tmpdir(), "matko-drive-"));
+      await fs.cp(path.join(root, courseId, "versions", version), copy, { recursive: true });
+      // The changed lesson in the newer version, so there's something to download.
+      if (version === second.version) {
+        const lesson = (await listFiles(copy)).find((file) => file.endsWith(".md"))!;
+        await fs.writeFile(path.join(copy, lesson), "Second version.");
+      }
+      await fs.writeFile(path.join(copy, "source.json"), JSON.stringify(source));
+      drive[version] = copy;
+    }
+
+    await fs.rm(path.join(root, courseId), { force: true, recursive: true });
+    await fs.cp(drive[first.version], path.join(root, courseId), { recursive: true });
+    const manifestPath = path.join(root, courseId, "course.json");
+    const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+    await fs.writeFile(manifestPath, JSON.stringify({ ...manifest, status: "published" }));
+
+    return { courseId, drive };
+  }
+
+  // Like the worker's mirror onto a hardlinked copy: only differing files are
+  // written, always as a new file (temp + rename), never in place.
+  function mirrorFrom(drivePath: string) {
+    return async (stagingPath: string) => {
+      const changed: string[] = [];
+      for (const file of await listFiles(drivePath)) {
+        const next = await fs.readFile(path.join(drivePath, file));
+        const target = path.join(stagingPath, file);
+        const current = await fs.readFile(target).catch(() => null);
+        if (current && current.equals(next)) continue;
+        await fs.mkdir(path.dirname(target), { recursive: true });
+        await fs.writeFile(`${target}.tmp`, next);
+        await fs.rename(`${target}.tmp`, target);
+        changed.push(file);
+      }
+      return { changedFiles: changed.map((key) => ({ key, op: "change" })) };
+    };
+  }
+
+  it("moves a root-only import into versions/<v> with release.json, and the course list reads it", async () => {
+    const { courseId } = await seedImportedCourse();
+    const root = await ensureLocalCoursesRoot();
+
+    await migrateImportedCourse(courseId);
+
+    expect((await fs.readdir(path.join(root, courseId))).sort()).toEqual(["release.json", "versions"]);
+    expect(await readImportedCourseVersion(courseId)).toBe("0.2.0");
+    const course = (await listCourses(root)).find((entry) => entry.id === courseId);
+    expect(course).toMatchObject({ distribution: "imported", version: "0.2.0" });
+  });
+
+  it("finishes a migration interrupted before course.json moved", async () => {
+    const { courseId } = await seedImportedCourse();
+    const root = await ensureLocalCoursesRoot();
+    const courseRoot = path.join(root, courseId);
+    // As a crash would leave it: release.json written, some entries moved.
+    await fs.mkdir(path.join(courseRoot, "versions", "0.2.0"), { recursive: true });
+    await fs.writeFile(path.join(courseRoot, "release.json"), JSON.stringify({ publishedVersion: "0.2.0" }));
+    await fs.rename(path.join(courseRoot, "source.json"), path.join(courseRoot, "versions", "0.2.0", "source.json"));
+
+    forgetLocalCoursesRootSetupForTests();
+    await ensureLocalCoursesRoot();
+
+    expect((await fs.readdir(courseRoot)).sort()).toEqual(["release.json", "versions"]);
+    expect(await listFiles(path.join(courseRoot, "versions", "0.2.0"))).toContain("source.json");
+    expect((await listCourses(root)).find((entry) => entry.id === courseId)?.version).toBe("0.2.0");
+  });
+
+  it("updates into a new versions/<v>, sharing unchanged files with the previous version", async () => {
+    const { courseId, drive } = await seedImportedCourse();
+    const root = await ensureLocalCoursesRoot();
+    await migrateImportedCourse(courseId);
+
+    const result = await applyImportedCourseUpdate(expectation(courseId, "0.3.0"), mirrorFrom(drive["0.3.0"]));
+
+    // Only what differs is written: the edited lesson and the version's own files.
+    const changed = result?.changedFiles.map((file) => file.key) ?? [];
+    expect(changed).toHaveLength(4);
+    expect(changed).toEqual(
+      expect.arrayContaining(["changelog.json", "course.json", "version-meta.json", expect.stringMatching(/\.md$/)]),
+    );
+    expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.3.0", versions: ["0.3.0", "0.2.0"] });
+    expect((await listCourses(root)).find((entry) => entry.id === courseId)?.version).toBe("0.3.0");
+
+    const versions = path.join(root, courseId, "versions");
+    const lesson = (await listFiles(path.join(versions, "0.2.0"))).find((file) => file.endsWith(".md"))!;
+    expect(await fs.readFile(path.join(versions, "0.2.0", lesson), "utf8")).not.toBe("Second version.");
+    expect(await fs.readFile(path.join(versions, "0.3.0", lesson), "utf8")).toBe("Second version.");
+
+    const sectionFile = (await listFiles(path.join(versions, "0.2.0"))).find(
+      (file) => file.startsWith("section-") && file.endsWith(".json"),
+    )!;
+    const [previous, next] = await Promise.all([
+      fs.stat(path.join(versions, "0.2.0", sectionFile)),
+      fs.stat(path.join(versions, "0.3.0", sectionFile)),
+    ]);
+    expect(next.ino).toBe(previous.ino);
+  });
+
+  it("goes back without downloading, and returns to a kept version without downloading either", async () => {
+    const { courseId, drive } = await seedImportedCourse();
+    await migrateImportedCourse(courseId);
+    await applyImportedCourseUpdate(expectation(courseId, "0.3.0"), mirrorFrom(drive["0.3.0"]));
+
+    await switchImportedCourseVersion(courseId, "0.2.0");
+    expect(await readImportedCourseVersion(courseId)).toBe("0.2.0");
+
+    const download = vi.fn();
+    await expect(applyImportedCourseUpdate(expectation(courseId, "0.3.0"), download)).resolves.toBeNull();
+    expect(download).not.toHaveBeenCalled();
+    expect(await readImportedCourseVersion(courseId)).toBe("0.3.0");
+
+    await expect(switchImportedCourseVersion(courseId, "9.9.9")).rejects.toThrow(/isn't on this device/);
+  });
+
+  it("keeps only as many previous versions as the setting allows", async () => {
+    const { courseId, drive } = await seedImportedCourse();
+    await migrateImportedCourse(courseId);
+
+    await applyImportedCourseUpdate(expectation(courseId, "0.3.0"), mirrorFrom(drive["0.3.0"]), {
+      previousToKeep: 0,
+    });
+
+    expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.3.0", versions: ["0.3.0"] });
+  });
+
+  it("leaves the course as it was when the download or validation fails", async () => {
+    const { courseId, drive } = await seedImportedCourse();
+    const root = await ensureLocalCoursesRoot();
+    await migrateImportedCourse(courseId);
+
+    await expect(
+      applyImportedCourseUpdate(expectation(courseId, "0.3.0"), async () => {
+        throw new Error("offline");
+      }),
+    ).rejects.toThrow("offline");
+    await expect(
+      applyImportedCourseUpdate({ ...expectation(courseId, "0.3.0"), publisherId: "someone-else" }, mirrorFrom(drive["0.3.0"])),
+    ).rejects.toThrow(/different source/);
+
+    expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.2.0", versions: ["0.2.0"] });
+    expect((await fs.readdir(path.join(root, courseId, "versions"))).filter((name) => name.startsWith("."))).toEqual([]);
+  });
+
+  it("removes an update's staging folder left by a crash", async () => {
+    const { courseId } = await seedImportedCourse();
+    const root = await ensureLocalCoursesRoot();
+    await migrateImportedCourse(courseId);
+    const staging = path.join(root, courseId, "versions", ".staging-0.3.0-1-abcd");
+    await fs.mkdir(staging, { recursive: true });
+
+    await cleanUpInterruptedCourseUpdates();
+
+    expect(await fs.stat(staging).then(() => true, () => false)).toBe(false);
   });
 });

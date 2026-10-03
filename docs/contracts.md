@@ -295,16 +295,35 @@ course comes from *on this device* (the code used at import) is app state, kept 
 main-process-only `course-sharing.json` electron-store file, never re-read from
 `source.json` (see `electron/course-sharing.ts`).
 
-**Updating an imported course (SLJ-39)** goes through `applyImportedCourseUpdate` in
-[electron/course-paths.ts](../electron/course-paths.ts:1). It hardlinks the course
-into `.update-staging-<id>-…` under the courses root, the worker mirrors the drive onto
-that copy, the result is validated (same id, the expected version, the recorded source,
-a publishable package), and it's swapped in with two renames via
-`.update-previous-<id>-…`. `cleanUpInterruptedCourseUpdates` undoes a crash between the
-renames at the next start. **Anything that writes into a hardlinked copy must replace
-files, never write them in place.** That's why the worker's Localdrive there is
-`{ atomic: true }`: Localdrive's default opens existing files with `O_TRUNC`, which on a
-hardlink rewrites the live course too. Whose course it is *on this device* is
+**Imported courses are kept as `versions/<v>/` + `release.json` (SLJ-40)**, the teacher's
+layout minus the draft. `release.json`'s `publishedVersion` is the version in use, and
+`resolvePackageDirectoryCandidates` in
+[electron/course-registry.ts](../electron/course-registry.ts:1) reads it (draft/ first,
+then that version, then the root), so every reader and the `matko-asset://` handler
+follow it. The current version and the student's "Previous versions to keep" setting
+(`previousVersionsToKeep`, default 2, 0–10) are kept. The worker still lands an import
+root-only; `migrateImportedCourse` moves it right after, and at every start
+`migrateImportedCoursesToVersionedLayout` moves courses imported before SLJ-40. It writes
+`release.json` first and moves `course.json` last, so an interrupted run still finds a
+root `course.json` and finishes next time, and readers fall back to the root meanwhile.
+The bundled seed course stays root-only.
+
+**Updating an imported course (SLJ-39/40)** goes through `applyImportedCourseUpdate` in
+[electron/course-paths.ts](../electron/course-paths.ts:1). A version already kept
+(the student went back) is just pointed at again. Otherwise:
+1. Hardlink the current version into `versions/.staging-<v>-…`.
+2. The worker mirrors the drive onto that copy.
+3. Validate it: same id, the expected version, the recorded source, a publishable
+   package.
+4. Rename it to `versions/<v>/` and repoint `release.json`.
+5. Prune old versions beyond the setting.
+
+Going back is `switchImportedCourseVersion`: only `release.json` changes.
+`cleanUpInterruptedCourseUpdates` removes a crash's staging folders at the next start.
+**Anything that writes into a hardlinked copy must replace files, never write them in
+place.** That's why the worker's Localdrive there is `{ atomic: true }`: Localdrive's
+default opens existing files with `O_TRUNC`, which on a hardlink rewrites the previous
+version too. Whose course it is *on this device* is
 never stored in the package, since
 the same package is authored on one machine and imported on another:
 `resolveCourseDistribution` in

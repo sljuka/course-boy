@@ -73,7 +73,7 @@ adding a case to the e2e suite over one-off manual checking.
 - [docs/persistence-notes.md](docs/persistence-notes.md:1) — read when making decisions
   about draft storage, publishing, local state, or sharing architecture.
 - [docs/pear-integration-notes.md](docs/pear-integration-notes.md:1) — the planned
-  peer-to-peer work. Phases 0–8 are built: `electron/bare-worker.ts` +
+  peer-to-peer work. Phases 0–9 are built: `electron/bare-worker.ts` +
   `workers/main.cjs` spawn a Bare worker, derive and persist a Corestore-backed local
   identity keypair over `bare-rpc`, mirror a course's *published version* (see
   [docs/persistence-notes.md](docs/persistence-notes.md:1)) into a Hyperdrive
@@ -90,8 +90,9 @@ adding a case to the e2e suite over one-off manual checking.
   "Share" (course editor and course page); the first Publish asks for the one-time
   sharing consent. "Import course" on My Courses takes a code. `source.json` in the drive records
   where a course is shared from. Students are offered newer versions of imported courses
-  and apply them from the course page (SLJ-39). No `pear-runtime`, no OTA updates of the
-  app itself.
+  and apply them from the course page (SLJ-39); imported courses keep previous versions
+  as `versions/<v>/` + `release.json`, and the student can go back (SLJ-40). No
+  `pear-runtime`, no OTA updates of the app itself.
 
 ## Architecture rules
 

@@ -154,12 +154,17 @@ export type CourseSharingWorker = {
 export type CourseSharingDeps = {
   // Replaces an imported course with the version `download` writes into a
   // staging folder, after validating it (applyImportedCourseUpdate).
+  // Returns `download`'s result, or null when the version was already kept on
+  // this device and nothing was downloaded.
   applyUpdateFiles<T>(
     expected: { courseId: string; driveKey: string; publisherId: string; version: string },
     download: (stagingPath: string) => Promise<T>,
-  ): Promise<T>
+  ): Promise<T | null>
   hasConsent(): boolean
+  // The imported course's kept versions, newest first, and the current one.
+  listInstalledVersions(courseId: string): Promise<{ current: string | null; versions: string[] }>
   readInstalledVersion(courseId: string): Promise<string | null>
+  switchInstalledVersion(courseId: string, version: string): Promise<void>
   listPublishedCourseIds(): Promise<string[]>
   now?: () => Date
   setTimer?: (callback: () => void, delayMs: number) => { cancel(): void }
@@ -358,7 +363,7 @@ export function createCourseSharing(deps: CourseSharingDeps) {
         throw new Error('There is no update for this course')
       }
 
-      const { changedFiles } = await deps.applyUpdateFiles(
+      const downloaded = await deps.applyUpdateFiles(
         {
           courseId,
           driveKey: followed.driveKey,
@@ -373,7 +378,32 @@ export function createCourseSharing(deps: CourseSharingDeps) {
         finishOnVersion: false,
         pendingUpdate: null,
       })
-      return { changedFiles: changedFiles.map((file) => file.key), version: update.version }
+      return { changedFiles: downloaded?.changedFiles.map((file) => file.key) ?? [], version: update.version }
+    },
+
+    // Switches an imported course to another kept version (no download). Going
+    // back counts as "Finish on this version" for the version left behind, so
+    // the student isn't asked right away to update to what they just left;
+    // switching to the newest clears it.
+    async switchVersion(courseId: string, version: string): Promise<void> {
+      await deps.switchInstalledVersion(courseId, version)
+      await checkForUpdate(courseId)
+
+      const pending = deps.store.read().followed[courseId]?.pendingUpdate
+      updateFollowed(
+        courseId,
+        pending
+          ? { dismissedUpdateVersion: pending.version, finishOnVersion: true }
+          : { dismissedUpdateVersion: null, finishOnVersion: false },
+      )
+    },
+
+    async getVersions(courseId: string): Promise<CourseSharingInfo['versions']> {
+      if (!deps.store.read().followed[courseId]) {
+        return null
+      }
+      const { current, versions } = await deps.listInstalledVersions(courseId)
+      return { current, kept: versions }
     },
 
     // "Finish on this version": stop showing regular updates prominently.
@@ -433,6 +463,7 @@ export function createCourseSharing(deps: CourseSharingDeps) {
         refusedUpdate: followed?.refusedUpdate ?? null,
         status: statuses.get(courseId) ?? (isKnown ? 'waiting' : 'not-shared'),
         update: followed ? describeUpdate(followed) : null,
+        versions: null,
       }
     },
 

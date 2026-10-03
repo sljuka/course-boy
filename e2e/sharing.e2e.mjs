@@ -91,13 +91,21 @@ async function finishOnboarding(page, role) {
   await waitFor(page, () => (document.getElementById('root')?.childElementCount ?? 0) > 0)
 }
 
-function lessonFiles(userData, courseId) {
+// An imported course is kept as versions/<v>/ + release.json (SLJ-40).
+function currentVersionDir(userData, courseId) {
   const courseRoot = path.join(userData, 'courses', courseId)
+  const { publishedVersion } = JSON.parse(fs.readFileSync(path.join(courseRoot, 'release.json'), 'utf8'))
+  return path.join(courseRoot, 'versions', publishedVersion)
+}
+
+// The current version's files, relative to its folder.
+function currentVersionFiles(userData, courseId) {
+  const dir = currentVersionDir(userData, courseId)
   return fs
-    .readdirSync(courseRoot, { recursive: true })
+    .readdirSync(dir, { recursive: true })
     .map(String)
     .filter((file) => file.endsWith('.md') || file.endsWith('.json'))
-    .map((file) => path.join(courseRoot, file))
+    .map((file) => ({ dir, file, path: path.join(dir, file) }))
 }
 
 async function importCourse(page, code) {
@@ -162,7 +170,7 @@ describe('sharing across restarts', () => {
     const courses = await page.evaluate(() => window.courses.list('en'))
     expect(courses.find((course) => course.id === courseId)?.version).toBe(publishedVersion)
 
-    const source = JSON.parse(fs.readFileSync(path.join(dirs.student1, 'courses', courseId, 'source.json'), 'utf8'))
+    const source = JSON.parse(fs.readFileSync(path.join(currentVersionDir(dirs.student1, courseId), 'source.json'), 'utf8'))
     expect(IdEncoding.normalize(source.driveKey)).toBe(IdEncoding.normalize(code))
 
     const sharingState = JSON.parse(fs.readFileSync(path.join(dirs.student1, 'course-sharing.json'), 'utf8'))
@@ -263,7 +271,7 @@ describe('sharing across restarts', () => {
 
     await waitForUpdate(student, courseId, (update) => update.version === newest && update.visibility === 'prominent')
 
-    const before = new Map(lessonFiles(dirs.student3, courseId).map((file) => [file, fs.statSync(file).ino]))
+    const before = currentVersionFiles(dirs.student3, courseId)
 
     await finishOnboarding(student, 'student')
     await student.evaluate((id) => {
@@ -278,19 +286,22 @@ describe('sharing across restarts', () => {
     const courses = await student.evaluate(() => window.courses.list('en'))
     expect(courses.find((course) => course.id === courseId)?.version).toBe(newest)
 
-    const after = lessonFiles(dirs.student3, courseId)
-    const lessonText = after.filter((file) => file.endsWith('.md')).map((file) => fs.readFileSync(file, 'utf8')).join('\n')
+    const after = currentVersionFiles(dirs.student3, courseId)
+    const lessonText = after.filter(({ file }) => file.endsWith('.md')).map(({ path }) => fs.readFileSync(path, 'utf8')).join('\n')
     expect(lessonText).toContain('Third version.')
 
-    // Files the update didn't change are the same files on disk (hardlinked
-    // through the update), not rewritten copies; the changed lesson is new.
-    const unchanged = after.filter((file) => file.includes(`${path.sep}section-`) && file.endsWith('.json'))
+    // The update is a new versions/<v>/ folder; files it didn't change are the
+    // previous version's files (hardlinked), not rewritten copies, and the
+    // changed lesson is a new file.
+    expect(after[0].dir).not.toBe(before[0].dir)
+    const inodeBefore = new Map(before.map(({ file, path }) => [file, fs.statSync(path).ino]))
+    const unchanged = after.filter(({ file }) => file.startsWith('section-') && file.endsWith('.json'))
     expect(unchanged.length).toBeGreaterThan(0)
-    for (const file of unchanged) {
-      expect(fs.statSync(file).ino).toBe(before.get(file))
+    for (const { file, path } of unchanged) {
+      expect(fs.statSync(path).ino).toBe(inodeBefore.get(file))
     }
-    const changedLesson = after.find((file) => file.endsWith('.md') && fs.readFileSync(file, 'utf8').includes('Third version.'))
-    expect(fs.statSync(changedLesson).ino).not.toBe(before.get(changedLesson))
+    const changedLesson = after.find(({ path }) => path.endsWith('.md') && fs.readFileSync(path, 'utf8').includes('Third version.'))
+    expect(fs.statSync(changedLesson.path).ino).not.toBe(inodeBefore.get(changedLesson.file))
   })
 
   it('a skipped "fixes mistakes" version keeps an update recommended, even after "Finish on this version"', async () => {
@@ -345,4 +356,32 @@ describe('sharing across restarts', () => {
     const courses = await student.evaluate(() => window.courses.list('en'))
     expect(courses.find((course) => course.id === courseId)?.version).toBe(major)
   })
+
+  // SLJ-40: the versions kept on the student's device; going back and forward
+  // needs no download.
+  it('a student goes back to a previous version from the version menu, and forward again', async () => {
+    const student = apps.student3.page
+    const { current, kept } = (await student.evaluate((id) => window.sharing.getCourseSharing(id), courseId)).versions
+    expect(kept.length).toBe(3) // the current version + 2 previous (the default)
+    expect(kept[0]).toBe(current)
+    const previous = kept[1]
+
+    await student.click('[data-testid="course-version-menu"]')
+    await student.getByRole('menuitemradio', { name: previous, exact: true }).click()
+    await expect
+      .poll(() => student.evaluate((id) => window.courses.list('en'), courseId).then((courses) => courses.find((course) => course.id === courseId)?.version))
+      .toBe(previous)
+
+    // Going back counts as "Finish on this version": no banner for the version
+    // just left, only the quiet line.
+    await waitFor(student, () => document.querySelector('[data-testid="course-update-quiet"]') !== null)
+    expect(await student.evaluate(() => document.querySelector('[data-testid="course-update-notice"]'))).toBeNull()
+
+    await student.click('[data-testid="course-version-menu"]')
+    await student.getByRole('menuitemradio', { name: `${current} (newest)` }).click()
+    await expect
+      .poll(() => student.evaluate((id) => window.courses.list('en'), courseId).then((courses) => courses.find((course) => course.id === courseId)?.version))
+      .toBe(current)
+  })
 })
+

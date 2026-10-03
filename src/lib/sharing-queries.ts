@@ -71,6 +71,14 @@ export function useApplyCourseUpdateMutation() {
   });
 }
 
+// Switches an imported course to another version kept on this device.
+export function useSwitchCourseVersionMutation() {
+  return useMutation<void, Error, { courseId: string; version: string }>({
+    mutationFn: ({ courseId, version }) => window.sharing.switchCourseVersion(courseId, version),
+    onSuccess: (_result, { courseId }) => invalidateAfterUpdateChange(courseId),
+  });
+}
+
 export function useFinishOnVersionMutation() {
   return useMutation<void, Error, string>({
     mutationFn: (courseId) => window.sharing.finishOnVersion(courseId),

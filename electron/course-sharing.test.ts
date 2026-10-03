@@ -30,7 +30,9 @@ function setup({
   const sharing = createCourseSharing({
     applyUpdateFiles: async (_expected, download) => download('/staging'),
     hasConsent: () => hasConsent,
+    listInstalledVersions: async () => ({ current: installedVersion, versions: [installedVersion] }),
     readInstalledVersion: async () => installedVersion,
+    switchInstalledVersion: async () => {},
     listPublishedCourseIds: async () => published,
     now: () => new Date('2026-10-03T10:00:00Z'),
     setTimer: (callback, delayMs) => {

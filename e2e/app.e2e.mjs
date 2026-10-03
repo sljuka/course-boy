@@ -95,6 +95,7 @@ describe('launch', () => {
       'getCreatorKey',
       'importCourse',
       'listCourseUpdates',
+      'switchCourseVersion',
     ])
   })
 })

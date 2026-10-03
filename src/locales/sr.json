@@ -512,6 +512,11 @@
       "title": "Početna",
       "showBundledCourses": "Prikaži uvodni kurs o Matku",
       "showBundledCoursesDescription": "Kratak vodič kroz Matka, na početnoj strani. Skriven kurs ostaje na ovom uređaju, pa ga ovde možeš vratiti kad god želiš."
+    },
+    "courseVersions": {
+      "title": "Verzije kurseva",
+      "previousToKeep": "Broj prethodnih verzija koje se čuvaju",
+      "previousToKeepDescription": "Za uvezene kurseve: koliko ranijih verzija ostaje na ovom uređaju, da biste mogli da se vratite na neku od njih. Nepromenjeni fajlovi su zajednički za sve verzije, pa dodatne verzije zauzimaju malo prostora. Manji broj se primenjuje pri sledećem ažuriranju."
     }
   },
   "drawer": {
@@ -608,6 +613,8 @@
     "refusedDescription": "Navodi da dolazi iz drugog izvora nego ovaj kurs. Vaš kurs nije promenjen.",
     "errorTitle": "Ažuriranje kursa nije uspelo",
     "availableBadge": "Ažuriranje {{version}}",
-    "recommendedBadge": "Preporučeno ažuriranje {{version}}"
+    "recommendedBadge": "Preporučeno ažuriranje {{version}}",
+    "versionsOnDevice": "Verzije na ovom uređaju",
+    "newestVersion": "{{version}} (najnovija)"
   }
 }

@@ -159,6 +159,9 @@ contextBridge.exposeInMainWorld('sharing', {
   applyCourseUpdate(courseId: string) {
     return ipcRenderer.invoke('sharing:apply-course-update', courseId) as Promise<ApplyCourseUpdateResult>
   },
+  switchCourseVersion(courseId: string, version: string) {
+    return ipcRenderer.invoke('sharing:switch-course-version', courseId, version) as Promise<void>
+  },
   finishOnVersion(courseId: string) {
     return ipcRenderer.invoke('sharing:finish-on-version', courseId) as Promise<void>
   },

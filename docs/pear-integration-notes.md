@@ -514,3 +514,21 @@ only publishers ever touch, not an onboarding step every user sees.
      the player, so it can't land mid-test.
    - **Not measured:** the bytes a student downloads for a one-lesson update (only
      verified indirectly via unchanged inodes and mirror-drive's skip of equal entries).
+
+9. **Students keep previous versions and can go back. Done, 2026-10-03 (SLJ-40, part 3 of
+   SLJ-9).** Imported courses moved from root-only to `versions/<v>/` + `release.json`
+   (`docs/contracts.md` §5). Existing imports migrate at start; new imports migrate right
+   after landing.
+   - **Updating** builds `versions/<new>/` from a hardlinked copy of the current version
+     and the mirrored diff, then repoints `release.json`. It replaces SLJ-39's swap of the
+     whole course folder.
+   - **Old versions are pruned** to the student's Settings → "Previous versions to keep"
+     (default 2, 0–10). Lowering it takes effect at the next update.
+   - **The version badge on an imported course's page is a menu** of the versions kept on
+     the device. Picking one switches with no download. Going back counts as "Finish on
+     this version" for the version left behind. Returning to a kept newer version (from
+     the menu or via Update) is just a repoint.
+   - Verified by unit tests in `electron/course-paths.test.ts`: migration (incl. an
+     interrupted one), update into a new folder with unchanged files shared, switch,
+     prune, failure leaves the course as it was, staging cleanup. Also by
+     `e2e/sharing.e2e.mjs`: three versions kept, back and forward through the menu.
