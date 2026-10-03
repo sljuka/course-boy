@@ -17,6 +17,7 @@ import { PanelCard } from "@/components/ui/panel-card";
 import { StatusIcon } from "@/components/ui/status-icon";
 import { useCourseDetailsQuery, useCourseVersionHistoryQuery } from "@/lib/course-queries";
 import { formatShortDate } from "@/lib/format-date";
+import { useCommitBlockerMessage } from "@/lib/use-commit-blocker";
 import { useAppState } from "@/lib/use-app-state";
 import { usePublishWithConsent } from "./use-publish-with-consent";
 import { useRevertWithConfirmation } from "./use-revert-with-confirmation";
@@ -58,20 +59,25 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
   // from the one it's based on.
   const hasUncommittedChanges =
     Boolean(history) && (versions.length === 0 || !history?.draftMatchesCurrentVersion);
+  // A version needs sections with content (see getCommitBlocker).
+  const commitBlocker = useCommitBlockerMessage(courseId);
+  const canCommit = hasUncommittedChanges && commitBlocker === null;
 
   return (
     <PanelCard
       action={
         <Button
           aria-label={t("courseVersions.commitButton")}
-          // Nothing to commit without changes, like the action bar's button.
-          disabled={!hasUncommittedChanges}
+          // Like the action bar's button: changes, and a structure a version allows.
+          disabled={!canCommit}
           onClick={() => setIsCommitOpen(true)}
           size="icon-xs"
           title={
-            hasUncommittedChanges
+            canCommit
               ? t("courseVersions.commitButton")
-              : t("courseVersions.noChangesTooltip")
+              : hasUncommittedChanges && commitBlocker
+                ? commitBlocker
+                : t("courseVersions.noChangesTooltip")
           }
           variant="ghost"
         >
@@ -102,7 +108,7 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
             </ListRow>
           </ContextMenuTrigger>
           <ContextMenuContent className="w-52">
-            <ContextMenuItem onClick={() => setIsCommitOpen(true)}>
+            <ContextMenuItem disabled={!canCommit} onClick={() => setIsCommitOpen(true)}>
               <History aria-hidden="true" />
               {t("courseVersions.commitButton")}
             </ContextMenuItem>

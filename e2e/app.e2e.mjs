@@ -689,6 +689,55 @@ describe('lesson editor line breaks', () => {
   })
 })
 
+// A version needs at least one section, and every section a lesson or test.
+// Commit is disabled until then, and says why; a draft may be empty.
+describe('commit needs sections with content', () => {
+  it('disables Commit with the reason until every section has a lesson', async () => {
+    const { page } = harness
+    const courseId = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Empty Course' } },
+        supportedLocales: ['en'],
+      })
+      return courseId
+    })
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, courseId)
+    // The action bar's button (the Versions panel's "+" has the same label but no text).
+    const commitButton = page.getByRole('button', { name: 'Commit new version' }).filter({ hasText: 'Commit new version' })
+    await commitButton.waitFor()
+
+    const reasonOnHover = async () => {
+      await page.mouse.move(0, 0)
+      await commitButton.hover({ force: true })
+      await page.waitForTimeout(600)
+      return bodyText(page)
+    }
+
+    expect(await commitButton.isDisabled()).toBe(true)
+    expect(await reasonOnHover()).toContain('Add a section with at least one lesson before committing a version.')
+
+    const sectionId = await page.evaluate(
+      (id) => window.courses.createSection({ courseId: id, title: 'Empty section' }).then((result) => result.sectionId),
+      courseId,
+    )
+    await page.reload()
+    await commitButton.waitFor()
+    expect(await commitButton.isDisabled()).toBe(true)
+    expect(await reasonOnHover()).toContain('Section "Empty section" has no lessons or tests yet.')
+
+    await page.evaluate(
+      ({ courseId, sectionId }) => window.courses.createLesson({ courseId, sectionId, title: 'First lesson' }),
+      { courseId, sectionId },
+    )
+    await page.reload()
+    await commitButton.waitFor()
+    await expect.poll(() => commitButton.isDisabled()).toBe(false)
+  })
+})
+
 // SLJ-36: a lesson written by a newer app version can contain block types this
 // version doesn't know. The rest of the lesson must still show, the student is
 // told something is missing, and saving in the editor keeps the block as is.

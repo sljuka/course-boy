@@ -24,6 +24,7 @@ import {
   useCutCourseVersionMutation,
 } from "@/lib/course-queries";
 import { nextCourseVersion, type CourseVersionReleaseType } from "@/lib/course-versioning";
+import { useCommitBlockerMessage } from "@/lib/use-commit-blocker";
 import { CommitReleaseNotes } from "./commit-release-notes";
 import { UnusedAssetsWarning } from "./unused-assets-warning";
 import { useRevertWithConfirmation } from "./use-revert-with-confirmation";
@@ -55,6 +56,8 @@ export function VersionHistoryDialog({
   const [recommended, setRecommended] = useState(false);
   const { data: history } = useCourseVersionHistoryQuery(open ? courseId : undefined);
   const cutMutation = useCutCourseVersionMutation();
+  // A version needs sections with content; a draft doesn't (see getCommitBlocker).
+  const commitBlocker = useCommitBlockerMessage(courseId);
   const { confirmationDialog, requestRevert, revertMutation } = useRevertWithConfirmation(courseId);
   const canCut = mode === "editor";
   // The version each bump type would create, as the cut computes it.
@@ -94,6 +97,12 @@ export function VersionHistoryDialog({
             })}
           </DialogDescription>
         </DialogHeader>
+        {canCut && commitBlocker && (
+          <Alert variant="warning">
+            <AlertTitle>{t("courseVersions.commitBlockedTitle")}</AlertTitle>
+            <AlertDescription>{commitBlocker}</AlertDescription>
+          </Alert>
+        )}
         {canCut && (
           <CommitReleaseNotes
             courseId={courseId}
@@ -126,7 +135,7 @@ export function VersionHistoryDialog({
               </Select>
             </div>
             <Button
-              disabled={cutMutation.isPending}
+              disabled={cutMutation.isPending || commitBlocker !== null}
               onClick={() =>
                 cutMutation.mutate(
                   { courseId, notes, recommended, releaseType },

@@ -112,7 +112,8 @@
     "missingBackToHome": "Nazad na početnu",
     "noSectionsHint": "Da biste započeli pravljenje kursa, dodajte novu sekciju u pregledniku sa leve strane.",
     "noSectionsTitle": "Za početak",
-    "testLabel": "Test"
+    "testLabel": "Test",
+    "noSections": "Ovaj kurs još nema odeljaka."
   },
   "courseVersions": {
     "actionErrorTitle": "Nešto nije u redu",
@@ -167,7 +168,10 @@
     "releaseTypeWithVersion": "{{name}} · {{version}}",
     "cutButtonWithVersion": "Iseci novu verziju {{version}}",
     "showReleaseNotes": "Prikaži beleške o verziji",
-    "releaseNotesTitle": "Beleške o verziji · {{version}}"
+    "releaseNotesTitle": "Beleške o verziji · {{version}}",
+    "commitBlockedTitle": "Još nije spremno za čuvanje verzije",
+    "commitBlockedNoSections": "Dodajte odeljak sa bar jednom lekcijom pre nego što sačuvate verziju.",
+    "commitBlockedEmptySection": "Odeljak „{{title}}“ još nema lekcija ni testova. Dodajte jedan ili uklonite odeljak pre nego što sačuvate verziju."
   },
   "courseTags": {
     "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."

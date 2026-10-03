@@ -75,6 +75,7 @@ import { getContentRatingLabelKey } from "@/lib/course-utils";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { useUpdateDraftMetadataMutation } from "@/lib/course-queries";
+import { useCommitBlockerMessage } from "@/lib/use-commit-blocker";
 import {
   detectSerbianScript,
   isSerbianLocale,
@@ -143,7 +144,11 @@ export function CourseMetadataEditor({
   const [activeCourseLocale, setActiveCourseLocale] =
     useState<Locale>(defaultLocale);
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
-  const canCommitNewVersion = versionBadge?.kind === "draft";
+  // Committable: there are changes, and the draft's structure makes a valid
+  // version (sections with content). The tooltip says which one is missing.
+  const commitBlocker = useCommitBlockerMessage(courseId);
+  const hasChangesToCommit = versionBadge?.kind === "draft";
+  const canCommitNewVersion = hasChangesToCommit && commitBlocker === null;
   const updateDraftMetadataMutation = useUpdateDraftMetadataMutation();
 
   const effectiveDefaultLocale = draft.supportedLocales.includes(defaultLocale)
@@ -298,7 +303,7 @@ export function CourseMetadataEditor({
         </TooltipTrigger>
         {!canCommitNewVersion && (
           <TooltipContent>
-            {t("courseVersions.noChangesTooltip")}
+            {hasChangesToCommit && commitBlocker ? commitBlocker : t("courseVersions.noChangesTooltip")}
           </TooltipContent>
         )}
       </Tooltip>

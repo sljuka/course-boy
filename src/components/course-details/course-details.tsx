@@ -177,6 +177,9 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       pageHero={pageHero}
     >
       {resolvedCourse.distribution === "imported" && <CourseUpdateNotice courseId={courseId} />}
+      {resolvedCourse.sections.length === 0 && (
+        <CardDescription data-testid="course-no-sections">{t("courseDetails.noSections")}</CardDescription>
+      )}
       {resolvedCourse.sections.map((section) => (
         <Card
           className="overflow-hidden border-border bg-muted/80 shadow-none"
