@@ -114,7 +114,8 @@
     "noSectionsHint": "Да бисте започели прављење курса, додајте нову секцију у прегледнику са леве стране.",
     "noSectionsTitle": "За почетак",
     "testLabel": "Тест",
-    "noSections": "Овај курс још нема одељака."
+    "noSections": "Овај курс још нема секција.",
+    "sectionIntro": "Увод"
   },
   "courseVersions": {
     "actionErrorTitle": "Нешто није у реду",
@@ -171,8 +172,8 @@
     "showReleaseNotes": "Прикажи белешке о верзији",
     "releaseNotesTitle": "Белешке о верзији · {{version}}",
     "commitBlockedTitle": "Још није спремно за чување верзије",
-    "commitBlockedNoSections": "Додајте одељак са бар једном лекцијом пре него што сачувате верзију.",
-    "commitBlockedEmptySection": "Одељак „{{title}}“ још нема лекција ни тестова. Додајте један или уклоните одељак пре него што сачувате верзију."
+    "commitBlockedNoSections": "Додајте секцију са бар једном лекцијом пре него што сачувате верзију.",
+    "commitBlockedEmptySection": "Секција „{{title}}“ још нема лекција ни тестова. Додајте један или уклоните секцију пре него што сачувате верзију."
   },
   "courseTags": {
     "helpTooltip": "Ово се може користити за означавање тежине вежби, али и других делова курса."
@@ -563,7 +564,13 @@
       "course": "курс",
       "section": "секција „{{title}}“",
       "lesson": "лекција „{{title}}“ у „{{section}}“",
-      "test": "тест „{{title}}“ у „{{section}}“"
+      "test": "тест „{{title}}“ у „{{section}}“",
+      "sectionIntro": "увод секције „{{section}}“"
+    },
+    "sectionIntro": {
+      "added": "Додат увод секције „{{section}}“",
+      "edited": "Измењен увод секције „{{section}}“",
+      "removed": "Уклоњен увод секције „{{section}}“"
     }
   },
   "serbianScript": {
@@ -621,5 +628,20 @@
     "recommendedBadge": "Препоручено ажурирање {{version}}",
     "versionsOnDevice": "Верзије на овом уређају",
     "newestVersion": "{{version}} (најновија)"
+  },
+  "draftSection": {
+    "summaryLabel": "Сажетак секције",
+    "summaryPlaceholder": "О чему је ова секција, у једном реду",
+    "summaryHint": "{{count}}/{{max}} · Приказује се свуда где су секције наведене.",
+    "summaryTooLong": "{{count}}/{{max}} · Предугачко: скратите на {{max}} карактера.",
+    "addIntro": "Додај увод секције",
+    "introHint": "Уводна страница коју ученици виде прву када започну ову секцију.",
+    "introLabel": "Увод секције",
+    "removeIntro": "Уклони увод",
+    "removeIntroTitle": "Уклонити увод секције „{{section}}“?",
+    "removeIntroCommitted": "Текст се брише из нацрта. Верзије које сте већ сачували га задржавају.",
+    "removeIntroNeverCommitted": "Није сачуван ни у једној верзији, па не може да се врати.",
+    "removeIntroConfirm": "Уклони увод",
+    "cancel": "Откажи"
   }
 }

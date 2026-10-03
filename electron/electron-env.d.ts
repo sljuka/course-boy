@@ -42,6 +42,12 @@ interface Window {
     updateLessonContent: (
       input: import('../src/lib/course-package').UpdateLessonContentInput,
     ) => Promise<void>
+    updateSectionIntro: (
+      input: import('../src/lib/course-package').UpdateSectionIntroInput,
+    ) => Promise<void>
+    removeSectionIntro: (
+      input: import('../src/lib/course-package').RemoveSectionIntroInput,
+    ) => Promise<void>
     saveLessonTest: (
       input: import('../src/lib/course-package').SaveLessonTestInput,
     ) => Promise<void>

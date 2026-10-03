@@ -77,12 +77,14 @@ describe('launch', () => {
       'previewDraftChanges',
       'publishVersion',
       'remove',
+      'removeSectionIntro',
       'revertToVersion',
       'saveLessonTest',
       'saveSectionTest',
       'updateDraftMetadata',
       'updateLessonContent',
       'updateSection',
+      'updateSectionIntro',
       'updateSectionTestMetadata',
       'uploadAsset',
       'uploadAssetBytes',
@@ -768,6 +770,86 @@ describe('commit needs sections with content', () => {
     await page.reload()
     await commitButton.waitFor()
     await expect.poll(() => commitButton.isDisabled()).toBe(false)
+  })
+})
+
+// SLJ-45: a section's summary (one line, for lists) and intro (a page students
+// see first when they start the section).
+describe('section summary and intro', () => {
+  it('a teacher adds both, a student sees the summary and starts with the intro, and removing asks first', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Intro Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Intro section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'First lesson' })
+      await window.courses.updateLessonContent({
+        courseId,
+        lessonId,
+        locales: { en: { body: '[matko-block]: <> (markdown)\nLesson one text.' } },
+        sectionId,
+      })
+      return { courseId, lessonId, sectionId }
+    })
+    const sectionDir = path.join(USER_DATA, 'courses', ids.courseId, 'draft', ids.sectionId)
+    const openSectionPage = async () => {
+      await page.evaluate((id) => {
+        location.hash = `#/drafts/${id}`
+      }, ids.courseId)
+      await waitFor(page, () =>
+        [...document.querySelectorAll('span,button,div')].some((el) => el.textContent === 'Intro section'),
+      )
+      await page.evaluate(() =>
+        [...document.querySelectorAll('span,button,div')].filter((el) => el.textContent === 'Intro section').pop().click(),
+      )
+      await page.getByLabel('Section summary').waitFor()
+    }
+
+    // Teacher: summary, then intro.
+    await openSectionPage()
+    await page.getByLabel('Section summary').fill('Everything about the intro section.')
+    await page.click('[data-testid="add-section-intro"]')
+    await waitFor(page, () => document.querySelector('.bn-editor[contenteditable="true"]') !== null)
+    await page.click('.bn-editor')
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End')
+    await page.keyboard.press('End')
+    await page.keyboard.press('Enter')
+    await page.keyboard.type('Welcome to this section.')
+    await expect
+      .poll(() => fs.readFileSync(path.join(sectionDir, 'locales', 'en', 'intro.md'), 'utf8'), { timeout: 15_000 })
+      .toContain('Welcome to this section.')
+    await expect
+      .poll(() => JSON.parse(fs.readFileSync(path.join(sectionDir, 'section.json'), 'utf8')).locales.en.description, {
+        timeout: 15_000,
+      })
+      .toBe('Everything about the intro section.')
+
+    // Student: the summary on the course page; Start course opens the intro,
+    // Continue goes to the first lesson.
+    await page.evaluate((id) => {
+      location.hash = `#/courses/${id}`
+    }, ids.courseId)
+    await waitForText(page, 'Everything about the intro section.')
+    expect(await bodyText(page)).toContain('Introduction')
+    await page.getByRole('button', { name: 'Start course' }).first().click()
+    await waitForText(page, 'Welcome to this section.')
+    expect(await page.evaluate(() => location.hash)).toContain('/lessons/intro-')
+    // The intro isn't counted as a lesson.
+    expect(await bodyText(page)).toContain('Intro section · Introduction')
+    expect(await clickText(page, 'Continue')).toContain('OK')
+    await waitForText(page, 'Lesson one text.')
+    expect(await bodyText(page)).toContain('Intro section · Lesson 1 of 1')
+
+    // Teacher: removing an intro that was never committed says it's gone for good.
+    await openSectionPage()
+    await page.click('[data-testid="remove-section-intro"]')
+    await waitForText(page, "It hasn't been committed in any version, so it can't be recovered.")
+    await page.click('[data-testid="confirm-remove-section-intro"]')
+    await waitFor(page, () => document.querySelector('[data-testid="add-section-intro"]') !== null)
+    expect(fs.existsSync(path.join(sectionDir, 'locales', 'en', 'intro.md'))).toBe(false)
   })
 })
 

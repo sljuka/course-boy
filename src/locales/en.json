@@ -114,7 +114,8 @@
     "noSectionsHint": "To kick off the creation of the course you can start by adding a new section in the explorer on the left.",
     "noSectionsTitle": "Getting started",
     "testLabel": "Test",
-    "noSections": "This course has no sections yet."
+    "noSections": "This course has no sections yet.",
+    "sectionIntro": "Introduction"
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
@@ -563,7 +564,13 @@
       "course": "the course",
       "section": "section \"{{title}}\"",
       "lesson": "lesson \"{{title}}\" in \"{{section}}\"",
-      "test": "test \"{{title}}\" in \"{{section}}\""
+      "test": "test \"{{title}}\" in \"{{section}}\"",
+      "sectionIntro": "the intro of section \"{{section}}\""
+    },
+    "sectionIntro": {
+      "added": "Added the intro of section \"{{section}}\"",
+      "edited": "Edited the intro of section \"{{section}}\"",
+      "removed": "Removed the intro of section \"{{section}}\""
     }
   },
   "serbianScript": {
@@ -621,5 +628,20 @@
     "recommendedBadge": "Recommended update {{version}}",
     "versionsOnDevice": "Versions on this device",
     "newestVersion": "{{version}} (newest)"
+  },
+  "draftSection": {
+    "summaryLabel": "Section summary",
+    "summaryPlaceholder": "What this section is about, in one line",
+    "summaryHint": "{{count}}/{{max}} · Shown wherever sections are listed.",
+    "summaryTooLong": "{{count}}/{{max}} · Too long: shorten it to {{max}} characters.",
+    "addIntro": "Add section intro",
+    "introHint": "An intro page students see first when they start this section.",
+    "introLabel": "Section intro",
+    "removeIntro": "Remove intro",
+    "removeIntroTitle": "Remove the intro of \"{{section}}\"?",
+    "removeIntroCommitted": "Its text is deleted from the draft. Versions you've already committed keep it.",
+    "removeIntroNeverCommitted": "It hasn't been committed in any version, so it can't be recovered.",
+    "removeIntroConfirm": "Remove intro",
+    "cancel": "Cancel"
   }
 }

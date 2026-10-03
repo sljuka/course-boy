@@ -128,10 +128,12 @@ export function LessonPlayerView({
               <CardDescription className="text-base">
                 {playerState.sectionTitle}
                 {" · "}
-                {t("courseDetails.progress", {
-                  current: playerState.progressCurrent,
-                  total: playerState.progressTotal,
-                })}
+                {playerState.isSectionIntro
+                  ? t("courseDetails.sectionIntro")
+                  : t("courseDetails.progress", {
+                      current: playerState.progressCurrent,
+                      total: playerState.progressTotal,
+                    })}
               </CardDescription>
             )
           }

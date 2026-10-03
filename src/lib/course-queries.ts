@@ -32,6 +32,8 @@ import type {
   UpdateCourseSectionInput,
   UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
+  UpdateSectionIntroInput,
+  RemoveSectionIntroInput,
   UploadCourseAssetBytesInput,
   UploadCourseAssetBytesResult,
   UploadCourseAssetInput,
@@ -187,6 +189,25 @@ export function useUpdateLessonContentMutation() {
       await queryClient.invalidateQueries({
         queryKey: ["courses", "detail", input.courseId],
       });
+    },
+  });
+}
+
+export function useUpdateSectionIntroMutation() {
+  return useMutation<void, Error, UpdateSectionIntroInput>({
+    mutationFn: (input) => window.courses.updateSectionIntro(input),
+    mutationKey: courseContentSaveMutationKey,
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({ queryKey: ["courses", "detail", input.courseId] });
+    },
+  });
+}
+
+export function useRemoveSectionIntroMutation() {
+  return useMutation<void, Error, RemoveSectionIntroInput>({
+    mutationFn: (input) => window.courses.removeSectionIntro(input),
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({ queryKey: ["courses", "detail", input.courseId] });
     },
   });
 }

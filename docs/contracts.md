@@ -159,11 +159,27 @@ courses/<course-id>/<section>/<lesson>.json
 courses/<course-id>/<section>/<test>.json                    # optional, one per lesson
 courses/<course-id>/<section>/<section-test>.json             # optional, standalone — no parent lesson
 courses/<course-id>/<section>/locales/<locale>/<lesson>.md
+courses/<course-id>/<section>/locales/<locale>/intro.md       # optional section intro (SLJ-45)
 courses/<course-id>/assets/<filename>                         # course-level, referenced by filename only
 courses/<course-id>/draft/course.json                        # draft manifest
 courses/<course-id>/draft/<section>/...
 courses/<course-id>/draft/assets/<filename>
 ```
+
+**Section summary and intro (SLJ-45).** A section's `section.json` `locales[<lang>].description`
+is its **summary**: one line, at most 128 characters counted as people see them
+(`countCharacters` in [src/lib/section-summary.ts](../src/lib/section-summary.ts:1)),
+shown wherever sections are listed; an older, longer description is cut off with "…" when
+shown, never on disk. A section's **intro** is an optional `locales/<lang>/intro.md` in the
+lesson body format (`[matko-block]` markers, the same reader and writer, so SLJ-36's
+unknown-block handling applies). It is written in every language the course supports
+when added (`updateLocalCourseSectionIntro`, Serbian generated like a lesson body), and
+removed from all of them (`removeLocalCourseSectionIntro`); a missing file means no
+intro. It is not a lesson: it doesn't make a section committable (a section still needs a
+lesson or a section test), it has no test, and it isn't counted in the player's progress.
+The player shows it as the section's first step under the id `intro-<section-id>`
+(`introStepId`), through the lesson route. Release notes report it as
+`{ target: "section-intro" }`, and a missing file inside it is located there.
 
 `assets/` holds uploaded images/video/audio at the course level (not per-lesson/section) —
 `uploadLocalCourseAsset` in `course-paths.ts` only ever writes under `draft/assets/`, since
@@ -347,8 +363,9 @@ generator:
   `names`, a region's `labels`/`answers`, …) from the source (`syncSerbianLocales` in
   [src/lib/serbian-script.ts](../src/lib/serbian-script.ts:1)). A new writer that
   bypasses it lets the two scripts drift;
-- a lesson body save writes the generated `locales/<lang>/<lesson>.md` from the source
-  one and ignores anything sent for it (`withGeneratedLessonBody`);
+- a lesson body or section intro save writes the generated `locales/<lang>/<lesson>.md`
+  (or `intro.md`) from the source one and ignores anything sent for it
+  (`withGeneratedLessonBody`);
 - turning the setting on, or switching the source, regenerates the whole draft once
   (`regenerateSerbianScript`). Taking either Serbian locale off the course drops the
   setting.

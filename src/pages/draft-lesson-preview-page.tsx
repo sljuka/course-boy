@@ -59,6 +59,7 @@ export function DraftLessonPreviewPage() {
       courseTitle: selectedNode?.title || "Document",
       exitPlayer: closePreview,
       isPreview: true,
+      isSectionIntro: false,
       // Closing on "Continue" too, same simplification the test preview
       // makes for its own single-item preview — chaining into a live
       // preview of the lesson's attached test would need that test

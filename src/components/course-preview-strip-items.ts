@@ -1,12 +1,21 @@
 import type { CoursePreviewItem, CourseSectionPreview } from "@/lib/course-package";
+import { introStepId } from "@/lib/course-utils";
 
 export type CoursePreviewStripItem = CoursePreviewItem & {
   targetLessonId?: string;
 };
 
+// A section's tiles on the course page: its intro first (titled
+// `introTitle`, when the section has one), then lessons and their tests, then
+// standalone tests.
 export function buildSectionPreviewItems(
-  section: Pick<CourseSectionPreview, "lessons" | "tests">,
+  section: Pick<CourseSectionPreview, "id" | "intro" | "lessons" | "tests">,
+  { introTitle }: { introTitle?: string } = {},
 ): CoursePreviewStripItem[] {
+  const introItems =
+    section.intro !== null && introTitle
+      ? [{ iconUrl: null, id: introStepId(section.id), kind: "lesson" as const, title: introTitle }]
+      : [];
   const lessonItems = section.lessons.flatMap((lesson) => [
     {
       iconUrl: lesson.iconUrl,
@@ -34,5 +43,5 @@ export function buildSectionPreviewItems(
     title: sectionTest.title,
   }));
 
-  return [...lessonItems, ...sectionTestItems];
+  return [...introItems, ...lessonItems, ...sectionTestItems];
 }

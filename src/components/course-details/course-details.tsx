@@ -27,6 +27,7 @@ import {
   buildLessonTestPath,
   getEntryStep,
 } from "@/lib/course-utils";
+import { truncateSummary } from "@/lib/section-summary";
 import { useAppState } from "@/lib/use-app-state";
 
 export const CourseDetails = ({ courseId }: { courseId: string }) => {
@@ -192,12 +193,12 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
                 {section.title}
               </div>
               {section.description && (
-                <CardDescription>{section.description}</CardDescription>
+                <CardDescription>{truncateSummary(section.description)}</CardDescription>
               )}
             </div>
             <div className="overflow-x-auto pb-2">
               <CoursePreviewStrip
-                items={buildSectionPreviewItems(section)}
+                items={buildSectionPreviewItems(section, { introTitle: t("courseDetails.sectionIntro") })}
                 onSelect={handlePreviewItemSelect}
               />
             </div>

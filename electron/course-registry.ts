@@ -908,6 +908,53 @@ function formatSectionTitle(sectionSlug: string): string {
     .join(" ");
 }
 
+// The section intro (SLJ-45): locales/<lang>/intro.md, the lesson body format.
+const SECTION_INTRO_FILENAME = "intro.md";
+
+async function readLocalizedSectionIntro(
+  courseRecord: CourseRecord,
+  sectionId: string,
+  preferredLocale?: Locale,
+): Promise<string | null> {
+  const requestedLocales = [preferredLocale, courseRecord.manifest.defaultLocale].filter(
+    (locale, index, locales): locale is Locale => Boolean(locale) && locales.indexOf(locale) === index,
+  );
+
+  for (const locale of requestedLocales) {
+    try {
+      return await fs.readFile(
+        path.join(resolveSectionLocaleDirectoryPath(courseRecord, sectionId, locale), SECTION_INTRO_FILENAME),
+        "utf8",
+      );
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+// Your own course: whether any committed version (versions/<v>/) has an intro
+// for this section, in any language.
+async function isSectionIntroInCommittedVersion(courseRecord: CourseRecord, sectionId: string): Promise<boolean> {
+  const versionsPath = path.join(courseRecord.courseRootPath, "versions");
+  const versions = await fs.readdir(versionsPath).catch(() => [] as string[]);
+
+  for (const version of versions) {
+    const localesPath = path.join(versionsPath, version, sectionId, "locales");
+    const locales = await fs.readdir(localesPath).catch(() => [] as string[]);
+
+    for (const locale of locales) {
+      const exists = await fs
+        .access(path.join(localesPath, locale, SECTION_INTRO_FILENAME))
+        .then(() => true, () => false);
+      if (exists) return true;
+    }
+  }
+
+  return false;
+}
+
 async function readCourseSections(
   courseRecord: CourseRecord,
   sections: SharedSectionDefinition[],
@@ -929,6 +976,10 @@ async function readCourseSections(
       return {
         description: localizedSectionMetadata?.description,
         id: section.id,
+        intro: await readLocalizedSectionIntro(courseRecord, section.id, preferredLocale),
+        ...(courseRecord.distribution === "local"
+          ? { introInCommittedVersion: await isSectionIntroInCommittedVersion(courseRecord, section.id) }
+          : {}),
         lessons: await Promise.all(
           section.lessonIds.map((lessonId) =>
             readCourseLesson(courseRecord, section.id, lessonId, preferredLocale),

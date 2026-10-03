@@ -163,3 +163,13 @@ export function useForwardAutosaveStatus(
     return () => report(null, null);
   }, [report]);
 }
+
+// One status for a page that autosaves several things (the section page: its
+// fields and its intro). The most urgent wins: an error, then saving, then
+// unsaved changes; saved only when everything is.
+export function mergeAutosaveStatuses(statuses: EntityAutosaveStatus[]): EntityAutosaveStatus {
+  for (const status of ["error", "saving", "dirty"] as const) {
+    if (statuses.includes(status)) return status;
+  }
+  return "saved";
+}

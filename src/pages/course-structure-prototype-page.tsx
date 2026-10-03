@@ -24,6 +24,7 @@ function createSampleLocales(title: string): CourseSectionPreview["locales"] {
 const sampleSections: CourseSectionPreview[] = [
   {
     id: "sample-section-1",
+    intro: null,
     lessons: [
       createSampleLesson("sample-lesson-1", "Placeholder document A"),
       createSampleLesson("sample-lesson-2", "Placeholder document B"),
@@ -34,6 +35,7 @@ const sampleSections: CourseSectionPreview[] = [
   },
   {
     id: "sample-section-2",
+    intro: null,
     lessons: [createSampleLesson("sample-lesson-3", "Placeholder document C")],
     locales: createSampleLocales("Section 2"),
     tests: [],

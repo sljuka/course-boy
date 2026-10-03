@@ -31,6 +31,8 @@ import type {
   UpdateCourseSectionInput,
   UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
+  UpdateSectionIntroInput,
+  RemoveSectionIntroInput,
   UploadCourseAssetBytesInput,
   UploadCourseAssetBytesResult,
   UploadCourseAssetInput,
@@ -76,6 +78,12 @@ contextBridge.exposeInMainWorld('courses', {
   },
   updateLessonContent(input: UpdateLessonContentInput) {
     return ipcRenderer.invoke('courses:update-lesson-content', input) as Promise<void>
+  },
+  updateSectionIntro(input: UpdateSectionIntroInput) {
+    return ipcRenderer.invoke('courses:update-section-intro', input) as Promise<void>
+  },
+  removeSectionIntro(input: RemoveSectionIntroInput) {
+    return ipcRenderer.invoke('courses:remove-section-intro', input) as Promise<void>
   },
   saveLessonTest(input: SaveLessonTestInput) {
     return ipcRenderer.invoke('courses:save-lesson-test', input) as Promise<void>

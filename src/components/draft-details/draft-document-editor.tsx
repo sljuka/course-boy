@@ -1,37 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { filterSuggestionItems } from "@blocknote/core";
-import { BlockNoteView } from "@blocknote/shadcn";
-import "@blocknote/shadcn/style.css";
-import {
-  FormattingToolbar,
-  FormattingToolbarController,
-  getDefaultReactSlashMenuItems,
-  getFormattingToolbarItems,
-  SuggestionMenuController,
-  useCreateBlockNote,
-} from "@blocknote/react";
+import { useCallback } from "react";
 import { Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import type { CourseLayoutOutletContext } from "@/components/course-layout";
-import { documentEditorSchema } from "@/components/editor-prototype/blocknote-schema";
-import { DocumentEditorContextProvider } from "@/components/editor-prototype/document-editor-context";
-import { createExerciseSlashMenuItem } from "@/components/editor-prototype/exercise-block";
-import {
-  createInitialDocumentBlocks,
-  type EditorPrototypeBlock,
-} from "@/components/editor-prototype/editor-prototype-types";
-import {
-  blockNoteBlocksToEditorPrototype,
-  editorPrototypeBlocksToBlockNote,
-} from "@/components/editor-prototype/blocknote-translation";
-import { LocalesTabs } from "@/components/locales-tabs";
+import type { DocumentLocaleDraft } from "@/components/draft-details/draft-document-seed";
+import { LocalizedDocumentEditor } from "@/components/draft-details/localized-document-editor";
+import { useLocalizedDocumentDraft } from "@/components/draft-details/use-localized-document-draft";
 import { PageContent } from "@/components/page-content";
 import { Button, ButtonLabel } from "@/components/ui/button";
-import type { CourseAssetKind } from "@/lib/course-asset-id";
-import { matkoAssetUrl } from "@/lib/course-assets";
 import type { CourseLesson, UpdateLessonContentInput } from "@/lib/course-package";
 import { buildDraftLessonPreviewPath } from "@/lib/course-utils";
 import type { Locale } from "@/lib/i18n";
@@ -39,113 +17,8 @@ import { blocksToMarkdown } from "@/lib/lesson-content-markdown";
 import {
   useCourseDetailsForLocalesQueries,
   useUpdateLessonContentMutation,
-  useUploadCourseAssetBytesMutation,
 } from "@/lib/course-queries";
-import {
-  buildDocumentSeed,
-  type DocumentLocaleDraft,
-} from "@/components/draft-details/draft-document-seed";
 import { useEntityAutosave, useForwardAutosaveStatus } from "@/lib/use-entity-autosave";
-import { useAppState } from "@/lib/use-app-state";
-
-// BlockNote's own "Upload from device" file input already restricts the OS
-// picker to each block's accepted mime types (image/video/audio), so this
-// only needs to pick between our three non-SVG asset kinds.
-function assetKindForFile(file: File): CourseAssetKind {
-  if (file.type.startsWith("video/")) {
-    return "video";
-  }
-
-  if (file.type.startsWith("audio/")) {
-    return "audio";
-  }
-
-  return "image";
-}
-
-function DocumentBlockNoteEditor({
-  activeLocale,
-  autoFocusOnMount,
-  blocks,
-  courseId,
-  onChange,
-}: {
-  activeLocale: Locale;
-  autoFocusOnMount: boolean;
-  blocks: EditorPrototypeBlock[];
-  courseId: string;
-  onChange: (blocks: EditorPrototypeBlock[]) => void;
-}) {
-  const { theme } = useAppState();
-  const hasAutoFocusedRef = useRef(false);
-  // `mutateAsync` itself is stable across renders — depending on the whole
-  // mutation object here instead would recreate `uploadFile` (and, via
-  // `useCreateBlockNote`, silently go stale) on every unrelated re-render.
-  const { mutateAsync: uploadAssetBytes } = useUploadCourseAssetBytesMutation();
-  const uploadFile = useCallback(
-    async (file: File) => {
-      const data = await file.arrayBuffer();
-      const result = await uploadAssetBytes({
-        courseId,
-        data,
-        filename: file.name,
-        kind: assetKindForFile(file),
-      });
-
-      return matkoAssetUrl(courseId, result.path);
-    },
-    [courseId, uploadAssetBytes],
-  );
-  // Recreated (not just re-rendered) whenever the active locale changes —
-  // each locale's content is a fully separate BlockNote document, so a new
-  // `activeLocale` needs a fresh editor instance seeded from that locale's
-  // own blocks, same as `initialContent` would otherwise only apply once.
-  const editor = useCreateBlockNote(
-    {
-      initialContent: editorPrototypeBlocksToBlockNote(blocks, courseId),
-      schema: documentEditorSchema,
-      uploadFile,
-    },
-    [activeLocale],
-  );
-
-  useEffect(() => {
-    if (autoFocusOnMount && !hasAutoFocusedRef.current) {
-      editor.focus();
-      hasAutoFocusedRef.current = true;
-    }
-  }, [autoFocusOnMount, editor]);
-
-  return (
-    <BlockNoteView
-      editable
-      editor={editor}
-      formattingToolbar={false}
-      onChange={() => onChange(blockNoteBlocksToEditorPrototype(editor.document))}
-      slashMenu={false}
-      theme={theme}
-    >
-      {/* BlockNote's toolbar without its Download button for a selected
-          image/video/audio: the media player has its own download. */}
-      <FormattingToolbarController
-        formattingToolbar={() => (
-          <FormattingToolbar>
-            {getFormattingToolbarItems().filter((item) => item.key !== "fileDownloadButton")}
-          </FormattingToolbar>
-        )}
-      />
-      <SuggestionMenuController
-        getItems={async (query) =>
-          filterSuggestionItems(
-            [...getDefaultReactSlashMenuItems(editor), createExerciseSlashMenuItem(editor)],
-            query,
-          )
-        }
-        triggerCharacter="/"
-      />
-    </BlockNoteView>
-  );
-}
 
 type DraftDocumentEditorProps = {
   appLocale: Locale;
@@ -197,31 +70,8 @@ function LoadedDraftDocumentEditor({
 }: DraftDocumentEditorProps & { lessonBodies: Partial<Record<Locale, string>> }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [initialLocale] = useState<Locale>(() =>
-    supportedLocales.includes(appLocale) ? appLocale : (supportedLocales[0] ?? appLocale),
-  );
-  // Frozen at mount: the editor's starting content per language, and the
-  // autosave baseline — so an untouched language tab is never written.
-  const [seed] = useState<DocumentLocaleDraft>(() =>
-    buildDocumentSeed(lessonBodies, supportedLocales),
-  );
-  const [draft, setDraft] = useState<DocumentLocaleDraft>(seed);
-  // Frozen at mount, same as `seed` above — a document that starts blank
-  // gets its heading autofocused; one that already has real content never
-  // does, even after the draft itself changes.
-  const [isNewDocument] = useState(
-    () => (lessonBodies[initialLocale] ?? "").trim().length === 0,
-  );
-  const [activeDocumentLocale, setActiveDocumentLocale] = useState<Locale>(initialLocale);
+  const document = useLocalizedDocumentDraft({ appLocale, bodies: lessonBodies, supportedLocales });
   const updateLessonContentMutation = useUpdateLessonContentMutation();
-
-  useEffect(() => {
-    if (supportedLocales.includes(activeDocumentLocale)) {
-      return;
-    }
-
-    setActiveDocumentLocale(supportedLocales[0] ?? appLocale);
-  }, [activeDocumentLocale, appLocale, supportedLocales]);
 
   const buildInput = useCallback(
     (value: DocumentLocaleDraft): UpdateLessonContentInput => ({
@@ -240,20 +90,17 @@ function LoadedDraftDocumentEditor({
 
   const autosave = useEntityAutosave({
     buildInput,
-    initialValue: seed,
+    initialValue: document.seed,
     mutation: updateLessonContentMutation,
-    value: draft,
+    value: document.draft,
   });
 
   useForwardAutosaveStatus(reportAutosaveStatus, autosave);
 
-  const activeBlocks =
-    draft[activeDocumentLocale] ?? createInitialDocumentBlocks(undefined, activeDocumentLocale);
-
   function openPreview() {
     navigate(buildDraftLessonPreviewPath(courseId), {
       state: {
-        body: blocksToMarkdown(activeBlocks),
+        body: blocksToMarkdown(document.activeBlocks),
         selectedNode,
         test: lesson.test,
       },
@@ -275,25 +122,7 @@ function LoadedDraftDocumentEditor({
       }
       fullBleed
     >
-      {supportedLocales.length > 1 && (
-        <LocalesTabs
-          activeLocale={activeDocumentLocale}
-          locales={supportedLocales}
-          onActiveLocaleChange={setActiveDocumentLocale}
-          renderContent={() => null}
-        />
-      )}
-      <DocumentEditorContextProvider courseId={courseId} supportedLocales={supportedLocales}>
-        <DocumentBlockNoteEditor
-          activeLocale={activeDocumentLocale}
-          autoFocusOnMount={isNewDocument}
-          blocks={activeBlocks}
-          courseId={courseId}
-          onChange={(blocks) =>
-            setDraft((current) => ({ ...current, [activeDocumentLocale]: blocks }))
-          }
-        />
-      </DocumentEditorContextProvider>
+      <LocalizedDocumentEditor courseId={courseId} document={document} supportedLocales={supportedLocales} />
     </PageContent>
   );
 }

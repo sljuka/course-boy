@@ -31,6 +31,8 @@ import type {
   UpdateCourseSectionInput,
   UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
+  UpdateSectionIntroInput,
+  RemoveSectionIntroInput,
   UploadCourseAssetBytesInput,
   UploadCourseAssetBytesResult,
   UploadCourseAssetInput,
@@ -1482,6 +1484,69 @@ export async function updateLocalCourseLessonContent(
     ...manifest,
     updatedAt: new Date().toISOString(),
   });
+}
+
+// The section intro (SLJ-45): locales/<lang>/intro.md in the section folder,
+// the same format as a lesson body. Optional: no file means no intro.
+const SECTION_INTRO_FILENAME = "intro.md";
+
+async function resolveDraftSectionDirectory(courseId: string, sectionId: string) {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseDirectoryPath = resolveCourseDirectoryPath(localCoursesRoot, courseId);
+  const manifest = await readCourseManifest(courseDirectoryPath);
+
+  if (manifest.status !== "draft") {
+    throw new Error(`Course "${courseId}" is not a draft`);
+  }
+
+  const sectionDirectoryPath = resolveSectionDirectoryPath(courseDirectoryPath, sectionId);
+
+  if (!(await pathExists(path.join(sectionDirectoryPath, "section.json")))) {
+    throw new Error(`Section "${sectionId}" does not exist`);
+  }
+
+  return { courseDirectoryPath, manifest, sectionDirectoryPath };
+}
+
+export async function updateLocalCourseSectionIntro(input: UpdateSectionIntroInput): Promise<void> {
+  const { courseDirectoryPath, manifest, sectionDirectoryPath } = await resolveDraftSectionDirectory(
+    input.courseId,
+    input.sectionId,
+  );
+  const localeEntries = withGeneratedLessonBody(
+    Object.entries(input.locales) as [Locale, { body: string } | undefined][],
+    manifest.serbianScript,
+  );
+
+  await Promise.all(
+    localeEntries.map(async ([locale, localeContent]) => {
+      if (!localeContent) {
+        return;
+      }
+
+      const localeDirectoryPath = path.join(sectionDirectoryPath, "locales", locale);
+      await fs.mkdir(localeDirectoryPath, { recursive: true });
+      await writeFileAtomic(path.join(localeDirectoryPath, SECTION_INTRO_FILENAME), localeContent.body);
+    }),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, { ...manifest, updatedAt: new Date().toISOString() });
+}
+
+// Removes the intro in every language. Committed versions keep their copies.
+export async function removeLocalCourseSectionIntro(input: RemoveSectionIntroInput): Promise<void> {
+  const { courseDirectoryPath, manifest, sectionDirectoryPath } = await resolveDraftSectionDirectory(
+    input.courseId,
+    input.sectionId,
+  );
+  const localesPath = path.join(sectionDirectoryPath, "locales");
+  const locales = await fs.readdir(localesPath).catch(() => [] as string[]);
+
+  await Promise.all(
+    locales.map((locale) => fs.rm(path.join(localesPath, locale, SECTION_INTRO_FILENAME), { force: true })),
+  );
+
+  await writeCourseManifest(courseDirectoryPath, { ...manifest, updatedAt: new Date().toISOString() });
 }
 
 export async function updateLocalCourseLessonTest(

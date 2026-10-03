@@ -133,6 +133,7 @@ async function diffStructure(before: Side, after: Side, locale: string): Promise
 
     const lessonIds = new Set<string>();
     const testIds = new Set<string>();
+    let introChanged = false;
     // Changed files this function doesn't know (a future file type): still a
     // change, reported as an edit of their section, so the list never says
     // "no changes" while the draft badge (which compares every file) says there are.
@@ -141,7 +142,10 @@ async function diffStructure(before: Side, after: Side, locale: string): Promise
     for (const file of changed.filter((candidate) => candidate.split(path.sep)[0] === section)) {
       const name = path.basename(file, path.extname(file));
 
-      if (name.startsWith("lesson-")) {
+      if (name === "intro" && file.split(path.sep).includes("locales")) {
+        // The section intro (SLJ-45), in any language.
+        introChanged = true;
+      } else if (name.startsWith("lesson-")) {
         lessonIds.add(name);
       } else if (name.startsWith("test-") || name.startsWith("section-test-")) {
         // `test-NN-…` is a lesson's test; `section-test-NN-…` a standalone one.
@@ -153,6 +157,16 @@ async function diffStructure(before: Side, after: Side, locale: string): Promise
 
     if (hasOtherChange) {
       changes.push({ kind: "edited", target: "section", title: sectionTitle });
+    }
+
+    if (introChanged) {
+      const isIntro = (file: string) =>
+        file.split(path.sep)[0] === section && path.basename(file) === "intro.md";
+      changes.push({
+        kind: kindOf(Object.keys(before.hashes).some(isIntro), Object.keys(after.hashes).some(isIntro)),
+        section: sectionTitle,
+        target: "section-intro",
+      });
     }
 
     for (const lessonId of [...lessonIds].sort()) {
@@ -301,6 +315,10 @@ async function locationOf(
 
   const sectionTitle = titleFrom(await readJson(path.join(draftDirectoryPath, section, "section.json")), locale);
   const name = path.basename(file, path.extname(file));
+
+  if (name === "intro" && rest.includes("locales")) {
+    return { section: sectionTitle, target: "section-intro" };
+  }
 
   if (name.startsWith("section-test-")) {
     return {

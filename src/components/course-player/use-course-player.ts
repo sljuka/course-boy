@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import type { CourseLesson, CourseSectionTest } from "@/lib/course-package";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
-import { buildLessonPath, buildLessonTestPath } from "@/lib/course-utils";
+import { buildLessonPath, buildLessonTestPath, introStepId } from "@/lib/course-utils";
 import { useAppState } from "@/lib/use-app-state";
 
 // A step in the player's overall sequence is either a document (a lesson,
@@ -23,6 +24,9 @@ export type CoursePlayerReadyState = {
   // and skip the section/progress line, which is synthetic there (a single
   // fake "Preview" section, always "1 of 1").
   isPreview: boolean;
+  // A section intro (SLJ-45): shown like a lesson, but not counted in the
+  // progress ("Lesson 2 of 5") and labelled "Introduction" instead.
+  isSectionIntro: boolean;
   moveToNextStep: () => void;
   progressCurrent: number;
   progressTotal: number;
@@ -55,6 +59,7 @@ export function useCoursePlayer({
   lessonId: string;
 }): CoursePlayerState {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { locale } = useAppState();
   const [isCourseComplete, setIsCourseComplete] = useState(false);
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
@@ -66,17 +71,38 @@ export function useCoursePlayer({
       return [];
     }
 
+    const introTitle = t("courseDetails.sectionIntro");
+
     return course.sections.flatMap((section) => [
+      // The section intro (SLJ-45) first: shown like a lesson, with no test.
+      ...(section.intro !== null
+        ? [
+            {
+              item: {
+                body: section.intro,
+                description: "",
+                iconUrl: null,
+                id: introStepId(section.id),
+                test: null,
+                title: introTitle,
+              } satisfies CourseLesson,
+              isSectionIntro: true,
+              kind: "lesson",
+              sectionId: section.id,
+              sectionTitle: section.title,
+            } as const,
+          ]
+        : []),
       ...section.lessons.map(
         (lesson) =>
-          ({ item: lesson, kind: "lesson", sectionTitle: section.title }) as const,
+          ({ isSectionIntro: false, item: lesson, kind: "lesson", sectionId: section.id, sectionTitle: section.title }) as const,
       ),
       ...section.tests.map(
         (sectionTest) =>
-          ({ item: sectionTest, kind: "test", sectionTitle: section.title }) as const,
+          ({ isSectionIntro: false, item: sectionTest, kind: "test", sectionId: section.id, sectionTitle: section.title }) as const,
       ),
     ]);
-  }, [course]);
+  }, [course, t]);
 
   const activeStepIndex = stepSequence.findIndex(
     (entry) => entry.item.id === lessonId,
@@ -114,25 +140,13 @@ export function useCoursePlayer({
   }
 
   if (course && stepSequence.length > 0 && !activeStepEntry) {
-    const entrySection = course.sections.find(
-      (section) => section.id === course.entrySectionId,
-    );
+    // An unknown step id: start at the entry section's first step (its intro,
+    // when it has one).
     const fallbackStep =
-      entrySection?.lessons[0] ??
-      entrySection?.tests[0] ??
-      course.sections[0]?.lessons[0] ??
-      course.sections[0]?.tests[0] ??
-      null;
+      stepSequence.find((entry) => entry.sectionId === course.entrySectionId) ?? stepSequence[0];
 
     if (fallbackStep) {
-      const isLesson = "body" in fallbackStep;
-
-      return {
-        status: "redirect",
-        to: isLesson
-          ? buildLessonPath(courseId, fallbackStep.id)
-          : buildLessonTestPath(courseId, fallbackStep.id),
-      };
+      return { status: "redirect", to: pathForStep(fallbackStep) };
     }
   }
 
@@ -155,15 +169,19 @@ export function useCoursePlayer({
     return { status: "missing" };
   }
 
+  // Intros aren't counted: progress is over lessons and tests.
+  const countedSteps = stepSequence.filter((entry) => !entry.isSectionIntro);
+
   return {
     activeStep: activeStepEntry,
     courseId,
     courseTitle: course.title,
     exitPlayer,
     isPreview: false,
+    isSectionIntro: activeStepEntry.isSectionIntro,
     moveToNextStep,
-    progressCurrent: activeStepIndex + 1,
-    progressTotal: stepSequence.length,
+    progressCurrent: countedSteps.findIndex((entry) => entry.item.id === activeStepEntry.item.id) + 1,
+    progressTotal: countedSteps.length,
     sectionTitle: activeStepEntry.sectionTitle,
     status: "ready",
   };

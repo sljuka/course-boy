@@ -16,6 +16,8 @@ export function describeCourseChange(change: CourseChange, t: TFunction): string
         section: change.section,
         title: change.title,
       });
+    case "section-intro":
+      return t(`courseChanges.sectionIntro.${change.kind}`, { section: change.section });
     case "course":
       return t(`courseChanges.course.${change.field}`);
     case "language":
@@ -34,6 +36,8 @@ export function describeCourseLocation(location: CourseChangeLocation, t: TFunct
       return t("courseChanges.location.course");
     case "section":
       return t("courseChanges.location.section", { title: location.title });
+    case "section-intro":
+      return t("courseChanges.location.sectionIntro", { section: location.section });
     case "lesson":
     case "test":
       return t(`courseChanges.location.${location.target}`, {

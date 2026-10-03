@@ -21,12 +21,14 @@ import {
   openCourseDirectoryInFileSystem,
   publishLocalCourseVersion,
   readImportedCourseVersion,
+  removeLocalCourseSectionIntro,
   revertLocalCourseDraftToVersion,
   switchImportedCourseVersion,
   updateLocalCourseDraftMetadata,
+  updateLocalCourseSectionIntro,
   uploadCourseAssetFromBytes,
 } from "./course-paths";
-import { getCourseVersionHistory, listCourses } from "./course-registry";
+import { getCourseDetails, getCourseVersionHistory, listCourses } from "./course-registry";
 import { shell } from "electron";
 
 let userDataDir = "";
@@ -1048,5 +1050,72 @@ describe("imported courses", () => {
     await cleanUpInterruptedCourseUpdates();
 
     expect(await fs.stat(staging).then(() => true, () => false)).toBe(false);
+  });
+});
+
+// SLJ-45: a section's intro is locales/<lang>/intro.md, in the lesson body format.
+describe("section intro", () => {
+  async function seedCourseWithSection(withLesson = true) {
+    const { courseId } = await createLocalCourseDraft({
+      defaultLocale: "en",
+      locales: { en: { description: "", title: "Fractions course" } },
+      supportedLocales: ["en"],
+    });
+    const { sectionId } = await createLocalCourseSection({ courseId, title: "Fractions" });
+    if (withLesson) {
+      await createLocalCourseLesson({ courseId, sectionId, title: "Halves" });
+    }
+    const root = await ensureLocalCoursesRoot();
+    const section = async () =>
+      (await getCourseDetails(root, courseId, "en"))!.sections.find((candidate) => candidate.id === sectionId)!;
+
+    return { courseId, root, section, sectionId };
+  }
+
+  it("is written, read back, recorded as committed once cut, and removed", async () => {
+    const { courseId, root, section, sectionId } = await seedCourseWithSection();
+    const body = "[matko-block]: <> (heading)\n## Fractions\n\n[matko-block]: <> (markdown)\nWelcome.";
+
+    expect((await section()).intro).toBeNull();
+
+    await updateLocalCourseSectionIntro({ courseId, locales: { en: { body } }, sectionId });
+    expect(await section()).toMatchObject({ intro: body, introInCommittedVersion: false });
+    expect(await fs.readFile(path.join(root, courseId, "draft", sectionId, "locales", "en", "intro.md"), "utf8")).toBe(
+      body,
+    );
+
+    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    expect((await section()).introInCommittedVersion).toBe(true);
+
+    await removeLocalCourseSectionIntro({ courseId, sectionId });
+    expect(await section()).toMatchObject({ intro: null, introInCommittedVersion: true });
+  });
+
+  it("doesn't make a section without lessons or tests committable", async () => {
+    const { courseId, sectionId } = await seedCourseWithSection(false);
+
+    await updateLocalCourseSectionIntro({ courseId, locales: { en: { body: "Welcome." } }, sectionId });
+
+    await expect(cutLocalCourseVersion({ courseId, releaseType: "patch" })).rejects.toThrow(/does not contain any/);
+  });
+
+  it("counts a file used only in an intro as used", async () => {
+    const { courseId, sectionId } = await seedCourseWithSection();
+    const asset = await uploadCourseAssetFromBytes({
+      courseId,
+      data: new TextEncoder().encode("<svg>intro</svg>").buffer,
+      filename: "intro.svg",
+      kind: "svg",
+    });
+
+    expect(await getUnusedDraftAssets(courseId)).toEqual([expect.objectContaining({ filename: asset.path })]);
+
+    await updateLocalCourseSectionIntro({
+      courseId,
+      locales: { en: { body: `[matko-block]: <> (image)\n![Map](${asset.path})` } },
+      sectionId,
+    });
+
+    expect(await getUnusedDraftAssets(courseId)).toEqual([]);
   });
 });

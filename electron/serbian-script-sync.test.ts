@@ -12,6 +12,7 @@ import {
   ensureLocalCoursesRoot,
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
+  updateLocalCourseSectionIntro,
   updateLocalCourseSection,
 } from "./course-paths";
 
@@ -93,6 +94,21 @@ describe("generating one Serbian script from the other (SLJ-17)", () => {
       (await readJson(path.join(course.sectionDir, `${course.lessonId}.json`))).locales["sr-Cyrl"].title,
     ).toBe("Сабирање");
     expect(await course.lessonBody("sr-Cyrl")).toBe("[matko-block]: <> (markdown)\nКолико је {{x}}?");
+  });
+
+  it("generates the other script of a section intro (SLJ-45)", async () => {
+    const course = await seedLatinCourse();
+
+    await course.setMetadata(["sr"], { source: "sr" });
+    await updateLocalCourseSectionIntro({
+      courseId: course.courseId,
+      locales: { sr: { body: "[matko-block]: <> (markdown)\nDobro došli." } },
+      sectionId: course.sectionId,
+    });
+
+    expect(await fs.readFile(path.join(course.sectionDir, "locales", "sr-Cyrl", "intro.md"), "utf8")).toBe(
+      "[matko-block]: <> (markdown)\nДобро дошли.",
+    );
   });
 
   it("keeps the generated script in sync on every save, ignoring edits sent for it", async () => {

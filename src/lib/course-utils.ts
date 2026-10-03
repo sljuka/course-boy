@@ -10,6 +10,14 @@ export function getContentRatingLabelKey(contentRating: ContentRating) {
   return contentRatingLabelKeys[contentRating];
 }
 
+// A section intro (SLJ-45) is a player step shown like a lesson (no test of
+// its own) under this id, reached through the lesson route.
+const INTRO_STEP_PREFIX = "intro-";
+
+export function introStepId(sectionId: string): string {
+  return `${INTRO_STEP_PREFIX}${sectionId}`;
+}
+
 export function getEntryStep(
   course: CourseDetails,
 ): { id: string; kind: "lesson" | "test" } | null {
@@ -17,6 +25,11 @@ export function getEntryStep(
     (section) => section.id === course.entrySectionId,
   );
   const fallbackSection = course.sections[0];
+  const introSection = entrySection ?? fallbackSection;
+
+  if (introSection?.intro) {
+    return { id: introStepId(introSection.id), kind: "lesson" };
+  }
   const lessonId = entrySection?.lessons[0]?.id ?? fallbackSection?.lessons[0]?.id;
 
   if (lessonId) {

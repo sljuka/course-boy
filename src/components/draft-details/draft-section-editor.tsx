@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getLocaleLabel } from "@/components/draft-details/draft-locale-utils";
@@ -8,11 +8,19 @@ import { LocalesTabs } from "@/components/locales-tabs";
 import { PageContent } from "@/components/page-content";
 import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  SectionIntroArea,
+  type SectionIntroAutosave,
+} from "@/components/draft-details/section-intro-editor";
 import type { CourseSectionPreview, LocalizedSectionMetadata, UpdateCourseSectionInput } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { useUpdateSectionMutation } from "@/lib/course-queries";
-import { useEntityAutosave, useForwardAutosaveStatus } from "@/lib/use-entity-autosave";
+import { countCharacters, SECTION_SUMMARY_MAX_LENGTH } from "@/lib/section-summary";
+import {
+  mergeAutosaveStatuses,
+  useEntityAutosave,
+  useForwardAutosaveStatus,
+} from "@/lib/use-entity-autosave";
 
 type SectionDraftLocaleValue = {
   description: string;
@@ -107,7 +115,25 @@ export function DraftSectionEditor({
     value: locales,
   });
 
-  useForwardAutosaveStatus(reportAutosaveStatus, autosave);
+  // The intro (if any) autosaves on its own; the status bar shows one status
+  // for the whole page.
+  const [introAutosave, setIntroAutosave] = useState<SectionIntroAutosave | null>(null);
+  const { errorMessage: fieldsError, saveNow: saveFieldsNow, status: fieldsStatus } = autosave;
+  const saveIntroNow = introAutosave?.saveNow;
+  const saveNow = useCallback(() => {
+    saveFieldsNow();
+    saveIntroNow?.();
+  }, [saveFieldsNow, saveIntroNow]);
+  const pageAutosave = useMemo(
+    () => ({
+      errorMessage: fieldsError ?? introAutosave?.errorMessage ?? null,
+      saveNow,
+      status: mergeAutosaveStatuses([fieldsStatus, ...(introAutosave ? [introAutosave.status] : [])]),
+    }),
+    [fieldsError, fieldsStatus, introAutosave, saveNow],
+  );
+
+  useForwardAutosaveStatus(reportAutosaveStatus, pageAutosave);
 
   function updateLocale(locale: Locale, patch: Partial<SectionDraftLocaleValue>) {
     setLocales((current) => ({
@@ -156,23 +182,61 @@ export function DraftSectionEditor({
                 )}
               </Field>
               <Field>
-                <FieldLabel htmlFor={`draft-section-description-${locale}`}>
-                  Description
+                <FieldLabel htmlFor={`draft-section-summary-${locale}`}>
+                  {t("draftSection.summaryLabel")}
                 </FieldLabel>
-                <Textarea
-                  id={`draft-section-description-${locale}`}
-                  onChange={(event) =>
-                    updateLocale(locale, { description: event.target.value })
-                  }
-                  placeholder="Add a short section description"
-                  rows={3}
+                <Input
+                  aria-invalid={countCharacters(locales[locale]?.description ?? "") > SECTION_SUMMARY_MAX_LENGTH}
+                  id={`draft-section-summary-${locale}`}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    const current = locales[locale]?.description ?? "";
+                    // Typing stops at the limit; an older, longer description
+                    // can still be shortened.
+                    if (
+                      countCharacters(next) > SECTION_SUMMARY_MAX_LENGTH &&
+                      countCharacters(next) >= countCharacters(current)
+                    ) {
+                      return;
+                    }
+                    updateLocale(locale, { description: next });
+                  }}
+                  placeholder={t("draftSection.summaryPlaceholder")}
                   value={locales[locale]?.description ?? ""}
                 />
+                <FieldDescription
+                  variant={
+                    countCharacters(locales[locale]?.description ?? "") > SECTION_SUMMARY_MAX_LENGTH
+                      ? "destructive"
+                      : undefined
+                  }
+                >
+                  {countCharacters(locales[locale]?.description ?? "") > SECTION_SUMMARY_MAX_LENGTH
+                    ? t("draftSection.summaryTooLong", {
+                        count: countCharacters(locales[locale]?.description ?? ""),
+                        max: SECTION_SUMMARY_MAX_LENGTH,
+                      })
+                    : t("draftSection.summaryHint", {
+                        count: countCharacters(locales[locale]?.description ?? ""),
+                        max: SECTION_SUMMARY_MAX_LENGTH,
+                      })}
+                </FieldDescription>
               </Field>
             </FieldGroup>
           </FieldSet>
         )}
       />
+      {section && (
+        <SectionIntroArea
+          courseId={courseId}
+          onAutosaveChange={setIntroAutosave}
+          section={section}
+          sectionTitles={Object.fromEntries(
+            Object.entries(locales).map(([locale, value]) => [locale, value?.title ?? ""]),
+          )}
+          supportedLocales={supportedLocales}
+        />
+      )}
     </PageContent>
   );
 }

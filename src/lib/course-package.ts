@@ -413,8 +413,18 @@ export type CourseSectionTest = LessonPreview & {
 };
 
 export type CourseSectionPreview = {
+  // The section summary (SLJ-45): one line, max SECTION_SUMMARY_MAX_LENGTH
+  // characters, shown wherever sections are listed. Stored as each locale's
+  // `description` (older courses' longer descriptions are cut off when shown).
   description?: string;
   id: string;
+  // The section intro document (`locales/<lang>/intro.md`, the lesson body
+  // format), in the reader's language or the course's default; null when the
+  // section has no intro. Students see it first when starting the section.
+  intro: string | null;
+  // Your own course only: whether any committed version has an intro for this
+  // section, so removing it from the draft can say whether it's recoverable.
+  introInCommittedVersion?: boolean;
   lessons: CourseLesson[];
   locales: Record<Locale, LocalizedSectionMetadata>;
   tests: CourseSectionTest[];
@@ -505,6 +515,19 @@ export type UpdateLessonContentInput = {
   courseId: string;
   lessonId: string;
   locales: Partial<Record<Locale, { body: string }>>;
+  sectionId: string;
+};
+
+// Writes the section intro in the given languages (SLJ-45). Creating the
+// intro is the first write; Serbian is generated like a lesson body.
+export type UpdateSectionIntroInput = {
+  courseId: string;
+  locales: Partial<Record<Locale, { body: string }>>;
+  sectionId: string;
+};
+
+export type RemoveSectionIntroInput = {
+  courseId: string;
   sectionId: string;
 };
 
@@ -639,6 +662,7 @@ export type CutCourseVersionInput = {
 export type CourseChangeLocation =
   | { target: "course" }
   | { target: "section"; title: string }
+  | { target: "section-intro"; section: string }
   | { target: "lesson" | "test"; title: string; section: string };
 
 // One change between two versions of a course, stored as data so each reader
@@ -647,6 +671,7 @@ export type CourseChangeLocation =
 export type CourseChange =
   | { kind: "added" | "edited" | "removed"; target: "section"; title: string }
   | { kind: "added" | "edited" | "removed"; target: "lesson" | "test"; title: string; section: string }
+  | { kind: "added" | "edited" | "removed"; target: "section-intro"; section: string }
   | {
       kind: "edited";
       target: "course";

@@ -13,9 +13,11 @@ import {
   cutLocalCourseVersion,
   deleteLocalCourseLesson,
   ensureLocalCoursesRoot,
+  removeLocalCourseSectionIntro,
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
   updateLocalCourseSection,
+  updateLocalCourseSectionIntro,
   uploadCourseAssetFromBytes,
 } from "./course-paths";
 
@@ -184,6 +186,42 @@ describe("computeCourseChanges", () => {
     });
 
     expect(await course.changes()).toContainEqual({ count: 1, kind: "added", target: "files" });
+  });
+});
+
+describe("section intro changes (SLJ-45)", () => {
+  it("names an intro added, edited and removed, not as a section edit", async () => {
+    const course = await seedCutCourse();
+    const writeIntro = (body: string) =>
+      updateLocalCourseSectionIntro({ courseId: course.courseId, locales: { en: { body } }, sectionId: course.sectionId });
+
+    await writeIntro("[matko-block]: <> (markdown)\nWelcome.");
+    expect(await course.changes()).toEqual([{ kind: "added", section: "Basics", target: "section-intro" }]);
+
+    // Committed, then edited.
+    await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "patch" });
+    const courseRoot = path.join(await ensureLocalCoursesRoot(), course.courseId);
+    const changesSince = (version: string) =>
+      computeCourseChanges(path.join(courseRoot, "draft"), path.join(courseRoot, "versions", version));
+    await writeIntro("[matko-block]: <> (markdown)\nWelcome back.");
+    expect(await changesSince("0.1.2")).toEqual([{ kind: "edited", section: "Basics", target: "section-intro" }]);
+
+    await removeLocalCourseSectionIntro({ courseId: course.courseId, sectionId: course.sectionId });
+    expect(await changesSince("0.1.2")).toEqual([{ kind: "removed", section: "Basics", target: "section-intro" }]);
+  });
+
+  it("says a missing file is used in the section's intro", async () => {
+    const course = await seedCutCourse();
+
+    await updateLocalCourseSectionIntro({
+      courseId: course.courseId,
+      locales: { en: { body: "![Gone](diagram-0123456789abcdef.svg)" } },
+      sectionId: course.sectionId,
+    });
+
+    expect(await findMissingAssets(course.draftDir)).toEqual([
+      { filename: "diagram-0123456789abcdef.svg", location: { section: "Basics", target: "section-intro" } },
+    ]);
   });
 });
 
