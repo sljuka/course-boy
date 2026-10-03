@@ -293,7 +293,18 @@ refuses a course without one, or one whose `driveKey` isn't the code actually us
 is a claim until SLJ-18 signs versions, so the app never shows it as verified. Where a
 course comes from *on this device* (the code used at import) is app state, kept in the
 main-process-only `course-sharing.json` electron-store file, never re-read from
-`source.json` (see `electron/course-sharing.ts`). Whose course it is *on this device* is
+`source.json` (see `electron/course-sharing.ts`).
+
+**Updating an imported course (SLJ-39)** goes through `applyImportedCourseUpdate` in
+[electron/course-paths.ts](../electron/course-paths.ts:1). It hardlinks the course
+into `.update-staging-<id>-…` under the courses root, the worker mirrors the drive onto
+that copy, the result is validated (same id, the expected version, the recorded source,
+a publishable package), and it's swapped in with two renames via
+`.update-previous-<id>-…`. `cleanUpInterruptedCourseUpdates` undoes a crash between the
+renames at the next start. **Anything that writes into a hardlinked copy must replace
+files, never write them in place.** That's why the worker's Localdrive there is
+`{ atomic: true }`: Localdrive's default opens existing files with `O_TRUNC`, which on a
+hardlink rewrites the live course too. Whose course it is *on this device* is
 never stored in the package, since
 the same package is authored on one machine and imported on another:
 `resolveCourseDistribution` in

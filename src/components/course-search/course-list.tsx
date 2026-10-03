@@ -6,6 +6,7 @@ import { CourseCard } from "@/components/course-search/course-card";
 import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import type { CourseDistribution } from "@/lib/course-package";
 import { useCoursesQuery } from "@/lib/course-queries";
+import { useCourseUpdatesQuery } from "@/lib/sharing-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 export const CourseList = ({
@@ -25,6 +26,9 @@ export const CourseList = ({
   const { data: courses = [], isLoading } = useCoursesQuery(locale, {
     throwOnError: true,
   });
+  // Updates to imported courses; quiet ones (after "Finish on this version")
+  // only show on the course's own page.
+  const { data: updates = {} } = useCourseUpdatesQuery();
 
   const filteredCourses = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -65,6 +69,7 @@ export const CourseList = ({
           course={course}
           href={routeBuilder(course.id)}
           key={course.id}
+          update={updates[course.id]?.visibility === "prominent" ? updates[course.id] : undefined}
         />
       ))}
     </>

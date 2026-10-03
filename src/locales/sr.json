@@ -587,5 +587,27 @@
     "dismissUnsupportedNotice": "Zatvori",
     "unsupportedBlockTitle": "Sadržaj iz novije verzije Matka",
     "unsupportedBlockDescription": "Ovaj blok ne može da se prikaže ni izmeni u tvojoj verziji. Pri čuvanju ostaje nepromenjen. Za izmenu ažuriraj Matko."
+  },
+  "courseUpdates": {
+    "availableTitle": "Dostupno ažuriranje: {{version}}",
+    "availableDescription": "Nastavnik je objavio novu verziju ovog kursa.",
+    "recommendedTitle": "Preporučeno ažuriranje: {{version}}",
+    "recommendedDescription": "Ovo ažuriranje ispravlja greške u ovom kursu.",
+    "bigUpdateTitle": "Veliko ažuriranje: {{version}}",
+    "bigUpdateDescription": "Ova verzija donosi mnogo promena. Evo šta je novo pre nego što ažurirate.",
+    "dialogTitle": "Šta je novo u verziji {{version}}",
+    "dialogDescription": "Beleške o izdanju za svaku verziju koju dobijate ovim ažuriranjem.",
+    "updateButton": "Ažuriraj",
+    "updateTo": "Ažuriraj na {{version}}",
+    "updating": "Ažuriranje…",
+    "whatsNew": "Šta je novo",
+    "notNow": "Ne sada",
+    "finishOnVersion": "Završi na ovoj verziji",
+    "quietLine": "Dostupna je verzija {{version}}.",
+    "refusedTitle": "Ažuriranje {{version}} je odbijeno",
+    "refusedDescription": "Navodi da dolazi iz drugog izvora nego ovaj kurs. Vaš kurs nije promenjen.",
+    "errorTitle": "Ažuriranje kursa nije uspelo",
+    "availableBadge": "Ažuriranje {{version}}",
+    "recommendedBadge": "Preporučeno ažuriranje {{version}}"
   }
 }

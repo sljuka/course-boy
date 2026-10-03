@@ -39,9 +39,11 @@ import type {
 import type { Locale } from '../src/lib/i18n'
 import type { UserPreferences } from '../src/lib/preferences'
 import type {
+  ApplyCourseUpdateResult,
+  CourseSharingInfo,
+  CourseUpdateInfo,
   ImportCourseInput,
   ImportCourseResult,
-  CourseSharingInfo,
 } from '../src/lib/sharing'
 
 contextBridge.exposeInMainWorld('preferences', {
@@ -150,6 +152,15 @@ contextBridge.exposeInMainWorld('sharing', {
   },
   getCourseSharing(courseId: string) {
     return ipcRenderer.invoke('sharing:get-course-sharing', courseId) as Promise<CourseSharingInfo>
+  },
+  listCourseUpdates() {
+    return ipcRenderer.invoke('sharing:list-course-updates') as Promise<Record<string, CourseUpdateInfo>>
+  },
+  applyCourseUpdate(courseId: string) {
+    return ipcRenderer.invoke('sharing:apply-course-update', courseId) as Promise<ApplyCourseUpdateResult>
+  },
+  finishOnVersion(courseId: string) {
+    return ipcRenderer.invoke('sharing:finish-on-version', courseId) as Promise<void>
   },
   importCourse(input: ImportCourseInput) {
     return ipcRenderer.invoke('sharing:import-course', input) as Promise<ImportCourseResult>

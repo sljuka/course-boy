@@ -65,16 +65,39 @@ async function writeLesson(page, ids, text) {
   )
 }
 
-async function cutAndPublish(page, courseId) {
+async function cutAndPublish(page, courseId, { releaseType = 'minor', recommended = false } = {}) {
   const { version } = await page.evaluate(
-    (id) => window.courses.cutVersion({ courseId: id, releaseType: 'minor' }),
-    courseId,
+    (input) => window.courses.cutVersion(input),
+    { courseId, recommended, releaseType },
   )
   await page.evaluate(
     ({ courseId, version }) => window.courses.publishVersion({ courseId, version }),
     { courseId, version },
   )
   return version
+}
+
+// The pending update of an imported course, once the student's app has seen it.
+function waitForUpdate(page, courseId, predicate, timeout = 30_000) {
+  return waitForSharing(page, courseId, (info) => Boolean(info.update) && predicate(info.update), timeout)
+}
+
+async function finishOnboarding(page, role) {
+  await page.evaluate(
+    (role) => window.preferences.set({ category: 'other', nickname: 'E2E', persona: 'course-boy', role }),
+    role,
+  )
+  await page.reload()
+  await waitFor(page, () => (document.getElementById('root')?.childElementCount ?? 0) > 0)
+}
+
+function lessonFiles(userData, courseId) {
+  const courseRoot = path.join(userData, 'courses', courseId)
+  return fs
+    .readdirSync(courseRoot, { recursive: true })
+    .map(String)
+    .filter((file) => file.endsWith('.md') || file.endsWith('.json'))
+    .map((file) => path.join(courseRoot, file))
 }
 
 async function importCourse(page, code) {
@@ -228,5 +251,98 @@ describe('sharing across restarts', () => {
       location.hash = '#/my-courses'
     })
     await expect.poll(rowText, { timeout: 10_000 }).toContain(version)
+  })
+
+  // SLJ-39: student 3 (still running, online) gets the version the teacher just
+  // published in the editor.
+  it('a student is offered the newer version and applies it; unchanged files are not rewritten', async () => {
+    const student = apps.student3.page
+    const teacherPage = apps.teacher.page
+    const { version: newest } = (await teacherPage.evaluate((id) => window.courses.getVersionHistory(id), courseId))
+      .versions[0]
+
+    await waitForUpdate(student, courseId, (update) => update.version === newest && update.visibility === 'prominent')
+
+    const before = new Map(lessonFiles(dirs.student3, courseId).map((file) => [file, fs.statSync(file).ino]))
+
+    await finishOnboarding(student, 'student')
+    await student.evaluate((id) => {
+      location.hash = `#/courses/${id}`
+    }, courseId)
+    await waitFor(student, () => document.querySelector('[data-testid="course-update-notice"]') !== null)
+    await student.click('[data-testid="apply-course-update"]')
+    await waitFor(student, () => document.querySelector('[data-testid="course-update-notice"]') === null, {
+      timeout: 30_000,
+    })
+
+    const courses = await student.evaluate(() => window.courses.list('en'))
+    expect(courses.find((course) => course.id === courseId)?.version).toBe(newest)
+
+    const after = lessonFiles(dirs.student3, courseId)
+    const lessonText = after.filter((file) => file.endsWith('.md')).map((file) => fs.readFileSync(file, 'utf8')).join('\n')
+    expect(lessonText).toContain('Third version.')
+
+    // Files the update didn't change are the same files on disk (hardlinked
+    // through the update), not rewritten copies; the changed lesson is new.
+    const unchanged = after.filter((file) => file.includes(`${path.sep}section-`) && file.endsWith('.json'))
+    expect(unchanged.length).toBeGreaterThan(0)
+    for (const file of unchanged) {
+      expect(fs.statSync(file).ino).toBe(before.get(file))
+    }
+    const changedLesson = after.find((file) => file.endsWith('.md') && fs.readFileSync(file, 'utf8').includes('Third version.'))
+    expect(fs.statSync(changedLesson).ino).not.toBe(before.get(changedLesson))
+  })
+
+  it('a skipped "fixes mistakes" version keeps an update recommended, even after "Finish on this version"', async () => {
+    const student = apps.student3.page
+    const teacherPage = apps.teacher.page
+
+    await writeLesson(teacherPage, ids, 'Fourth version, fixing a mistake.')
+    const fix = await cutAndPublish(teacherPage, courseId, { recommended: true })
+    await waitForUpdate(student, courseId, (update) => update.version === fix && update.kind === 'recommended')
+
+    await student.evaluate((id) => window.sharing.finishOnVersion(id), courseId)
+    await waitForUpdate(student, courseId, (update) => update.visibility === 'quiet')
+
+    // A later regular version: the student would still skip the fix, so it's
+    // recommended, and it's shown again although they finished on their version.
+    await writeLesson(teacherPage, ids, 'Fifth version.')
+    const next = await cutAndPublish(teacherPage, courseId)
+    const update = (
+      await waitForUpdate(student, courseId, (update) => update.version === next)
+    ).update
+    expect(update).toMatchObject({ kind: 'recommended', visibility: 'prominent' })
+    expect(update.changelog.map((entry) => entry.version)).toEqual([next, fix])
+
+    await expect(student.evaluate((id) => window.sharing.applyCourseUpdate(id), courseId)).resolves.toEqual({
+      version: next,
+    })
+  })
+
+  it('a version published while the student was offline is offered at their next start, a big one with its notes', async () => {
+    await close('student3')
+
+    const teacherPage = apps.teacher.page
+    await writeLesson(teacherPage, ids, 'Version one point oh.')
+    const major = await cutAndPublish(teacherPage, courseId, { releaseType: 'major' })
+    await waitForSharing(teacherPage, courseId, (info) => info.status === 'shared')
+
+    const student = await launch('student3', { fresh: false })
+    await waitForUpdate(student, courseId, (update) => update.version === major && update.isMajor)
+
+    await student.evaluate((id) => {
+      location.hash = `#/courses/${id}`
+    }, courseId)
+    await waitFor(student, () => document.querySelector('[data-testid="course-update-notice"]') !== null)
+    await student.click('[data-testid="apply-course-update"]')
+    // A big update shows its release notes before applying.
+    await waitForText(student, `Big update: ${major}`)
+    await student.getByRole('button', { name: `Update to ${major}` }).click()
+    await waitFor(student, () => document.querySelector('[data-testid="course-update-notice"]') === null, {
+      timeout: 30_000,
+    })
+
+    const courses = await student.evaluate(() => window.courses.list('en'))
+    expect(courses.find((course) => course.id === courseId)?.version).toBe(major)
   })
 })

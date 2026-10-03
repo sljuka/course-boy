@@ -479,3 +479,38 @@ only publishers ever touch, not an onboarding step every user sees.
    - **Test-only `MATKO_DHT_BOOTSTRAP`** (comma-separated `host:port`) is passed by
      `electron/bare-worker.ts` as the worker's third argument and becomes Hyperswarm's
      `bootstrap`. Unset in the app.
+
+8. **Students get updates. Done, 2026-10-03 (SLJ-39, part 2 of SLJ-9).** Verified by
+   `e2e/sharing.e2e.mjs`, on top of the Phase 7 scenario:
+   - an online student is offered the version the teacher just published, and applies it
+     from the course page;
+   - files the update didn't change keep their inode, so they weren't rewritten;
+   - a skipped "fixes mistakes" version keeps a later update recommended, even after
+     "Finish on this version";
+   - a major version published while the student was offline is offered at their next
+     start, with its release notes shown first.
+   - **Detection (worker):** each followed drive notifies main (`EVENT_DRIVE_CHANGED`, the
+     first worker → main message) on `append`, on `peer-add` (`update({ wait: true })`)
+     and on a 15-minute poll. On follow, the drive is marked `findingPeers()` until the
+     first swarm flush. Without that, `update()` answers from the local copy right after
+     a restart, and a version published while the student was off is missed (this was a
+     flaky e2e before the fix). `checkUpdate` reads only `course.json`, `changelog.json` and
+     `source.json` from the drive.
+   - **Decision (main, `electron/course-sharing.ts`):**
+     - `evaluateRemoteVersion` takes only a strictly newer version of the same course,
+       from the source recorded at import; otherwise it refuses and warns.
+     - It's "recommended" if any skipped version is, and "big" on a major bump.
+     - `describeUpdate` applies "Finish on this version": regular updates turn quiet, and
+       a recommended one still shows once per version.
+     - The state is in `course-sharing.json`.
+   - **Apply:** `applyImportedCourseUpdate` (course-paths.ts) does hardlink copy →
+     `downloadUpdate` → validate → two-rename swap. Unchanged files aren't fetched again:
+     a republish leaves their entries pointing at the same blob blocks, which the student
+     already holds. The worker mirrors with `Localdrive({ atomic: true })`, because the
+     default in-place `O_TRUNC` write would go through the hardlink into the live course.
+   - **UI:** a banner on the imported course's page (Update / What's new / Finish on this
+     version), or a quiet line after finishing. A badge on Home. A major update shows its
+     release notes before applying. Update is only offered on the course page, never in
+     the player, so it can't land mid-test.
+   - **Not measured:** the bytes a student downloads for a one-lesson update (only
+     verified indirectly via unchanged inodes and mirror-drive's skip of equal entries).

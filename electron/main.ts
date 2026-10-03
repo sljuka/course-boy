@@ -4,9 +4,12 @@ import { open as openFile, stat as statFile } from 'node:fs/promises'
 import path from 'node:path'
 import Store from 'electron-store'
 import {
+  checkUpdate,
+  downloadUpdate,
   followCourse,
   getCreatorKey,
   importCourse,
+  onDriveChanged,
   publishCourse,
   spawnBareWorker,
   stopSharing,
@@ -27,7 +30,10 @@ import {
   ensureLocalCoursesRoot,
   getLocalCourseLessonTestDraft,
   getLocalCourseSectionTestDraft,
+  applyImportedCourseUpdate,
+  cleanUpInterruptedCourseUpdates,
   listPublishedLocalCourseIds,
+  readImportedCourseVersion,
   openCourseDirectoryInFileSystem,
   publishLocalCourseVersion,
   removeLocalCourse,
@@ -72,7 +78,9 @@ import type {
 } from '../src/lib/course-package'
 import type { Locale } from '../src/lib/i18n'
 import type {
+  ApplyCourseUpdateResult,
   CourseSharingInfo,
+  CourseUpdateInfo,
   ImportCourseInput,
   ImportCourseResult,
 } from '../src/lib/sharing'
@@ -147,8 +155,10 @@ const courseSharingStore = new Store<CourseSharingState>({
 })
 
 const courseSharing = createCourseSharing({
+  applyUpdateFiles: applyImportedCourseUpdate,
   hasConsent: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
   listPublishedCourseIds: listPublishedLocalCourseIds,
+  readInstalledVersion: readImportedCourseVersion,
   store: {
     read: () => ({
       followed: courseSharingStore.get('followed'),
@@ -156,8 +166,10 @@ const courseSharing = createCourseSharing({
     }),
     write: (state) => courseSharingStore.set(state),
   },
-  worker: { followCourse, importCourse, publishCourse, stopSharing },
+  worker: { checkUpdate, downloadUpdate, followCourse, importCourse, publishCourse, stopSharing },
 })
+
+onDriveChanged((driveKey) => courseSharing.onDriveChanged(driveKey))
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -400,6 +412,27 @@ ipcMain.handle('sharing:get-course-sharing', (_event, courseId: string) => {
   return courseSharing.getInfo(courseId) satisfies CourseSharingInfo
 })
 
+ipcMain.handle('sharing:list-course-updates', () => {
+  return courseSharing.listUpdates() satisfies Record<string, CourseUpdateInfo>
+})
+
+ipcMain.handle('sharing:apply-course-update', async (_event, courseId: string) => {
+  if (!isValidCourseId(courseId)) {
+    throw new Error(`Invalid course id "${courseId}"`)
+  }
+
+  const { version } = await courseSharing.applyUpdate(courseId)
+  return { version } satisfies ApplyCourseUpdateResult
+})
+
+ipcMain.handle('sharing:finish-on-version', (_event, courseId: string) => {
+  if (!isValidCourseId(courseId)) {
+    throw new Error(`Invalid course id "${courseId}"`)
+  }
+
+  courseSharing.finishOnVersion(courseId)
+})
+
 ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput) => {
   const { courseId } = await courseSharing.importCourse(input.code)
   return { courseId } satisfies ImportCourseResult
@@ -572,5 +605,9 @@ app.whenReady().then(() => {
   protocol.handle('matko-asset', handleCourseAssetRequest)
   createWindow()
   spawnBareWorker()
-  void courseSharing.start()
+  // Before sharing starts: an update interrupted by a crash must not leave a
+  // course folder missing.
+  void cleanUpInterruptedCourseUpdates()
+    .catch((error) => console.error('[course-sharing] cleanup failed:', error))
+    .then(() => courseSharing.start())
 })

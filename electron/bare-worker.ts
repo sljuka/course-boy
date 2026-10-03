@@ -23,6 +23,7 @@ import RPC from 'bare-rpc'
 import { app } from 'electron'
 import { getPublishedCoursePackagePath } from './course-paths'
 import { isValidCourseId } from '../src/lib/course-id'
+import type { RemoteCourseVersion } from './course-sharing'
 
 // Must match workers/main.cjs.
 const CMD_GET_CREATOR_KEY = 1
@@ -33,11 +34,17 @@ const CMD_CREATE_INVITE = 5
 const CMD_REDEEM_INVITE = 6
 const CMD_FOLLOW_COURSE = 7
 const CMD_STOP_SHARING = 8
+const CMD_CHECK_UPDATE = 9
+const CMD_DOWNLOAD_UPDATE = 10
+// Sent by the worker to main (the only worker → main message).
+const EVENT_DRIVE_CHANGED = 100
 
 declare global {
   var __creatorPublicKeyPhase1: string
   var __matkoBareWorker: {
     createInvite: typeof createInvite
+    checkUpdate: typeof checkUpdate
+    downloadUpdate: typeof downloadUpdate
     followCourse: typeof followCourse
     getCreatorKey: typeof getCreatorKey
     importCourse: typeof importCourse
@@ -139,6 +146,29 @@ export async function followCourse(driveKey: string): Promise<void> {
   await sendCommand(CMD_FOLLOW_COURSE, { driveKey })
 }
 
+// Which version an imported course's drive holds now, from its small files
+// (course.json, changelog.json, source.json); nothing else is downloaded.
+export async function checkUpdate(driveKey: string): Promise<RemoteCourseVersion> {
+  return sendCommand<RemoteCourseVersion>(CMD_CHECK_UPDATE, { driveKey })
+}
+
+export type DownloadedUpdate = {
+  changedFiles: { key: string; op: string }[]
+}
+
+// Mirrors the drive onto `targetPath` (a hardlinked copy of the current course;
+// see `downloadUpdate` in workers/main.cjs for why that's safe).
+export async function downloadUpdate(driveKey: string, targetPath: string): Promise<DownloadedUpdate> {
+  return sendCommand<DownloadedUpdate>(CMD_DOWNLOAD_UPDATE, { driveKey, targetPath })
+}
+
+const driveChangedListeners = new Set<(driveKey: string) => void>()
+
+// Called when an imported course's drive may hold a newer version.
+export function onDriveChanged(listener: (driveKey: string) => void): void {
+  driveChangedListeners.add(listener)
+}
+
 // Leaves the swarm for a course: a published one by `courseId`, an imported
 // (followed) one by `driveKey`.
 export async function stopSharing(target: { courseId: string } | { driveKey: string }): Promise<void> {
@@ -221,7 +251,9 @@ export async function redeemInvite(invite: string): Promise<{ courseId: string }
 // verification hook the `run-desktop` driver's `main <expr>` command calls directly,
 // same idea as Phase 0/1's `globalThis.__*Phase*Status` values.
 globalThis.__matkoBareWorker = {
+  checkUpdate,
   createInvite,
+  downloadUpdate,
   followCourse,
   getCreatorKey,
   importCourse,
@@ -270,8 +302,18 @@ export function spawnBareWorker(): void {
     // Node Socket doesn't structurally have, even though it satisfies bare-rpc's actual
     // (duck-typed) runtime usage. Double-cast through `unknown` for that boundary.
     const controlPipe = worker.stdio[3] as unknown as ConstructorParameters<typeof RPC>[0]
-    rpc = new RPC(controlPipe, () => {
-      // The worker never sends main a request in Phases 1-3.
+    rpc = new RPC(controlPipe, (req) => {
+      if (req.command === EVENT_DRIVE_CHANGED) {
+        try {
+          const { driveKey } = JSON.parse(req.data?.toString() ?? '{}') as { driveKey?: string }
+          if (driveKey) {
+            for (const listener of driveChangedListeners) listener(driveKey)
+          }
+        } catch (error) {
+          console.error('[bare-worker] bad drive-changed event:', error)
+        }
+      }
+      req.reply('')
     })
 
     getCreatorKey()

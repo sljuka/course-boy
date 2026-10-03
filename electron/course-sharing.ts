@@ -11,16 +11,123 @@
 // Sharing never makes Publish fail: a failed attempt leaves the course "waiting"
 // and is retried with a growing delay.
 //
+// Updates (SLJ-39): when a followed course's drive holds a newer version, it's
+// offered to the student (never applied silently) and applied on request,
+// atomically (`applyImportedCourseUpdate` in course-paths.ts).
+//
 // Worker access, storage and timers are passed in, so this has no Electron
 // dependency and is unit-tested in course-sharing.test.ts.
 
-import type { CourseSharingInfo, CourseSharingStatus } from '../src/lib/sharing'
+import type { CourseChangelogEntry } from '../src/lib/course-package'
+import { compareCourseVersions, parseCourseVersion } from '../src/lib/course-versioning'
+import type {
+  ApplyCourseUpdateResult,
+  CourseSharingInfo,
+  CourseSharingStatus,
+  CourseUpdateInfo,
+} from '../src/lib/sharing'
+
+export type PendingCourseUpdate = {
+  changelog: CourseChangelogEntry[]
+  isMajor: boolean
+  recommended: boolean
+  version: string
+}
 
 export type FollowedCourse = {
   driveKey: string
   followedSince: string
   // Claimed by the course's source.json; unverified until SLJ-18. Stored, not shown.
   publisherId: string
+  // The newest valid newer version the drive offers, if any.
+  pendingUpdate?: PendingCourseUpdate | null
+  // A newer version refused because its source.json names another source.
+  refusedUpdate?: { version: string } | null
+  // "Finish on this version": regular updates stop being shown prominently.
+  finishOnVersion?: boolean
+  // The update the student dismissed with "Finish on this version"; a newer
+  // recommended one is shown again.
+  dismissedUpdateVersion?: string | null
+}
+
+export type RemoteCourseVersion = {
+  changelog: CourseChangelogEntry[]
+  courseId: string | null
+  source: { driveKey?: unknown; publisher?: { id?: unknown } } | null
+  version: string | null
+}
+
+export type RemoteVersionVerdict =
+  | { kind: 'none' }
+  | { kind: 'refused'; version: string }
+  | { kind: 'update'; update: PendingCourseUpdate }
+
+function isNewer(version: string, than: string): boolean {
+  return compareCourseVersions(parseCourseVersion(version), parseCourseVersion(than)) > 0
+}
+
+// What a followed course's drive offers, compared with the installed version.
+// Only a strictly newer version of the same course counts, and only from the
+// source recorded at import; otherwise it's refused. "Recommended" if any
+// version the student would skip fixes mistakes.
+export function evaluateRemoteVersion(
+  courseId: string,
+  followed: Pick<FollowedCourse, 'driveKey' | 'publisherId'>,
+  remote: RemoteCourseVersion,
+  installedVersion: string,
+): RemoteVersionVerdict {
+  const remoteVersion = remote.version
+
+  try {
+    if (remote.courseId !== courseId || !remoteVersion || !isNewer(remoteVersion, installedVersion)) {
+      return { kind: 'none' }
+    }
+  } catch {
+    return { kind: 'none' } // a version we can't parse
+  }
+
+  if (remote.source?.driveKey !== followed.driveKey || remote.source?.publisher?.id !== followed.publisherId) {
+    return { kind: 'refused', version: remoteVersion }
+  }
+
+  const changelog = remote.changelog.filter((entry) => {
+    try {
+      return isNewer(entry.version, installedVersion) && !isNewer(entry.version, remoteVersion)
+    } catch {
+      return false
+    }
+  })
+
+  return {
+    kind: 'update',
+    update: {
+      changelog,
+      isMajor: parseCourseVersion(remoteVersion).major > parseCourseVersion(installedVersion).major,
+      recommended: changelog.some((entry) => entry.recommended === true),
+      version: remoteVersion,
+    },
+  }
+}
+
+// How a pending update is shown, given "Finish on this version".
+export function describeUpdate(followed: FollowedCourse): CourseUpdateInfo | null {
+  const update = followed.pendingUpdate
+  if (!update) {
+    return null
+  }
+
+  const kind = update.recommended ? 'recommended' : 'regular'
+  const prominent =
+    !followed.finishOnVersion ||
+    (kind === 'recommended' && followed.dismissedUpdateVersion !== update.version)
+
+  return {
+    changelog: update.changelog,
+    isMajor: update.isMajor,
+    kind,
+    version: update.version,
+    visibility: prominent ? 'prominent' : 'quiet',
+  }
 }
 
 export type CourseSharingState = {
@@ -36,6 +143,8 @@ export type CourseSharingStore = {
 }
 
 export type CourseSharingWorker = {
+  checkUpdate(driveKey: string): Promise<RemoteCourseVersion>
+  downloadUpdate(driveKey: string, targetPath: string): Promise<{ changedFiles: { key: string; op: string }[] }>
   followCourse(driveKey: string): Promise<void>
   importCourse(code: string): Promise<{ courseId: string; driveKey: string; publisherId: string }>
   publishCourse(courseId: string): Promise<string>
@@ -43,7 +152,14 @@ export type CourseSharingWorker = {
 }
 
 export type CourseSharingDeps = {
+  // Replaces an imported course with the version `download` writes into a
+  // staging folder, after validating it (applyImportedCourseUpdate).
+  applyUpdateFiles<T>(
+    expected: { courseId: string; driveKey: string; publisherId: string; version: string },
+    download: (stagingPath: string) => Promise<T>,
+  ): Promise<T>
   hasConsent(): boolean
+  readInstalledVersion(courseId: string): Promise<string | null>
   listPublishedCourseIds(): Promise<string[]>
   now?: () => Date
   setTimer?: (callback: () => void, delayMs: number) => { cancel(): void }
@@ -159,10 +275,121 @@ export function createCourseSharing(deps: CourseSharingDeps) {
     }
   }
 
+  function updateFollowed(courseId: string, change: Partial<FollowedCourse>) {
+    updateState((state) => {
+      const followed = state.followed[courseId]
+      return followed
+        ? { ...state, followed: { ...state.followed, [courseId]: { ...followed, ...change } } }
+        : state
+    })
+  }
+
+  const checking = new Map<string, Promise<void>>()
+
+  // Asks the drive which version it holds and records a pending (or refused)
+  // update. Never throws: offline, it just tries again on the next event.
+  function checkForUpdate(courseId: string): Promise<void> {
+    const running = checking.get(courseId)
+    if (running) {
+      return running
+    }
+
+    const run = (async () => {
+      const followed = deps.store.read().followed[courseId]
+      const installedVersion = await deps.readInstalledVersion(courseId)
+
+      if (!followed || !installedVersion) {
+        return
+      }
+
+      try {
+        const remote = await deps.worker.checkUpdate(followed.driveKey)
+        const verdict = evaluateRemoteVersion(courseId, followed, remote, installedVersion)
+
+        if (verdict.kind === 'update') {
+          updateFollowed(courseId, { pendingUpdate: verdict.update, refusedUpdate: null })
+        } else if (verdict.kind === 'refused') {
+          console.warn(`[course-sharing] refused update ${verdict.version} of ${courseId}: different source`)
+          updateFollowed(courseId, { refusedUpdate: { version: verdict.version } })
+        } else {
+          updateFollowed(courseId, { pendingUpdate: null })
+        }
+      } catch (error) {
+        console.error(`[course-sharing] checking ${courseId} for an update failed:`, error)
+      }
+    })().finally(() => checking.delete(courseId))
+
+    checking.set(courseId, run)
+    return run
+  }
+
   return {
-    // At app start: reshare published courses (if consented), follow imported ones.
+    // At app start: reshare published courses (if consented), follow imported
+    // ones and look for updates to them.
     async start(): Promise<void> {
-      await Promise.all([shareAllPublished(), followAll()])
+      await Promise.all([
+        shareAllPublished(),
+        followAll().then(() =>
+          Promise.all(Object.keys(deps.store.read().followed).map((courseId) => checkForUpdate(courseId))),
+        ),
+      ])
+    },
+
+    // The worker saw a followed drive change (or may have).
+    onDriveChanged(driveKey: string): void {
+      const entry = Object.entries(deps.store.read().followed).find(
+        ([, followed]) => followed.driveKey === driveKey,
+      )
+      if (entry) {
+        void checkForUpdate(entry[0])
+      }
+    },
+
+    checkForUpdate,
+
+    // Applies the pending update, if it's still valid (checked again first, so
+    // the version applied is the one the drive holds now).
+    async applyUpdate(courseId: string): Promise<ApplyCourseUpdateResult & { changedFiles: string[] }> {
+      await checkForUpdate(courseId)
+      const followed = deps.store.read().followed[courseId]
+      const update = followed?.pendingUpdate
+
+      if (!followed || !update) {
+        throw new Error('There is no update for this course')
+      }
+
+      const { changedFiles } = await deps.applyUpdateFiles(
+        {
+          courseId,
+          driveKey: followed.driveKey,
+          publisherId: followed.publisherId,
+          version: update.version,
+        },
+        (stagingPath) => deps.worker.downloadUpdate(followed.driveKey, stagingPath),
+      )
+
+      updateFollowed(courseId, {
+        dismissedUpdateVersion: null,
+        finishOnVersion: false,
+        pendingUpdate: null,
+      })
+      return { changedFiles: changedFiles.map((file) => file.key), version: update.version }
+    },
+
+    // "Finish on this version": stop showing regular updates prominently.
+    finishOnVersion(courseId: string): void {
+      const update = deps.store.read().followed[courseId]?.pendingUpdate
+      updateFollowed(courseId, { dismissedUpdateVersion: update?.version ?? null, finishOnVersion: true })
+    },
+
+    // Courses with an update to show on Home.
+    listUpdates(): Record<string, CourseUpdateInfo> {
+      const updates: Record<string, CourseUpdateInfo> = {}
+      for (const [courseId, followed] of Object.entries(deps.store.read().followed)) {
+        const update = describeUpdate(followed)
+        if (update) updates[courseId] = update
+      }
+      return updates
     },
 
     // After a version is published: share it in the background.
@@ -199,9 +426,13 @@ export function createCourseSharing(deps: CourseSharingDeps) {
       const code = state.published[courseId]?.code ?? null
       const isKnown = Boolean(code) || courseId in state.followed
 
+      const followed = state.followed[courseId]
+
       return {
         code,
+        refusedUpdate: followed?.refusedUpdate ?? null,
         status: statuses.get(courseId) ?? (isKnown ? 'waiting' : 'not-shared'),
+        update: followed ? describeUpdate(followed) : null,
       }
     },
 

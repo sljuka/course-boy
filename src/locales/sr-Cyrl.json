@@ -587,5 +587,27 @@
     "dismissUnsupportedNotice": "Затвори",
     "unsupportedBlockTitle": "Садржај из новије верзије Матка",
     "unsupportedBlockDescription": "Овај блок не може да се прикаже ни измени у твојој верзији. При чувању остаје непромењен. За измену ажурирај Матко."
+  },
+  "courseUpdates": {
+    "availableTitle": "Доступно ажурирање: {{version}}",
+    "availableDescription": "Наставник је објавио нову верзију овог курса.",
+    "recommendedTitle": "Препоручено ажурирање: {{version}}",
+    "recommendedDescription": "Ово ажурирање исправља грешке у овом курсу.",
+    "bigUpdateTitle": "Велико ажурирање: {{version}}",
+    "bigUpdateDescription": "Ова верзија доноси много промена. Ево шта је ново пре него што ажурирате.",
+    "dialogTitle": "Шта је ново у верзији {{version}}",
+    "dialogDescription": "Белешке о издању за сваку верзију коју добијате овим ажурирањем.",
+    "updateButton": "Ажурирај",
+    "updateTo": "Ажурирај на {{version}}",
+    "updating": "Ажурирање…",
+    "whatsNew": "Шта је ново",
+    "notNow": "Не сада",
+    "finishOnVersion": "Заврши на овој верзији",
+    "quietLine": "Доступна је верзија {{version}}.",
+    "refusedTitle": "Ажурирање {{version}} је одбијено",
+    "refusedDescription": "Наводи да долази из другог извора него овај курс. Ваш курс није промењен.",
+    "errorTitle": "Ажурирање курса није успело",
+    "availableBadge": "Ажурирање {{version}}",
+    "recommendedBadge": "Препоручено ажурирање {{version}}"
   }
 }

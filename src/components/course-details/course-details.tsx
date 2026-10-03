@@ -18,6 +18,7 @@ import { Button, ButtonLabel } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
+import { CourseUpdateNotice } from "@/components/course-details/course-update-notice";
 import { ShareCourseButton } from "@/components/course-details/share-course-button";
 import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
 import {
@@ -170,6 +171,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       crumbActions={crumbActions}
       pageHero={pageHero}
     >
+      {resolvedCourse.distribution === "imported" && <CourseUpdateNotice courseId={courseId} />}
       {resolvedCourse.sections.map((section) => (
         <Card
           className="overflow-hidden border-border bg-muted/80 shadow-none"

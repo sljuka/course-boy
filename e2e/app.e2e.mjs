@@ -88,7 +88,14 @@ describe('launch', () => {
       'uploadAssetBytes',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
-    expect(surface.sharing).toEqual(['getCourseSharing', 'getCreatorKey', 'importCourse'])
+    expect(surface.sharing).toEqual([
+      'applyCourseUpdate',
+      'finishOnVersion',
+      'getCourseSharing',
+      'getCreatorKey',
+      'importCourse',
+      'listCourseUpdates',
+    ])
   })
 })
 

@@ -587,5 +587,27 @@
     "dismissUnsupportedNotice": "Dismiss",
     "unsupportedBlockTitle": "Content from a newer version of Matko",
     "unsupportedBlockDescription": "This block can't be shown or edited in your version. It's kept as it is when you save. Update Matko to edit it."
+  },
+  "courseUpdates": {
+    "availableTitle": "Update available: {{version}}",
+    "availableDescription": "Your teacher published a new version of this course.",
+    "recommendedTitle": "Recommended update: {{version}}",
+    "recommendedDescription": "This update fixes mistakes in this course.",
+    "bigUpdateTitle": "Big update: {{version}}",
+    "bigUpdateDescription": "This version changes a lot. Here's what's new before you update.",
+    "dialogTitle": "What's new in {{version}}",
+    "dialogDescription": "Release notes of every version you'd get with this update.",
+    "updateButton": "Update",
+    "updateTo": "Update to {{version}}",
+    "updating": "Updating…",
+    "whatsNew": "What's new",
+    "notNow": "Not now",
+    "finishOnVersion": "Finish on this version",
+    "quietLine": "Version {{version}} is available.",
+    "refusedTitle": "Update {{version}} was refused",
+    "refusedDescription": "It says it comes from a different source than this course. Your course wasn't changed.",
+    "errorTitle": "Couldn't update this course",
+    "availableBadge": "Update {{version}}",
+    "recommendedBadge": "Recommended update {{version}}"
   }
 }

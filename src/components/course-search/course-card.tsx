@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CourseSummary } from "@/lib/course-package";
+import type { CourseUpdateInfo } from "@/lib/sharing";
 import { formatShortDate } from "@/lib/format-date";
 import { useAppState } from "@/lib/use-app-state";
 import { getLocaleFlag } from "@/lib/locale-flags";
@@ -21,9 +22,11 @@ type CourseCardProps = {
   href: string;
   // An icon before the title (My courses: published / local / changed).
   leading?: React.ReactNode;
+  // An imported course's pending update (SLJ-39), shown as a badge.
+  update?: CourseUpdateInfo;
 };
 
-export function CourseCard({ course, href, leading }: CourseCardProps) {
+export function CourseCard({ course, href, leading, update }: CourseCardProps) {
   const { t } = useTranslation();
   const { locale } = useAppState();
 
@@ -49,6 +52,13 @@ export function CourseCard({ course, href, leading }: CourseCardProps) {
           </CardTitle>
           <CardDescription>{course.description}</CardDescription>
           <div className="flex min-w-0 flex-wrap gap-2">
+            {update && (
+              <Badge data-testid="course-update-badge" variant={update.kind === "recommended" ? "warning" : "info"}>
+                {update.kind === "recommended"
+                  ? t("courseUpdates.recommendedBadge", { version: update.version })
+                  : t("courseUpdates.availableBadge", { version: update.version })}
+              </Badge>
+            )}
             <Badge className="max-w-full break-all">{course.id}</Badge>
             <Tooltip>
               <TooltipTrigger

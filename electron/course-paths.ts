@@ -2404,6 +2404,129 @@ export async function publishLocalCourseVersion(
   });
 }
 
+export type ImportedCourseUpdateExpectation = {
+  courseId: string;
+  // Where the course was recorded as coming from at import (course-sharing.json).
+  driveKey: string;
+  publisherId: string;
+  version: string;
+};
+
+// The version an imported course is at (its root course.json), or null if it
+// isn't an imported course on this device.
+export async function readImportedCourseVersion(courseId: string): Promise<string | null> {
+  assertValidCourseId(courseId);
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseRootPath = resolveCourseRootPath(localCoursesRoot, courseId);
+
+  if (await pathExists(path.join(courseRootPath, "draft"))) {
+    return null;
+  }
+
+  try {
+    const manifest = JSON.parse(await fs.readFile(path.join(courseRootPath, "course.json"), "utf8"));
+    return typeof manifest.version === "string" ? manifest.version : null;
+  } catch {
+    return null;
+  }
+}
+
+// Replaces an imported course with a newer version, safely (SLJ-39):
+//   1. hardlink the current course into a staging folder (no data copied),
+//   2. `download` mirrors only what changed onto it (the worker writes atomically,
+//      so the hardlinked originals are never written through),
+//   3. validate: same course, the expected version, the same source as recorded
+//      at import, a readable package,
+//   4. swap it in with two renames; the old folder is removed afterwards.
+// The live course is untouched until step 4. Any failure removes the staging
+// folder and leaves the course as it was.
+export async function applyImportedCourseUpdate<T>(
+  expected: ImportedCourseUpdateExpectation,
+  download: (stagingPath: string) => Promise<T>,
+): Promise<T> {
+  assertValidCourseId(expected.courseId);
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseRootPath = resolveCourseRootPath(localCoursesRoot, expected.courseId);
+
+  if (await pathExists(path.join(courseRootPath, "draft"))) {
+    throw new Error(`Course "${expected.courseId}" is your own course, not an imported one`);
+  }
+
+  const suffix = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  const stagingPath = path.join(localCoursesRoot, `.update-staging-${expected.courseId}-${suffix}`);
+  const previousPath = path.join(localCoursesRoot, `.update-previous-${expected.courseId}-${suffix}`);
+
+  try {
+    await copyDirectoryWithDedup(courseRootPath, stagingPath, null, { hardlinkFromSource: true });
+    const result = await download(stagingPath);
+
+    const manifestPath = path.join(stagingPath, "course.json");
+    const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+
+    if (manifest.id !== expected.courseId) {
+      throw new Error("The update is for a different course");
+    }
+
+    if (manifest.version !== expected.version) {
+      throw new Error(`Expected version ${expected.version}, got ${String(manifest.version)}`);
+    }
+
+    const source = JSON.parse(await fs.readFile(path.join(stagingPath, "source.json"), "utf8"));
+
+    if (source?.driveKey !== expected.driveKey || source?.publisher?.id !== expected.publisherId) {
+      throw new Error("The update comes from a different source than this course");
+    }
+
+    // Same as at import: a version's own manifest still says "draft" (a cut-time
+    // artifact). Atomic write: course.json may be a hardlink in staging.
+    await writeFileAtomic(manifestPath, JSON.stringify({ ...manifest, status: "published" }, null, 2));
+    await assertCoursePackageIsPublishable(stagingPath);
+
+    await fs.rename(courseRootPath, previousPath);
+    try {
+      await fs.rename(stagingPath, courseRootPath);
+    } catch (error) {
+      await fs.rename(previousPath, courseRootPath);
+      throw error;
+    }
+
+    await fs.rm(previousPath, { force: true, recursive: true });
+    return result;
+  } catch (error) {
+    await fs.rm(stagingPath, { force: true, recursive: true }).catch(() => {});
+    throw error;
+  }
+}
+
+// At startup: undo what an update interrupted by a crash left behind (see
+// `applyImportedCourseUpdate`). A staging folder is just deleted; a "previous"
+// folder whose course folder is missing (crash between the two renames) is put
+// back, otherwise deleted.
+export async function cleanUpInterruptedCourseUpdates(): Promise<void> {
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const entries = await fs.readdir(localCoursesRoot, { withFileTypes: true });
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const entryPath = path.join(localCoursesRoot, entry.name);
+
+    if (entry.name.startsWith(".update-staging-")) {
+      await fs.rm(entryPath, { force: true, recursive: true });
+      continue;
+    }
+
+    const previous = entry.name.match(/^\.update-previous-([a-z2-7]{16})-/);
+    if (previous) {
+      const courseRootPath = path.join(localCoursesRoot, previous[1]);
+      if (await pathExists(courseRootPath)) {
+        await fs.rm(entryPath, { force: true, recursive: true });
+      } else {
+        await fs.rename(entryPath, courseRootPath);
+      }
+    }
+  }
+}
+
 // The teacher's own courses (they have a `draft/`) that have a published version:
 // the ones the app keeps shared (see electron/course-sharing.ts).
 export async function listPublishedLocalCourseIds(): Promise<string[]> {

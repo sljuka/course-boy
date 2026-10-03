@@ -23,6 +23,17 @@ const CMD_CREATE_INVITE = 5 // must match electron/bare-worker.ts
 const CMD_REDEEM_INVITE = 6 // must match electron/bare-worker.ts
 const CMD_FOLLOW_COURSE = 7 // must match electron/bare-worker.ts
 const CMD_STOP_SHARING = 8 // must match electron/bare-worker.ts
+const CMD_CHECK_UPDATE = 9 // must match electron/bare-worker.ts
+const CMD_DOWNLOAD_UPDATE = 10 // must match electron/bare-worker.ts
+// Worker → main: an imported course's drive may hold a newer version. Main
+// decides what that means (electron/course-sharing.ts).
+const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
+
+// How often followed drives are checked for a new version even without an
+// 'append' event (e.g. after being offline). Main ignores repeats.
+const UPDATE_POLL_INTERVAL_MS = 15 * 60_000
+// Reading a remote file waits for a peer that has it; don't wait forever.
+const REMOTE_READ_TIMEOUT_MS = 30_000
 
 // Written into every shared course's drive next to the version's files (never into
 // the version itself, so its hashes stay valid): where the course is shared from.
@@ -53,6 +64,9 @@ async function start() {
   // one connection per peer across every topic they join together — deriving from
   // the Corestore identity, the same way `createKeyPair('creator')` already does,
   // makes that possible.
+  // Assigned once the control pipe is set up below; the drive watchers use it to
+  // notify main.
+  let rpc = null
   const swarmKeyPair = await store.createKeyPair('swarm')
   const swarm = new Hyperswarm({ bootstrap, keyPair: swarmKeyPair })
   const pairing = new BlindPairing(swarm)
@@ -180,6 +194,99 @@ async function start() {
     return drive
   }
 
+  function notifyDriveChanged(drive) {
+    if (!rpc) return
+    const request = rpc.request(EVENT_DRIVE_CHANGED)
+    request.send(JSON.stringify({ driveKey: IdEncoding.normalize(drive.key) }))
+    request.reply().catch(() => {})
+  }
+
+  // A followed drive changed when the teacher's new version reaches us ('append'),
+  // or may have when a peer connects (we might have been offline). Main checks.
+  function watchFollowedDrive(drive) {
+    drive.core.on('append', () => notifyDriveChanged(drive))
+    drive.core.on('peer-add', () => {
+      drive
+        .update({ wait: true })
+        .then((changed) => changed && notifyDriveChanged(drive))
+        .catch(() => {})
+    })
+  }
+
+  setInterval(() => {
+    for (const { drive } of followedDrives.values()) {
+      drive
+        .update()
+        .then((changed) => changed && notifyDriveChanged(drive))
+        .catch(() => {})
+    }
+  }, UPDATE_POLL_INTERVAL_MS)
+
+  function withTimeout(promise, ms, message) {
+    let timer
+    return Promise.race([
+      promise,
+      new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms)
+      }),
+    ]).finally(() => clearTimeout(timer))
+  }
+
+  async function readRemoteJson(drive, key) {
+    const buffer = await withTimeout(
+      drive.get(key),
+      REMOTE_READ_TIMEOUT_MS,
+      `Timed out reading ${key} from the course's peers`,
+    )
+    return buffer ? JSON.parse(buffer.toString()) : null
+  }
+
+  function getFollowedDrive(driveKey) {
+    const entry = followedDrives.get(IdEncoding.decode(driveKey).toString('hex'))
+    if (!entry) {
+      throw new Error('This course is not followed on this device')
+    }
+    return entry.drive
+  }
+
+  // What the drive offers now: just the small files that say which version it
+  // is and what changed (no lessons or assets are downloaded here).
+  async function checkUpdate(driveKey) {
+    const drive = getFollowedDrive(driveKey)
+    await drive.update()
+
+    const manifest = await readRemoteJson(drive, '/course.json')
+    const changelog = await readRemoteJson(drive, '/changelog.json')
+    const source = await readRemoteJson(drive, SOURCE_FILE_KEY)
+
+    return {
+      changelog: Array.isArray(changelog) ? changelog : [],
+      courseId: manifest?.id ?? null,
+      source,
+      version: manifest?.version ?? null,
+    }
+  }
+
+  // Mirrors the drive onto `targetPath`, a hardlinked copy of the student's
+  // current course made by main. Only new, changed or removed files are written:
+  // unchanged files are skipped by mirror-drive, and their blocks are already in
+  // this Corestore. `atomic: true` is essential: Localdrive otherwise rewrites an
+  // existing file in place (O_TRUNC), which on a hardlink would also change the
+  // live course; atomic writes go to a temp file and rename over the link.
+  async function downloadUpdate(driveKey, targetPath) {
+    const drive = getFollowedDrive(driveKey)
+    await drive.update()
+
+    const mirror = drive.mirror(new Localdrive(targetPath, { atomic: true }))
+    const changedFiles = []
+
+    for await (const diff of mirror) {
+      changedFiles.push({ key: diff.key, op: diff.op })
+    }
+
+    return { changedFiles }
+  }
+
   // At startup, an imported course's drive is reopened and announced again, so
   // students keep sharing it with each other (and, in SLJ-9 part 2, see updates).
   // Its blocks are already in this Corestore; nothing is downloaded here.
@@ -193,9 +300,19 @@ async function start() {
     await drive.ready()
     // Server + client, the same "leech becomes a seed" default as importCourse. Not
     // awaiting `flushed()`: offline, the announce only completes later, and nothing
-    // here waits on it.
+    // here waits on it. Until the first lookup is done the drive is "finding
+    // peers", so `update()` (here and in checkUpdate) waits for them instead of
+    // answering from the local copy, which would miss a version published while
+    // this device was off.
+    const doneFindingPeers = drive.findingPeers()
     const discovery = swarm.join(drive.discoveryKey)
+    swarm.flush().then(doneFindingPeers, doneFindingPeers)
     followedDrives.set(keyHex, { discovery, drive })
+    watchFollowedDrive(drive)
+    drive
+      .update()
+      .then((changed) => changed && notifyDriveChanged(drive))
+      .catch(() => {})
   }
 
   async function stopSharing({ courseId, driveKey }) {
@@ -301,6 +418,7 @@ async function start() {
 
       const { courseId, publisherId } = await finalizeImportedCourse(stagingPath, coursesRoot, drive.key)
       followedDrives.set(keyHex, { discovery, drive })
+      watchFollowedDrive(drive)
       return { courseId, driveKey: drive.key, publisherId }
     } catch (error) {
       // Don't keep seeding a course that didn't land.
@@ -395,7 +513,7 @@ async function start() {
     return { courseId, driveKey: drive.key, publisherId }
   }
 
-  const rpc = new RPC(new Pipe(3), async (req) => {
+  rpc = new RPC(new Pipe(3), async (req) => {
     if (req.command === CMD_GET_CREATOR_KEY) {
       try {
         const keyPair = await store.createKeyPair('creator')
@@ -505,6 +623,30 @@ async function start() {
         req.reply(JSON.stringify({}))
       } catch (error) {
         console.error('[worker] failed to follow course:', error)
+        req.reply(JSON.stringify({ error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_CHECK_UPDATE) {
+      const { driveKey } = JSON.parse(req.data.toString())
+
+      try {
+        req.reply(JSON.stringify(await checkUpdate(driveKey)))
+      } catch (error) {
+        console.error('[worker] failed to check for an update:', error)
+        req.reply(JSON.stringify({ error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_DOWNLOAD_UPDATE) {
+      const { driveKey, targetPath } = JSON.parse(req.data.toString())
+
+      try {
+        req.reply(JSON.stringify(await downloadUpdate(driveKey, targetPath)))
+      } catch (error) {
+        console.error('[worker] failed to download an update:', error)
         req.reply(JSON.stringify({ error: error.message }))
       }
       return
