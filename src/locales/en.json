@@ -54,7 +54,8 @@
     "title": "Search courses",
     "version": "{{version}}",
     "versionTooltip": "Course version",
-    "hideCourse": "Hide course"
+    "hideCourse": "Hide course",
+    "openInFileSystem": "Open in file system"
   },
   "courseDescriptions": {
     "preSchoolDescription": "Early learning through play, language, counting, and creative activities.",

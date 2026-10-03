@@ -49,6 +49,7 @@ import {
   assertCoursePackageIsPublishable,
   isDraftSharedTestDefinition,
   isLocalizedSectionMetadata,
+  resolvePackageDirectoryCandidates,
 } from "./course-registry";
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import { isLocale, locales, type Locale } from "../src/lib/i18n";
@@ -350,9 +351,22 @@ function resolveCourseDirectoryPath(
 // Reveals the draft's directory in the OS file manager (Finder on macOS) —
 // the draft, not the published copy, since this is only ever reachable from
 // the draft explorer's own context menu.
+// Opens the folder the course is read from: the draft for your own course, the
+// version in use for an imported one (versions/<v>/), the root for the bundled
+// course (see `resolvePackageDirectoryCandidates`).
 export async function openCourseDirectoryInFileSystem(courseId: string): Promise<void> {
   const localCoursesRoot = await ensureLocalCoursesRoot();
-  const courseDirectoryPath = resolveCourseDirectoryPath(localCoursesRoot, courseId);
+  const draftDirectoryPath = resolveCourseDirectoryPath(localCoursesRoot, courseId);
+  const candidates = await resolvePackageDirectoryCandidates(path.dirname(draftDirectoryPath));
+  let courseDirectoryPath = candidates[candidates.length - 1];
+
+  for (const candidate of candidates) {
+    if (await pathExists(path.join(candidate, "course.json"))) {
+      courseDirectoryPath = candidate;
+      break;
+    }
+  }
+
   const errorMessage = await shell.openPath(courseDirectoryPath);
 
   if (errorMessage) {

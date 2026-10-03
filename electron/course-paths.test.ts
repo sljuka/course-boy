@@ -18,6 +18,7 @@ import {
   hashFileContents,
   listImportedCourseVersions,
   migrateImportedCourse,
+  openCourseDirectoryInFileSystem,
   publishLocalCourseVersion,
   readImportedCourseVersion,
   revertLocalCourseDraftToVersion,
@@ -26,6 +27,7 @@ import {
   uploadCourseAssetFromBytes,
 } from "./course-paths";
 import { getCourseVersionHistory, listCourses } from "./course-registry";
+import { shell } from "electron";
 
 let userDataDir = "";
 
@@ -36,6 +38,9 @@ vi.mock("electron", () => ({
   },
   dialog: {
     showOpenDialog: vi.fn(),
+  },
+  shell: {
+    openPath: vi.fn(async () => ""),
   },
 }));
 
@@ -1016,6 +1021,21 @@ describe("imported courses", () => {
 
     expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.2.0", versions: ["0.2.0"] });
     expect((await fs.readdir(path.join(root, courseId, "versions"))).filter((name) => name.startsWith("."))).toEqual([]);
+  });
+
+  it("opens the folder a course is read from: the draft for your own, the version in use for an imported one", async () => {
+    const ownCourseId = await seedDraftCourse();
+    const { courseId } = await seedImportedCourse();
+    const root = await ensureLocalCoursesRoot();
+    await migrateImportedCourse(courseId);
+
+    await openCourseDirectoryInFileSystem(ownCourseId);
+    await openCourseDirectoryInFileSystem(courseId);
+
+    expect(vi.mocked(shell.openPath).mock.calls.map(([target]) => target)).toEqual([
+      path.join(root, ownCourseId, "draft"),
+      path.join(root, courseId, "versions", "0.2.0"),
+    ]);
   });
 
   it("removes an update's staging folder left by a crash", async () => {

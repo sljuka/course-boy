@@ -344,6 +344,31 @@ describe('course assets', () => {
     expect(result).toEqual({ ok: true, width: 1 })
   })
 
+  // A video player always asks for byte ranges. An imported course has no
+  // draft/, and its files are in versions/<v>/: the range request must find
+  // them there, not 404 on the missing draft/ (it did until 2026-10-03).
+  it("serves a byte range of an imported course's video from its current version", async () => {
+    const importedId = 'e2erangetestaaaa'
+    const courseRoot = path.join(USER_DATA, 'courses', importedId)
+    const assetsDir = path.join(courseRoot, 'versions', '1.0.0', 'assets')
+    fs.mkdirSync(assetsDir, { recursive: true })
+    fs.writeFileSync(path.join(courseRoot, 'release.json'), JSON.stringify({ publishedVersion: '1.0.0' }))
+    fs.writeFileSync(path.join(assetsDir, 'clip.mov'), Buffer.from('0123456789'))
+
+    const result = await harness.page.evaluate(
+      (id) =>
+        fetch(`matko-asset://${id}/clip.mov`, { headers: { Range: 'bytes=2-5' } }).then(async (response) => ({
+          body: await response.text(),
+          contentRange: response.headers.get('Content-Range'),
+          status: response.status,
+        })),
+      importedId,
+    )
+
+    fs.rmSync(courseRoot, { force: true, recursive: true })
+    expect(result).toEqual({ body: '2345', contentRange: 'bytes 2-5/10', status: 206 })
+  })
+
   it('returns a 404 response for a missing asset', async () => {
     const status = await harness.page.evaluate(
       (id) =>
@@ -709,15 +734,23 @@ describe('commit needs sections with content', () => {
     const commitButton = page.getByRole('button', { name: 'Commit new version' }).filter({ hasText: 'Commit new version' })
     await commitButton.waitFor()
 
-    const reasonOnHover = async () => {
-      await page.mouse.move(0, 0)
-      await commitButton.hover({ force: true })
-      await page.waitForTimeout(600)
-      return bodyText(page)
-    }
+    // Hover until the tooltip shows the reason; after a reload the course's
+    // structure (and so the reason) may still be loading for a moment.
+    const expectReasonOnHover = (reason) =>
+      expect
+        .poll(
+          async () => {
+            await page.mouse.move(0, 0)
+            await commitButton.hover({ force: true })
+            await page.waitForTimeout(300)
+            return bodyText(page)
+          },
+          { interval: 200, timeout: 10_000 },
+        )
+        .toContain(reason)
 
     expect(await commitButton.isDisabled()).toBe(true)
-    expect(await reasonOnHover()).toContain('Add a section with at least one lesson before committing a version.')
+    await expectReasonOnHover('Add a section with at least one lesson before committing a version.')
 
     const sectionId = await page.evaluate(
       (id) => window.courses.createSection({ courseId: id, title: 'Empty section' }).then((result) => result.sectionId),
@@ -726,7 +759,7 @@ describe('commit needs sections with content', () => {
     await page.reload()
     await commitButton.waitFor()
     expect(await commitButton.isDisabled()).toBe(true)
-    expect(await reasonOnHover()).toContain('Section "Empty section" has no lessons or tests yet.')
+    await expectReasonOnHover('Section "Empty section" has no lessons or tests yet.')
 
     await page.evaluate(
       ({ courseId, sectionId }) => window.courses.createLesson({ courseId, sectionId, title: 'First lesson' }),

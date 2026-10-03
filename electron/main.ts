@@ -506,6 +506,15 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
         continue
       }
 
+      // Not in this candidate (e.g. an imported course has no draft/): try the
+      // next one. Checked here, before the range branch, whose `statFile` would
+      // otherwise throw and turn the whole request into a 404.
+      const assetStat = await statFile(resolvedAssetPath).catch(() => null)
+
+      if (!assetStat?.isFile()) {
+        continue
+      }
+
       // A `.mov` (or any container whose `moov` atom lands after `mdat`,
       // which is the common case for an unedited screen recording, not
       // just an edge case) needs its player to read an arbitrary byte
@@ -522,7 +531,7 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
       const rangeMatch = rangeHeader ? /^bytes=(\d*)-(\d*)$/.exec(rangeHeader) : null
 
       if (rangeMatch) {
-        const totalSize = (await statFile(resolvedAssetPath)).size
+        const totalSize = assetStat.size
         const start = rangeMatch[1] ? Number(rangeMatch[1]) : 0
         const end = rangeMatch[2] ? Math.min(Number(rangeMatch[2]), totalSize - 1) : totalSize - 1
         const chunkSize = end - start + 1

@@ -316,6 +316,25 @@ describe('course sharing: updates', () => {
     await expect(sharing.applyUpdate('course-b')).rejects.toThrow(/no update/)
   })
 
+  it('checks again when the drive changes during a check, so a startup check can\'t swallow the news', async () => {
+    let finishFirst!: (value: ReturnType<typeof remote>) => void
+    const checkUpdate = vi
+      .fn()
+      // The startup check: started before the teacher was connected, answers "nothing new".
+      .mockImplementationOnce(() => new Promise((resolve) => (finishFirst = resolve)))
+      .mockResolvedValue(remote('0.3.0'))
+    const { sharing } = setup({ initial: imported, worker: { checkUpdate } })
+
+    const startupCheck = sharing.checkForUpdate('course-b')
+    sharing.onDriveChanged('drive-b') // arrives while that check is running
+    await flush() // let the first check reach the worker
+    finishFirst(remote('0.1.0'))
+    await startupCheck
+
+    expect(checkUpdate).toHaveBeenCalledTimes(2)
+    expect(sharing.getInfo('course-b').update?.version).toBe('0.3.0')
+  })
+
   it('looks for updates to imported courses at startup', async () => {
     const checkUpdate = vi.fn(async () => remote('0.2.0'))
     const { sharing } = setup({ initial: imported, worker: { checkUpdate } })

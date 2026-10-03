@@ -290,42 +290,55 @@ export function createCourseSharing(deps: CourseSharingDeps) {
   }
 
   const checking = new Map<string, Promise<void>>()
+  // A check requested while one was running: run once more afterwards. The
+  // running one may have started before a peer with the new version connected
+  // (e.g. right after startup), so the "drive changed" event that arrives
+  // meanwhile must not be folded into its stale answer.
+  const recheckRequested = new Set<string>()
 
   // Asks the drive which version it holds and records a pending (or refused)
   // update. Never throws: offline, it just tries again on the next event.
   function checkForUpdate(courseId: string): Promise<void> {
     const running = checking.get(courseId)
     if (running) {
+      recheckRequested.add(courseId)
       return running
     }
 
     const run = (async () => {
-      const followed = deps.store.read().followed[courseId]
-      const installedVersion = await deps.readInstalledVersion(courseId)
-
-      if (!followed || !installedVersion) {
-        return
-      }
-
-      try {
-        const remote = await deps.worker.checkUpdate(followed.driveKey)
-        const verdict = evaluateRemoteVersion(courseId, followed, remote, installedVersion)
-
-        if (verdict.kind === 'update') {
-          updateFollowed(courseId, { pendingUpdate: verdict.update, refusedUpdate: null })
-        } else if (verdict.kind === 'refused') {
-          console.warn(`[course-sharing] refused update ${verdict.version} of ${courseId}: different source`)
-          updateFollowed(courseId, { refusedUpdate: { version: verdict.version } })
-        } else {
-          updateFollowed(courseId, { pendingUpdate: null })
-        }
-      } catch (error) {
-        console.error(`[course-sharing] checking ${courseId} for an update failed:`, error)
-      }
+      do {
+        recheckRequested.delete(courseId)
+        await checkOnce(courseId)
+      } while (recheckRequested.has(courseId))
     })().finally(() => checking.delete(courseId))
 
     checking.set(courseId, run)
     return run
+  }
+
+  async function checkOnce(courseId: string): Promise<void> {
+    const followed = deps.store.read().followed[courseId]
+    const installedVersion = await deps.readInstalledVersion(courseId)
+
+    if (!followed || !installedVersion) {
+      return
+    }
+
+    try {
+      const remote = await deps.worker.checkUpdate(followed.driveKey)
+      const verdict = evaluateRemoteVersion(courseId, followed, remote, installedVersion)
+
+      if (verdict.kind === 'update') {
+        updateFollowed(courseId, { pendingUpdate: verdict.update, refusedUpdate: null })
+      } else if (verdict.kind === 'refused') {
+        console.warn(`[course-sharing] refused update ${verdict.version} of ${courseId}: different source`)
+        updateFollowed(courseId, { refusedUpdate: { version: verdict.version } })
+      } else {
+        updateFollowed(courseId, { pendingUpdate: null })
+      }
+    } catch (error) {
+      console.error(`[course-sharing] checking ${courseId} for an update failed:`, error)
+    }
   }
 
   return {

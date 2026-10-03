@@ -3,7 +3,10 @@ import { filterSuggestionItems } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import {
+  FormattingToolbar,
+  FormattingToolbarController,
   getDefaultReactSlashMenuItems,
+  getFormattingToolbarItems,
   SuggestionMenuController,
   useCreateBlockNote,
 } from "@blocknote/react";
@@ -117,10 +120,20 @@ function DocumentBlockNoteEditor({
     <BlockNoteView
       editable
       editor={editor}
+      formattingToolbar={false}
       onChange={() => onChange(blockNoteBlocksToEditorPrototype(editor.document))}
       slashMenu={false}
       theme={theme}
     >
+      {/* BlockNote's toolbar without its Download button for a selected
+          image/video/audio: the media player has its own download. */}
+      <FormattingToolbarController
+        formattingToolbar={() => (
+          <FormattingToolbar>
+            {getFormattingToolbarItems().filter((item) => item.key !== "fileDownloadButton")}
+          </FormattingToolbar>
+        )}
+      />
       <SuggestionMenuController
         getItems={async (query) =>
           filterSuggestionItems(

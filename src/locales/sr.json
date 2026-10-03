@@ -54,7 +54,8 @@
     "title": "Pretraga kurseva",
     "version": "{{version}}",
     "versionTooltip": "Verzija kursa",
-    "hideCourse": "Sakrij kurs"
+    "hideCourse": "Sakrij kurs",
+    "openInFileSystem": "Otvori u fajl sistemu"
   },
   "courseDescriptions": {
     "preSchoolDescription": "Rano učenje kroz igru, jezik, brojanje i kreativne aktivnosti.",

@@ -44,7 +44,10 @@ export function LessonBlocks({ courseId, source }: { courseId: string; source: s
       )}
       <div className="typeset typeset-course">
         <DocumentEditorContextProvider courseId={courseId} supportedLocales={[]}>
-          <BlockNoteView editable={false} editor={editor} theme={theme} />
+          {/* No formatting toolbar: in read-only mode BlockNote shows one above a
+              selected file block whose only actions are Download and a preview
+              toggle. The video player has its own download in its ⋮ menu. */}
+          <BlockNoteView editable={false} editor={editor} formattingToolbar={false} theme={theme} />
         </DocumentEditorContextProvider>
       </div>
     </div>

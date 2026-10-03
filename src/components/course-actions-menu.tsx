@@ -1,4 +1,4 @@
-import { EyeOff, MoreHorizontal, Trash2 } from "lucide-react";
+import { EyeOff, FolderOpen, MoreHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +17,8 @@ import { useShowBundledCourses } from "@/lib/show-bundled-courses-queries";
 // A course's own menu (⋯), at the end of the page's action bar: after Commit
 // new version in the editor's course page, after Share on the course details
 // page. Remove course asks first, then leaves for `afterRemovePath` (the
-// course is gone). The bundled course offers Hide instead.
+// course is gone). The bundled course offers Hide instead. An imported course
+// also offers Open in file system.
 export function CourseActionsMenu({
   afterRemovePath,
   course,
@@ -49,7 +50,15 @@ export function CourseActionsMenu({
         >
           <MoreHorizontal aria-hidden="true" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-44">
+        <DropdownMenuContent className="w-52">
+          {/* A course you imported: its files, like the explorer's "Open in file
+              system" on your own courses (same icon). */}
+          {course.distribution === "imported" && (
+            <DropdownMenuItem onClick={() => void window.courses.openInFileSystem(course.id)}>
+              <FolderOpen aria-hidden="true" />
+              {t("courseSearch.openInFileSystem")}
+            </DropdownMenuItem>
+          )}
           {isBundled ? (
             <DropdownMenuItem
               onClick={() => {

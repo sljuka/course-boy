@@ -383,5 +383,13 @@ describe('sharing across restarts', () => {
       .poll(() => student.evaluate((id) => window.courses.list('en'), courseId).then((courses) => courses.find((course) => course.id === courseId)?.version))
       .toBe(current)
   })
+
+  it("an imported course's menu offers Open in file system", async () => {
+    const student = apps.student3.page
+    await student.getByRole('button', { name: 'Course actions for E2E Shared Course' }).click()
+    // Not clicked: it would open the OS file manager.
+    await student.getByRole('menuitem', { name: 'Open in file system' }).waitFor()
+    await student.keyboard.press('Escape')
+  })
 })
 
