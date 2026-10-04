@@ -1240,6 +1240,62 @@ describe('i18n', () => {
   })
 })
 
+// SLJ-48: the window only ever shows the app. Course content comes from other
+// people, and a page in this window gets the preload's bridges.
+describe('window lockdown', () => {
+  it('opens outside links in the browser, never in the app window, and blocks other targets', async () => {
+    const { app, page } = harness
+    // Record instead of opening a real browser.
+    await app.evaluate(({ shell }) => {
+      globalThis.__openedExternal = []
+      shell.openExternal = async (url) => {
+        globalThis.__openedExternal.push(url)
+      }
+    })
+    const appUrl = await page.evaluate(() => location.href.split('#')[0])
+    const windowCountBefore = app.windows().length
+
+    // window.open: refused; an http(s) page goes to the browser.
+    expect(await page.evaluate(() => window.open('https://example.com/new-window') === null)).toBe(true)
+
+    // A clicked link (as in a lesson): the window stays on the app.
+    await page.evaluate(() => {
+      const link = document.createElement('a')
+      link.href = 'https://example.com/clicked-link'
+      document.body.append(link)
+      link.click()
+      link.remove()
+    })
+
+    // Other schemes and files on disk: blocked outright, not sent anywhere.
+    await page.evaluate(() => {
+      for (const href of ['file:///etc/hosts', 'data:text/html,<p>hi</p>']) {
+        const link = document.createElement('a')
+        link.href = href
+        document.body.append(link)
+        link.click()
+        link.remove()
+      }
+    })
+
+    await expect
+      .poll(() => app.evaluate(() => globalThis.__openedExternal))
+      .toEqual(['https://example.com/new-window', 'https://example.com/clicked-link'])
+    expect(await page.evaluate(() => location.href.split('#')[0])).toBe(appUrl)
+    expect(app.windows().length).toBe(windowCountBefore)
+  })
+
+  it('allows clipboard writes and denies other permissions', async () => {
+    const { page } = harness
+    await page.bringToFront()
+
+    expect(await page.evaluate(() => navigator.clipboard.writeText('matko').then(() => 'ok', (error) => String(error)))).toBe(
+      'ok',
+    )
+    expect(await page.evaluate(() => Notification.requestPermission())).toBe('denied')
+  })
+})
+
 describe('runtime health', () => {
   it('logged no uncaught renderer errors', () => {
     expect(harness.errors).toEqual([])

@@ -169,8 +169,10 @@ Not blockers, but do not mistake them for patterns to copy:
   exception: it renders an uploaded SVG's raw markup inline via `dangerouslySetInnerHTML`
   so individual shapes can be clicked, sanitizing with `DOMPurify` (SVG profile, plus a
   hook stripping non-fragment/non-`data:` `href`/`xlink:href` values) immediately before
-  every render. That sanitization is the one mitigation in place; general CSP hardening
-  for the rest of the app is still open, and matters more once peer-imported course
-  content (not just local uploads) reaches this or a future kind.
+  every render. Since SLJ-48 the window itself is locked (`electron/window-security.ts`):
+  it only ever shows the app, outside links open in the system browser, new windows and
+  `<webview>` are refused, and permissions are denied except clipboard write and
+  fullscreen. So a hostile link in imported content can't load an outside page with the
+  preload's bridges. CSP for the rest of the app is still open.
 - The `*-prototype` components (`editor-prototype`, `course-structure-prototype`,
   `test-editor-prototype`) are exploratory and hold most of the styling violations.

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, net, protocol, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, net, protocol, screen, session } from 'electron'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { open as openFile, stat as statFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -15,6 +15,7 @@ import {
   stopSharing,
 } from './bare-worker'
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
+import { lockDownSession, lockDownWindow } from './window-security'
 import { getCourseDetails, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
   applyCourseSvgPreset,
@@ -618,14 +619,23 @@ function createWindow() {
       : { titleBarOverlay: { color: '#00000000', height: 42, symbolColor: '#78716c' } }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
+      // Electron's defaults, pinned so an edit can't weaken them silently: the
+      // page gets only the preload's bridges, never Node (see
+      // electron/window-security.ts).
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
     },
   })
+
+  const indexHtmlPath = path.join(RENDERER_DIST, 'index.html')
+  lockDownWindow(win, [VITE_DEV_SERVER_URL ?? pathToFileURL(indexHtmlPath).href])
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    // win.loadFile('dist/index.html')
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    win.loadFile(indexHtmlPath)
   }
 }
 
@@ -653,6 +663,7 @@ app.whenReady().then(() => {
   }
 
   protocol.handle('matko-asset', handleCourseAssetRequest)
+  lockDownSession(session.defaultSession)
   createWindow()
   spawnBareWorker()
   // Before sharing starts: an update interrupted by a crash must not leave a
