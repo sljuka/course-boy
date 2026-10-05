@@ -587,3 +587,97 @@ only publishers ever touch, not an onboarding step every user sees.
      - Students can share a publicly imported course too: `code` is the drive key
        they imported with. A `gated` followed course (invite-only, not in the UI yet)
        gets no code.
+
+## Publisher key at rest (SLJ-46 spike, 2026-10-05)
+
+**Question:** can the publisher's signing keys stay out of plain-text storage, so an
+optional publisher password (SLJ-42) actually protects something?
+
+**Verdict: feasible.** Proven with throwaway Node scripts against the same corestore
+7.12 / hypercore 11.35 / hyperdrive 13.3 the worker uses. Each run scanned every file of
+the store (RocksDB logs and SSTs) for the primary key and the course's secret key.
+
+### Today
+
+Both secrets are on disk in plain text in `userData/p2p/db/*`, and the control run found
+both:
+
+- **The primary key:** Corestore stores it as its seed.
+- **Each course's secret key:** it sits in the headers of the drive's db and blobs
+  cores. Hypercore writes `keyPair.secretKey` into the header **when it creates the
+  core** with a key pair.
+
+### What the spike proved
+
+1. **Codes stay identical.** We can derive a course's key pair ourselves with Corestore's
+   own scheme, and get the same drive key, so every published code stays valid:
+   ```js
+   ns   = generichash_batch([ZERO_32, 'course-<id>'])
+   seed = generichash_batch([NS('corestore', 1), ns, 'db'], primaryKey)
+   keyPair = crypto_sign_seed_keypair(seed)
+   driveKey = Hypercore.key({ version: 1, signers: [{ publicKey }] })
+   ```
+2. **A drive can live in a store with no secrets.**
+   - **The store:** a Corestore with its **own random seed**, unrelated to the teacher.
+   - **Creating the cores:** both cores are created **by manifest only**, with no key
+     pair.
+   - **Writing:** the writing session gets the key pair in memory only:
+     ```js
+     const db = store.get({ manifest: dbManifest })                      // create: no secret stored
+     store.get({ manifest: Hyperdrive.getContentManifest(db.manifest, db.key) }) // blobs, same
+     const writer = new Hyperdrive(store, { _db: new Hyperbee(store.get({ manifest: dbManifest, keyPair }), beeOpts) })
+     await writer.put(...)                                               // signed in memory
+     ```
+     After writing files, including a 200 KB blob, the scan finds **nothing**. It still
+     finds nothing after a second unlock-and-write.
+   - **Gotcha:** the blobs manifest must come from the real db core's
+     `manifest` / `key`. With a hand-built one, Hyperdrive creates its own blobs core
+     with the full key pair, and the secret is back on disk.
+3. **Locked seeding works.** With no key pair at all, the store opens the drive by its
+   key, reads it, and serves it to a student who has only the code (video included). So
+   resharing at startup (SLJ-38) needs no unlock.
+4. **Unlocking later continues the same history.** A new version appended after an
+   in-memory unlock reaches the student as a normal update (`fork 0`, no conflict).
+5. **Migration works.**
+   - **Steps:** replicate each drive (db and blobs) from today's store into a new
+     secret-free store, with cores opened by manifest, then delete the old store.
+   - **Result:** full history, identical lengths, no secrets in the new store.
+6. **Hyperdrive's two cores** follow the same rules. The blobs core uses the db core's
+   key pair (a different signer namespace in its manifest).
+
+### Design for SLJ-42
+
+- **Identity:** the 32-byte primary key is held by the main process.
+  - **Default:** encrypted with `safeStorage`.
+  - **Optional:** encrypted with the publisher password (Argon2id → secretbox).
+  - **The worker never stores it.** It gets the key at unlock and keeps it in memory
+    until quit.
+- **The worker's store:** a Corestore with its own random seed, harmless if copied.
+  - Published drives are opened by key (locked); they're written only through
+    `get({ manifest, keyPair })` sessions created on Publish.
+  - Course key pairs are derived per course with the scheme above.
+- **Swarm identity:** `store.createKeyPair('swarm')` on the *new* store, derived from its
+  harmless seed, so it never needs unlocking.
+  - It changes **once**, at migration.
+  - Today only the driver-only gated allowlists depend on it.
+- **Creator key** (`publisher.id`): the public key is cached in plain text for display
+  (`getCreatorKey`). The secret is needed only when publishing, which is unlocked
+  anyway.
+- **Migration**, one-time at upgrade:
+  1. Read the old store's seed (= the identity) and hand it to main's key storage.
+  2. Create the new store.
+  3. Replicate every published drive locally by manifest; replicate followed drives
+     too, to avoid downloading them again.
+  4. Verify the lengths.
+  5. Delete `p2p/`.
+  - Deleting files doesn't scrub SSD blocks, so the OS disk-encryption advice stays.
+- **Gated store (`p2p-gated`):** today it has its own random seed, so gated course keys
+  are neither derived from the identity (not backed up) nor protected. When gated
+  sharing gets a UI, derive those keys from the identity the same way, under a
+  different name.
+- **Risks:**
+  - `Hyperdrive`'s `_db` option is internal API: pin the versions, and cover it with a
+    test.
+  - Passing a key pair when a core is *created* silently stores the secret again. Add
+    a regression test that publishes and then scans the store directory for the secret,
+    as this spike did.
