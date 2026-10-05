@@ -123,7 +123,12 @@ interface Window {
     getCreatorKey: () => Promise<string>
     getCourseSharing: (courseId: string) => Promise<import('../src/lib/sharing').CourseSharingInfo>
     listCourseUpdates: () => Promise<Record<string, import('../src/lib/sharing').CourseUpdateInfo>>
-    applyCourseUpdate: (courseId: string) => Promise<import('../src/lib/sharing').ApplyCourseUpdateResult>
+    applyCourseUpdate: (
+      courseId: string,
+      transferId?: string,
+    ) => Promise<import('../src/lib/sharing').ApplyCourseUpdateResult>
+    getTransfer: (transferId: string) => Promise<import('../src/lib/sharing').TransferInfo | null>
+    cancelTransfer: (transferId: string) => Promise<void>
     finishOnVersion: (courseId: string) => Promise<void>
     switchCourseVersion: (courseId: string, version: string) => Promise<void>
     importCourse: (

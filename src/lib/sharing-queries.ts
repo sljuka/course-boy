@@ -1,8 +1,9 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useMutationState, useQuery, type Mutation } from "@tanstack/react-query";
 
 import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
+  TransferInfo,
   CourseUpdateInfo,
   ImportCourseInput,
   ImportCourseResult,
@@ -32,7 +33,9 @@ export function useAcknowledgeCreatorKeyMutation() {
 
 // A course's code and whether it's online. Sharing runs in the background after
 // Publish (see electron/course-sharing.ts), so poll while it's still going.
-export function useCourseSharingQuery(courseId: string | undefined) {
+// `watchPeers`: poll every few seconds once online, for a live "Peers online"
+// count (the Share dialog, the Details panel).
+export function useCourseSharingQuery(courseId: string | undefined, { watchPeers = false } = {}) {
   return useQuery<CourseSharingInfo>({
     enabled: Boolean(courseId),
     queryKey: ["sharing", "course", courseId],
@@ -41,7 +44,7 @@ export function useCourseSharingQuery(courseId: string | undefined) {
     // course shows up while its page is open.
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === "sharing" ? 1_000 : status === "waiting" ? 5_000 : 30_000;
+      return status === "sharing" ? 1_000 : status === "waiting" || watchPeers ? 5_000 : 30_000;
     },
   });
 }
@@ -65,9 +68,19 @@ async function invalidateAfterUpdateChange(courseId: string) {
 }
 
 export function useApplyCourseUpdateMutation() {
-  return useMutation<ApplyCourseUpdateResult, Error, string>({
-    mutationFn: (courseId) => window.sharing.applyCourseUpdate(courseId),
-    onSuccess: (_result, courseId) => invalidateAfterUpdateChange(courseId),
+  return useMutation<ApplyCourseUpdateResult, Error, { courseId: string; transferId: string }>({
+    mutationFn: ({ courseId, transferId }) => window.sharing.applyCourseUpdate(courseId, transferId),
+    onSuccess: (_result, { courseId }) => invalidateAfterUpdateChange(courseId),
+  });
+}
+
+// An import or update download in progress (SLJ-43), polled while it runs.
+export function useTransferQuery(transferId: string | null) {
+  return useQuery<TransferInfo | null>({
+    enabled: transferId !== null,
+    queryKey: ["sharing", "transfer", transferId],
+    queryFn: () => window.sharing.getTransfer(transferId!),
+    refetchInterval: 500,
   });
 }
 
@@ -86,13 +99,61 @@ export function useFinishOnVersionMutation() {
   });
 }
 
+const importMutationKey = ["sharing", "import"] as const;
+
 export function useImportCourseMutation() {
   return useMutation<ImportCourseResult, Error, ImportCourseInput>({
+    mutationKey: importMutationKey,
     mutationFn: (input) => window.sharing.importCourse(input),
+    // Kept until dismissed: a failed import stays on Home (SLJ-49), even
+    // after the dialog that started it is gone.
+    gcTime: Infinity,
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: ["courses", "list"],
       });
+    },
+  });
+}
+
+// Imports still running, or that failed and haven't been dismissed (SLJ-49),
+// for Home's Downloading group. They live in the query client's mutation
+// cache, so they keep running (and stay listed) after the Import dialog
+// closes or the student leaves Home. A finished import drops out once the
+// course list has refetched, so the course moves straight to Imported.
+export type PendingImport = {
+  code: string;
+  dismiss: () => void;
+  error: Error | null;
+  transferId: string;
+};
+
+// Drops an import from Home's list, e.g. one whose error the Import dialog
+// already shows.
+export function discardImport(transferId: string) {
+  const cache = queryClient.getMutationCache();
+  for (const mutation of cache.findAll({ mutationKey: importMutationKey })) {
+    if ((mutation.state.variables as ImportCourseInput | undefined)?.transferId === transferId) {
+      cache.remove(mutation);
+    }
+  }
+}
+
+export function usePendingImports(): PendingImport[] {
+  return useMutationState({
+    filters: {
+      mutationKey: importMutationKey,
+      predicate: (mutation) => mutation.state.status === "pending" || mutation.state.status === "error",
+    },
+    select: (mutation) => {
+      const typed = mutation as unknown as Mutation<ImportCourseResult, Error, ImportCourseInput>;
+      const input = typed.state.variables;
+      return {
+        code: input?.code ?? "",
+        dismiss: () => queryClient.getMutationCache().remove(mutation),
+        error: typed.state.error,
+        transferId: input?.transferId ?? String(mutation.mutationId),
+      };
     },
   });
 }

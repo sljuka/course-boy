@@ -25,6 +25,9 @@ const CMD_FOLLOW_COURSE = 7 // must match electron/bare-worker.ts
 const CMD_STOP_SHARING = 8 // must match electron/bare-worker.ts
 const CMD_CHECK_UPDATE = 9 // must match electron/bare-worker.ts
 const CMD_DOWNLOAD_UPDATE = 10 // must match electron/bare-worker.ts
+const CMD_GET_TRANSFER = 11 // must match electron/bare-worker.ts
+const CMD_CANCEL_TRANSFER = 12 // must match electron/bare-worker.ts
+const CMD_GET_PEERS = 13 // must match electron/bare-worker.ts
 // Worker → main: an imported course's drive may hold a newer version. Main
 // decides what that means (electron/course-sharing.ts).
 const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
@@ -34,6 +37,9 @@ const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
 const UPDATE_POLL_INTERVAL_MS = 15 * 60_000
 // Reading a remote file waits for a peer that has it; don't wait forever.
 const REMOTE_READ_TIMEOUT_MS = 30_000
+// A finished transfer's last state stays readable this long, so the UI can show
+// its final numbers after the import/update call has returned.
+const FINISHED_TRANSFER_TTL_MS = 60_000
 
 // Written into every shared course's drive next to the version's files (never into
 // the version itself, so its hashes stay valid): where the course is shared from.
@@ -273,18 +279,25 @@ async function start() {
   // this Corestore. `atomic: true` is essential: Localdrive otherwise rewrites an
   // existing file in place (O_TRUNC), which on a hardlink would also change the
   // live course; atomic writes go to a temp file and rename over the link.
-  async function downloadUpdate(driveKey, targetPath) {
+  async function downloadUpdate(driveKey, targetPath, transferId) {
     const drive = getFollowedDrive(driveKey)
-    await drive.update()
+    const transfer = createTransfer(transferId)
+    transfer.drive = drive
+    // Cancel stops waiting at once (`untilCancelled`) and main removes the
+    // staging folder. The followed drive isn't closed (it keeps sharing the
+    // course), so a block already being fetched may still arrive; it only fills
+    // this Corestore's cache. A second Hyperdrive instance on the same key, to
+    // close on cancel instead, never became ready (2026-10-05).
 
-    const mirror = drive.mirror(new Localdrive(targetPath, { atomic: true }))
-    const changedFiles = []
-
-    for await (const diff of mirror) {
-      changedFiles.push({ key: diff.key, op: diff.op })
+    try {
+      await untilCancelled(transfer, drive.update())
+      const changedFiles = await mirrorWithProgress(drive, new Localdrive(targetPath, { atomic: true }), transfer)
+      finishTransfer(transferId, transfer, 'done')
+      return { changedFiles }
+    } catch (error) {
+      finishTransfer(transferId, transfer, transfer.isCancelled ? 'cancelled' : 'error')
+      throw transfer.isCancelled ? new TransferCancelled() : error
     }
-
-    return { changedFiles }
   }
 
   // At startup, an imported course's drive is reopened and announced again, so
@@ -315,6 +328,16 @@ async function start() {
       .catch(() => {})
   }
 
+  // How many peers this device is connected to for a course it shares: your
+  // own (by course id) or an imported one (by drive key). Null when it isn't
+  // shared here right now.
+  function countPeers({ courseId, driveKey }) {
+    const entry = courseId
+      ? publishedDrives.get(courseId)
+      : followedDrives.get(IdEncoding.decode(driveKey).toString('hex'))
+    return entry ? entry.drive.core.peers.length : null
+  }
+
   async function stopSharing({ courseId, driveKey }) {
     const map = courseId ? publishedDrives : followedDrives
     const key = courseId ?? IdEncoding.decode(driveKey).toString('hex')
@@ -327,6 +350,148 @@ async function start() {
     map.delete(key)
     await swarm.leave(entry.drive.discoveryKey)
     await entry.drive.close()
+  }
+
+  // ─── Transfers (SLJ-43) ─────────────────────────────────────────────────
+  // An import or an update download, tracked under an id the caller chooses, so
+  // main can poll its progress (CMD_GET_TRANSFER) and cancel it
+  // (CMD_CANCEL_TRANSFER). Phases: "finding" (no peer with the data yet: it
+  // waits, it never gives up by itself), "downloading", then "done" /
+  // "cancelled" / "error". The total is exact and known before downloading.
+  const transfers = new Map() // id -> transfer
+
+  class TransferCancelled extends Error {
+    constructor() {
+      super('Cancelled')
+      this.code = 'CANCELLED'
+    }
+  }
+
+  function createTransfer(id) {
+    let rejectCancel
+    const cancelled = new Promise((resolve, reject) => {
+      rejectCancel = reject
+    })
+    cancelled.catch(() => {})
+    const transfer = {
+      bytesDone: 0,
+      bytesTotal: null,
+      cancel: () => {
+        transfer.isCancelled = true
+        rejectCancel(new TransferCancelled())
+        for (const onCancel of transfer.onCancel) onCancel()
+      },
+      cancelled,
+      // The course's title per language, once its course.json has arrived
+      // (imports only), so Home can name the download.
+      course: null,
+      drive: null,
+      finishedAt: null,
+      isCancelled: false,
+      mirror: null,
+      onCancel: new Set(),
+      phase: 'finding',
+      startedAt: Date.now(),
+      written: 0,
+    }
+    if (id) transfers.set(id, transfer)
+    return transfer
+  }
+
+  function finishTransfer(id, transfer, phase) {
+    transfer.phase = phase
+    transfer.finishedAt = Date.now()
+    if (id) setTimeout(() => transfers.delete(id), FINISHED_TRANSFER_TTL_MS)
+  }
+
+  // Waits for `promise`, unless the transfer is cancelled first.
+  function untilCancelled(transfer, promise) {
+    return Promise.race([promise, transfer.cancelled])
+  }
+
+  function transferSnapshot(transfer) {
+    const downloaded = transfer.mirror ? transfer.mirror.downloadedBytes || 0 : 0
+    const bytesDone =
+      transfer.bytesTotal === null
+        ? 0
+        : Math.min(transfer.bytesTotal, Math.max(transfer.written, downloaded))
+    const hasPeers = transfer.drive ? transfer.drive.core.peers.length > 0 : false
+    // Still waiting for a peer that has the data: "finding", even mid-download.
+    const phase =
+      transfer.phase === 'downloading' && !hasPeers && bytesDone < (transfer.bytesTotal || 0)
+        ? 'finding'
+        : transfer.phase
+    let speed = 0
+    try {
+      speed = transfer.mirror && transfer.mirror.downloadSpeed ? transfer.mirror.downloadSpeed() : 0
+    } catch {}
+
+    return {
+      bytesDone: phase === 'done' ? transfer.bytesTotal || 0 : bytesDone,
+      bytesTotal: transfer.bytesTotal,
+      course: transfer.course,
+      elapsedMs: (transfer.finishedAt || Date.now()) - transfer.startedAt,
+      phase,
+      speed,
+    }
+  }
+
+  // An import: wait until a peer that has the course is connected and the
+  // drive's file list has arrived (a fresh drive is empty until then).
+  async function waitForDriveData(drive, transfer) {
+    while (drive.core.length === 0) {
+      if (drive.core.peers.length > 0) {
+        await untilCancelled(transfer, drive.update({ wait: true }))
+        if (drive.core.length > 0) return
+      }
+      await untilCancelled(
+        transfer,
+        new Promise((resolve) => {
+          const timer = setTimeout(done, 2000)
+          function done() {
+            clearTimeout(timer)
+            drive.core.off('peer-add', done)
+            resolve()
+          }
+          drive.core.on('peer-add', done)
+        }),
+      )
+    }
+  }
+
+  async function blobSize(drive, key) {
+    const entry = await drive.entry(key)
+    return entry && entry.value.blob ? entry.value.blob.byteLength : 0
+  }
+
+  // Mirrors `drive` onto `local`, tracking progress on `transfer`, cancellable.
+  // The total counts only what will be written: every file for an import, the
+  // added and changed files for an update.
+  async function mirrorWithProgress(drive, local, transfer) {
+    let total = 0
+    const plan = drive.mirror(local, { dryRun: true })
+    for await (const diff of plan) {
+      if (transfer.isCancelled) throw new TransferCancelled()
+      if (diff.op === 'add' || diff.op === 'change') total += await blobSize(drive, diff.key)
+    }
+    transfer.bytesTotal = total
+    transfer.phase = 'downloading'
+
+    const mirror = drive.mirror(local, { progress: true })
+    transfer.mirror = mirror
+    const changedFiles = []
+    const iterator = mirror[Symbol.asyncIterator]()
+
+    while (true) {
+      const { done, value } = await untilCancelled(transfer, iterator.next())
+      if (done) break
+      changedFiles.push({ key: value.key, op: value.op })
+      if (value.op === 'add' || value.op === 'change') {
+        transfer.written += await blobSize(drive, value.key)
+      }
+    }
+
+    return changedFiles
   }
 
   // A real import only ever has the code (the driveKey/invite) — it doesn't know the
@@ -398,35 +563,65 @@ async function start() {
     return path.join(coursesRoot, `.import-staging-${Date.now()}-${Math.random().toString(36).slice(2)}`)
   }
 
-  async function importCourse(driveKey, coursesRoot) {
+  // The course's titles from the drive's course.json, for the download's
+  // label. Remote data: only strings, capped. Null if it can't be read; the
+  // import itself validates the manifest later.
+  async function readCourseTitles(drive, transfer) {
+    try {
+      const manifest = JSON.parse(await untilCancelled(transfer, drive.get('/course.json')))
+      const titles = {}
+      for (const [locale, entry] of Object.entries(manifest.locales || {})) {
+        if (entry && typeof entry.title === 'string') titles[locale] = entry.title.slice(0, 200)
+      }
+      return {
+        defaultLocale: typeof manifest.defaultLocale === 'string' ? manifest.defaultLocale : null,
+        titles,
+      }
+    } catch (error) {
+      if (transfer.isCancelled) throw error
+      return null
+    }
+  }
+
+  async function importCourse(driveKey, coursesRoot, transferId) {
+    const transfer = createTransfer(transferId)
     const drive = new Hyperdrive(store, driveKey)
     await drive.ready()
+    transfer.drive = drive
     const keyHex = drive.key.toString('hex')
+    let stagingPath = null
 
     // No override: once this finishes, our Corestore holds a real replica, so we keep
     // announcing it (the default, server + client both true) rather than stopping
     // after download — the same "leech becomes a seed" convention that keeps the
     // swarm alive.
     const discovery = swarm.join(drive.discoveryKey)
+    // Closing the drive aborts any read still waiting for a peer.
+    transfer.onCancel.add(() => drive.close().catch(() => {}))
 
     try {
-      await discovery.flushed()
-      await swarm.flush()
+      // Nobody with the course online: keep looking (the UI says so) until
+      // someone is, or the student cancels.
+      await waitForDriveData(drive, transfer)
+      transfer.course = await readCourseTitles(drive, transfer)
 
-      const stagingPath = stagingPathFor(coursesRoot)
-      await drive.mirror(new Localdrive(stagingPath)).done()
+      stagingPath = stagingPathFor(coursesRoot)
+      await mirrorWithProgress(drive, new Localdrive(stagingPath), transfer)
 
       const { courseId, publisherId } = await finalizeImportedCourse(stagingPath, coursesRoot, drive.key)
       followedDrives.set(keyHex, { discovery, drive })
       watchFollowedDrive(drive)
+      finishTransfer(transferId, transfer, 'done')
       return { courseId, driveKey: drive.key, publisherId }
     } catch (error) {
+      finishTransfer(transferId, transfer, transfer.isCancelled ? 'cancelled' : 'error')
+      if (stagingPath) await fsp.rm(stagingPath, { recursive: true, force: true }).catch(() => {})
       // Don't keep seeding a course that didn't land.
       if (!followedDrives.has(keyHex)) {
         await swarm.leave(drive.discoveryKey).catch(() => {})
         await drive.close().catch(() => {})
       }
-      throw error
+      throw transfer.isCancelled ? new TransferCancelled() : error
     }
   }
 
@@ -539,10 +734,10 @@ async function start() {
     }
 
     if (req.command === CMD_IMPORT_COURSE) {
-      const { driveKey, coursesRoot } = JSON.parse(req.data.toString())
+      const { driveKey, coursesRoot, transferId } = JSON.parse(req.data.toString())
 
       try {
-        const result = await importCourse(driveKey, coursesRoot)
+        const result = await importCourse(driveKey, coursesRoot, transferId)
         req.reply(
           JSON.stringify({
             courseId: result.courseId,
@@ -551,8 +746,8 @@ async function start() {
           }),
         )
       } catch (error) {
-        console.error('[worker] failed to import course:', error)
-        req.reply(JSON.stringify({ error: error.message }))
+        if (error.code !== 'CANCELLED') console.error('[worker] failed to import course:', error)
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
       }
       return
     }
@@ -641,14 +836,38 @@ async function start() {
     }
 
     if (req.command === CMD_DOWNLOAD_UPDATE) {
-      const { driveKey, targetPath } = JSON.parse(req.data.toString())
+      const { driveKey, targetPath, transferId } = JSON.parse(req.data.toString())
 
       try {
-        req.reply(JSON.stringify(await downloadUpdate(driveKey, targetPath)))
+        req.reply(JSON.stringify(await downloadUpdate(driveKey, targetPath, transferId)))
       } catch (error) {
-        console.error('[worker] failed to download an update:', error)
-        req.reply(JSON.stringify({ error: error.message }))
+        if (error.code !== 'CANCELLED') console.error('[worker] failed to download an update:', error)
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
       }
+      return
+    }
+
+    if (req.command === CMD_GET_TRANSFER) {
+      const { transferId } = JSON.parse(req.data.toString())
+      const transfer = transfers.get(transferId)
+      req.reply(JSON.stringify({ transfer: transfer ? transferSnapshot(transfer) : null }))
+      return
+    }
+
+    if (req.command === CMD_GET_PEERS) {
+      try {
+        req.reply(JSON.stringify({ peers: countPeers(JSON.parse(req.data.toString())) }))
+      } catch {
+        req.reply(JSON.stringify({ peers: null }))
+      }
+      return
+    }
+
+    if (req.command === CMD_CANCEL_TRANSFER) {
+      const { transferId } = JSON.parse(req.data.toString())
+      const transfer = transfers.get(transferId)
+      if (transfer && !transfer.isCancelled && transfer.phase !== 'done') transfer.cancel()
+      req.reply(JSON.stringify({}))
       return
     }
 

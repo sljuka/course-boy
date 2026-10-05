@@ -193,7 +193,10 @@
     "statusShared": "Na mreži",
     "statusWaiting": "Čeka se povezivanje. Matko nastavlja da pokušava u pozadini.",
     "notPublished": "Objavite verziju da bi učenici mogli da preuzmu ovaj kurs.",
-    "done": "Gotovo"
+    "done": "Gotovo",
+    "shareCourse": "Podeli kurs",
+    "shareDescriptionImported": "Drugovi iz razreda mogu da preuzmu ovaj kurs ovim kodom. Isti je za svaku verziju.",
+    "peersOnline": "Korisnika na mreži: {{count}}"
   },
   "importCourse": {
     "codeLabel": "Kod kursa",
@@ -643,5 +646,43 @@
     "removeIntroNeverCommitted": "Nije sačuvan ni u jednoj verziji, pa ne može da se vrati.",
     "removeIntroConfirm": "Ukloni uvod",
     "cancel": "Otkaži"
+  },
+  "transfer": {
+    "finding": "Traži se kurs…",
+    "nobodyOnline": "Trenutno niko ko deli ovaj kurs nije na mreži. Preuzimanje počinje čim nastavnik ili neko iz razreda ko ima kurs otvori Matko.",
+    "downloading": "Preuzeto {{done}} od {{total}}",
+    "speed": "{{speed}}/s",
+    "cancel": "Otkaži",
+    "nobodyOnlineShort": "Niko ko ga deli nije na mreži"
+  },
+  "home": {
+    "groups": {
+      "downloading": "Preuzimanje",
+      "imported": "Uvezeni"
+    },
+    "newCourse": "Novi kurs",
+    "importFailed": "Uvoz nije uspeo",
+    "dismiss": "Odbaci",
+    "builtInBadge": "Ugrađen"
+  },
+  "courseInfo": {
+    "title": "Detalji",
+    "togglePanel": "Prikaži ili sakrij detalje",
+    "source": "Izvor",
+    "sources": {
+      "bundled": "Ugrađen",
+      "imported": "Uvezen",
+      "local": "Tvoj kurs"
+    },
+    "version": "Verzija",
+    "versionDate": "Datum verzije",
+    "imported": "Uvezen",
+    "created": "Napravljen",
+    "keptVersions": "Sačuvane verzije",
+    "languages": "Jezici",
+    "sections": "Sekcije",
+    "lessons": "Lekcije",
+    "id": "ID",
+    "peersOnline": "Korisnici na mreži"
   }
 }

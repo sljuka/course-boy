@@ -92,9 +92,11 @@ describe('launch', () => {
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',
+      'cancelTransfer',
       'finishOnVersion',
       'getCourseSharing',
       'getCreatorKey',
+      'getTransfer',
       'importCourse',
       'listCourseUpdates',
       'switchCourseVersion',

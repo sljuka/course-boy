@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -20,12 +21,15 @@ export function CourseUpdateDialog({
   onApply,
   onClose,
   open,
+  progress,
   update,
 }: {
   isApplying: boolean;
   onApply: () => void;
   onClose: () => void;
   open: boolean;
+  // The download's progress and Cancel, while it runs (SLJ-43).
+  progress?: ReactNode;
   update: CourseUpdateInfo;
 }) {
   const { t } = useTranslation();
@@ -51,6 +55,7 @@ export function CourseUpdateDialog({
             </div>
           ))}
         </div>
+        {progress}
         <DialogFooter>
           <Button disabled={isApplying} onClick={onClose} variant="secondary">
             {t("courseUpdates.notNow")}

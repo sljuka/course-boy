@@ -14,10 +14,12 @@ import {
 import { CourseActionsMenu } from "@/components/course-actions-menu";
 import { PageContent } from "@/components/page-content";
 import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLabel } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
+import { useCourseSharingQuery } from "@/lib/sharing-queries";
+import { CourseInfoSidePanel } from "@/components/course-details/course-info-panel";
 import { CourseUpdateNotice } from "@/components/course-details/course-update-notice";
 import { CourseVersionMenu } from "@/components/course-details/course-version-menu";
 import { ShareCourseButton } from "@/components/course-details/share-course-button";
@@ -39,6 +41,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
     throwOnError: true,
   });
+  const { data: sharing } = useCourseSharingQuery(course?.distribution === "imported" ? courseId : undefined);
 
   if (isLoading) {
     return (
@@ -88,17 +91,32 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
 
   const actions = (
     <>
-      <Button
-        disabled={!entryStep}
-        onClick={startCourse}
-        size="sm"
-        title={t("courseDetails.startCourse")}
-      >
-        <Play aria-hidden="true" />
-        <ButtonLabel>{t("courseDetails.startCourse")}</ButtonLabel>
-      </Button>
-      {/* Only the teacher's own courses have a code to hand out. */}
-      {resolvedCourse.distribution === "local" && <ShareCourseButton courseId={courseId} />}
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label={t("courseDetails.startCourse")}
+              disabled={!entryStep}
+              onClick={startCourse}
+              shape="circle"
+              size="icon-sm"
+            />
+          }
+        >
+          <Play aria-hidden="true" />
+        </TooltipTrigger>
+        <TooltipContent>{t("courseDetails.startCourse")}</TooltipContent>
+      </Tooltip>
+      {/* Your own course, or an imported one shared publicly (students can
+          pass it on); never the bundled one, nor one shared only with you. */}
+      {(resolvedCourse.distribution === "local" ||
+        (resolvedCourse.distribution === "imported" && Boolean(sharing?.code))) && (
+        <ShareCourseButton
+          courseId={courseId}
+          iconOnly
+          imported={resolvedCourse.distribution === "imported"}
+        />
+      )}
       <CourseActionsMenu
         afterRemovePath={resolvedCourse.distribution === "local" ? "/my-courses" : "/"}
         course={resolvedCourse}
@@ -171,46 +189,48 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   );
 
   return (
-    <PageContent
-      actions={actions}
-      breadcrumbs={breadcrumbs}
-      crumbActions={crumbActions}
-      pageHero={pageHero}
-    >
-      {resolvedCourse.distribution === "imported" && <CourseUpdateNotice courseId={courseId} />}
-      {resolvedCourse.sections.length === 0 && (
-        <CardDescription data-testid="course-no-sections">{t("courseDetails.noSections")}</CardDescription>
-      )}
-      {resolvedCourse.sections.map((section) => (
-        <Card
-          className="overflow-hidden border-border bg-muted/80 shadow-none"
-          id={section.id}
-          key={section.id}
-        >
-          <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <div className="text-base font-semibold text-foreground">
-                {section.title}
+    <CourseInfoSidePanel course={resolvedCourse}>
+      <PageContent
+        actions={actions}
+        breadcrumbs={breadcrumbs}
+        crumbActions={crumbActions}
+        pageHero={pageHero}
+      >
+        {resolvedCourse.distribution === "imported" && <CourseUpdateNotice courseId={courseId} />}
+        {resolvedCourse.sections.length === 0 && (
+          <CardDescription data-testid="course-no-sections">{t("courseDetails.noSections")}</CardDescription>
+        )}
+        {resolvedCourse.sections.map((section) => (
+          <Card
+            className="overflow-hidden border-border bg-muted/80 shadow-none"
+            id={section.id}
+            key={section.id}
+          >
+            <CardContent className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <div className="text-base font-semibold text-foreground">
+                  {section.title}
+                </div>
+                {section.description && (
+                  <CardDescription>{truncateSummary(section.description)}</CardDescription>
+                )}
               </div>
-              {section.description && (
-                <CardDescription>{truncateSummary(section.description)}</CardDescription>
-              )}
-            </div>
-            <div className="overflow-x-auto pb-2">
-              <CoursePreviewStrip
-                items={buildSectionPreviewItems(section, { introTitle: t("courseDetails.sectionIntro") })}
-                onSelect={handlePreviewItemSelect}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-      <VersionHistoryDialog
-        courseId={courseId}
-        mode="history"
-        onOpenChange={setIsVersionHistoryOpen}
-        open={isVersionHistoryOpen}
-      />
-    </PageContent>
+              <div className="overflow-x-auto pb-2">
+                <CoursePreviewStrip
+                  items={buildSectionPreviewItems(section, { introTitle: t("courseDetails.sectionIntro") })}
+                  onSelect={handlePreviewItemSelect}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        <VersionHistoryDialog
+          courseId={courseId}
+          mode="history"
+          onOpenChange={setIsVersionHistoryOpen}
+          open={isVersionHistoryOpen}
+        />
+      </PageContent>
+    </CourseInfoSidePanel>
   );
 };

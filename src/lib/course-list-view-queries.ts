@@ -3,28 +3,43 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   DEFAULT_COURSE_LIST_VIEW,
+  DEFAULT_HOME_VIEW,
   parseCourseListView,
   type CourseListView,
 } from "@/lib/course-list-view";
 
-const queryKey = ["preferences", "myCoursesView"] as const;
+type ViewPreference = "homeView" | "myCoursesView";
 
-// My courses' chosen view, remembered across restarts. Applied to the cache
+const defaults: Record<ViewPreference, CourseListView> = {
+  homeView: DEFAULT_HOME_VIEW,
+  myCoursesView: DEFAULT_COURSE_LIST_VIEW,
+};
+
+// A page's chosen view, remembered across restarts. Applied to the cache
 // immediately and persisted in the background.
-export function useMyCoursesView(): [CourseListView, (view: CourseListView) => void] {
+function useCourseListView(preference: ViewPreference): [CourseListView, (view: CourseListView) => void] {
   const queryClient = useQueryClient();
+  const queryKey = ["preferences", preference];
   const { data } = useQuery({
     queryKey,
-    queryFn: async () => parseCourseListView((await window.preferences.get()).myCoursesView),
+    queryFn: async () => parseCourseListView((await window.preferences.get())[preference], defaults[preference]),
   });
 
   const setView = useCallback(
     (view: CourseListView) => {
-      queryClient.setQueryData(queryKey, view);
-      void window.preferences.set({ myCoursesView: view });
+      queryClient.setQueryData(["preferences", preference], view);
+      void window.preferences.set({ [preference]: view });
     },
-    [queryClient],
+    [preference, queryClient],
   );
 
-  return [data ?? DEFAULT_COURSE_LIST_VIEW, setView];
+  return [data ?? defaults[preference], setView];
+}
+
+export function useMyCoursesView() {
+  return useCourseListView("myCoursesView");
+}
+
+export function useHomeView() {
+  return useCourseListView("homeView");
 }

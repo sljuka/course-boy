@@ -24,6 +24,7 @@ import { app } from 'electron'
 import { getPublishedCoursePackagePath } from './course-paths'
 import { isValidCourseId } from '../src/lib/course-id'
 import type { RemoteCourseVersion } from './course-sharing'
+import type { TransferInfo } from '../src/lib/sharing'
 
 // Must match workers/main.cjs.
 const CMD_GET_CREATOR_KEY = 1
@@ -36,6 +37,9 @@ const CMD_FOLLOW_COURSE = 7
 const CMD_STOP_SHARING = 8
 const CMD_CHECK_UPDATE = 9
 const CMD_DOWNLOAD_UPDATE = 10
+const CMD_GET_TRANSFER = 11
+const CMD_CANCEL_TRANSFER = 12
+const CMD_GET_PEERS = 13
 // Sent by the worker to main (the only worker → main message).
 const EVENT_DRIVE_CHANGED = 100
 
@@ -43,8 +47,11 @@ declare global {
   var __creatorPublicKeyPhase1: string
   var __matkoBareWorker: {
     createInvite: typeof createInvite
+    cancelTransfer: typeof cancelTransfer
     checkUpdate: typeof checkUpdate
     downloadUpdate: typeof downloadUpdate
+    getTransfer: typeof getTransfer
+    getPeers: typeof getPeers
     followCourse: typeof followCourse
     getCreatorKey: typeof getCreatorKey
     importCourse: typeof importCourse
@@ -98,13 +105,18 @@ async function sendCommand<T>(command: number, payload: unknown): Promise<T> {
   request.send(JSON.stringify(payload))
 
   const reply = await request.reply('utf-8')
-  const result = JSON.parse(reply ? reply.toString() : '{}') as T & { error?: string }
+  const result = JSON.parse(reply ? reply.toString() : '{}') as T & { code?: string; error?: string }
 
   if (result.error) {
-    throw new Error(result.error)
+    // `code` carries e.g. CANCELLED (a transfer the user stopped) to the caller.
+    throw Object.assign(new Error(result.error), { code: result.code })
   }
 
   return result
+}
+
+export function isCancelledError(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === 'CANCELLED'
 }
 
 // Mirrors the course's *current published version* into its drive (plus
@@ -127,11 +139,13 @@ export type ImportedCourseSource = {
   publisherId: string
 }
 
-export async function importCourse(driveKey: string): Promise<ImportedCourseSource> {
+// `transferId`: to poll progress (getTransfer) and cancel (cancelTransfer).
+export async function importCourse(driveKey: string, transferId?: string): Promise<ImportedCourseSource> {
   const coursesRoot = path.join(app.getPath('userData'), 'courses')
   const result = await sendCommand<Partial<ImportedCourseSource>>(CMD_IMPORT_COURSE, {
     coursesRoot,
     driveKey,
+    transferId,
   })
 
   return {
@@ -158,8 +172,26 @@ export type DownloadedUpdate = {
 
 // Mirrors the drive onto `targetPath` (a hardlinked copy of the current course;
 // see `downloadUpdate` in workers/main.cjs for why that's safe).
-export async function downloadUpdate(driveKey: string, targetPath: string): Promise<DownloadedUpdate> {
-  return sendCommand<DownloadedUpdate>(CMD_DOWNLOAD_UPDATE, { driveKey, targetPath })
+export async function downloadUpdate(
+  driveKey: string,
+  targetPath: string,
+  transferId?: string,
+): Promise<DownloadedUpdate> {
+  return sendCommand<DownloadedUpdate>(CMD_DOWNLOAD_UPDATE, { driveKey, targetPath, transferId })
+}
+
+export async function getTransfer(transferId: string): Promise<TransferInfo | null> {
+  return (await sendCommand<{ transfer: TransferInfo | null }>(CMD_GET_TRANSFER, { transferId })).transfer
+}
+
+export async function cancelTransfer(transferId: string): Promise<void> {
+  await sendCommand(CMD_CANCEL_TRANSFER, { transferId })
+}
+
+// Peers connected for a course shared from this device (your own by course id,
+// an imported one by drive key); null when it isn't shared here right now.
+export async function getPeers(target: { courseId: string } | { driveKey: string }): Promise<number | null> {
+  return (await sendCommand<{ peers: number | null }>(CMD_GET_PEERS, target)).peers
 }
 
 const driveChangedListeners = new Set<(driveKey: string) => void>()
@@ -251,11 +283,14 @@ export async function redeemInvite(invite: string): Promise<{ courseId: string }
 // verification hook the `run-desktop` driver's `main <expr>` command calls directly,
 // same idea as Phase 0/1's `globalThis.__*Phase*Status` values.
 globalThis.__matkoBareWorker = {
+  cancelTransfer,
   checkUpdate,
   createInvite,
   downloadUpdate,
   followCourse,
   getCreatorKey,
+  getPeers,
+  getTransfer,
   importCourse,
   publishCourse,
   publishGatedCourse,

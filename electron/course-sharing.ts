@@ -21,7 +21,7 @@
 import type { CourseChangelogEntry } from '../src/lib/course-package'
 import { compareCourseVersions, parseCourseVersion } from '../src/lib/course-versioning'
 import type {
-  ApplyCourseUpdateResult,
+  Cancelled,
   CourseSharingInfo,
   CourseSharingStatus,
   CourseUpdateInfo,
@@ -37,6 +37,10 @@ export type PendingCourseUpdate = {
 export type FollowedCourse = {
   driveKey: string
   followedSince: string
+  // Shared by the teacher with chosen students only (blind-pairing invites,
+  // not in the UI yet): its key must not be handed on, so the student gets no
+  // code to share. Courses imported with a code are public: unset.
+  gated?: boolean
   // Claimed by the course's source.json; unverified until SLJ-18. Stored, not shown.
   publisherId: string
   // The newest valid newer version the drive offers, if any.
@@ -144,9 +148,14 @@ export type CourseSharingStore = {
 
 export type CourseSharingWorker = {
   checkUpdate(driveKey: string): Promise<RemoteCourseVersion>
-  downloadUpdate(driveKey: string, targetPath: string): Promise<{ changedFiles: { key: string; op: string }[] }>
+  downloadUpdate(
+    driveKey: string,
+    targetPath: string,
+    transferId?: string,
+  ): Promise<{ changedFiles: { key: string; op: string }[] }>
   followCourse(driveKey: string): Promise<void>
-  importCourse(code: string): Promise<{ courseId: string; driveKey: string; publisherId: string }>
+  getPeers(target: { courseId: string } | { driveKey: string }): Promise<number | null>
+  importCourse(code: string, transferId?: string): Promise<{ courseId: string; driveKey: string; publisherId: string }>
   publishCourse(courseId: string): Promise<string>
   stopSharing(target: { courseId: string } | { driveKey: string }): Promise<void>
 }
@@ -170,6 +179,11 @@ export type CourseSharingDeps = {
   setTimer?: (callback: () => void, delayMs: number) => { cancel(): void }
   store: CourseSharingStore
   worker: CourseSharingWorker
+}
+
+// A transfer the user stopped (the worker's CANCELLED code), not a failure.
+function isCancelled(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === 'CANCELLED'
 }
 
 const FIRST_RETRY_DELAY_MS = 30_000
@@ -367,7 +381,12 @@ export function createCourseSharing(deps: CourseSharingDeps) {
 
     // Applies the pending update, if it's still valid (checked again first, so
     // the version applied is the one the drive holds now).
-    async applyUpdate(courseId: string): Promise<ApplyCourseUpdateResult & { changedFiles: string[] }> {
+    // `transferId` lets the UI poll progress and cancel; a cancelled download
+    // returns `{ cancelled: true }` and leaves the course as it was.
+    async applyUpdate(
+      courseId: string,
+      transferId?: string,
+    ): Promise<({ version: string } & { changedFiles: string[] }) | Cancelled> {
       await checkForUpdate(courseId)
       const followed = deps.store.read().followed[courseId]
       const update = followed?.pendingUpdate
@@ -376,15 +395,21 @@ export function createCourseSharing(deps: CourseSharingDeps) {
         throw new Error('There is no update for this course')
       }
 
-      const downloaded = await deps.applyUpdateFiles(
-        {
-          courseId,
-          driveKey: followed.driveKey,
-          publisherId: followed.publisherId,
-          version: update.version,
-        },
-        (stagingPath) => deps.worker.downloadUpdate(followed.driveKey, stagingPath),
-      )
+      let downloaded: Awaited<ReturnType<CourseSharingWorker['downloadUpdate']>> | null
+      try {
+        downloaded = await deps.applyUpdateFiles(
+          {
+            courseId,
+            driveKey: followed.driveKey,
+            publisherId: followed.publisherId,
+            version: update.version,
+          },
+          (stagingPath) => deps.worker.downloadUpdate(followed.driveKey, stagingPath, transferId),
+        )
+      } catch (error) {
+        if (isCancelled(error)) return { cancelled: true }
+        throw error
+      }
 
       updateFollowed(courseId, {
         dismissedUpdateVersion: null,
@@ -409,6 +434,25 @@ export function createCourseSharing(deps: CourseSharingDeps) {
           ? { dismissedUpdateVersion: pending.version, finishOnVersion: true }
           : { dismissedUpdateVersion: null, finishOnVersion: false },
       )
+    },
+
+    // How many peers this device is connected to for the course, while it's
+    // shared from here (your own once published, an imported one while
+    // followed); null otherwise, or if the worker can't say.
+    async getPeers(courseId: string): Promise<number | null> {
+      const state = deps.store.read()
+      const followed = state.followed[courseId]
+      const target = state.published[courseId]
+        ? { courseId }
+        : followed
+          ? { driveKey: followed.driveKey }
+          : null
+
+      if (!target || statuses.get(courseId) !== 'shared') {
+        return null
+      }
+
+      return deps.worker.getPeers(target).catch(() => null)
     },
 
     async getVersions(courseId: string): Promise<CourseSharingInfo['versions']> {
@@ -447,8 +491,14 @@ export function createCourseSharing(deps: CourseSharingDeps) {
 
     // Imports a course by its code and records where it came from. The recorded
     // drive key is the code actually used, never re-read from the course's files.
-    async importCourse(code: string): Promise<{ courseId: string }> {
-      const result = await deps.worker.importCourse(code)
+    async importCourse(code: string, transferId?: string): Promise<{ courseId: string } | Cancelled> {
+      let result: Awaited<ReturnType<CourseSharingWorker['importCourse']>>
+      try {
+        result = await deps.worker.importCourse(code, transferId)
+      } catch (error) {
+        if (isCancelled(error)) return { cancelled: true }
+        throw error
+      }
       updateState((state) => ({
         ...state,
         followed: {
@@ -466,13 +516,18 @@ export function createCourseSharing(deps: CourseSharingDeps) {
 
     getInfo(courseId: string): CourseSharingInfo {
       const state = deps.store.read()
-      const code = state.published[courseId]?.code ?? null
-      const isKnown = Boolean(code) || courseId in state.followed
-
       const followed = state.followed[courseId]
+      // Your own course: the code it was published with. An imported public
+      // course: the code it was imported with (its drive key), so the student
+      // can share it with classmates. A gated one: none.
+      const code = state.published[courseId]?.code ?? (followed && !followed.gated ? followed.driveKey : null)
+      const isKnown = Boolean(code) || courseId in state.followed
 
       return {
         code,
+        importedAt: followed?.followedSince ?? null,
+        // Asked of the worker separately (getPeers).
+        peers: null,
         refusedUpdate: followed?.refusedUpdate ?? null,
         status: statuses.get(courseId) ?? (isKnown ? 'waiting' : 'not-shared'),
         update: followed ? describeUpdate(followed) : null,

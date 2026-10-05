@@ -17,8 +17,12 @@ export type Theme = 'light' | 'dark'
 
 export type UserPreferences = {
   category?: Category
+  // The course page's right panel (Details): open or closed.
+  courseInfoPanel?: ExplorerPanelPreference
   explorerPanel?: ExplorerPanelPreference
   hasAcknowledgedCreatorKey?: boolean
+  // Home: compact rows ("table") or cards ("list").
+  homeView?: CourseListView
   locale?: Locale
   // My courses: compact rows ("table") or cards ("list").
   myCoursesView?: CourseListView

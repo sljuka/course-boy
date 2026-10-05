@@ -193,7 +193,10 @@
     "statusShared": "Online",
     "statusWaiting": "Waiting to go online. Matko keeps trying in the background.",
     "notPublished": "Publish a version so students can get this course.",
-    "done": "Done"
+    "done": "Done",
+    "shareCourse": "Share course",
+    "shareDescriptionImported": "Classmates can get this course with this code. It's the same for every version.",
+    "peersOnline": "Peers online: {{count}}"
   },
   "importCourse": {
     "codeLabel": "Course code",
@@ -643,5 +646,43 @@
     "removeIntroNeverCommitted": "It hasn't been committed in any version, so it can't be recovered.",
     "removeIntroConfirm": "Remove intro",
     "cancel": "Cancel"
+  },
+  "transfer": {
+    "finding": "Looking for the course…",
+    "nobodyOnline": "Nobody sharing this course is online right now. It downloads as soon as your teacher or a classmate who has it opens Matko.",
+    "downloading": "Downloading {{done}} of {{total}}",
+    "speed": "{{speed}}/s",
+    "cancel": "Cancel",
+    "nobodyOnlineShort": "Nobody sharing it is online"
+  },
+  "home": {
+    "groups": {
+      "downloading": "Downloading",
+      "imported": "Imported"
+    },
+    "newCourse": "New course",
+    "importFailed": "Import failed",
+    "dismiss": "Dismiss",
+    "builtInBadge": "Built in"
+  },
+  "courseInfo": {
+    "title": "Details",
+    "togglePanel": "Toggle details",
+    "source": "Source",
+    "sources": {
+      "bundled": "Built in",
+      "imported": "Imported",
+      "local": "Your course"
+    },
+    "version": "Version",
+    "versionDate": "Version date",
+    "imported": "Imported",
+    "created": "Created",
+    "keptVersions": "Versions kept",
+    "languages": "Languages",
+    "sections": "Sections",
+    "lessons": "Lessons",
+    "id": "ID",
+    "peersOnline": "Peers online"
   }
 }

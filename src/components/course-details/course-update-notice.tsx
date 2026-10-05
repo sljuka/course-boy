@@ -6,6 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import { TransferProgress } from "@/components/transfer-progress";
 import {
   useApplyCourseUpdateMutation,
   useCourseSharingQuery,
@@ -25,11 +26,25 @@ export function CourseUpdateNotice({ courseId }: { courseId: string }) {
   const applyMutation = useApplyCourseUpdateMutation();
   const finishMutation = useFinishOnVersionMutation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // The running download's id, to show its progress and cancel it (SLJ-43).
+  const [transferId, setTransferId] = useState<string | null>(null);
   const update = sharing?.update ?? null;
 
   function apply() {
-    applyMutation.mutate(courseId, { onSuccess: () => setIsDialogOpen(false) });
+    const id = crypto.randomUUID();
+    setTransferId(id);
+    applyMutation.mutate(
+      { courseId, transferId: id },
+      {
+        onSettled: () => setTransferId(null),
+        onSuccess: () => setIsDialogOpen(false),
+      },
+    );
   }
+
+  const progress = applyMutation.isPending && transferId && (
+    <TransferProgress onCancel={() => void window.sharing.cancelTransfer(transferId)} transferId={transferId} />
+  );
 
   // A big update shows its release notes before it's applied.
   function requestUpdate() {
@@ -84,6 +99,7 @@ export function CourseUpdateNotice({ courseId }: { courseId: string }) {
               ? t("courseUpdates.recommendedDescription")
               : t("courseUpdates.availableDescription")}
           </AlertDescription>
+          {progress && <div className="col-start-2 mt-2">{progress}</div>}
           <div className="col-start-2 mt-2 flex flex-wrap gap-2">
             {updateButton}
             <Button onClick={() => setIsDialogOpen(true)} size="sm" variant="secondary">
@@ -101,15 +117,19 @@ export function CourseUpdateNotice({ courseId }: { courseId: string }) {
         </Alert>
       )}
       {update?.visibility === "quiet" && (
-        <div className="flex flex-wrap items-center gap-2" data-testid="course-update-quiet">
-          <CardDescription>{t("courseUpdates.quietLine", { version: update.version })}</CardDescription>
-          {updateButton}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2" data-testid="course-update-quiet">
+            <CardDescription>{t("courseUpdates.quietLine", { version: update.version })}</CardDescription>
+            {updateButton}
+          </div>
+          {progress}
         </div>
       )}
       {update && (
         <CourseUpdateDialog
           isApplying={applyMutation.isPending}
           onApply={apply}
+          progress={isDialogOpen ? progress : null}
           onClose={() => setIsDialogOpen(false)}
           open={isDialogOpen}
           update={update}

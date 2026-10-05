@@ -4,10 +4,13 @@ import { open as openFile, stat as statFile } from 'node:fs/promises'
 import path from 'node:path'
 import Store from 'electron-store'
 import {
+  cancelTransfer,
   checkUpdate,
   downloadUpdate,
   followCourse,
   getCreatorKey,
+  getPeers,
+  getTransfer,
   importCourse,
   onDriveChanged,
   publishCourse,
@@ -57,7 +60,7 @@ import {
 } from './course-paths'
 import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
 import { isValidCourseId } from '../src/lib/course-id'
-import { parseCourseListView, type CourseListView } from '../src/lib/course-list-view'
+import { DEFAULT_HOME_VIEW, parseCourseListView, type CourseListView } from '../src/lib/course-list-view'
 import { parseExplorerPanelPreference, type ExplorerPanelPreference } from '../src/lib/explorer-panel'
 import { parseRecentlyViewedEntries, type RecentlyViewedEntry } from '../src/lib/recently-viewed'
 import type {
@@ -141,8 +144,10 @@ type Theme = 'light' | 'dark'
 type UserPreferences = {
   category?: Category
   explorerPanel?: ExplorerPanelPreference
+  homeView?: CourseListView
   myCoursesView?: CourseListView
   versionsPanel?: ExplorerPanelPreference
+  courseInfoPanel?: ExplorerPanelPreference
   hasAcknowledgedCreatorKey?: boolean
   showBundledCourses?: boolean
   locale?: Locale
@@ -181,7 +186,7 @@ const courseSharing = createCourseSharing({
     }),
     write: (state) => courseSharingStore.set(state),
   },
-  worker: { checkUpdate, downloadUpdate, followCourse, importCourse, publishCourse, stopSharing },
+  worker: { checkUpdate, downloadUpdate, followCourse, getPeers, importCourse, publishCourse, stopSharing },
 })
 
 onDriveChanged((driveKey) => courseSharing.onDriveChanged(driveKey))
@@ -264,8 +269,16 @@ ipcMain.handle(
       preferencesStore.set('explorerPanel', parseExplorerPanelPreference(preferences.explorerPanel))
     }
 
+    if (typeof preferences.homeView === 'string') {
+      preferencesStore.set('homeView', parseCourseListView(preferences.homeView, DEFAULT_HOME_VIEW))
+    }
+
     if (typeof preferences.myCoursesView === 'string') {
       preferencesStore.set('myCoursesView', parseCourseListView(preferences.myCoursesView))
+    }
+
+    if (typeof preferences.courseInfoPanel === 'object' && preferences.courseInfoPanel !== null) {
+      preferencesStore.set('courseInfoPanel', parseExplorerPanelPreference(preferences.courseInfoPanel))
     }
 
     if (typeof preferences.versionsPanel === 'object' && preferences.versionsPanel !== null) {
@@ -440,6 +453,7 @@ ipcMain.handle('sharing:get-course-sharing', async (_event, courseId: string) =>
 
   return {
     ...courseSharing.getInfo(courseId),
+    peers: await courseSharing.getPeers(courseId),
     versions: await courseSharing.getVersions(courseId),
   } satisfies CourseSharingInfo
 })
@@ -448,13 +462,22 @@ ipcMain.handle('sharing:list-course-updates', () => {
   return courseSharing.listUpdates() satisfies Record<string, CourseUpdateInfo>
 })
 
-ipcMain.handle('sharing:apply-course-update', async (_event, courseId: string) => {
+ipcMain.handle('sharing:apply-course-update', async (_event, courseId: string, transferId?: string) => {
   if (!isValidCourseId(courseId)) {
     throw new Error(`Invalid course id "${courseId}"`)
   }
 
-  const { version } = await courseSharing.applyUpdate(courseId)
-  return { version } satisfies ApplyCourseUpdateResult
+  const result = await courseSharing.applyUpdate(courseId, typeof transferId === 'string' ? transferId : undefined)
+  return ('cancelled' in result ? result : { version: result.version }) satisfies ApplyCourseUpdateResult
+})
+
+// An import or update download in progress, polled by the renderer (SLJ-43).
+ipcMain.handle('sharing:get-transfer', (_event, transferId: string) => {
+  return typeof transferId === 'string' ? getTransfer(transferId) : null
+})
+
+ipcMain.handle('sharing:cancel-transfer', (_event, transferId: string) => {
+  return typeof transferId === 'string' ? cancelTransfer(transferId) : undefined
 })
 
 ipcMain.handle('sharing:switch-course-version', async (_event, courseId: string, version: string) => {
@@ -474,10 +497,16 @@ ipcMain.handle('sharing:finish-on-version', (_event, courseId: string) => {
 })
 
 ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput) => {
-  const { courseId } = await courseSharing.importCourse(input.code)
+  const result = await courseSharing.importCourse(
+    input.code,
+    typeof input.transferId === 'string' ? input.transferId : undefined,
+  )
+  if ('cancelled' in result) {
+    return result satisfies ImportCourseResult
+  }
   // The worker lands an import root-only; move it into versions/<v>/ (SLJ-40).
-  await migrateImportedCourse(courseId)
-  return { courseId } satisfies ImportCourseResult
+  await migrateImportedCourse(result.courseId)
+  return { courseId: result.courseId } satisfies ImportCourseResult
 })
 
 async function handleCourseAssetRequest(request: Request): Promise<Response> {

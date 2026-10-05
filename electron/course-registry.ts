@@ -1302,6 +1302,7 @@ export async function getCourseDetails(
       previewItems,
     )),
     builtin: courseRecord.manifest.builtin,
+    createdAt: courseRecord.manifest.createdAt ?? null,
     entrySectionId: sectionIds[0] ?? null,
     lessonIds,
     locales: courseRecord.manifest.locales,
@@ -1309,7 +1310,18 @@ export async function getCourseDetails(
     sectionIds,
     serbianScript: courseRecord.manifest.serbianScript ?? null,
     slug: courseRecord.manifest.slug,
+    versionCutAt: await readVersionCutAt(courseRecord),
   };
+}
+
+// An imported course is read from the version in use (versions/<v>/), which
+// carries its author's version-meta.json; your own course's newest version.
+async function readVersionCutAt(courseRecord: CourseRecord): Promise<string | null> {
+  if (courseRecord.distribution === "imported") {
+    return (await readCourseVersionMeta(courseRecord.packageDirectoryPath)).cutAt || null;
+  }
+
+  return courseRecord.distribution === "local" ? readLastCutAt(courseRecord.courseRootPath) : null;
 }
 
 type CourseReleaseState = {

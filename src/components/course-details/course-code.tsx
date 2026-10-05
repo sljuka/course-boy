@@ -13,7 +13,7 @@ import { useCourseSharingQuery } from "@/lib/sharing-queries";
 // the course is online. The code is the same for every version of the course.
 export function CourseCode({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
-  const { data: sharing } = useCourseSharingQuery(courseId);
+  const { data: sharing } = useCourseSharingQuery(courseId, { watchPeers: true });
   const [hasCopied, setHasCopied] = useState(false);
 
   if (!sharing) {
@@ -60,7 +60,9 @@ export function CourseCode({ courseId }: { courseId: string }) {
         {sharing.status === "sharing" && <Spinner aria-hidden="true" />}
         <CardDescription>
           {sharing.status === "shared"
-            ? t("courseSharing.statusShared")
+            ? sharing.peers === null
+              ? t("courseSharing.statusShared")
+              : `${t("courseSharing.statusShared")} · ${t("courseSharing.peersOnline", { count: sharing.peers })}`
             : sharing.status === "waiting"
               ? t("courseSharing.statusWaiting")
               : t("courseSharing.statusSharing")}

@@ -6,13 +6,16 @@ import { CourseErrorCard } from "@/components/course-error-card";
 import { ImportCourseDialog } from "@/components/course-search/import-course-dialog";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Home } from "@/components/home/home";
-import { PageContent } from "@/components/page-content";
+import { ViewOptionsMenu } from "@/components/my-courses/view-options-menu";
+import { Page } from "@/components/page/page";
 import { Button, ButtonLabel } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
+import { useHomeView } from "@/lib/course-list-view-queries";
 
 export const HomePage = () => {
   const { t } = useTranslation();
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [view, setView] = useHomeView();
 
   const actions = (
     <Button
@@ -27,10 +30,11 @@ export const HomePage = () => {
   );
 
   return (
-    <PageContent
+    <Page
+      actionBarStart={<ViewOptionsMenu onViewChange={setView} view={view} />}
       actions={actions}
       breadcrumbs={[{ icon: HomeIcon, label: t("sidebar.home") }]}
-      pageHero={
+      header={
         <div className="flex flex-col gap-1">
           <CardTitle size="lg">{t("courseSearch.title")}</CardTitle>
           <CardDescription className="max-w-3xl">
@@ -42,9 +46,9 @@ export const HomePage = () => {
       <ErrorBoundary
         fallback={<CourseErrorCard message={t("courseSearch.error")} />}
       >
-        <Home />
+        <Home view={view} />
         <ImportCourseDialog onOpenChange={setIsImportOpen} open={isImportOpen} />
       </ErrorBoundary>
-    </PageContent>
+    </Page>
   );
 };

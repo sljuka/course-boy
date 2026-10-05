@@ -22,6 +22,8 @@ export type CourseDistribution = "local" | "bundled" | "imported";
 export type CourseManifest = {
   builtin: boolean;
   contentRating: ContentRating;
+  // ISO time the course was created. Missing in some hand-made packages.
+  createdAt?: string;
   defaultLocale: Locale;
   descriptiveTags?: CourseTagDefinition[];
   id: string;
@@ -463,6 +465,9 @@ export type CourseSummary = {
 
 export type CourseDetails = CourseSummary & {
   builtin: boolean;
+  // When the course was first created (`course.json` `createdAt`), or null if
+  // the package doesn't say.
+  createdAt: string | null;
   entrySectionId: string | null;
   lessonIds: string[];
   locales: Record<Locale, LocalizedCourseMetadata>;
@@ -470,6 +475,10 @@ export type CourseDetails = CourseSummary & {
   serbianScript: SerbianScriptSetting | null;
   sectionIds: string[];
   slug: string;
+  // When the version shown was cut (committed) by its author: an imported
+  // course's version in use, or your own course's newest version. Null for the
+  // bundled course and before the first commit.
+  versionCutAt: string | null;
 };
 
 export type CreateCourseDraftInput = {

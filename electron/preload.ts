@@ -46,6 +46,7 @@ import type {
   CourseUpdateInfo,
   ImportCourseInput,
   ImportCourseResult,
+  TransferInfo,
 } from '../src/lib/sharing'
 
 contextBridge.exposeInMainWorld('preferences', {
@@ -164,8 +165,14 @@ contextBridge.exposeInMainWorld('sharing', {
   listCourseUpdates() {
     return ipcRenderer.invoke('sharing:list-course-updates') as Promise<Record<string, CourseUpdateInfo>>
   },
-  applyCourseUpdate(courseId: string) {
-    return ipcRenderer.invoke('sharing:apply-course-update', courseId) as Promise<ApplyCourseUpdateResult>
+  applyCourseUpdate(courseId: string, transferId?: string) {
+    return ipcRenderer.invoke('sharing:apply-course-update', courseId, transferId) as Promise<ApplyCourseUpdateResult>
+  },
+  getTransfer(transferId: string) {
+    return ipcRenderer.invoke('sharing:get-transfer', transferId) as Promise<TransferInfo | null>
+  },
+  cancelTransfer(transferId: string) {
+    return ipcRenderer.invoke('sharing:cancel-transfer', transferId) as Promise<void>
   },
   switchCourseVersion(courseId: string, version: string) {
     return ipcRenderer.invoke('sharing:switch-course-version', courseId, version) as Promise<void>

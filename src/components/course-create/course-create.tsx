@@ -50,7 +50,7 @@ import { getLocaleFlag } from "@/lib/locale-flags";
 import { useAppState } from "@/lib/use-app-state";
 
 const selectableLocales: Locale[] = ["en", "sr"];
-const minimumCourseTitleLength = 8;
+const minimumCourseTitleLength = 4;
 
 function getInitialSupportedLocales(locale: Locale): Locale[] {
   if (locale === "sr-Cyrl") {

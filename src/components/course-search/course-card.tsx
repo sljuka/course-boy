@@ -59,7 +59,9 @@ export function CourseCard({ course, href, leading, update }: CourseCardProps) {
                   : t("courseUpdates.availableBadge", { version: update.version })}
               </Badge>
             )}
-            <Badge className="max-w-full break-all">{course.id}</Badge>
+            {course.distribution === "bundled" && (
+              <Badge variant="secondary">{t("home.builtInBadge")}</Badge>
+            )}
             <Tooltip>
               <TooltipTrigger
                 render={

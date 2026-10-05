@@ -22,6 +22,7 @@ function setup({
     checkUpdate: vi.fn(async () => ({ changelog: [], courseId: null, source: null, version: null })),
     downloadUpdate: vi.fn(async () => ({ changedFiles: [] })),
     followCourse: vi.fn(async () => {}),
+    getPeers: vi.fn(async () => 2),
     importCourse: vi.fn(async () => ({ courseId: 'course-b', driveKey: 'drive-b', publisherId: 'teacher' })),
     publishCourse: vi.fn(async (courseId: string) => `code-${courseId}`),
     stopSharing: vi.fn(async () => {}),
@@ -163,6 +164,42 @@ describe('course sharing: student', () => {
     expect(sharing.getInfo('course-b').status).toBe('shared')
   })
 
+  it("gives a student the code an imported course came with, to pass on, and its import date", async () => {
+    const { sharing } = setup()
+    await sharing.importCourse('drive-b')
+
+    expect(sharing.getInfo('course-b')).toMatchObject({
+      code: 'drive-b',
+      importedAt: '2026-10-03T10:00:00.000Z',
+    })
+  })
+
+  it('counts connected peers only while the course is shared from this device', async () => {
+    const { sharing, worker } = setup({
+      initial: {
+        followed: { 'course-b': { driveKey: 'drive-b', followedSince: '', publisherId: '' } },
+        published: {},
+      },
+    })
+
+    expect(await sharing.getPeers('course-b')).toBeNull()
+    await sharing.start()
+    expect(await sharing.getPeers('course-b')).toBe(2)
+    expect(worker.getPeers).toHaveBeenCalledWith({ driveKey: 'drive-b' })
+    expect(await sharing.getPeers('unknown')).toBeNull()
+  })
+
+  it('gives no code for a course the teacher shared only with chosen students', () => {
+    const { sharing } = setup({
+      initial: {
+        followed: { 'course-b': { driveKey: 'drive-b', followedSince: '', gated: true, publisherId: '' } },
+        published: {},
+      },
+    })
+
+    expect(sharing.getInfo('course-b').code).toBeNull()
+  })
+
   it('needs no sharing consent to import or follow', async () => {
     const { sharing, worker } = setup({
       consent: false,
@@ -294,12 +331,34 @@ describe('course sharing: updates', () => {
     expect(sharing.getInfo('course-b').update).toMatchObject({ kind: 'recommended', version: '0.3.0' })
 
     sharing.finishOnVersion('course-b')
-    await expect(sharing.applyUpdate('course-b')).resolves.toEqual({
+    await expect(sharing.applyUpdate('course-b', 'transfer-1')).resolves.toEqual({
       changedFiles: ['/section/lesson.md'],
       version: '0.3.0',
     })
-    expect(downloadUpdate).toHaveBeenCalledWith('drive-b', '/staging')
+    expect(downloadUpdate).toHaveBeenCalledWith('drive-b', '/staging', 'transfer-1')
     expect(state().followed['course-b']).toMatchObject({ finishOnVersion: false, pendingUpdate: null })
+  })
+
+  it('reports a cancelled update or import as cancelled, not as an error, and changes nothing', async () => {
+    const cancelled = Object.assign(new Error('Cancelled'), { code: 'CANCELLED' })
+    const { sharing, state } = setup({
+      initial: imported,
+      worker: {
+        checkUpdate: vi.fn(async () => remote('0.3.0')),
+        downloadUpdate: vi.fn(async () => {
+          throw cancelled
+        }),
+        importCourse: vi.fn(async () => {
+          throw cancelled
+        }),
+      },
+    })
+
+    await expect(sharing.applyUpdate('course-b', 'transfer-1')).resolves.toEqual({ cancelled: true })
+    expect(state().followed['course-b'].pendingUpdate).toMatchObject({ version: '0.3.0' })
+
+    await expect(sharing.importCourse('drive-x', 'transfer-2')).resolves.toEqual({ cancelled: true })
+    expect(Object.keys(state().followed)).toEqual(['course-b'])
   })
 
   it('records a refused update and never applies it', async () => {

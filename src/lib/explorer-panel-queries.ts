@@ -7,9 +7,10 @@ import {
   type ExplorerPanelPreference,
 } from "@/lib/explorer-panel";
 
-// The course editor's side panels, each remembered across restarts under its
-// own preferences key: the explorer (left) and Versions (right).
-type SidePanelKey = "explorerPanel" | "versionsPanel";
+// Side panels, each remembered across restarts under its own preferences key:
+// the course editor's explorer (left) and Versions (right), and the course
+// page's Details (right).
+type SidePanelKey = "courseInfoPanel" | "explorerPanel" | "versionsPanel";
 
 // A side panel's state (open or closed). Updates are applied to the cache
 // immediately and persisted in the background.

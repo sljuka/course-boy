@@ -532,3 +532,58 @@ only publishers ever touch, not an onboarding step every user sees.
      interrupted one), update into a new folder with unchanged files shared, switch,
      prune, failure leaves the course as it was, staging cleanup. Also by
      `e2e/sharing.e2e.mjs`: three versions kept, back and forward through the menu.
+
+10. **Import and update progress, waiting and Cancel. Done, 2026-10-05 (SLJ-43).**
+   - **Transfers in the worker:** an import or update download runs under an id the
+     renderer chooses, and is polled (no push channel) through `sharing:get-transfer`
+     → `CMD_GET_TRANSFER`, every 500 ms while it runs.
+   - **Phases:**
+     - `finding`: no peer with the data is reachable yet.
+     - `downloading`: `bytesDone` of `bytesTotal`, plus speed.
+     - `done` / `cancelled` / `error`: the last state stays readable for 60 s.
+   - **Totals:** exact and known before downloading, from a `dryRun` mirror. An import
+     sums every file; an update sums only added and changed files (a one-lesson update
+     reports ~1.5 KB, not the course size).
+   - **Progress:** `max(bytes written, mirror-drive's downloadedBytes)`, with
+     `progress: true`.
+   - **Waiting instead of failing:** an import whose code nobody online is sharing used to
+     mirror an empty drive and fail with a misleading "no valid source.json". It now
+     waits in `finding` until a peer has the drive's file list (`waitForDriveData`), and
+     never gives up by itself. The UI says nobody is online after 30 s
+     (`NOBODY_ONLINE_AFTER_MS`).
+   - **Cancel:** `sharing:cancel-transfer` → `CMD_CANCEL_TRANSFER`. Every wait is raced
+     against the transfer's cancel promise. An import closes its drive, leaves the swarm
+     and removes its staging folder. An update stops waiting and main removes the
+     staging version. The **followed drive is not closed** (it keeps sharing), so a block
+     already in flight may still arrive into the Corestore cache. Cancel returns
+     `{ cancelled: true }` instead of throwing, because Electron IPC drops error codes.
+   - **Gotcha:** a *second* `Hyperdrive` instance on a key already open in the same
+     Corestore never became ready (`drive.ready()` hung). Updates therefore download
+     through the followed drive itself.
+   - Verified by `e2e/sharing.e2e.mjs`:
+     - a 2 MB import reports its full size;
+     - a one-lesson update reports < 10% of it;
+     - with the teacher offline, Home's Downloading group shows "Looking for the
+       course…", and Cancel leaves no staging folder and no course.
+   - **Imports run in the background (SLJ-49).** The Import dialog closes as soon as the
+     worker knows the transfer, which means the code was accepted. A bad code is still
+     reported in the dialog.
+     - From then on Home lists the import under **Downloading**, with a progress ring,
+       status and Cancel, until the course lands under **Imported**. A failure stays
+       there with Dismiss.
+     - The imports live in TanStack Query's mutation cache (`usePendingImports`,
+       `gcTime: Infinity`), so they survive leaving Home. They don't survive a renderer
+       reload; the worker still finishes the import, but it is no longer listed.
+     - The transfer snapshot carries the course's titles (`course`), read from the
+       drive's `course.json` once a peer has the data, so the row names the course
+       before it lands.
+   - **Peers online.** `CMD_GET_PEERS` (13) returns `drive.core.peers.length` for a
+     course shared from this device: your own by course id, an imported one by drive
+     key. `getCourseSharing` returns it as `peers`, or null when the course isn't
+     shared here right now. The Share dialog ("Online · Peers online: 2") and the
+     course page's Details panel poll it every 5 s.
+     - It counts only peers connected to *this* device for that course, right now.
+       It is not how many people have the course.
+     - Students can share a publicly imported course too: `code` is the drive key
+       they imported with. A `gated` followed course (invite-only, not in the UI yet)
+       gets no code.

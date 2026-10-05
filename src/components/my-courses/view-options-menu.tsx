@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { CourseListView } from "@/lib/course-list-view";
 
-// My courses' view options, behind one icon button in the action bar. Layout
-// today; sorting and grouping options can join this menu later.
+// A course list's view options (My courses, Home), behind one icon button in
+// the action bar. Layout today; sorting and grouping options can join this
+// menu later.
 export function ViewOptionsMenu({
   onViewChange,
   view,

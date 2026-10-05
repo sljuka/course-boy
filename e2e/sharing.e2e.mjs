@@ -13,7 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import createTestnet from 'hyperdht/testnet.js'
 import IdEncoding from 'hypercore-id-encoding'
-import { launchApp, waitFor, waitForText } from './launch.mjs'
+import { bodyText, launchApp, waitFor, waitForText } from './launch.mjs'
 
 const ROOT = '/tmp/matko-e2e-sharing'
 const dirs = {
@@ -390,6 +390,167 @@ describe('sharing across restarts', () => {
     // Not clicked: it would open the OS file manager.
     await student.getByRole('menuitem', { name: 'Open in file system' }).waitFor()
     await student.keyboard.press('Escape')
+  })
+
+  // SLJ-43: progress and Cancel for imports and updates.
+  describe('transfer progress', () => {
+    let bigIds
+    let bigCode
+    const assetBytes = 2_000_000
+
+    it('reports an import\'s exact total and ends at the full size', async () => {
+      const teacherPage = apps.teacher.page
+      bigIds = await teacherPage.evaluate(async (size) => {
+        const { courseId } = await window.courses.createDraft({
+          defaultLocale: 'en',
+          locales: { en: { description: '', title: 'E2E Big Course' } },
+          supportedLocales: ['en'],
+        })
+        const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+        const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Lesson' })
+        const data = new Uint8Array(size)
+        for (let offset = 0; offset < size; offset += 65536) crypto.getRandomValues(data.subarray(offset, offset + 65536))
+        const asset = await window.courses.uploadAssetBytes({ courseId, data: data.buffer, filename: 'big.png', kind: 'image' })
+        await window.courses.updateLessonContent({
+          courseId,
+          lessonId,
+          locales: { en: { body: `[matko-block]: <> (image)\n![Big](${asset.path})` } },
+          sectionId,
+        })
+        return { courseId, lessonId, sectionId }
+      }, assetBytes)
+      await cutAndPublish(teacherPage, bigIds.courseId)
+      bigCode = (await waitForSharing(teacherPage, bigIds.courseId, (info) => info.status === 'shared')).code
+
+      const student = apps.student3.page
+      const transferId = 'e2e-import-big'
+      expect(await student.evaluate(({ code, transferId }) => window.sharing.importCourse({ code, transferId }), { code: bigCode, transferId })).toEqual({
+        courseId: bigIds.courseId,
+      })
+
+      const transfer = await student.evaluate((id) => window.sharing.getTransfer(id), transferId)
+      expect(transfer.phase).toBe('done')
+      expect(transfer.bytesTotal).toBeGreaterThanOrEqual(assetBytes)
+      expect(transfer.bytesDone).toBe(transfer.bytesTotal)
+    })
+
+    it('an update that changes one lesson downloads only that, not the whole course', async () => {
+      const teacherPage = apps.teacher.page
+      const student = apps.student3.page
+      await writeLesson(teacherPage, bigIds, 'Only this lesson changed.')
+      const version = await cutAndPublish(teacherPage, bigIds.courseId)
+      await waitForUpdate(student, bigIds.courseId, (update) => update.version === version)
+
+      const transferId = 'e2e-update-small'
+      expect(
+        await student.evaluate(({ courseId, transferId }) => window.sharing.applyCourseUpdate(courseId, transferId), {
+          courseId: bigIds.courseId,
+          transferId,
+        }),
+      ).toEqual({ version })
+
+      const transfer = await student.evaluate((id) => window.sharing.getTransfer(id), transferId)
+      expect(transfer.phase).toBe('done')
+      expect(transfer.bytesTotal).toBeGreaterThan(0)
+      expect(transfer.bytesTotal).toBeLessThan(assetBytes / 10)
+    })
+
+    // SLJ-49: the Import dialog hands off to Home, which lists the course
+    // under Downloading while it runs and under Imported once it has landed.
+    it('an import from Home lands in the Imported group', async () => {
+      const teacherPage = apps.teacher.page
+      const courseId = await teacherPage.evaluate(async () => {
+        const { courseId } = await window.courses.createDraft({
+          defaultLocale: 'en',
+          locales: { en: { description: '', title: 'E2E Home Import' } },
+          supportedLocales: ['en'],
+        })
+        const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+        await window.courses.createLesson({ courseId, sectionId, title: 'Lesson' })
+        return courseId
+      })
+      await cutAndPublish(teacherPage, courseId)
+      const homeCode = (await waitForSharing(teacherPage, courseId, (info) => info.status === 'shared')).code
+
+      const student = apps.student3.page
+      await student.evaluate(() => {
+        location.hash = '#/'
+      })
+      await student.getByRole('button', { name: 'Import course' }).first().click()
+      await student.getByLabel('Course code').fill(homeCode)
+      await student.getByRole('button', { name: 'Import', exact: true }).click()
+      await student.getByRole('dialog').waitFor({ state: 'detached' })
+
+      await waitFor(student, () =>
+        document.querySelector('[data-testid="home-group-imported"]')?.textContent?.includes('E2E Home Import'),
+        { timeout: 30_000 },
+      )
+      expect(await student.locator('[data-testid="pending-import"]').count()).toBe(0)
+
+      // The course page's Details panel: where it came from, its version and
+      // when it was made, cut and imported, and its id (no longer a badge).
+      await student.getByRole('link', { name: 'E2E Home Import' }).first().click()
+      await waitFor(student, () => document.querySelector('[data-testid="course-info"]') !== null)
+      const info = await student.locator('[data-testid="course-info"]').innerText()
+      for (const label of ['Source', 'Imported', 'Version', 'Version date', 'Created', 'Sections', 'Lessons', 'ID']) {
+        expect(info).toContain(label)
+      }
+      expect(info).toContain(courseId)
+      const installed = (await student.evaluate(() => window.courses.list('en'))).find((course) => course.id === courseId)
+      expect(info).toContain(installed.version)
+      // The teacher is online and connected: at least one peer.
+      await waitFor(
+        student,
+        () => Number(document.querySelector('[data-testid="course-info-peers"]')?.textContent) >= 1,
+        { timeout: 15_000 },
+      )
+
+      // Students can pass a publicly shared course on: the same code.
+      await student.click('[data-testid="share-course"]')
+      await waitFor(student, () => document.querySelector('[data-testid="course-code"]') !== null)
+      expect(await student.inputValue('[data-testid="course-code"]')).toBe(homeCode)
+      await student.getByRole('button', { name: 'Done' }).click()
+    })
+
+    it('with the teacher offline, the import keeps looking until the student cancels, and leaves nothing behind', async () => {
+      const teacherPage = apps.teacher.page
+      const offlineCode = await teacherPage.evaluate(async () => {
+        const { courseId } = await window.courses.createDraft({
+          defaultLocale: 'en',
+          locales: { en: { description: '', title: 'E2E Offline Course' } },
+          supportedLocales: ['en'],
+        })
+        const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+        await window.courses.createLesson({ courseId, sectionId, title: 'Lesson' })
+        return courseId
+      }).then(async (courseId) => {
+        await cutAndPublish(teacherPage, courseId)
+        return (await waitForSharing(teacherPage, courseId, (info) => info.status === 'shared')).code
+      })
+      await close('teacher')
+
+      const student = apps.student3.page
+      const coursesBefore = (await student.evaluate(() => window.courses.list('en'))).length
+      await student.evaluate(() => {
+        location.hash = '#/'
+      })
+      await student.getByRole('button', { name: 'Import course' }).first().click()
+      await student.getByLabel('Course code').fill(offlineCode)
+      await student.getByRole('button', { name: 'Import', exact: true }).click()
+      // The dialog hands off to Home (SLJ-49): the course waits under Downloading.
+      await student.getByRole('dialog').waitFor({ state: 'detached' })
+      await waitFor(student, () =>
+        document.querySelector('[data-testid="home-group-downloading"]')?.textContent?.includes('Looking for the course…'),
+      )
+
+      await student.click('[data-testid="cancel-transfer"]')
+      await student.locator('[data-testid="pending-import"]').waitFor({ state: 'detached' })
+      expect(await bodyText(student)).not.toContain("Couldn't import this course")
+
+      const coursesRoot = path.join(dirs.student3, 'courses')
+      expect(fs.readdirSync(coursesRoot).filter((name) => name.startsWith('.import-staging'))).toEqual([])
+      expect((await student.evaluate(() => window.courses.list('en'))).length).toBe(coursesBefore)
+    })
   })
 })
 
