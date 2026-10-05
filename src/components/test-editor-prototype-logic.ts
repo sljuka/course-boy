@@ -24,6 +24,7 @@ function createInitialState(locales: Locale[]): TestEditorState {
     description: "",
     exercises: [],
     selectedLocale: locales[0] ?? "en",
+    showMnemonics: false,
     strictAdvancement: true,
     useBlueprint: false,
   };
@@ -193,6 +194,7 @@ function normalizeDraftTestData(
               : "",
           blueprint: normalizedBlueprint,
           exercises: normalizedExercises,
+          showMnemonics: draftState.showMnemonics === true,
           strictAdvancement:
             typeof draftState.strictAdvancement === "boolean"
               ? draftState.strictAdvancement

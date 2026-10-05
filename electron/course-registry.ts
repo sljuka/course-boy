@@ -359,6 +359,10 @@ function isSharedTestDefinitionShape(
     return false;
   }
 
+  if (typeof test.showMnemonics !== "undefined" && typeof test.showMnemonics !== "boolean") {
+    return false;
+  }
+
   if (typeof test.structure === "undefined") {
     return true;
   }

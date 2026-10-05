@@ -12,6 +12,7 @@ import {
 import { LocalesTabs } from "@/components/locales-tabs";
 import { SerbianScriptSettings } from "@/components/draft-details/serbian-script-settings";
 import { CourseActionsMenu } from "@/components/course-actions-menu";
+import { CourseMnemonicsEditor } from "@/components/draft-details/course-mnemonics-editor";
 import { PageContent } from "@/components/page-content";
 import { TestEditorTagManager } from "@/components/test-editor-tag-manager";
 import {
@@ -74,6 +75,7 @@ import {
 import { getContentRatingLabelKey } from "@/lib/course-utils";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
+import type { CourseMnemonic } from "@/lib/mnemonics";
 import { useUpdateDraftMetadataMutation } from "@/lib/course-queries";
 import { useCommitBlockerMessage } from "@/lib/use-commit-blocker";
 import {
@@ -207,7 +209,7 @@ export function CourseMetadataEditor({
 
   function updateLocalizedCourseField(
     locale: Locale,
-    field: keyof LocalizedCourseMetadata,
+    field: "description" | "title",
     value: string,
   ) {
     setDraft((current) => ({
@@ -215,9 +217,25 @@ export function CourseMetadataEditor({
       localizedCourse: {
         ...current.localizedCourse,
         [locale]: {
+          ...current.localizedCourse[locale],
           description: current.localizedCourse[locale]?.description ?? "",
           title: current.localizedCourse[locale]?.title ?? "",
           [field]: value,
+        },
+      },
+    }));
+  }
+
+  function updateLocalizedMnemonics(locale: Locale, mnemonics: CourseMnemonic[]) {
+    setDraft((current) => ({
+      ...current,
+      localizedCourse: {
+        ...current.localizedCourse,
+        [locale]: {
+          description: current.localizedCourse[locale]?.description ?? "",
+          title: current.localizedCourse[locale]?.title ?? "",
+          ...current.localizedCourse[locale],
+          mnemonics,
         },
       },
     }));
@@ -480,6 +498,11 @@ export function CourseMetadataEditor({
                     value={draft.localizedCourse[locale]?.description ?? ""}
                   />
                 </Field>
+                <CourseMnemonicsEditor
+                  locale={locale}
+                  mnemonics={draft.localizedCourse[locale]?.mnemonics ?? []}
+                  onChange={(mnemonics) => updateLocalizedMnemonics(locale, mnemonics)}
+                />
               </FieldGroup>
             </FieldSet>
           )}

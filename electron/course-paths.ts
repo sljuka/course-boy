@@ -75,6 +75,7 @@ import {
   transliterateSerbianMarkdown,
   type SerbianScriptSetting,
 } from "../src/lib/serbian-script";
+import { parseMnemonics } from "../src/lib/mnemonics";
 
 // The bundled "Getting Started with Matko" course. Its id follows the same
 // random format as every other course (see src/lib/course-id.ts); it was
@@ -2001,19 +2002,33 @@ export async function updateLocalCourseDraftMetadata(
     title: "",
   };
   const nextLocales = Object.fromEntries(
-    supportedLocales.map((locale) => [
-      locale,
-      {
-        description:
-          input.locales[locale]?.description.trim() ??
-          manifest.locales[locale]?.description ??
-          "",
-        title:
-          input.locales[locale]?.title.trim() ??
-          manifest.locales[locale]?.title ??
-          (locale === input.defaultLocale ? fallbackDefaultLocaleMetadata.title : ""),
-      },
-    ]),
+    supportedLocales.map((locale) => {
+      // Mnemonics (SLJ-37): the editor's list, validated, else the course's;
+      // dropped when empty. Fields this version doesn't know are kept.
+      const mnemonics = parseMnemonics(
+        input.locales[locale]?.mnemonics ?? manifest.locales[locale]?.mnemonics,
+      );
+      const { mnemonics: _previousMnemonics, ...existing } = manifest.locales[locale] ?? {
+        description: "",
+        title: "",
+      };
+
+      return [
+        locale,
+        {
+          ...existing,
+          description:
+            input.locales[locale]?.description.trim() ??
+            manifest.locales[locale]?.description ??
+            "",
+          title:
+            input.locales[locale]?.title.trim() ??
+            manifest.locales[locale]?.title ??
+            (locale === input.defaultLocale ? fallbackDefaultLocaleMetadata.title : ""),
+          ...(mnemonics.length > 0 ? { mnemonics } : {}),
+        },
+      ];
+    }),
   ) as CourseManifest["locales"];
 
   const { serbianScript: previousSerbianScript, ...manifestWithoutSerbianScript } = manifest;

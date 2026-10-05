@@ -855,6 +855,88 @@ describe('section summary and intro', () => {
   })
 })
 
+// SLJ-37: a teacher defines a mnemonic once on the course form; the lesson
+// shows it after the first N places the term appears, and the student can
+// switch mnemonics off. Lesson text itself never changes.
+describe('course mnemonics', () => {
+  it('a teacher adds one in the course form, and a student sees it in the lesson and can hide it', async () => {
+    const { page } = harness
+    const body = '[matko-block]: <> (markdown)\nJohn Newbery wrote books. Later John Newbery sold them. John Newbery again.'
+    const ids = await page.evaluate(async (body) => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Mnemonics Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Authors' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Newbery' })
+      await window.courses.updateLessonContent({ courseId, lessonId, locales: { en: { body } }, sectionId })
+      return { courseId, lessonId }
+    }, body)
+    const manifestPath = path.join(USER_DATA, 'courses', ids.courseId, 'draft', 'course.json')
+
+    // Teacher: the course form's Mnemonics section.
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await page.getByRole('button', { name: 'Mnemonics', exact: true }).click()
+    await page.getByRole('button', { name: 'Add mnemonic' }).click()
+    await page.getByLabel('Term', { exact: true }).fill('John Newbery')
+    await page.getByLabel('Mnemonic', { exact: true }).fill('John 📰🍓')
+    await page.getByLabel('Mark the first N places in a lesson (3 if empty)').fill('2')
+    await expect
+      .poll(() => JSON.parse(fs.readFileSync(manifestPath, 'utf8')).locales.en.mnemonics, { timeout: 15_000 })
+      .toEqual([{ mnemonic: 'John 📰🍓', showFirst: 2, term: 'John Newbery' }])
+
+    // Student: the badge after the first two places only; the lesson file is unchanged.
+    const badges = () => page.locator('[data-testid="mnemonic"]').count()
+    await page.evaluate(({ courseId, lessonId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${lessonId}`
+    }, ids)
+    await waitForText(page, 'John Newbery again.')
+    await expect.poll(badges).toBe(2)
+    // The term is marked; hovering shows the mnemonic, and a screen reader hears it.
+    await page.locator('[data-testid="mnemonic"]').first().hover()
+    await page.locator('[data-testid="mnemonic-tooltip"]').waitFor()
+    expect(await page.locator('[data-testid="mnemonic-tooltip"]').innerText()).toBe('John 📰🍓')
+    expect(await page.locator('[data-testid="mnemonic"] .sr-only').first().textContent()).toBe('Mnemonic: John 📰🍓')
+    const draftDir = path.dirname(manifestPath)
+    const sectionDir = path.join(draftDir, fs.readdirSync(draftDir).find((name) => name.startsWith('section-')))
+    const lessonText = fs
+      .readdirSync(path.join(sectionDir, 'locales', 'en'))
+      .map((name) => fs.readFileSync(path.join(sectionDir, 'locales', 'en', name), 'utf8'))
+      .join('\n')
+    expect(lessonText).toContain('John Newbery again.')
+    expect(lessonText).not.toContain('📰')
+
+    // Teacher: the same terms are marked while writing the lesson.
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await waitFor(page, () => [...document.querySelectorAll('span,button,div')].some((el) => el.textContent === 'Newbery'))
+    await page.evaluate(() =>
+      [...document.querySelectorAll('span,button,div')].filter((el) => el.textContent === 'Newbery').pop().click(),
+    )
+    await expect.poll(() => page.locator('[data-testid="editor-mnemonic"]').count(), { timeout: 15_000 }).toBe(2)
+    expect(await page.locator('[data-testid="editor-mnemonic"]').first().getAttribute('data-mnemonic')).toBe('John 📰🍓')
+
+    await page.evaluate(({ courseId, lessonId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${lessonId}`
+    }, ids)
+    await waitForText(page, 'John Newbery again.')
+
+    try {
+      await page.click('[data-testid="toggle-mnemonics"]')
+      await expect.poll(badges).toBe(0)
+      expect((await page.evaluate(() => window.preferences.get())).showMnemonics).toBe(false)
+      await page.click('[data-testid="toggle-mnemonics"]')
+      await expect.poll(badges).toBe(2)
+    } finally {
+      await page.evaluate(() => window.preferences.set({ showMnemonics: true }))
+    }
+  })
+})
+
 // SLJ-36: a lesson written by a newer app version can contain block types this
 // version doesn't know. The rest of the lesson must still show, the student is
 // told something is missing, and saving in the editor keeps the block as is.

@@ -3,12 +3,14 @@ import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import { useCreateBlockNote } from "@blocknote/react";
 
-import { documentEditorSchema } from "@/components/editor-prototype/blocknote-schema";
 import { DocumentEditorContextProvider } from "@/components/editor-prototype/document-editor-context";
 import { editorPrototypeBlocksToBlockNote } from "@/components/editor-prototype/blocknote-translation";
+import { decorateBlocksWithMnemonics } from "@/components/course-player/lesson-mnemonics";
+import { lessonPlayerSchema } from "@/components/course-player/mnemonic-inline-content";
 import { UnsupportedContentNotice } from "@/components/course-player/unsupported-content-notice";
 import { hasUnknownBlocks, markdownToBlocks } from "@/lib/lesson-content-markdown";
 import { useAppState } from "@/lib/use-app-state";
+import { useCourseMnemonics } from "@/lib/use-course-mnemonics";
 
 /**
  * The student-facing counterpart to the draft document editor
@@ -17,9 +19,11 @@ import { useAppState } from "@/lib/use-app-state";
  * teacher and the student. The inline exercise block is the one part that
  * stays fully interactive even here: it renders its own live "answer it and
  * check" UI when `editor.isEditable` is false (see `exercise-block.tsx`).
+ * The course's mnemonics (SLJ-37) are added to this rendered copy only.
  */
 export function LessonBlocks({ courseId, source }: { courseId: string; source: string }) {
   const { theme } = useAppState();
+  const { shown: mnemonics } = useCourseMnemonics(courseId);
   const blocks = useMemo(() => markdownToBlocks(source), [source]);
   // The source the notice was dismissed for, so it shows again on the next
   // lesson without needing a remount.
@@ -31,10 +35,10 @@ export function LessonBlocks({ courseId, source }: { courseId: string; source: s
   // read once by `useCreateBlockNote`) needs deps to stay in sync.
   const editor = useCreateBlockNote(
     {
-      initialContent: editorPrototypeBlocksToBlockNote(blocks, courseId),
-      schema: documentEditorSchema,
+      initialContent: decorateBlocksWithMnemonics(editorPrototypeBlocksToBlockNote(blocks, courseId), mnemonics),
+      schema: lessonPlayerSchema,
     },
-    [courseId, source],
+    [courseId, source, mnemonics],
   );
 
   return (

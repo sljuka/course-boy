@@ -182,6 +182,7 @@ type TestEditorState = {
   description: string;
   exercises: TestExercise[];
   selectedLocale: Locale;
+  showMnemonics: boolean;
   strictAdvancement: boolean;
   useBlueprint: boolean;
 };

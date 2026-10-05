@@ -150,6 +150,7 @@ type UserPreferences = {
   courseInfoPanel?: ExplorerPanelPreference
   hasAcknowledgedCreatorKey?: boolean
   showBundledCourses?: boolean
+  showMnemonics?: boolean
   locale?: Locale
   nickname?: string
   persona?: Persona
@@ -248,6 +249,10 @@ ipcMain.handle(
     // the student might be about to go back to.
     if (typeof preferences.previousVersionsToKeep === 'number') {
       preferencesStore.set('previousVersionsToKeep', clampPreviousVersionsToKeep(preferences.previousVersionsToKeep))
+    }
+
+    if (typeof preferences.showMnemonics === 'boolean') {
+      preferencesStore.set('showMnemonics', preferences.showMnemonics)
     }
 
     if (typeof preferences.showBundledCourses === 'boolean') {

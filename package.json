@@ -61,6 +61,8 @@
     "i18next": "^26.3.4",
     "lucide-react": "^1.23.0",
     "playwright-core": "^1.62.1",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.42.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-i18next": "^17.0.8",

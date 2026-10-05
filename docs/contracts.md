@@ -376,6 +376,43 @@ written. Cyrillic → Latin is exact; Latin → Cyrillic splits a few known digr
 (`LATIN_DIGRAPH_EXCEPTIONS`, e.g. "nadživeti" → надживети). The setting is course
 content, so changing it counts as a change since the last cut.
 
+**`mnemonics` (SLJ-37)** is an optional field inside each language's entry in
+`course.json`:
+`locales[locale].mnemonics: { term, mnemonic, aliases?, showFirst? }[]`. Missing means
+none. Each language has its own list, because terms are words of that language.
+
+- **Fields:**
+  - `mnemonic` is text and emoji, at most 24 characters counted as people see them
+    (`Intl.Segmenter` graphemes).
+  - `showFirst` is how many places in a lesson are marked; missing means 3.
+  - `aliases` are other forms of the term (Serbian cases) and count toward the same
+    `showFirst`.
+- **Saving:** the rules are in [src/lib/mnemonics.ts](../src/lib/mnemonics.ts:1).
+  `parseMnemonics` is applied by the main process on save
+  (`updateLocalCourseDraftMetadata`) and by the player on read. Rows that aren't valid
+  (empty, duplicate, too long) are dropped, not rejected, so a row still being typed in
+  the editor never reaches disk half-done.
+- **Lesson text is never changed.** A matched term is marked (dotted underline, the
+  mnemonic in a tooltip, `MnemonicTerm` in `src/components/ui/mnemonic-term.tsx`) only
+  where it's displayed:
+  - **lessons:** `decorateBlocksWithMnemonics` wraps the term in a render-only `mnemonic`
+    inline node, and only the player's schema (`lessonPlayerSchema`) has it;
+  - **test prompts:** `InlineMarkdown`, and only in a test whose `showMnemonics` is true
+    (a per-test field, missing = off);
+  - **the teacher's editor:** ProseMirror decorations
+    (`src/components/editor-prototype/mnemonic-decorations.ts`). They're drawn over the
+    document and never enter it, so they can't be saved into a lesson. That's the reason
+    for the `prosemirror-state` / `prosemirror-view` devDependencies; BlockNote already
+    depends on them.
+- **Serbian:** with `serbianScript`, the generated language's mnemonics come from the
+  source like its title (`syncSerbianLocales`); emoji pass through.
+- **Old apps:** an app from before this field rebuilds each language's entry from
+  `title` and `description` when it saves course metadata, so it drops `mnemonics`. The
+  save path now keeps every field it doesn't know (`...existing`), so a later field
+  survives this version.
+- **Versions:** changing mnemonics is a course change since the last cut
+  (`field: "mnemonics"`).
+
 ## 6. Design-system tier direction
 
 `src/components/ui` is the bottom layer. It may import `@/lib/*`, `@/hooks/*`, and other

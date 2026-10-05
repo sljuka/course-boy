@@ -230,13 +230,14 @@ function diffCourseManifest(
   const sharedLocales = Object.keys((before.locales ?? {}) as object).filter(
     (locale) => locale in ((after.locales ?? {}) as object),
   );
-  const localeField = (manifest: Record<string, unknown>, field: "title" | "description") =>
+  const localeField = (manifest: Record<string, unknown>, field: "title" | "description" | "mnemonics") =>
     JSON.stringify(
       sharedLocales
         .sort()
         .map((locale) => [
           locale,
-          ((manifest.locales as Record<string, Record<string, unknown>>)[locale]?.[field] ?? ""),
+          ((manifest.locales as Record<string, Record<string, unknown>>)[locale]?.[field] ??
+            (field === "mnemonics" ? [] : "")),
         ]),
     );
 
@@ -246,6 +247,10 @@ function diffCourseManifest(
 
   if (localeField(before, "description") !== localeField(after, "description")) {
     changes.push({ field: "description", kind: "edited", target: "course" });
+  }
+
+  if (localeField(before, "mnemonics") !== localeField(after, "mnemonics")) {
+    changes.push({ field: "mnemonics", kind: "edited", target: "course" });
   }
 
   const languagesBefore = new Set((before.supportedLocales ?? []) as string[]);

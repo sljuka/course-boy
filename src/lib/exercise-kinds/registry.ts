@@ -120,6 +120,7 @@ export function resolveSharedTestForPlayer(
       ),
     ),
     id: testId,
+    showMnemonics: sharedTest.showMnemonics ?? false,
     strictAdvancement: sharedTest.strictAdvancement ?? true,
     structure: sharedTest.structure,
   };

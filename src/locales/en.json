@@ -553,7 +553,8 @@
       "contentRating": "Changed the content rating",
       "tags": "Changed the course tags",
       "defaultLocale": "Changed the main language",
-      "serbianScript": "Changed which Serbian script is generated"
+      "serbianScript": "Changed which Serbian script is generated",
+      "mnemonics": "Changed the mnemonics"
     },
     "language": {
       "added": "Added language: {{language}}",
@@ -684,5 +685,32 @@
     "lessons": "Lessons",
     "id": "ID",
     "peersOnline": "Peers online"
+  },
+  "mnemonics": {
+    "title": "Mnemonics",
+    "help": "Memory aids for terms in this language. Where a term appears in a lesson, the first few times are marked with a dotted underline and students see the mnemonic when they hover over it. Lesson text isn't changed. Tests show them only if the test allows it.",
+    "empty": "No mnemonics yet.",
+    "term": "Term",
+    "termPlaceholder": "John Newbery",
+    "mnemonic": "Mnemonic",
+    "mnemonicPlaceholder": "John 📰🍓",
+    "length": "{{count}} of {{max}} characters",
+    "showFirst": "Mark the first N places in a lesson (3 if empty)",
+    "aliases": "Other forms of the term",
+    "aliasesPlaceholder": "Other forms, separated by commas (optional)",
+    "remove": "Remove mnemonic",
+    "add": "Add mnemonic",
+    "problems": {
+      "emptyTerm": "Enter the term.",
+      "duplicateTerm": "This term (or one of its forms) is already used by another mnemonic.",
+      "termTooLong": "The term is too long.",
+      "emptyMnemonic": "Enter the mnemonic.",
+      "mnemonicTooLong": "The mnemonic can have at most {{max}} characters."
+    },
+    "show": "Show mnemonics",
+    "hide": "Hide mnemonics",
+    "showInTest": "Show the course's mnemonics in this test",
+    "showInTestHelp": "Off by default: a mnemonic on a term could give an answer away. Turn it on for tests where that's not a risk.",
+    "srLabel": "Mnemonic: {{mnemonic}}"
   }
 }

@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 
 export const CoursePlayerActions = ({
   isRefreshingAvailable,
+  mnemonicsToggle,
   onClose,
   onRefreshExercise,
   printControl,
 }: {
   isRefreshingAvailable: boolean;
+  // The mnemonics on/off switch, where the content shows mnemonics.
+  mnemonicsToggle?: React.ReactNode;
   onClose: () => void;
   onRefreshExercise: () => void;
   printControl: React.ReactNode;
@@ -32,6 +35,7 @@ export const CoursePlayerActions = ({
           </Button>
         )}
       </RoleGuard>
+      {mnemonicsToggle}
       {printControl}
       <Button
         aria-label={t("courseDetails.closeCourse")}

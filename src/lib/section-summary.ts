@@ -2,14 +2,7 @@
 // sections are listed. Stored as each locale's `description`.
 export const SECTION_SUMMARY_MAX_LENGTH = 128;
 
-// `Intl.Segmenter` exists in Electron's Chromium, but tsconfig's `lib` (ES2020)
-// has no types for it; declared here rather than widening `lib` for one use.
-type GraphemeSegmenter = { segment(input: string): Iterable<{ segment: string }> };
-const segmenter = new (
-  Intl as unknown as {
-    Segmenter: new (locale: undefined, options: { granularity: "grapheme" }) => GraphemeSegmenter;
-  }
-).Segmenter(undefined, { granularity: "grapheme" });
+const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 // Characters as people see them: an emoji (even 👨‍👩‍👧) counts as one, and
 // Cyrillic and Latin count the same.

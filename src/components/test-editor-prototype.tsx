@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { Check, Play, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +102,7 @@ export function TestEditorPrototype({
   renderTitle,
   getIsLocaleIncomplete,
 }: TestEditorPrototypeProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const generatedLocale = useGeneratedSerbianLocale();
   const [isAddingExercise, setIsAddingExercise] = useState(false);
@@ -193,6 +195,13 @@ export function TestEditorPrototype({
     setState((currentState) => ({
       ...currentState,
       useBlueprint: !currentState.useBlueprint,
+    }));
+  }
+
+  function toggleShowMnemonics() {
+    setState((currentState) => ({
+      ...currentState,
+      showMnemonics: !currentState.showMnemonics,
     }));
   }
 
@@ -486,6 +495,18 @@ export function TestEditorPrototype({
             interactive mode lets them move to the next one. When off, they can
             move on regardless and come back to fix answers later.
           </InfoTooltip>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label>
+            <Checkbox
+              checked={state.showMnemonics}
+              data-testid="test-show-mnemonics"
+              onCheckedChange={toggleShowMnemonics}
+            />
+            {t("mnemonics.showInTest")}
+          </Label>
+          <InfoTooltip>{t("mnemonics.showInTestHelp")}</InfoTooltip>
         </div>
 
         <Separator />

@@ -35,6 +35,8 @@ export type UserPreferences = {
   role?: UserRole
   // Bundled courses (Getting Started) on Home and in recently viewed; on when unset.
   showBundledCourses?: boolean
+  // Course mnemonics in lessons (and tests that allow them); on when unset.
+  showMnemonics?: boolean
   // The course editor's right panel (Versions): open or closed.
   versionsPanel?: ExplorerPanelPreference
   theme?: Theme

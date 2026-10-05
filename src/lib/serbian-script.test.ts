@@ -124,6 +124,23 @@ describe("transliterateSerbianMarkdown", () => {
 });
 
 describe("syncSerbianLocales", () => {
+  it("generates a course's mnemonics in the other script, emoji untouched (SLJ-37)", () => {
+    const locales = {
+      sr: {
+        description: "",
+        mnemonics: [{ aliases: ["Njuberija"], mnemonic: "Džon 📰🍓", showFirst: 2, term: "Džon Njuberi" }],
+        title: "Kurs",
+      },
+      "sr-Cyrl": { description: "", title: "" },
+    };
+
+    expect(syncSerbianLocales(locales, { source: "sr" })["sr-Cyrl"]).toEqual({
+      description: "",
+      mnemonics: [{ aliases: ["Њуберија"], mnemonic: "Џон 📰🍓", showFirst: 2, term: "Џон Њубери" }],
+      title: "Курс",
+    });
+  });
+
   it("does nothing without a setting", () => {
     const value = { locales: { sr: { title: "Brojevi" } } };
 

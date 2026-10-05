@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
 
 import { CoursePlayerActions } from "@/components/course-player/course-player-actions";
+import { MnemonicsToggle } from "@/components/course-player/mnemonics-toggle";
 import { PrintOptionsMenu } from "@/components/course-player/print-options-menu";
 import { CoursePlayerShell } from "@/components/course-player/course-player-shell";
 import { CourseTestContent } from "@/components/course-player/course-test-content";
@@ -19,8 +20,13 @@ import { ExerciseStepper } from "@/components/test-player/exercise-stepper";
 import { InteractiveTestPlayer } from "@/components/test-player/interactive-test-player";
 import { TestPlayerPrintHint } from "@/components/test-player/test-player-print-hint";
 import { useTestPlayerState } from "@/components/test-player/use-test-player-state";
+import type { CourseMnemonic } from "@/lib/mnemonics";
 import { defaultTestPrintOptions } from "@/lib/print-options";
+import { PromptMnemonicsContext } from "@/lib/prompt-mnemonics-context";
+import { useCourseMnemonics } from "@/lib/use-course-mnemonics";
 import { buildLessonPath } from "@/lib/course-utils";
+
+const NO_MNEMONICS: CourseMnemonic[] = [];
 
 export function TestPlayer({
   courseId,
@@ -57,6 +63,7 @@ export function TestPlayerView({
   // instead of inside the player's centered content.
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const activeItem = playerState.activeStep.item;
+  const { shown: shownMnemonics } = useCourseMnemonics(playerState.courseId);
   const {
     activeTestExercises,
     activeTestInstances,
@@ -97,9 +104,15 @@ export function TestPlayerView({
     );
   }
 
+  // The course's mnemonics in this test's prompts, if the teacher allowed
+  // them (SLJ-37); never otherwise.
+  const allowsMnemonics = activeItem.test?.showMnemonics === true;
+  const mnemonicsToggle = allowsMnemonics ? <MnemonicsToggle courseId={playerState.courseId} /> : null;
+
   const toolbarActions = isInteractiveMode ? (
     <CoursePlayerActions
       isRefreshingAvailable={false}
+      mnemonicsToggle={mnemonicsToggle}
       onClose={() => setIsInteractiveMode(false)}
       onRefreshExercise={refreshExercises}
       printControl={null}
@@ -107,6 +120,7 @@ export function TestPlayerView({
   ) : (
     <CoursePlayerActions
       isRefreshingAvailable={activeTestExercises.length > 0}
+      mnemonicsToggle={mnemonicsToggle}
       onClose={playerState.exitPlayer}
       onRefreshExercise={refreshExercises}
       printControl={
@@ -201,7 +215,7 @@ export function TestPlayerView({
         sectionTitle={playerState.sectionTitle}
         title={activeItem.title}
       />
-      <div>
+      <PromptMnemonicsContext.Provider value={allowsMnemonics ? shownMnemonics : NO_MNEMONICS}>
         {isInteractiveMode ? (
           <InteractiveTestPlayer
             activeTestExercises={activeTestExercises}
@@ -246,7 +260,7 @@ export function TestPlayerView({
             />
           </>
         )}
-      </div>
+      </PromptMnemonicsContext.Provider>
     </Page>
   );
 }

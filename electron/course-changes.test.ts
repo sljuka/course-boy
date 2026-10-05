@@ -169,6 +169,44 @@ describe("computeCourseChanges", () => {
     expect(await course.changes()).toEqual([{ kind: "added", locale: "sr", target: "language" }]);
   });
 
+  // SLJ-37: mnemonics live in each language's metadata; saving keeps only
+  // valid rows, keeps them across saves that don't send them, and a change is
+  // its own entry when cutting a version.
+  it("stores valid mnemonics, keeps them when not sent, and lists them as one change", async () => {
+    const course = await seedCutCourse();
+    const save = (mnemonics?: unknown) =>
+      updateLocalCourseDraftMetadata({
+        contentRating: "all-ages",
+        courseId: course.courseId,
+        defaultLocale: "en",
+        descriptiveTags: [],
+        locales: {
+          en: {
+            description: "",
+            title: "Numbers",
+            ...(mnemonics === undefined ? {} : { mnemonics: mnemonics as never }),
+          },
+        },
+        supportedLocales: ["en"],
+      });
+    const stored = async () =>
+      JSON.parse(await fs.readFile(path.join(course.draftDir, "course.json"), "utf8")).locales.en.mnemonics;
+
+    await save([
+      { aliases: ["sevens", ""], mnemonic: " 7️⃣🎲 ", showFirst: 2, term: " Seven " },
+      { mnemonic: "", term: "half typed" },
+    ]);
+    expect(await stored()).toEqual([{ aliases: ["sevens"], mnemonic: "7️⃣🎲", showFirst: 2, term: "Seven" }]);
+    expect(await course.changes()).toEqual([{ field: "mnemonics", kind: "edited", target: "course" }]);
+
+    await save();
+    expect(await stored()).toHaveLength(1);
+
+    await save([]);
+    expect(await stored()).toBeUndefined();
+    expect(await course.changes()).toEqual([]);
+  });
+
   it("counts files added to the content", async () => {
     const course = await seedCutCourse();
     const { path: filename } = await uploadCourseAssetFromBytes({

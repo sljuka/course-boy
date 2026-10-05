@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import type { CourseMnemonic } from "@/lib/mnemonics";
 import type { CourseAssetKind } from "@/lib/course-asset-id";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import type { SerbianScriptSetting } from "@/lib/serbian-script";
@@ -56,6 +57,9 @@ export type CourseVersionBadge =
 
 export type LocalizedCourseMetadata = {
   description: string;
+  // Memory aids shown next to terms in this language's lessons (SLJ-37); see
+  // `src/lib/mnemonics.ts`. Missing means none.
+  mnemonics?: CourseMnemonic[];
   title: string;
 };
 
@@ -273,6 +277,9 @@ export type CourseTest = {
   // the next exercise. Undefined (e.g. a test saved before this setting
   // existed) means strict — see `resolveSharedTestForPlayer`.
   strictAdvancement?: boolean;
+  // Show the course's mnemonics in this test's prompts (SLJ-37). Off unless
+  // the teacher turns it on: a badge could give an answer away.
+  showMnemonics?: boolean;
   structure?: CourseTestStructureRule[];
 };
 
@@ -373,6 +380,8 @@ export type SharedTestExerciseDefinition =
 
 export type SharedTestDefinition = {
   exercises: SharedTestExerciseDefinition[];
+  // See `CourseTest.showMnemonics`; missing means off.
+  showMnemonics?: boolean;
   strictAdvancement?: boolean;
   structure?: CourseTestStructureRule[];
   template: string;
@@ -684,7 +693,7 @@ export type CourseChange =
   | {
       kind: "edited";
       target: "course";
-      field: "contentRating" | "defaultLocale" | "description" | "serbianScript" | "tags" | "title";
+      field: "contentRating" | "defaultLocale" | "description" | "mnemonics" | "serbianScript" | "tags" | "title";
     }
   | { kind: "added" | "removed"; target: "language"; locale: string }
   | { kind: "added" | "removed"; target: "files"; count: number };

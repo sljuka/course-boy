@@ -553,7 +553,8 @@
       "contentRating": "Izmenjena ocena sadržaja",
       "tags": "Izmenjene oznake kursa",
       "defaultLocale": "Izmenjen glavni jezik",
-      "serbianScript": "Izmenjeno generisanje ćirilice i latinice"
+      "serbianScript": "Izmenjeno generisanje ćirilice i latinice",
+      "mnemonics": "Promenjene mnemotehnike"
     },
     "language": {
       "added": "Dodat jezik: {{language}}",
@@ -684,5 +685,32 @@
     "lessons": "Lekcije",
     "id": "ID",
     "peersOnline": "Korisnici na mreži"
+  },
+  "mnemonics": {
+    "title": "Mnemotehnike",
+    "help": "Pomoć za pamćenje pojmova na ovom jeziku. Gde se pojam pojavi u lekciji, prvih nekoliko puta je podvučen tačkicama, a učenik vidi mnemotehniku kad pređe mišem preko njega. Tekst lekcije se ne menja. Testovi ih prikazuju samo ako test to dozvoljava.",
+    "empty": "Još nema mnemotehnika.",
+    "term": "Pojam",
+    "termPlaceholder": "Džon Njuberi",
+    "mnemonic": "Mnemotehnika",
+    "mnemonicPlaceholder": "Džon 📰🍓",
+    "length": "{{count}} od {{max}} karaktera",
+    "showFirst": "Označi prvih N mesta u lekciji (3 ako je prazno)",
+    "aliases": "Drugi oblici pojma",
+    "aliasesPlaceholder": "Drugi oblici, odvojeni zarezima (opciono)",
+    "remove": "Ukloni mnemotehniku",
+    "add": "Dodaj mnemotehniku",
+    "problems": {
+      "emptyTerm": "Unesi pojam.",
+      "duplicateTerm": "Ovaj pojam (ili neki njegov oblik) već koristi druga mnemotehnika.",
+      "termTooLong": "Pojam je predugačak.",
+      "emptyMnemonic": "Unesi mnemotehniku.",
+      "mnemonicTooLong": "Mnemotehnika može imati najviše {{max}} karaktera."
+    },
+    "show": "Prikaži mnemotehnike",
+    "hide": "Sakrij mnemotehnike",
+    "showInTest": "Prikaži mnemotehnike kursa u ovom testu",
+    "showInTestHelp": "Podrazumevano isključeno: mnemotehnika na pojmu može otkriti odgovor. Uključi je za testove gde to nije rizik.",
+    "srLabel": "Mnemotehnika: {{mnemonic}}"
   }
 }

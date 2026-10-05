@@ -4,6 +4,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { CourseLessonContent } from "@/components/course-player/course-lesson-content";
+import { MnemonicsToggle } from "@/components/course-player/mnemonics-toggle";
 import { CoursePlayerActions } from "@/components/course-player/course-player-actions";
 import { PrintOptionsMenu } from "@/components/course-player/print-options-menu";
 import { CoursePlayerShell } from "@/components/course-player/course-player-shell";
@@ -84,6 +85,7 @@ export function LessonPlayerView({
   const playerActions = (
     <CoursePlayerActions
       isRefreshingAvailable={false}
+      mnemonicsToggle={<MnemonicsToggle courseId={playerState.courseId} />}
       onClose={playerState.exitPlayer}
       onRefreshExercise={() => {}}
       printControl={

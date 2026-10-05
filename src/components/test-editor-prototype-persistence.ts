@@ -39,6 +39,7 @@ export function toSharedTestDefinition(testState: TestEditorState): SharedTestDe
 
   return {
     exercises: testState.exercises.map(toSharedTestExerciseDefinition),
+    ...(testState.showMnemonics ? { showMnemonics: true } : {}),
     strictAdvancement: testState.strictAdvancement,
     template: testState.description,
     ...(structure ? { structure } : {}),
@@ -62,6 +63,7 @@ export function fromSharedTestDefinition(
     description: definition.template,
     exercises,
     selectedLocale: supportedLocales[0] ?? "en",
+    showMnemonics: definition.showMnemonics ?? false,
     strictAdvancement: definition.strictAdvancement ?? true,
     // Presence, not length: a teacher can enable randomization before
     // adding any rule yet, and `toSharedTestDefinition` above already
