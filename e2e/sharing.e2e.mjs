@@ -330,7 +330,7 @@ describe('sharing across restarts', () => {
     await page.getByRole('button', { name: 'Done' }).click()
 
     // The editor (where My courses opens a course) offers the code too.
-    await page.getByRole('button', { name: 'Share', exact: true }).click()
+    await page.click('[data-testid="share-course"]')
     await waitFor(page, () => document.querySelector('[data-testid="course-code"]') !== null)
     expect(await page.inputValue('[data-testid="course-code"]')).toBe(code)
     await page.getByRole('button', { name: 'Done' }).click()
@@ -339,6 +339,37 @@ describe('sharing across restarts', () => {
       location.hash = '#/my-courses'
     })
     await expect.poll(rowText, { timeout: 10_000 }).toContain(version)
+  })
+
+  // The action bar's Publish: with uncommitted changes it commits them and
+  // publishes in one go; with none it's already published. Share says which
+  // version the code gives.
+  it('Publish commits the drafts and publishes, and Share shows the version', async () => {
+    const page = apps.teacher.page
+    await writeLesson(page, ids, 'Third version. Committed and published in one go.')
+    await page.evaluate((id) => {
+      location.hash = `#/my-courses`
+      setTimeout(() => (location.hash = `#/drafts/${id}`), 100)
+    }, courseId)
+    const publishButton = page.locator('[data-testid="publish-course"]')
+    await expect
+      .poll(() => publishButton.getAttribute('aria-label'), { timeout: 15_000 })
+      .toBe('Commit new version from drafts and publish')
+    await publishButton.click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByText('Commit and publish').first().waitFor()
+    const commitAndPublish = dialog.getByRole('button', { name: /^Commit .+ and publish$/ })
+    const version = (await commitAndPublish.innerText()).replace(/^Commit (.+) and publish$/, '$1')
+    await commitAndPublish.click()
+    await waitForText(page, `Published ${version}`)
+    await page.getByRole('button', { name: 'Done' }).click()
+    await expect.poll(() => publishButton.getAttribute('aria-label')).toBe(`${version} is already published`)
+    expect(await publishButton.isDisabled()).toBe(true)
+
+    await page.click('[data-testid="share-course"]')
+    await waitFor(page, () => document.querySelector('[data-testid="shared-version"]') !== null)
+    expect(await page.locator('[data-testid="shared-version"]').innerText()).toBe(`Shared version: ${version}`)
+    await page.getByRole('button', { name: 'Done' }).click()
   })
 
   // SLJ-39: student 3 (still running, online) gets the version the teacher just

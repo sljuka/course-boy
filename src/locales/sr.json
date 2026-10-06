@@ -129,7 +129,7 @@
     "notPublishedBadge": "Nije objavljena",
     "openButton": "Istorija verzija",
     "previewCourse": "Pregledaj kurs",
-    "publishButton": "Objavi ovu verziju",
+    "publishButton": "Objavi",
     "publishedBadge": "Objavljena",
     "releaseTypeLabel": "Tip izmene",
     "releaseTypeMajor": "Velika",
@@ -173,7 +173,11 @@
     "releaseNotesTitle": "Beleške o verziji · {{version}}",
     "commitBlockedTitle": "Još nije spremno za čuvanje verzije",
     "commitBlockedNoSections": "Dodajte sekciju sa bar jednom lekcijom pre nego što sačuvate verziju.",
-    "commitBlockedEmptySection": "Sekcija „{{title}}“ još nema lekcija ni testova. Dodajte jedan ili uklonite sekciju pre nego što sačuvate verziju."
+    "commitBlockedEmptySection": "Sekcija „{{title}}“ još nema lekcija ni testova. Dodajte jedan ili uklonite sekciju pre nego što sačuvate verziju.",
+    "commitAndPublishAction": "Sačuvaj novu verziju iz nacrta i objavi",
+    "commitAndPublishTitle": "Sačuvaj verziju i objavi",
+    "commitAndPublishButton": "Sačuvaj {{version}} i objavi",
+    "alreadyPublished": "{{version}} je već objavljena"
   },
   "courseTags": {
     "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."
@@ -185,7 +189,6 @@
     "cancel": "Otkaži",
     "publishedTitle": "Objavljena verzija {{version}}",
     "publishedDescription": "Učenici mogu da preuzmu ovaj kurs pomoću ovog koda. Kod je isti za svaku verziju, pa učenicima koji već imaju kurs ne treba novi.",
-    "shareButton": "Podeli",
     "shareDescription": "Učenici mogu da preuzmu ovaj kurs pomoću ovog koda. Isti je za svaku verziju koju objavite.",
     "codeLabel": "Kod kursa",
     "copyCode": "Kopiraj kod",
@@ -196,7 +199,8 @@
     "done": "Gotovo",
     "shareCourse": "Podeli kurs",
     "shareDescriptionImported": "Drugovi iz razreda mogu da preuzmu ovaj kurs ovim kodom. Isti je za svaku verziju.",
-    "peersOnline": "Korisnika na mreži: {{count}}"
+    "peersOnline": "Korisnika na mreži: {{count}}",
+    "sharedVersion": "Deljena verzija: {{version}}"
   },
   "importCourse": {
     "codeLabel": "Kod kursa",

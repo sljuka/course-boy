@@ -129,7 +129,7 @@
     "notPublishedBadge": "Not published",
     "openButton": "Version history",
     "previewCourse": "Preview course",
-    "publishButton": "Publish this version",
+    "publishButton": "Publish",
     "publishedBadge": "Published",
     "releaseTypeLabel": "Bump type",
     "releaseTypeMajor": "Major",
@@ -173,7 +173,11 @@
     "releaseNotesTitle": "Release notes · {{version}}",
     "commitBlockedTitle": "Not ready to commit",
     "commitBlockedNoSections": "Add a section with at least one lesson before committing a version.",
-    "commitBlockedEmptySection": "Section \"{{title}}\" has no lessons or tests yet. Add one, or remove the section, before committing a version."
+    "commitBlockedEmptySection": "Section \"{{title}}\" has no lessons or tests yet. Add one, or remove the section, before committing a version.",
+    "commitAndPublishAction": "Commit new version from drafts and publish",
+    "commitAndPublishTitle": "Commit and publish",
+    "commitAndPublishButton": "Commit {{version}} and publish",
+    "alreadyPublished": "{{version}} is already published"
   },
   "courseTags": {
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."
@@ -185,7 +189,6 @@
     "cancel": "Cancel",
     "publishedTitle": "Published {{version}}",
     "publishedDescription": "Students can get this course with this code. It's the same code for every version, so students who already have it don't need a new one.",
-    "shareButton": "Share",
     "shareDescription": "Students can get this course with this code. It's the same for every version you publish.",
     "codeLabel": "Course code",
     "copyCode": "Copy code",
@@ -196,7 +199,8 @@
     "done": "Done",
     "shareCourse": "Share course",
     "shareDescriptionImported": "Classmates can get this course with this code. It's the same for every version.",
-    "peersOnline": "Peers online: {{count}}"
+    "peersOnline": "Peers online: {{count}}",
+    "sharedVersion": "Shared version: {{version}}"
   },
   "importCourse": {
     "codeLabel": "Course code",

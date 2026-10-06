@@ -484,8 +484,15 @@ describe('page breadcrumbs', () => {
         title: panel.querySelector('[data-slot=panel-card-header]')?.textContent,
       })),
     }))
-    expect(rows.actionBar).toContain('Preview course')
-    expect(rows.toolbar).not.toContain('Preview course')
+    // Preview course and Publish are round icon buttons in the action bar.
+    expect(
+      await harness.page.evaluate(() => ({
+        actionBar: ['Preview course', 'Publish'].map((label) =>
+          Boolean(document.querySelector(`[data-slot=page-action-bar] [aria-label="${label}"], [data-slot=page-action-bar] [aria-label^="Commit new version from drafts"]`)),
+        ),
+        toolbar: Boolean(document.querySelector('[data-slot=page-toolbar] [aria-label="Preview course"]')),
+      })),
+    ).toEqual({ actionBar: [true, true], toolbar: false })
     // Explorer on the left, Versions on the right, each a card with its title inside.
     expect(rows.sidePanels).toEqual([
       { side: 'left', title: 'Explorer' },
@@ -721,9 +728,10 @@ describe('lesson editor line breaks', () => {
 })
 
 // A version needs at least one section, and every section a lesson or test.
-// Commit is disabled until then, and says why; a draft may be empty.
+// The action bar's Publish (which commits the drafts first) is disabled until
+// then, and says why; a draft may be empty.
 describe('commit needs sections with content', () => {
-  it('disables Commit with the reason until every section has a lesson', async () => {
+  it('disables Publish with the reason until every section has a lesson', async () => {
     const { page } = harness
     const courseId = await page.evaluate(async () => {
       const { courseId } = await window.courses.createDraft({
@@ -736,8 +744,7 @@ describe('commit needs sections with content', () => {
     await page.evaluate((id) => {
       location.hash = `#/drafts/${id}`
     }, courseId)
-    // The action bar's button (the Versions panel's "+" has the same label but no text).
-    const commitButton = page.getByRole('button', { name: 'Commit new version' }).filter({ hasText: 'Commit new version' })
+    const commitButton = page.locator('[data-testid="publish-course"]')
     await commitButton.waitFor()
 
     // Hover until the tooltip shows the reason; after a reload the course's
@@ -774,6 +781,7 @@ describe('commit needs sections with content', () => {
     await page.reload()
     await commitButton.waitFor()
     await expect.poll(() => commitButton.isDisabled()).toBe(false)
+    expect(await commitButton.getAttribute('aria-label')).toBe('Commit new version from drafts and publish')
   })
 })
 
@@ -1174,7 +1182,9 @@ describe('release notes', () => {
     await page.evaluate((id) => {
       location.hash = `#/drafts/${id}`
     }, ids.courseId)
-    await page.getByRole('button', { name: 'Commit new version' }).first().click()
+    // Commit without publishing lives in the course's ⋯ menu.
+    await page.getByRole('button', { name: /^Course actions for / }).click()
+    await page.locator('[data-testid="commit-new-version"]').click()
     const dialog = page.getByRole('dialog')
     await dialog.getByText(`Changes since ${ids.first}`).waitFor()
     expect(await dialog.innerText()).toContain('Added lesson "Subtraction" in "Numbers"')
@@ -1245,9 +1255,20 @@ describe('discard changes', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click()
     expect((await history()).draftMatchesCurrentVersion).toBe(false)
 
-    await openDiscard()
+    // The same, from the course's ⋯ menu (red, above Remove course).
+    await page.getByRole('button', { name: /^Course actions for / }).click()
+    await page.getByRole('menuitem', { name: 'Remove course' }).waitFor()
+    const menuItems = await page.getByRole('menuitem').allInnerTexts()
+    expect(menuItems.slice(-2)).toEqual(['Discard changes', 'Remove course'])
+    await page.locator('[data-testid="discard-changes"]').click()
     await page.getByRole('dialog').getByRole('button', { name: 'Discard' }).click()
     await expect.poll(async () => (await history()).draftMatchesCurrentVersion).toBe(true)
+    // Nothing left to discard: the item is gone.
+    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: /^Course actions for / }).click()
+    await page.getByRole('menuitem', { name: 'Remove course' }).waitFor()
+    expect(await page.locator('[data-testid="discard-changes"]').count()).toBe(0)
+    await page.keyboard.press('Escape')
     expect((await history()).currentDraftVersion).toBe(ids.version)
     const lessons = await page.evaluate(
       (id) => window.courses.get(id, 'en').then((c) => c.sections[0].lessons.map((l) => l.title)),

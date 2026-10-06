@@ -113,7 +113,6 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         (resolvedCourse.distribution === "imported" && Boolean(sharing?.code))) && (
         <ShareCourseButton
           courseId={courseId}
-          iconOnly
           imported={resolvedCourse.distribution === "imported"}
         />
       )}

@@ -1,8 +1,10 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Eye, History, Info } from "lucide-react";
+import { Eye, History, Info, Undo2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import { PublishCourseButton } from "@/components/course-details/publish-course-button";
+import { useRevertWithConfirmation } from "@/components/course-details/use-revert-with-confirmation";
 import { ShareCourseButton } from "@/components/course-details/share-course-button";
 import { VersionHistoryDialog } from "@/components/course-details/version-history-dialog";
 import {
@@ -23,7 +25,8 @@ import {
 } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLabel } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   Combobox,
   ComboboxChip,
@@ -76,7 +79,7 @@ import { getContentRatingLabelKey } from "@/lib/course-utils";
 import { locales, type Locale } from "@/lib/i18n";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import type { CourseMnemonic } from "@/lib/mnemonics";
-import { useUpdateDraftMetadataMutation } from "@/lib/course-queries";
+import { useCourseVersionHistoryQuery, useUpdateDraftMetadataMutation } from "@/lib/course-queries";
 import { useCommitBlockerMessage } from "@/lib/use-commit-blocker";
 import {
   detectSerbianScript,
@@ -295,37 +298,63 @@ export function CourseMetadataEditor({
 
   const courseActionButtons = (
     <>
-      <Button
-        nativeButton={false}
-        render={<Link to={`/courses/${courseId}`} />}
-        size="sm"
-        title={t("courseVersions.previewCourse")}
-        variant="secondary"
-      >
-        <Eye aria-hidden="true" />
-        <ButtonLabel>{t("courseVersions.previewCourse")}</ButtonLabel>
-      </Button>
-      <ShareCourseButton courseId={courseId} />
       <Tooltip>
-        <TooltipTrigger render={<span className="inline-flex" />}>
-          <Button
-            disabled={!canCommitNewVersion}
-            onClick={() => setIsVersionHistoryOpen(true)}
-            size="sm"
-            title={t("courseVersions.commitButton")}
-            variant="secondary"
-          >
-            <History aria-hidden="true" />
-            <ButtonLabel>{t("courseVersions.commitButton")}</ButtonLabel>
-          </Button>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label={t("courseVersions.previewCourse")}
+              nativeButton={false}
+              render={<Link to={`/courses/${courseId}`} />}
+              shape="circle"
+              size="icon-sm"
+              variant="secondary"
+            />
+          }
+        >
+          <Eye aria-hidden="true" />
         </TooltipTrigger>
-        {!canCommitNewVersion && (
-          <TooltipContent>
-            {hasChangesToCommit && commitBlocker ? commitBlocker : t("courseVersions.noChangesTooltip")}
-          </TooltipContent>
-        )}
+        <TooltipContent>{t("courseVersions.previewCourse")}</TooltipContent>
       </Tooltip>
+      <ShareCourseButton courseId={courseId} />
+      <PublishCourseButton courseId={courseId} />
     </>
+  );
+
+  // Discard changes (back to the version the draft is based on), red in the
+  // ⋯ menu, only while there are changes and a version to go back to. Asks
+  // first, like the Versions panel's.
+  const { data: versionHistory } = useCourseVersionHistoryQuery(courseId);
+  const canDiscard =
+    Boolean(versionHistory?.versions.length) && versionHistory?.draftMatchesCurrentVersion === false;
+  const { confirmationDialog: discardConfirmation, requestDiscard, revertMutation } =
+    useRevertWithConfirmation(courseId);
+  const discardMenuItem = canDiscard && (
+    <DropdownMenuItem
+      data-testid="discard-changes"
+      disabled={revertMutation.isPending}
+      onClick={requestDiscard}
+      variant="destructive"
+    >
+      <Undo2 aria-hidden="true" />
+      {t("courseVersions.discardChanges")}
+    </DropdownMenuItem>
+  );
+
+  // Commit without publishing, from the course's ⋯ menu; the reason it can't
+  // shows in place of the label.
+  const commitMenuItem = (
+    <DropdownMenuItem
+      data-testid="commit-new-version"
+      disabled={!canCommitNewVersion}
+      onClick={() => setIsVersionHistoryOpen(true)}
+    >
+      <History aria-hidden="true" />
+      {canCommitNewVersion
+        ? t("courseVersions.commitButton")
+        : hasChangesToCommit && commitBlocker
+          ? commitBlocker
+          : t("courseVersions.noChangesTooltip")}
+    </DropdownMenuItem>
   );
 
   return (
@@ -336,7 +365,10 @@ export function CourseMetadataEditor({
           <CourseActionsMenu
             afterRemovePath="/my-courses"
             course={{ id: courseId, title: draft.localizedCourse[defaultLocale]?.title ?? "" }}
+            destructiveItems={discardMenuItem}
+            items={commitMenuItem}
           />
+          {discardConfirmation}
         </>
       }
     >
