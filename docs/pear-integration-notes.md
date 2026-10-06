@@ -618,7 +618,55 @@ derives from it. Settings → Publisher identity → **Save backup…** writes a
   `identity-backup` store, main-process only): when the newest backup was saved and
   which course ids it covers, for "Backed up on …" and "Courses published since then,
   not in it: N".
-- **Restoring it** is SLJ-54.
+- **Restoring it:** see the next section.
+
+## Restoring the publisher identity (SLJ-54)
+
+On a new computer, **Settings → Security → Restore from backup…** (or "I have courses
+published with Matko on another computer" on the new-profile screen, which opens the same
+dialog once onboarding is done) takes the backup file and its password. The flow is in
+[electron/identity-restore.ts](../electron/identity-restore.ts:1).
+
+1. **The file.** Main reads it (OS open dialog, at most 1 MB) and the worker checks it
+   (`CMD_READ_IDENTITY_BACKUP` = 15): the dialog shows its name and date.
+2. **The identity.** The worker opens it with the password and creates a fresh store at
+   `<profile>/p2p-restore` with the restored primary key (`CMD_RESTORE_IDENTITY` = 16),
+   checking that its creator key is the file's `publisherId`. Main then stops the
+   worker, puts that store in place of `p2p/` and starts the worker again
+   (`installRestoredStore` in `electron/bare-worker.ts`). The key never leaves the
+   worker. The identity counts as consented to sharing and as backed up by the file.
+   - **Refused** when this profile already put courses online with its own identity:
+     they could never be updated again. A new profile is the way.
+   - The old `p2p/` goes. With nothing published from it, it held only imported
+     courses' cached blocks, which are fetched again when needed. `p2p-gated` stays.
+3. **The courses.** For every course in the backup, in the background and for as long
+   as it takes a student who has it to come online (`CMD_RECOVER_COURSE` = 17, tracked
+   as transfer `recover-<courseId>`), the worker downloads the published version into
+   `courses/.recover-staging-*`. `landRecoveredCourse` (`course-paths.ts`) makes it the
+   teacher's own course: `versions/<v>/` (without `source.json`), `draft/` from it,
+   `release.json`. Only then is it shared again, so the code and identity are the old
+   ones. Earlier versions and changes never published stayed on the old computer; the
+   dialog says so. Progress is in the dialog and in Settings
+   (`identity-restore` store, main-process only).
+
+**Why the order matters (proven 2026-10-06, then by the e2e).** A core opened with its
+key pair is *writable*, and a writable core never asks peers for a longer history:
+`update()` on a fresh store's `namespace('course-<id>')` drive stays at length 0, and the
+next publish would start a second history that students' apps refuse. So recovery opens
+the drive **by its key only** (created from the manifest, no key pair stored), which
+syncs from students like any import. Publishing then passes the key pair **in memory**:
+`openPublishedDrive` builds the drive's db core itself with
+`namespace.get({ keyPair })` and hands it to Hyperdrive as `_db` (a Hyperbee; hence
+`hyperbee` in `dependencies`). The blobs core takes the db core's key pair. For a course
+published on this device both ways open the same core, so this is the only path. It is
+also the in-memory signing SLJ-55 builds on. Only the current version's blocks are
+needed to continue the history; the e2e's student never had the older ones.
+
+Pinned by `e2e/sharing.e2e.mjs` ("restoring the publisher identity on a new
+computer"): the old computer publishes twice and backs up, a student imports, the old
+computer goes away; the new computer restores from Settings (a wrong password first),
+gets the course back from the student with the same code and identity, and publishes a
+version the student is offered as a normal update.
 
 ## Publisher key at rest (SLJ-46 spike, 2026-10-05)
 

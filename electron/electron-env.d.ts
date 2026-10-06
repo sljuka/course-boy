@@ -122,7 +122,7 @@ interface Window {
   }
   profiles: {
     getState: () => Promise<import('../src/lib/profiles').ProfilesState>
-    create: (input: { locale?: string; name: string }) => Promise<void>
+    create: (input: { locale?: string; name: string; restoreIdentity?: boolean }) => Promise<void>
     open: (profileId: string) => Promise<void>
     switchProfile: () => Promise<void>
   }
@@ -133,6 +133,9 @@ interface Window {
       password: string,
       includeCourseId?: string,
     ) => Promise<import('../src/lib/identity-backup').SaveIdentityBackupResult>
+    chooseIdentityBackupFile: () => Promise<import('../src/lib/identity-backup').ChooseIdentityBackupResult>
+    restoreIdentity: (password: string) => Promise<import('../src/lib/identity-backup').RestoreIdentityResult>
+    getIdentityRestoreStatus: () => Promise<import('../src/lib/identity-backup').IdentityRestoreStatus>
     getCourseSharing: (courseId: string) => Promise<import('../src/lib/sharing').CourseSharingInfo>
     listCourseUpdates: () => Promise<Record<string, import('../src/lib/sharing').CourseUpdateInfo>>
     applyCourseUpdate: (

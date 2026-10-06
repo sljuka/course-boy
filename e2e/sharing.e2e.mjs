@@ -25,6 +25,10 @@ const dirs = {
   student3: path.join(ROOT, 'student-3'),
   newTeacher: path.join(ROOT, 'new-teacher'),
   teacher: path.join(ROOT, 'teacher'),
+  // SLJ-54: a teacher's old and new computer, and a student of theirs.
+  oldComputer: path.join(ROOT, 'old-computer'),
+  newComputer: path.join(ROOT, 'new-computer'),
+  restoreStudent: path.join(ROOT, 'restore-student'),
 }
 
 // Where each instance keeps its data: its e2e profile's folder (SLJ-57).
@@ -700,3 +704,98 @@ describe('sharing across restarts', () => {
   })
 })
 
+// SLJ-54: the publisher identity restored on a new computer. The old computer
+// publishes and saves a backup, a student imports, the old computer goes
+// away. The new computer restores the backup from Settings, the course comes
+// back from the student (same code, same identity), and a version published
+// from the new computer reaches the student as a normal update.
+describe('restoring the publisher identity on a new computer', () => {
+  const backupPath = path.join(ROOT, 'old-computer.matko-identity')
+  const password = 'correct horse battery'
+  let ids
+  let code
+  let publisherId
+
+  it('the old computer publishes, backs up, and a student imports', async () => {
+    const page = await launch('oldComputer')
+    await apps.oldComputer.app.evaluate(({ dialog }, filePath) => {
+      dialog.showSaveDialog = async () => ({ canceled: false, filePath })
+    }, backupPath)
+    await finishOnboarding(page, 'teacher')
+    await page.evaluate(() => window.preferences.set({ hasAcknowledgedCreatorKey: true }))
+    ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Restored Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Lesson' })
+      return { courseId, lessonId, sectionId }
+    })
+    // Two versions, so the drive has history the student never downloaded.
+    await writeLesson(page, ids, 'First version.')
+    await cutAndPublish(page, ids.courseId)
+    await writeLesson(page, ids, 'Second version.')
+    const version = await cutAndPublish(page, ids.courseId)
+    code = (await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')).code
+    publisherId = await page.evaluate(() => window.sharing.getCreatorKey())
+    expect(await page.evaluate((password) => window.sharing.saveIdentityBackup(password), password)).toHaveProperty('savedAt')
+
+    const student = await launch('restoreStudent')
+    await finishOnboarding(student, 'student')
+    expect(await importCourse(student, code)).toEqual({ courseId: ids.courseId })
+    expect((await student.evaluate(() => window.courses.list('en'))).find((course) => course.id === ids.courseId)?.version).toBe(version)
+
+    await close('oldComputer')
+  })
+
+  it('the new computer restores the backup from Settings, and the course comes back from the student', async () => {
+    const page = await launch('newComputer')
+    await apps.newComputer.app.evaluate(({ dialog }, filePath) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] })
+    }, backupPath)
+    await finishOnboarding(page, 'teacher')
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await page.click('[data-testid="open-restore-identity"]')
+    await page.click('[data-testid="choose-identity-backup"]')
+    await waitForText(page, 'old-computer.matko-identity, saved on')
+
+    await page.getByLabel('Backup password').fill('wrong password')
+    await page.click('[data-testid="restore-identity"]')
+    await waitForText(page, 'Wrong password.')
+
+    await page.getByLabel('Backup password').fill(password)
+    await page.click('[data-testid="restore-identity"]')
+    await waitForText(page, 'Your publisher identity is restored', { timeout: 30_000 })
+    await waitFor(
+      page,
+      () => document.querySelector('[data-testid="restored-course"]')?.getAttribute('data-state') === 'restored',
+      { timeout: 60_000 },
+    )
+    await page.getByRole('button', { name: 'Done' }).click()
+
+    // The same identity and the same code; the course is the teacher's own again.
+    expect(await page.evaluate(() => window.sharing.getCreatorKey())).toBe(publisherId)
+    const course = (await page.evaluate(() => window.courses.list('en'))).find((entry) => entry.id === ids.courseId)
+    expect(course).toMatchObject({ distribution: 'local', title: 'E2E Restored Course' })
+    const shared = await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')
+    expect(shared.code).toBe(code)
+    // Restored from a backup: no reminder to make one.
+    expect(await page.locator('[data-testid="backup-reminder-dot"]').count()).toBe(0)
+  })
+
+  it('a version published from the new computer reaches the student as a normal update', async () => {
+    const page = apps.newComputer.page
+    const student = apps.restoreStudent.page
+    await writeLesson(page, ids, 'Third version, from the new computer.')
+    const version = await cutAndPublish(page, ids.courseId)
+
+    await waitForUpdate(student, ids.courseId, (update) => update.version === version, 60_000)
+    expect(await student.evaluate((id) => window.sharing.applyCourseUpdate(id), ids.courseId)).toMatchObject({ version })
+    const lesson = currentVersionFiles(data.restoreStudent, ids.courseId).find(({ file }) => file.endsWith('.md'))
+    expect(fs.readFileSync(lesson.path, 'utf8')).toContain('Third version, from the new computer.')
+  })
+})

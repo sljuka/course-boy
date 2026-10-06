@@ -25,10 +25,11 @@ async function waitForActive(predicate) {
   await expect.poll(async () => predicate(await activeProfile().catch(() => undefined)), { timeout: 20_000 }).toBe(true)
 }
 
-async function createProfile(name) {
+async function createProfile(name, { restoreIdentity = false } = {}) {
   const { page } = harness
   await page.locator('[data-testid="create-profile"]').waitFor()
   await page.getByLabel('Username or nickname').fill(name)
+  if (restoreIdentity) await page.click('[data-testid="restore-identity-after-setup"]')
   await page.getByRole('button', { name: 'Continue' }).click()
   await waitForActive((active) => active?.name === name)
   // The name was given in the launcher: onboarding goes on from the persona.
@@ -100,7 +101,8 @@ describe('profiles', () => {
     expect(await bodyText(harness.page)).toContain('Ana Petrović')
 
     await harness.page.getByRole('button', { name: 'New profile' }).click()
-    await createProfile('##$$%')
+    // SLJ-54: "I have courses published with Matko on another computer".
+    await createProfile('##$$%', { restoreIdentity: true })
 
     const other = profileFolders().find((id) => id !== ana)
     expect(other).toMatch(/^profile-[a-z0-9]{16}$/)
@@ -117,6 +119,13 @@ describe('profiles', () => {
       .toMatch(/./)
     expect(await harness.page.evaluate(() => window.sharing.getCreatorKey())).not.toBe(anaCreatorKey)
     await finishOnboarding('course-monster')
+
+    // Ticked on the new-profile screen: the restore dialog opens once
+    // onboarding is done, and only once.
+    await harness.page.locator('[data-testid="restore-identity-dialog"]').waitFor()
+    await harness.page.getByRole('button', { name: 'Cancel' }).click()
+    await harness.page.locator('[data-testid="restore-identity-dialog"]').waitFor({ state: 'detached' })
+    expect((await harness.page.evaluate(() => window.preferences.get())).restoreIdentityAfterOnboarding).toBe(false)
   })
 
   it('the picker lists the last used first and opens the one chosen, in the same window', async () => {

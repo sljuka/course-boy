@@ -91,7 +91,9 @@ adding a case to the e2e suite over one-off manual checking.
   sharing consent. Students can pass an imported course on from its page with the same
   code, unless it was shared only with chosen students (`gated`). No course goes online
   before the teacher saves a password-protected backup of the identity behind every code
-  (Settings → Security; SLJ-53; restore is SLJ-54). "Import course" on Home takes a code;
+  (Settings → Security; SLJ-53). On a new computer, Settings → Security (or a checkbox on
+  the new-profile screen) restores that backup and brings the courses back from their
+  students (SLJ-54). "Import course" on Home takes a code;
   the download runs in the background under Home's Downloading group (SLJ-43, SLJ-49).
   `source.json` in the drive records where a course is shared from. Students are offered newer versions of imported
   courses and apply them from the course page (SLJ-39); imported courses keep previous versions as `versions/<v>/` +

@@ -6,6 +6,7 @@ const Pipe = require('bare-pipe')
 const RPC = require('bare-rpc')
 const Corestore = require('corestore')
 const Hyperdrive = require('hyperdrive')
+const Hyperbee = require('hyperbee')
 const Localdrive = require('localdrive')
 const IdEncoding = require('hypercore-id-encoding')
 const Hyperswarm = require('hyperswarm')
@@ -14,7 +15,7 @@ const fsp = require('bare-fs/promises')
 const path = require('bare-path')
 const { isValidCourseId } = require('./course-id.cjs')
 const { verifySource } = require('./course-source.cjs')
-const { createIdentityBackup } = require('./identity-backup.cjs')
+const { createIdentityBackup, openIdentityBackup, readIdentityBackup } = require('./identity-backup.cjs')
 
 const CMD_GET_CREATOR_KEY = 1 // must match electron/bare-worker.ts
 const CMD_PUBLISH_COURSE = 2 // must match electron/bare-worker.ts
@@ -30,6 +31,9 @@ const CMD_GET_TRANSFER = 11 // must match electron/bare-worker.ts
 const CMD_CANCEL_TRANSFER = 12 // must match electron/bare-worker.ts
 const CMD_GET_PEERS = 13 // must match electron/bare-worker.ts
 const CMD_CREATE_IDENTITY_BACKUP = 14 // must match electron/bare-worker.ts
+const CMD_READ_IDENTITY_BACKUP = 15 // must match electron/bare-worker.ts
+const CMD_RESTORE_IDENTITY = 16 // must match electron/bare-worker.ts
+const CMD_RECOVER_COURSE = 17 // must match electron/bare-worker.ts
 // Worker → main: an imported course's drive may hold a newer version. Main
 // decides what that means (electron/course-sharing.ts).
 const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
@@ -47,6 +51,9 @@ const FINISHED_TRANSFER_TTL_MS = 60_000
 // the version itself, so its hashes stay valid): where the course is shared from.
 // See "source.json" in docs/contracts.md §5.
 const SOURCE_FILE_KEY = '/source.json'
+
+// Hyperdrive's own options for its file list (its "db" core, a Hyperbee).
+const DRIVE_DB_OPTIONS = { keyEncoding: 'utf-8', valueEncoding: 'json', metadata: { contentFeed: null } }
 
 const storagePath = Bare.argv[2]
 // Test-only: a comma-separated list of `host:port` DHT bootstrap nodes (a local
@@ -146,7 +153,17 @@ async function start() {
     // derived from the same root seed, rather than reusing one Ed25519 key across two
     // independent append-only logs. The namespace is per course, not per version, so
     // the drive key (the code students use) never changes across publishes.
-    const drive = new Hyperdrive(store.namespace(`course-${courseId}`))
+    //
+    // The key pair is handed to the drive's db core explicitly (Hyperdrive's `_db`)
+    // rather than through the namespace's name: a course brought back from a backup
+    // (SLJ-54) was first synced by its key alone, so its stored core has no key pair
+    // and opening it by name would be read-only. The blobs core follows the db core's
+    // key pair. For a course published here, both ways open the same core.
+    const namespace = store.namespace(`course-${courseId}`)
+    const keyPair = await namespace.createKeyPair('db')
+    const drive = new Hyperdrive(namespace, {
+      _db: new Hyperbee(namespace.get({ exclusive: true, keyPair }), DRIVE_DB_OPTIONS),
+    })
     await drive.ready()
 
     // A fresh course has nothing to download, so client discovery is unnecessary here
@@ -710,6 +727,89 @@ async function start() {
     return { courseId, driveKey: drive.key, publisherId }
   }
 
+  // ─── Restoring the publisher identity (SLJ-54) ─────────────────────────
+  // A new computer gets the identity from its backup file: a fresh store is
+  // created next to this one with the restored key (main stops this worker and
+  // puts it in place of p2p/), then each course published with it is brought
+  // back from the students who have it.
+
+  // A new store at `targetPath` holding the identity from the backup. The key
+  // stays in the worker: only the publisher id and the course list go back.
+  async function restoreIdentity(text, password, targetPath) {
+    const backup = openIdentityBackup(text, password)
+    const restored = new Corestore(targetPath, { primaryKey: backup.primaryKey, unsafe: true })
+
+    try {
+      await restored.ready()
+      const creator = await restored.createKeyPair('creator')
+      // The file's public part names the identity; check the key inside is that one.
+      if (IdEncoding.normalize(creator.publicKey) !== backup.publisherId) {
+        throw Object.assign(new Error('This identity backup is damaged'), { code: 'INVALID_FILE' })
+      }
+    } finally {
+      await restored.close()
+      backup.primaryKey.fill(0)
+    }
+
+    return { courses: backup.courses, publisherId: backup.publisherId }
+  }
+
+  // A course published with this identity on another computer: downloads its
+  // published version into `stagingPath` from whoever has it (its students).
+  //
+  // The drive is opened by its key alone, never through the course's namespace:
+  // a core opened with its key pair is "writable", and a writable core never asks
+  // peers for a longer history. It would stay empty, and the next publish would
+  // start a second history that students' apps refuse. Opened by key, it learns
+  // the full history first; publishing (openPublishedDrive) then continues it.
+  async function recoverCourse(courseId, stagingPath, transferId) {
+    if (publishedDrives.has(courseId)) {
+      throw new Error('This course is already shared from this device')
+    }
+
+    const transfer = createTransfer(transferId)
+    const { publicKey } = await store.namespace(`course-${courseId}`).createKeyPair('db')
+    // Only the public key: the core is created without a key pair (read-only).
+    const probe = store.get({ manifest: { signers: [{ publicKey }], version: store.manifestVersion } })
+    await probe.ready()
+    const driveKey = probe.key
+    await probe.close()
+
+    const drive = new Hyperdrive(store.session(), driveKey)
+    await drive.ready()
+    transfer.drive = drive
+    // Until the first lookup is done, update() waits for peers instead of
+    // answering from the (empty) local copy.
+    const doneFindingPeers = drive.findingPeers()
+    swarm.join(drive.discoveryKey)
+    swarm.flush().then(doneFindingPeers, doneFindingPeers)
+    transfer.onCancel.add(() => drive.close().catch(() => {}))
+
+    try {
+      await waitForDriveData(drive, transfer)
+      // The newest version any connected peer has.
+      await untilCancelled(transfer, drive.update({ wait: true }))
+      transfer.course = await readCourseTitles(drive, transfer)
+      await mirrorWithProgress(drive, new Localdrive(stagingPath), transfer)
+
+      const manifest = JSON.parse(await fsp.readFile(path.join(stagingPath, 'course.json'), 'utf8'))
+      if (manifest.id !== courseId) {
+        throw new Error('The drive holds a different course')
+      }
+      const publisherId = await readVerifiedSource(stagingPath, drive.key)
+
+      finishTransfer(transferId, transfer, 'done')
+      return { driveKey: drive.key, publisherId, version: manifest.version }
+    } catch (error) {
+      finishTransfer(transferId, transfer, transfer.isCancelled ? 'cancelled' : 'error')
+      throw transfer.isCancelled ? new TransferCancelled() : error
+    } finally {
+      // Sharing it again is publishing's job, through the course's own namespace.
+      await swarm.leave(drive.discoveryKey).catch(() => {})
+      await drive.close().catch(() => {})
+    }
+  }
+
   rpc = new RPC(new Pipe(3), async (req) => {
     if (req.command === CMD_GET_CREATOR_KEY) {
       try {
@@ -872,6 +972,49 @@ async function start() {
         })
         req.reply(JSON.stringify({ backup }))
       } catch (error) {
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
+      }
+      return
+    }
+
+    // The backup file's public part (who it belongs to, when it was made), to
+    // show before asking for the password.
+    if (req.command === CMD_READ_IDENTITY_BACKUP) {
+      try {
+        const { text } = JSON.parse(req.data.toString())
+        const backup = readIdentityBackup(text)
+        req.reply(JSON.stringify({ createdAt: backup.createdAt, publisherId: backup.publisherId }))
+      } catch (error) {
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_RESTORE_IDENTITY) {
+      try {
+        const { password, targetPath, text } = JSON.parse(req.data.toString())
+        req.reply(JSON.stringify(await restoreIdentity(text, password, targetPath)))
+      } catch (error) {
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_RECOVER_COURSE) {
+      const { courseId, stagingPath, transferId } = JSON.parse(req.data.toString())
+
+      try {
+        if (!isValidCourseId(courseId)) throw new Error('Invalid course id')
+        const result = await recoverCourse(courseId, stagingPath, transferId)
+        req.reply(
+          JSON.stringify({
+            driveKey: IdEncoding.normalize(result.driveKey),
+            publisherId: result.publisherId,
+            version: result.version,
+          }),
+        )
+      } catch (error) {
+        if (error.code !== 'CANCELLED') console.error('[worker] failed to recover a course:', error)
         req.reply(JSON.stringify({ code: error.code, error: error.message }))
       }
       return

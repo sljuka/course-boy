@@ -765,6 +765,32 @@
     "back": "Back",
     "passwordUnrecoverable": "If you lose the password, it can't be recovered, and the backup can't be opened."
   },
+  "identityRestore": {
+    "title": "Restore your publisher identity",
+    "description": "Have courses published with Matko on another computer? Choose the identity backup file from that computer and enter its password. Your courses then come back from your students.",
+    "chooseFile": "Choose backup file…",
+    "chooseOtherFile": "Choose another file…",
+    "fileSummary": "{{fileName}}, saved on {{date}}",
+    "password": "Backup password",
+    "cancel": "Cancel",
+    "restore": "Restore",
+    "doneTitle": "Your publisher identity is restored",
+    "doneDescription": "Your courses are coming back from your students and appear in My courses as they arrive. Only the published version of each course comes back: earlier versions and changes that were never published stayed on the other computer.",
+    "done": "Done",
+    "courseRestored": "In My courses",
+    "courseDownloading": "Downloading {{done}} of {{total}}",
+    "courseWaiting": "Waiting for a student who has it to come online",
+    "settingsButton": "Restore from backup…",
+    "settingsHint": "Have courses published with Matko on another computer? Restore your publisher identity and keep updating them from here.",
+    "comingBack": "Courses coming back from your students",
+    "errors": {
+      "invalidFile": "This isn't a Matko identity backup, or it's damaged.",
+      "unsupportedVersion": "This backup was made by a newer version of Matko. Update Matko and try again.",
+      "wrongPassword": "Wrong password.",
+      "alreadyPublishing": "This profile already publishes courses with its own publisher identity. To restore another one, create a new profile and restore it there.",
+      "noFile": "Choose the backup file first."
+    }
+  },
   "profiles": {
     "pickerTitle": "Who's learning?",
     "pickerDescription": "Each profile has its own courses and settings on this computer.",
@@ -772,6 +798,7 @@
     "newProfileTitle": "New profile",
     "newProfileDescription": "A profile keeps its own courses, settings and publisher identity, separate from the others on this computer.",
     "nameTooLong": "At most {{max}} characters.",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "restoreIdentity": "I have courses published with Matko on another computer: restore my publisher identity after setup"
   }
 }

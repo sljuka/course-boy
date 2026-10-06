@@ -17,6 +17,7 @@
 // request/response protocol, so the pipe carries `bare-rpc` — bare-rpc does its own
 // framing and must sit directly on the raw duplex, not stacked under another framing
 // layer.
+import { rename, rm } from 'node:fs/promises'
 import path from 'node:path'
 import spawnBare from 'bare-runtime/spawn'
 import RPC from 'bare-rpc'
@@ -42,6 +43,9 @@ const CMD_GET_TRANSFER = 11
 const CMD_CANCEL_TRANSFER = 12
 const CMD_GET_PEERS = 13
 const CMD_CREATE_IDENTITY_BACKUP = 14
+const CMD_READ_IDENTITY_BACKUP = 15
+const CMD_RESTORE_IDENTITY = 16
+const CMD_RECOVER_COURSE = 17
 // Sent by the worker to main (the only worker → main message).
 const EVENT_DRIVE_CHANGED = 100
 
@@ -55,6 +59,8 @@ declare global {
     getTransfer: typeof getTransfer
     getPeers: typeof getPeers
     createIdentityBackup: typeof createIdentityBackup
+    readIdentityBackup: typeof readIdentityBackup
+    recoverCourse: typeof recoverCourse
     followCourse: typeof followCourse
     getCreatorKey: typeof getCreatorKey
     importCourse: typeof importCourse
@@ -208,6 +214,66 @@ export async function createIdentityBackup(input: {
   return (await sendCommand<{ backup: string }>(CMD_CREATE_IDENTITY_BACKUP, input)).backup
 }
 
+export type IdentityBackupInfo = { createdAt: string; publisherId: string }
+
+// The backup file's public part, checked by the worker (it owns the format):
+// who it belongs to and when it was saved. Fails with `code` INVALID_FILE or
+// UNSUPPORTED_VERSION.
+export async function readIdentityBackup(text: string): Promise<IdentityBackupInfo> {
+  return sendCommand<IdentityBackupInfo>(CMD_READ_IDENTITY_BACKUP, { text })
+}
+
+export type RestoredIdentity = { courses: { id: string; title: string }[]; publisherId: string }
+
+// Opens the backup with `password` and creates a new store at `targetPath`
+// holding its identity (SLJ-54); see installRestoredStore. The key never
+// leaves the worker. Fails with `code` WRONG_PASSWORD on a wrong password.
+export async function restoreIdentity(input: {
+  password: string
+  targetPath: string
+  text: string
+}): Promise<RestoredIdentity> {
+  return sendCommand<RestoredIdentity>(CMD_RESTORE_IDENTITY, input)
+}
+
+export type RecoveredCourse = { driveKey: string; publisherId: string; version: string }
+
+// Downloads the published version of a course of this identity into
+// `stagingPath`, from the students who have it; waits (phase "finding") until
+// one is online. `transferId`: to poll progress and cancel.
+export async function recoverCourse(courseId: string, stagingPath: string, transferId?: string): Promise<RecoveredCourse> {
+  return sendCommand<RecoveredCourse>(CMD_RECOVER_COURSE, { courseId, stagingPath, transferId })
+}
+
+// The worker's store: everything P2P for the open profile. The store for
+// chosen-students-only courses is next to it (`p2p-gated`).
+export function getWorkerStoragePath(): string {
+  return path.join(getProfileDataDir(), 'p2p')
+}
+
+// Where restoreIdentity creates the new store before it's put in place.
+export function getRestoredStoragePath(): string {
+  return path.join(getProfileDataDir(), 'p2p-restore')
+}
+
+// Puts the restored store in place of the worker's (SLJ-54): stop the worker,
+// swap the folders, start it again on the restored identity. The old store
+// goes: restoring is refused while it has published anything (its identity
+// would be lost), so it holds at most imported courses' cached data, which
+// is fetched again when needed.
+export async function installRestoredStore(): Promise<void> {
+  const storagePath = getWorkerStoragePath()
+  const replacedPath = `${storagePath}-replaced-${Date.now()}`
+
+  await stopBareWorker()
+  await rename(storagePath, replacedPath).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== 'ENOENT') throw error
+  })
+  await rename(getRestoredStoragePath(), storagePath)
+  spawnBareWorker()
+  await rm(replacedPath, { force: true, recursive: true }).catch(() => {})
+}
+
 const driveChangedListeners = new Set<(driveKey: string) => void>()
 
 // Called when an imported course's drive may hold a newer version.
@@ -305,6 +371,8 @@ globalThis.__matkoBareWorker = {
   getCreatorKey,
   createIdentityBackup,
   getPeers,
+  readIdentityBackup,
+  recoverCourse,
   getTransfer,
   importCourse,
   publishCourse,
@@ -346,7 +414,7 @@ export function spawnBareWorker(): void {
 
   try {
     const workerPath = path.join(process.env.APP_ROOT, 'workers/main.cjs')
-    const storagePath = path.join(getProfileDataDir(), 'p2p')
+    const storagePath = getWorkerStoragePath()
 
     // Test-only: point the worker's swarm at a local DHT testnet instead of the
     // public one (see e2e/sharing.e2e.mjs). Unset in the app.

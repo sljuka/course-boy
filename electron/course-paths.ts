@@ -2775,8 +2775,93 @@ export async function applyImportedCourseUpdate<T>(
   return result;
 }
 
+// ─── Courses brought back with a restored identity (SLJ-54) ─────────────────
+//
+// After the publisher identity is restored on a new computer, each course
+// published with it is downloaded from its students into a staging folder
+// (`createRecoveryStagingPath`) and becomes the teacher's own course again:
+//   courses/<id>/versions/<v>/   the published version as downloaded
+//   courses/<id>/draft/          the same content, to edit (hardlinked, as a revert)
+//   courses/<id>/release.json    <v> published
+// Earlier versions and changes never published stayed on the old computer.
+
+const RECOVERY_PREFIX = ".recover-";
+
+export async function createRecoveryStagingPath(courseId: string): Promise<string> {
+  assertValidCourseId(courseId);
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  return path.join(
+    localCoursesRoot,
+    `${RECOVERY_PREFIX}staging-${courseId}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+  );
+}
+
+// Lands a downloaded course (see above). Built in a hidden folder and renamed
+// into place last, so a crash never leaves half a course; it's refused if the
+// course is already on this device. The staging folder is consumed either way.
+export async function landRecoveredCourse(input: {
+  courseId: string;
+  stagingPath: string;
+  version: string;
+}): Promise<void> {
+  assertValidCourseId(input.courseId);
+  // It becomes a folder name: only a real version number.
+  parseCourseVersion(input.version);
+
+  const localCoursesRoot = await ensureLocalCoursesRoot();
+  const courseRootPath = resolveCourseRootPath(localCoursesRoot, input.courseId);
+  const workPath = path.join(
+    localCoursesRoot,
+    `${RECOVERY_PREFIX}work-${input.courseId}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+  );
+
+  try {
+    if (await pathExists(courseRootPath)) {
+      throw new Error(`Course "${input.courseId}" is already on this device`);
+    }
+
+    const manifest = JSON.parse(await fs.readFile(path.join(input.stagingPath, "course.json"), "utf8"));
+    if (manifest.id !== input.courseId || manifest.version !== input.version) {
+      throw new Error("The downloaded course isn't the one expected");
+    }
+
+    // Where the course is shared from belongs to its drive, never to a version
+    // (contracts §5): the next publish writes it again.
+    await fs.rm(path.join(input.stagingPath, "source.json"), { force: true });
+    await assertCoursePackageIsPublishable(input.stagingPath);
+
+    const versionPath = path.join(workPath, "versions", input.version);
+    await fs.mkdir(path.dirname(versionPath), { recursive: true });
+    await fs.rename(input.stagingPath, versionPath);
+
+    const draftPath = getDraftDirectoryPath(workPath);
+    await copyDirectoryWithDedup(versionPath, draftPath, null, {
+      hardlinkFromSource: true,
+      includeFile: isDraftFile,
+    });
+    const now = new Date().toISOString();
+    await writeCourseManifest(draftPath, {
+      ...(await readCourseManifest(draftPath)),
+      status: "draft",
+      updatedAt: now,
+    });
+    await writeCourseReleaseState(workPath, {
+      everPublishedVersions: [input.version],
+      publishedAt: now,
+      publishedVersion: input.version,
+    });
+
+    await fs.rename(workPath, courseRootPath);
+  } catch (error) {
+    await fs.rm(workPath, { force: true, recursive: true }).catch(() => {});
+    await fs.rm(input.stagingPath, { force: true, recursive: true }).catch(() => {});
+    throw error;
+  }
+}
+
 // At startup: removes what an update interrupted by a crash left behind:
-// versions/.staging-* folders inside imported courses (SLJ-40), and the
+// versions/.staging-* folders inside imported courses (SLJ-40), a recovered
+// course's .recover-* folders (SLJ-54; it's downloaded again), and the
 // courses-root level .update-* folders of the pre-SLJ-40 swap, where a
 // "previous" folder whose course folder is missing (a crash between that
 // swap's two renames) is put back.
@@ -2788,7 +2873,7 @@ export async function cleanUpInterruptedCourseUpdates(): Promise<void> {
     if (!entry.isDirectory()) continue;
     const entryPath = path.join(localCoursesRoot, entry.name);
 
-    if (entry.name.startsWith(".update-staging-")) {
+    if (entry.name.startsWith(".update-staging-") || entry.name.startsWith(RECOVERY_PREFIX)) {
       await fs.rm(entryPath, { force: true, recursive: true });
       continue;
     }

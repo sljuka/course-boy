@@ -765,6 +765,32 @@
     "back": "Nazad",
     "passwordUnrecoverable": "Ako izgubiš lozinku, ne može se povratiti, a rezervna kopija ne može da se otvori."
   },
+  "identityRestore": {
+    "title": "Vrati svoj identitet izdavača",
+    "description": "Imaš kurseve objavljene u Matku na drugom računaru? Izaberi datoteku rezervne kopije identiteta sa tog računara i unesi njenu lozinku. Tvoji kursevi će se zatim vratiti od tvojih učenika.",
+    "chooseFile": "Izaberi rezervnu kopiju…",
+    "chooseOtherFile": "Izaberi drugu datoteku…",
+    "fileSummary": "{{fileName}}, sačuvana {{date}}",
+    "password": "Lozinka rezervne kopije",
+    "cancel": "Otkaži",
+    "restore": "Vrati",
+    "doneTitle": "Tvoj identitet izdavača je vraćen",
+    "doneDescription": "Tvoji kursevi se vraćaju od tvojih učenika i pojavljuju se u Mojim kursevima kako stižu. Vraća se samo objavljena verzija svakog kursa: ranije verzije i izmene koje nisu objavljene ostale su na drugom računaru.",
+    "done": "Gotovo",
+    "courseRestored": "U Mojim kursevima",
+    "courseDownloading": "Preuzima se {{done}} od {{total}}",
+    "courseWaiting": "Čeka se da se poveže učenik koji ga ima",
+    "settingsButton": "Vrati iz rezervne kopije…",
+    "settingsHint": "Imaš kurseve objavljene u Matku na drugom računaru? Vrati svoj identitet izdavača i nastavi da ih ažuriraš odavde.",
+    "comingBack": "Kursevi koji se vraćaju od tvojih učenika",
+    "errors": {
+      "invalidFile": "Ovo nije rezervna kopija Matko identiteta ili je oštećena.",
+      "unsupportedVersion": "Ovu rezervnu kopiju je napravila novija verzija Matka. Ažuriraj Matko i pokušaj ponovo.",
+      "wrongPassword": "Pogrešna lozinka.",
+      "alreadyPublishing": "Ovaj profil već objavljuje kurseve sa svojim identitetom izdavača. Za vraćanje drugog identiteta napravi novi profil i vrati ga tamo.",
+      "noFile": "Prvo izaberi datoteku rezervne kopije."
+    }
+  },
   "profiles": {
     "pickerTitle": "Ko uči?",
     "pickerDescription": "Svaki profil ima svoje kurseve i podešavanja na ovom računaru.",
@@ -772,6 +798,7 @@
     "newProfileTitle": "Novi profil",
     "newProfileDescription": "Profil čuva svoje kurseve, podešavanja i identitet izdavača, odvojeno od ostalih na ovom računaru.",
     "nameTooLong": "Najviše {{max}} karaktera.",
-    "cancel": "Otkaži"
+    "cancel": "Otkaži",
+    "restoreIdentity": "Imam kurseve objavljene u Matku na drugom računaru: vrati moj identitet izdavača posle podešavanja"
   }
 }

@@ -32,6 +32,9 @@ export type UserPreferences = {
   // device, for going back (SLJ-40). 2 when unset; 0–10.
   previousVersionsToKeep?: number
   recentlyViewed?: RecentlyViewedEntry[]
+  // "I already have a publisher identity" on the new-profile screen (SLJ-54):
+  // the restore dialog opens once onboarding is done, then this is cleared.
+  restoreIdentityAfterOnboarding?: boolean
   role?: UserRole
   // Bundled courses (Getting Started) on Home and in recently viewed; on when unset.
   showBundledCourses?: boolean

@@ -11,12 +11,15 @@ import {
   createLocalCourseDraft,
   createLocalCourseLesson,
   createLocalCourseSection,
+  createRecoveryStagingPath,
   cutLocalCourseVersion,
   ensureLocalCoursesRoot,
   forgetLocalCoursesRootSetupForTests,
   getUnusedDraftAssets,
   hashFileContents,
+  landRecoveredCourse,
   listImportedCourseVersions,
+  listPublishedLocalCourseIds,
   migrateImportedCourse,
   openCourseDirectoryInFileSystem,
   publishLocalCourseVersion,
@@ -1079,6 +1082,75 @@ describe("imported courses", () => {
 });
 
 // SLJ-45: a section's intro is locales/<lang>/intro.md, in the lesson body format.
+describe("courses brought back with a restored identity", () => {
+  // A teacher's course published on the old computer, as its drive
+  // holds it (the version plus source.json), and gone from this device.
+  async function seedRecoveredDownload(): Promise<{ courseId: string; stagingPath: string; version: string }> {
+    const courseId = await seedDraftCourse();
+    const root = await ensureLocalCoursesRoot();
+    await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    const published = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    const stagingPath = await createRecoveryStagingPath(courseId);
+
+    await fs.cp(path.join(root, courseId, "versions", published.version), stagingPath, { recursive: true });
+    await fs.writeFile(path.join(stagingPath, "source.json"), JSON.stringify({ driveKey: "drive", publisher: { id: "me" } }));
+    await fs.rm(path.join(root, courseId), { force: true, recursive: true });
+
+    return { courseId, stagingPath, version: published.version };
+  }
+
+  it("lands as the teacher's own course: the published version, a draft from it, and release.json", async () => {
+    const { courseId, stagingPath, version } = await seedRecoveredDownload();
+    const root = await ensureLocalCoursesRoot();
+
+    await landRecoveredCourse({ courseId, stagingPath, version });
+
+    const courseRoot = path.join(root, courseId);
+    expect((await fs.readdir(courseRoot)).sort()).toEqual(["draft", "release.json", "versions"]);
+    expect(await fs.readdir(path.join(courseRoot, "versions"))).toEqual([version]);
+    // source.json belongs to the drive; the version's own files stay in the version.
+    const versionFiles = await fs.readdir(path.join(courseRoot, "versions", version));
+    expect(versionFiles).not.toContain("source.json");
+    expect(versionFiles).toContain("version-meta.json");
+    expect(await fs.readdir(path.join(courseRoot, "draft"))).not.toContain("version-meta.json");
+    expect(JSON.parse(await fs.readFile(path.join(courseRoot, "draft", "course.json"), "utf8")).status).toBe("draft");
+    await expect(fs.stat(stagingPath)).rejects.toThrow();
+
+    const course = (await listCourses(root)).find((entry) => entry.id === courseId);
+    expect(course).toMatchObject({ distribution: "local", versionBadge: { kind: "version" } });
+    expect(await listPublishedLocalCourseIds()).toEqual([courseId]);
+    const history = await getCourseVersionHistory(root, courseId);
+    expect(history?.publishedVersion).toBe(version);
+  });
+
+  it("refuses a course already on this device, and removes the download", async () => {
+    const { courseId, stagingPath, version } = await seedRecoveredDownload();
+    const root = await ensureLocalCoursesRoot();
+    await fs.mkdir(path.join(root, courseId));
+
+    await expect(landRecoveredCourse({ courseId, stagingPath, version })).rejects.toThrow(
+      /already on this device/,
+    );
+    await expect(fs.stat(stagingPath)).rejects.toThrow();
+    expect(await fs.readdir(path.join(root, courseId))).toEqual([]);
+  });
+
+  it("refuses a download that isn't the version expected", async () => {
+    const { courseId, stagingPath } = await seedRecoveredDownload();
+
+    await expect(landRecoveredCourse({ courseId, stagingPath, version: "9.9.9" })).rejects.toThrow(/isn't the one expected/);
+    await expect(landRecoveredCourse({ courseId, stagingPath, version: "../x" })).rejects.toThrow();
+  });
+
+  it("removes a download a crash left behind, at the next start", async () => {
+    const { stagingPath } = await seedRecoveredDownload();
+
+    await cleanUpInterruptedCourseUpdates();
+
+    await expect(fs.stat(stagingPath)).rejects.toThrow();
+  });
+});
+
 describe("section intro", () => {
   async function seedCourseWithSection(withLesson = true) {
     const { courseId } = await createLocalCourseDraft({

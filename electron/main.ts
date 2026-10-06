@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, screen, session } from 'electron'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { open as openFile, rename, stat as statFile, writeFile } from 'node:fs/promises'
+import { open as openFile, readFile, rename, rm, stat as statFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import Store from 'electron-store'
 import {
@@ -11,16 +11,22 @@ import {
   createIdentityBackup,
   getCreatorKey,
   getPeers,
+  getRestoredStoragePath,
   getTransfer,
   importCourse,
+  installRestoredStore,
   onDriveChanged,
   publishCourse,
+  readIdentityBackup,
+  recoverCourse,
+  restoreIdentity,
   spawnBareWorker,
   stopBareWorker,
   stopSharing,
 } from './bare-worker'
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
 import { createIdentityBackupService, type IdentityBackupState } from './identity-backup'
+import { createIdentityRestoreService, type IdentityRestoreState } from './identity-restore'
 import { createProfile, listProfiles, updateProfile } from './profiles'
 import { getActiveProfile, getBaseDataDir, getProfileDataDir, initProfiles, setActiveProfile } from './profile-context'
 import { lockDownSession, lockDownWindow } from './window-security'
@@ -42,6 +48,8 @@ import {
   applyImportedCourseUpdate,
   clampPreviousVersionsToKeep,
   cleanUpInterruptedCourseUpdates,
+  createRecoveryStagingPath,
+  landRecoveredCourse,
   listImportedCourseVersions,
   listPublishedLocalCourseIds,
   migrateImportedCourse,
@@ -94,7 +102,13 @@ import type {
   UploadCourseAssetBytesInput,
   UploadCourseAssetInput,
 } from '../src/lib/course-package'
-import type { IdentityBackupStatus, SaveIdentityBackupResult } from '../src/lib/identity-backup'
+import type {
+  ChooseIdentityBackupResult,
+  IdentityBackupStatus,
+  IdentityRestoreStatus,
+  RestoreIdentityResult,
+  SaveIdentityBackupResult,
+} from '../src/lib/identity-backup'
 import type { ProfilesState } from '../src/lib/profiles'
 import type { Locale } from '../src/lib/i18n'
 import type {
@@ -167,6 +181,7 @@ type UserPreferences = {
   persona?: Persona
   previousVersionsToKeep?: number
   recentlyViewed?: RecentlyViewedEntry[]
+  restoreIdentityAfterOnboarding?: boolean
   role?: UserRole
   theme?: Theme
 }
@@ -262,15 +277,72 @@ function openProfileServices(dataDir: string) {
     },
   })
 
+  // Restoring the publisher identity from its backup (SLJ-54): which courses
+  // it brings back and whether each is back yet. Main-process only.
+  const identityRestoreStore = new Store<IdentityRestoreState>({ cwd: dataDir, name: 'identity-restore' })
+  const hasConsent = () => preferencesStore.get('hasAcknowledgedCreatorKey') === true
+
+  const identityRestore = createIdentityRestoreService({
+    chooseFile: async () => {
+      const window = BrowserWindow.getFocusedWindow()
+      const options = {
+        filters: [{ extensions: ['matko-identity'], name: 'Matko identity backup' }],
+        properties: ['openFile' as const],
+      }
+      // Read at call time (not destructured), so e2e tests can stub it.
+      const result = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
+      return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
+    },
+    createStagingPath: createRecoveryStagingPath,
+    // Courses online with this profile's own identity: the code is recorded
+    // once shared, and a published course is shared as soon as there's consent.
+    hasPublishedCourses: async () =>
+      Object.keys(courseSharingStore.get('published')).length > 0 ||
+      (hasConsent() && (await listPublishedLocalCourseIds()).length > 0),
+    installRestoredStore: async () => {
+      await installRestoredStore()
+      // The new worker knows nothing yet: follow the imported courses again.
+      void courseSharing.start()
+    },
+    landCourse: landRecoveredCourse,
+    onCourseRecovered: (courseId, driveKey) => {
+      courseSharingStore.set('published', { ...courseSharingStore.get('published'), [courseId]: { code: driveKey } })
+      courseSharing.onPublished(courseId)
+    },
+    onIdentityRestored: ({ backupCreatedAt, courseIds }) => {
+      preferencesStore.set('hasAcknowledgedCreatorKey', true)
+      identityBackupStore.set({ courseIds, lastBackupAt: backupCreatedAt })
+    },
+    prepareRestoredStore: async () => {
+      const targetPath = getRestoredStoragePath()
+      await rm(targetPath, { force: true, recursive: true })
+      return targetPath
+    },
+    readFile: (filePath) => readFile(filePath, 'utf8'),
+    removeStaging: (stagingPath) => rm(stagingPath, { force: true, recursive: true }),
+    store: {
+      read: () => identityRestoreStore.store,
+      write: (state) => identityRestoreStore.set(state),
+    },
+    worker: {
+      getTransfer: whileOpen(getTransfer),
+      readIdentityBackup: whileOpen(readIdentityBackup),
+      recoverCourse: whileOpen(recoverCourse),
+      restoreIdentity: whileOpen(restoreIdentity),
+    },
+  })
+
   return {
     close() {
       closed = true
       courseSharing.stop()
+      identityRestore.stop()
     },
     courseSharing,
     courseSharingStore,
     identityBackup,
     identityBackupStore,
+    identityRestore,
     preferencesStore,
   }
 }
@@ -345,6 +417,10 @@ ipcMain.handle(
       profile.preferencesStore.set('previousVersionsToKeep', clampPreviousVersionsToKeep(preferences.previousVersionsToKeep))
     }
 
+    if (typeof preferences.restoreIdentityAfterOnboarding === 'boolean') {
+      profile.preferencesStore.set('restoreIdentityAfterOnboarding', preferences.restoreIdentityAfterOnboarding)
+    }
+
     if (typeof preferences.showMnemonics === 'boolean') {
       profile.preferencesStore.set('showMnemonics', preferences.showMnemonics)
     }
@@ -404,12 +480,14 @@ ipcMain.handle('profiles:get-state', () => {
   } satisfies ProfilesState
 })
 
-ipcMain.handle('profiles:create', async (_event, input: { locale?: Locale; name: string }) => {
+ipcMain.handle('profiles:create', async (_event, input: { locale?: Locale; name: string; restoreIdentity?: boolean }) => {
   const created = createProfile(getBaseDataDir(), { name: String(input?.name ?? '') })
   // The new profile starts with the name already given (onboarding goes on
-  // from the persona) and the language chosen in the launcher.
+  // from the persona) and the language chosen in the launcher; with
+  // "I already have a publisher identity", the restore dialog after onboarding.
   new Store<UserPreferences>({ cwd: path.join(getBaseDataDir(), 'profiles', created.id) }).set({
     ...(input?.locale === 'en' || input?.locale === 'sr' || input?.locale === 'sr-Cyrl' ? { locale: input.locale } : {}),
+    ...(input?.restoreIdentity === true ? { restoreIdentityAfterOnboarding: true } : {}),
     nickname: created.name,
   })
   await switchProfile(created.id)
@@ -592,6 +670,20 @@ ipcMain.handle('sharing:save-identity-backup', (_event, password: string, includ
   return profile.identityBackup.save(password, {
     includeCourseId: typeof includeCourseId === 'string' ? includeCourseId : undefined,
   }) satisfies Promise<SaveIdentityBackupResult>
+})
+
+// Restoring the publisher identity (SLJ-54): pick the backup file, then
+// restore it with its password; the courses come back in the background.
+ipcMain.handle('sharing:choose-identity-backup-file', () => {
+  return profile.identityRestore.chooseFile() satisfies Promise<ChooseIdentityBackupResult>
+})
+
+ipcMain.handle('sharing:restore-identity', (_event, password: string) => {
+  return profile.identityRestore.restore(String(password ?? '')) satisfies Promise<RestoreIdentityResult>
+})
+
+ipcMain.handle('sharing:get-identity-restore-status', () => {
+  return profile.identityRestore.getStatus() satisfies Promise<IdentityRestoreStatus>
 })
 
 ipcMain.handle('sharing:get-course-sharing', async (_event, courseId: string) => {
@@ -862,7 +954,11 @@ function startProfile(): void {
   // course folder missing.
   void cleanUpInterruptedCourseUpdates()
     .catch((error) => console.error('[course-sharing] cleanup failed:', error))
-    .then(() => (profile === opened ? opened.courseSharing.start() : undefined))
+    .then(() => {
+      if (profile !== opened) return
+      opened.identityRestore.resume()
+      return opened.courseSharing.start()
+    })
 }
 
 // Opens another profile (or the launcher, with null) in the running app

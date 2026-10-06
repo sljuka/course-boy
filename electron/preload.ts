@@ -1,6 +1,12 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { ProfilesState } from '../src/lib/profiles'
-import type { IdentityBackupStatus, SaveIdentityBackupResult } from '../src/lib/identity-backup'
+import type {
+  ChooseIdentityBackupResult,
+  IdentityBackupStatus,
+  IdentityRestoreStatus,
+  RestoreIdentityResult,
+  SaveIdentityBackupResult,
+} from '../src/lib/identity-backup'
 import type {
   ApplyCourseSvgPresetInput,
   ApplyCourseSvgPresetResult,
@@ -167,7 +173,7 @@ contextBridge.exposeInMainWorld('profiles', {
   getState() {
     return ipcRenderer.invoke('profiles:get-state') as Promise<ProfilesState>
   },
-  create(input: { locale?: string; name: string }) {
+  create(input: { locale?: string; name: string; restoreIdentity?: boolean }) {
     return ipcRenderer.invoke('profiles:create', input) as Promise<void>
   },
   open(profileId: string) {
@@ -187,6 +193,15 @@ contextBridge.exposeInMainWorld('sharing', {
   },
   saveIdentityBackup(password: string, includeCourseId?: string) {
     return ipcRenderer.invoke('sharing:save-identity-backup', password, includeCourseId) as Promise<SaveIdentityBackupResult>
+  },
+  chooseIdentityBackupFile() {
+    return ipcRenderer.invoke('sharing:choose-identity-backup-file') as Promise<ChooseIdentityBackupResult>
+  },
+  restoreIdentity(password: string) {
+    return ipcRenderer.invoke('sharing:restore-identity', password) as Promise<RestoreIdentityResult>
+  },
+  getIdentityRestoreStatus() {
+    return ipcRenderer.invoke('sharing:get-identity-restore-status') as Promise<IdentityRestoreStatus>
   },
   getCourseSharing(courseId: string) {
     return ipcRenderer.invoke('sharing:get-course-sharing', courseId) as Promise<CourseSharingInfo>

@@ -328,6 +328,13 @@ root-only; `migrateImportedCourse` moves it right after, and at every start
 root `course.json` and finishes next time, and readers fall back to the root meanwhile.
 The bundled seed course stays root-only.
 
+**A course brought back with a restored publisher identity (SLJ-54)** lands in the
+teacher's layout, `draft/` + `versions/<v>/` + `release.json`, from the published
+version downloaded from its students (`landRecoveredCourse` in `course-paths.ts`; built
+in a `.recover-*` folder and renamed into place; `cleanUpInterruptedCourseUpdates`
+removes leftovers). `source.json` is dropped from the version, as for every teacher
+version: the next publish writes it into the drive again.
+
 **Updating an imported course (SLJ-39/40)** goes through `applyImportedCourseUpdate` in
 [electron/course-paths.ts](../electron/course-paths.ts:1). A version already kept
 (the student went back) is just pointed at again. Otherwise:

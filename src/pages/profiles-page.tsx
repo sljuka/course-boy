@@ -6,7 +6,8 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldError, FieldGroup, FieldLabel, FieldTitle } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { getPersonaImageUrl } from "@/lib/personas";
@@ -80,6 +81,8 @@ function CreateProfileForm({ firstProfile, onCancel }: { firstProfile: boolean; 
   const { t } = useTranslation();
   const { locale, setLocale } = useAppState();
   const [name, setName] = useState("");
+  // SLJ-54: the restore dialog opens once onboarding is done.
+  const [restoreIdentity, setRestoreIdentity] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const check = checkProfileName(name);
@@ -89,7 +92,7 @@ function CreateProfileForm({ firstProfile, onCancel }: { firstProfile: boolean; 
     if (!check.ok || isCreating) return;
 
     setIsCreating(true);
-    window.profiles.create({ locale, name: check.name }).catch((createError: Error) => {
+    window.profiles.create({ locale, name: check.name, restoreIdentity }).catch((createError: Error) => {
       setIsCreating(false);
       setError(createError.message);
     });
@@ -131,6 +134,17 @@ function CreateProfileForm({ firstProfile, onCancel }: { firstProfile: boolean; 
           <Info aria-hidden="true" className="h-4 w-4 text-info" />
           <AlertDescription>{t("nameHint")}</AlertDescription>
         </Alert>
+        <FieldLabel htmlFor="restore-identity">
+          <Field orientation="horizontal">
+            <Checkbox
+              checked={restoreIdentity}
+              data-testid="restore-identity-after-setup"
+              id="restore-identity"
+              onCheckedChange={(checked) => setRestoreIdentity(checked === true)}
+            />
+            <FieldTitle>{t("profiles.restoreIdentity")}</FieldTitle>
+          </Field>
+        </FieldLabel>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button className="sm:w-auto sm:px-6" disabled={!check.ok || isCreating} type="submit">
             {isCreating && <Spinner aria-hidden="true" />}
