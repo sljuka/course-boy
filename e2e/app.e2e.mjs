@@ -96,9 +96,11 @@ describe('launch', () => {
       'finishOnVersion',
       'getCourseSharing',
       'getCreatorKey',
+      'getIdentityBackupStatus',
       'getTransfer',
       'importCourse',
       'listCourseUpdates',
+      'saveIdentityBackup',
       'switchCourseVersion',
     ])
   })

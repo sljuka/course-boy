@@ -712,5 +712,26 @@
     "showInTest": "Prikaži mnemotehnike kursa u ovom testu",
     "showInTestHelp": "Podrazumevano isključeno: mnemotehnika na pojmu može otkriti odgovor. Uključi je za testove gde to nije rizik.",
     "srLabel": "Mnemotehnika: {{mnemonic}}"
+  },
+  "identityBackup": {
+    "settingsTitle": "Identitet izdavača",
+    "settingsDescription": "Svaki kurs koji objaviš potpisan je tvojim identitetom izdavača. Ima ga samo ovaj računar: ako ga izgubiš, više nećeš moći da ažuriraš objavljene kurseve. Rezervna kopija omogućava da ga vratiš na novom računaru.",
+    "backedUpOn": "Rezervna kopija sačuvana {{date}}.",
+    "notBackedUp": "Rezervna kopija još nije sačuvana.",
+    "saveButton": "Sačuvaj rezervnu kopiju…",
+    "saveTitle": "Sačuvaj rezervnu kopiju identiteta izdavača",
+    "saveDescription": "Rezervna kopija je datoteka zaštićena lozinkom. Čuvaj je na bezbednom mestu van ovog računara, na primer na USB-u ili u oblaku.",
+    "password": "Lozinka",
+    "passwordHint": "Najmanje {{count}} karaktera.",
+    "passwordConfirmation": "Ponovo unesi lozinku",
+    "passwordMismatch": "Lozinke se ne poklapaju.",
+    "passwordWarning": "Zapiši lozinku. Ne može se povratiti: bez nje rezervna kopija ne može da se otvori.",
+    "cancel": "Otkaži",
+    "save": "Sačuvaj rezervnu kopiju",
+    "promptTitle": "Sačuvaj rezervnu kopiju identiteta izdavača",
+    "promptDescription": "Tvoj kurs je na mreži, potpisan identitetom izdavača koji ima samo ovaj računar. Ako izgubiš ovaj računar, nećeš moći da ažuriraš svoje kurseve. Sačuvaj rezervnu kopiju sada i drži je na bezbednom mestu.",
+    "later": "Kasnije",
+    "reminder": "Za tvoj identitet izdavača nije sačuvana rezervna kopija",
+    "coursesSince": "Kursevi objavljeni nakon toga, a nisu u njoj: {{count}}."
   }
 }

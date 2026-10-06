@@ -1,6 +1,7 @@
 import { Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { PublisherIdentitySettings } from "@/components/identity/publisher-identity-settings";
 import { PageContent } from "@/components/page-content";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import {
@@ -110,6 +111,7 @@ export const SettingsPage = () => {
           <FieldDescription>{t("settings.courseVersions.previousToKeepDescription")}</FieldDescription>
         </Field>
       </FieldSet>
+      <PublisherIdentitySettings />
     </PageContent>
   );
 };

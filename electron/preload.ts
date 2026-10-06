@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import type { IdentityBackupStatus, SaveIdentityBackupResult } from '../src/lib/identity-backup'
 import type {
   ApplyCourseSvgPresetInput,
   ApplyCourseSvgPresetResult,
@@ -158,6 +159,12 @@ contextBridge.exposeInMainWorld('courses', {
 contextBridge.exposeInMainWorld('sharing', {
   getCreatorKey() {
     return ipcRenderer.invoke('sharing:get-creator-key') as Promise<string>
+  },
+  getIdentityBackupStatus() {
+    return ipcRenderer.invoke('sharing:get-identity-backup-status') as Promise<IdentityBackupStatus>
+  },
+  saveIdentityBackup(password: string) {
+    return ipcRenderer.invoke('sharing:save-identity-backup', password) as Promise<SaveIdentityBackupResult>
   },
   getCourseSharing(courseId: string) {
     return ipcRenderer.invoke('sharing:get-course-sharing', courseId) as Promise<CourseSharingInfo>

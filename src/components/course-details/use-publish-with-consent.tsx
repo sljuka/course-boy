@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CourseCodeDialog } from "@/components/course-details/course-code-dialog";
+import { IdentityBackupPrompt } from "@/components/identity/identity-backup-prompt";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,7 +20,9 @@ import {
 
 // Publish puts a version online (SLJ-38). The first Publish asks for the sharing
 // consent; every Publish then shows the course's code. Creating, editing and
-// printing never get here, so teachers who only print never see this.
+// printing never get here, so teachers who only print never see this. After
+// the Publish that came with the consent, the teacher is offered a backup of
+// the identity that consent created (SLJ-53).
 export function usePublishWithConsent(courseId: string): {
   dialogs: ReactNode;
   publishMutation: ReturnType<typeof usePublishCourseVersionMutation>;
@@ -31,6 +34,9 @@ export function usePublishWithConsent(courseId: string): {
   const publishMutation = usePublishCourseVersionMutation();
   const [consentForVersion, setConsentForVersion] = useState<string | null>(null);
   const [publishedVersion, setPublishedVersion] = useState<string | null>(null);
+  // Set when this Publish followed the consent: offer the backup after it.
+  const [offerBackup, setOfferBackup] = useState(false);
+  const [isBackupPromptOpen, setIsBackupPromptOpen] = useState(false);
 
   function publish(version: string) {
     publishMutation.mutate(
@@ -57,6 +63,7 @@ export function usePublishWithConsent(courseId: string): {
     acknowledgeMutation.mutate(undefined, {
       onSuccess: () => {
         setConsentForVersion(null);
+        setOfferBackup(true);
         publish(version);
       },
     });
@@ -86,10 +93,17 @@ export function usePublishWithConsent(courseId: string): {
       <CourseCodeDialog
         courseId={courseId}
         description={t("courseSharing.publishedDescription")}
-        onClose={() => setPublishedVersion(null)}
+        onClose={() => {
+          setPublishedVersion(null);
+          if (offerBackup) {
+            setOfferBackup(false);
+            setIsBackupPromptOpen(true);
+          }
+        }}
         open={publishedVersion !== null}
         title={t("courseSharing.publishedTitle", { version: publishedVersion ?? "" })}
       />
+      <IdentityBackupPrompt onClose={() => setIsBackupPromptOpen(false)} open={isBackupPromptOpen} />
     </>
   );
 

@@ -588,6 +588,32 @@ only publishers ever touch, not an onboarding step every user sees.
        they imported with. A `gated` followed course (invite-only, not in the UI yet)
        gets no code.
 
+## Publisher identity backup (SLJ-53)
+
+The identity is the worker's Corestore primary key, and every published course's code
+derives from it. Settings → Publisher identity → **Save backup…** writes a
+`*.matko-identity` file; the first Publish (the one with the sharing consent) offers it
+right away. Until a backup covers every published course, the app menu shows a reminder
+dot.
+
+- **Format** ([workers/identity-backup.cjs](../workers/identity-backup.cjs:1)):
+  - **In the clear:** `format`, `formatVersion`, `createdAt`, `publisherId` (the creator
+    public key), and the KDF parameters.
+  - **Encrypted:** `{ primaryKey, courses: [{ id, title }] }`.
+  - **Encryption:** Argon2id (`crypto_pwhash`, moderate: ~0.6 s, 256 MiB) →
+    `crypto_secretbox`. Parameters above the caps are refused when the file is opened.
+  - **Failures:** a wrong password and an edited file both fail authentication
+    (`WRONG_PASSWORD`). Passwords are NFC-normalized.
+- **Flow:** the renderer sends the password to main
+  (`sharing:save-identity-backup`). Main asks for a path (OS save dialog), the worker
+  encrypts with the store's primary key (`CMD_CREATE_IDENTITY_BACKUP` = 14), and main
+  writes the file atomically with mode `0600`. The key never reaches the renderer.
+- **Status** ([electron/identity-backup.ts](../electron/identity-backup.ts:1), the
+  `identity-backup` store, main-process only): when the newest backup was saved and
+  which course ids it covers, for "Backed up on …" and "Courses published since then,
+  not in it: N".
+- **Restoring it** is SLJ-54.
+
 ## Publisher key at rest (SLJ-46 spike, 2026-10-05)
 
 **Question:** can the publisher's signing keys stay out of plain-text storage, so an

@@ -1,6 +1,6 @@
-import { app, BrowserWindow, ipcMain, net, protocol, screen, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, screen, session } from 'electron'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { open as openFile, stat as statFile } from 'node:fs/promises'
+import { open as openFile, rename, stat as statFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import Store from 'electron-store'
 import {
@@ -8,6 +8,7 @@ import {
   checkUpdate,
   downloadUpdate,
   followCourse,
+  createIdentityBackup,
   getCreatorKey,
   getPeers,
   getTransfer,
@@ -18,6 +19,7 @@ import {
   stopSharing,
 } from './bare-worker'
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
+import { createIdentityBackupService, type IdentityBackupState } from './identity-backup'
 import { lockDownSession, lockDownWindow } from './window-security'
 import { getCourseDetails, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
@@ -88,6 +90,7 @@ import type {
   UploadCourseAssetBytesInput,
   UploadCourseAssetInput,
 } from '../src/lib/course-package'
+import type { IdentityBackupStatus, SaveIdentityBackupResult } from '../src/lib/identity-backup'
 import type { Locale } from '../src/lib/i18n'
 import type {
   ApplyCourseUpdateResult,
@@ -191,6 +194,44 @@ const courseSharing = createCourseSharing({
 })
 
 onDriveChanged((driveKey) => courseSharing.onDriveChanged(driveKey))
+
+// The publisher identity backup (SLJ-53): when it was saved and which courses
+// it covers. Main-process only, like where courses come from.
+const identityBackupStore = new Store<IdentityBackupState>({ name: 'identity-backup' })
+
+const identityBackup = createIdentityBackupService({
+  chooseSavePath: async (suggestedName) => {
+    const window = BrowserWindow.getFocusedWindow()
+    const options = {
+      defaultPath: path.join(app.getPath('documents'), suggestedName),
+      filters: [{ extensions: ['matko-identity'], name: 'Matko identity backup' }],
+    }
+    // Read at call time (not destructured), so e2e tests can stub it.
+    const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
+    return result.canceled || !result.filePath ? null : result.filePath
+  },
+  createBackup: createIdentityBackup,
+  hasIdentity: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
+  listPublishedCourses: async () => {
+    const courseIds = new Set([
+      ...Object.keys(courseSharingStore.get('published')),
+      ...(await listPublishedLocalCourseIds()),
+    ])
+    const courses = await listCourses(await ensureLocalCoursesRoot())
+    return courses
+      .filter((course) => course.distribution === 'local' && courseIds.has(course.id))
+      .map((course) => ({ id: course.id, title: course.title }))
+  },
+  store: {
+    read: () => identityBackupStore.store,
+    write: (state) => identityBackupStore.set(state),
+  },
+  writeFileAtomic: async (filePath, contents) => {
+    const tempPath = `${filePath}.tmp-${process.pid}`
+    await writeFile(tempPath, contents, { mode: 0o600 })
+    await rename(tempPath, filePath)
+  },
+})
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -449,6 +490,14 @@ ipcMain.handle('courses:publish-version', async (_event, input: PublishCourseVer
 
 ipcMain.handle('sharing:get-creator-key', () => {
   return getCreatorKey()
+})
+
+ipcMain.handle('sharing:get-identity-backup-status', () => {
+  return identityBackup.getStatus() satisfies Promise<IdentityBackupStatus>
+})
+
+ipcMain.handle('sharing:save-identity-backup', (_event, password: string) => {
+  return identityBackup.save(password) satisfies Promise<SaveIdentityBackupResult>
 })
 
 ipcMain.handle('sharing:get-course-sharing', async (_event, courseId: string) => {

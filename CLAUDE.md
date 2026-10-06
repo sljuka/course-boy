@@ -89,11 +89,12 @@ adding a case to the e2e suite over one-off manual checking.
   imported ones at every startup. The code shows in the Publish confirmation and under
   "Share" (course editor and course page); the first Publish asks for the one-time
   sharing consent. Students can pass an imported course on from its page with the same
-  code, unless it was shared only with chosen students (`gated`). "Import course" on
-  Home takes a code; the download runs in the background under Home's Downloading group
-  (SLJ-43, SLJ-49). `source.json` in the drive records where a course is shared from.
-  Students are offered newer versions of imported courses and apply them from the course
-  page (SLJ-39); imported courses keep previous versions as `versions/<v>/` +
+  code, unless it was shared only with chosen students (`gated`). Settings → Publisher
+  identity saves a password-protected backup of the identity behind every code (SLJ-53;
+  restore is SLJ-54). "Import course" on Home takes a code; the download runs in the
+  background under Home's Downloading group (SLJ-43, SLJ-49). `source.json` in the drive
+  records where a course is shared from. Students are offered newer versions of imported
+  courses and apply them from the course page (SLJ-39); imported courses keep previous versions as `versions/<v>/` +
   `release.json`, and the student can go back (SLJ-40). No `pear-runtime`, no OTA
   updates of the app itself.
 

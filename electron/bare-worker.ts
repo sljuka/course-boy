@@ -40,6 +40,7 @@ const CMD_DOWNLOAD_UPDATE = 10
 const CMD_GET_TRANSFER = 11
 const CMD_CANCEL_TRANSFER = 12
 const CMD_GET_PEERS = 13
+const CMD_CREATE_IDENTITY_BACKUP = 14
 // Sent by the worker to main (the only worker → main message).
 const EVENT_DRIVE_CHANGED = 100
 
@@ -52,6 +53,7 @@ declare global {
     downloadUpdate: typeof downloadUpdate
     getTransfer: typeof getTransfer
     getPeers: typeof getPeers
+    createIdentityBackup: typeof createIdentityBackup
     followCourse: typeof followCourse
     getCreatorKey: typeof getCreatorKey
     importCourse: typeof importCourse
@@ -194,6 +196,15 @@ export async function getPeers(target: { courseId: string } | { driveKey: string
   return (await sendCommand<{ peers: number | null }>(CMD_GET_PEERS, target)).peers
 }
 
+// The publisher identity backup file's contents (SLJ-53), encrypted in the
+// worker with `password`; see workers/identity-backup.cjs.
+export async function createIdentityBackup(input: {
+  courses: { id: string; title: string }[]
+  password: string
+}): Promise<string> {
+  return (await sendCommand<{ backup: string }>(CMD_CREATE_IDENTITY_BACKUP, input)).backup
+}
+
 const driveChangedListeners = new Set<(driveKey: string) => void>()
 
 // Called when an imported course's drive may hold a newer version.
@@ -289,6 +300,7 @@ globalThis.__matkoBareWorker = {
   downloadUpdate,
   followCourse,
   getCreatorKey,
+  createIdentityBackup,
   getPeers,
   getTransfer,
   importCourse,

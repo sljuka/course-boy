@@ -121,6 +121,8 @@ interface Window {
   }
   sharing: {
     getCreatorKey: () => Promise<string>
+    getIdentityBackupStatus: () => Promise<import('../src/lib/identity-backup').IdentityBackupStatus>
+    saveIdentityBackup: (password: string) => Promise<import('../src/lib/identity-backup').SaveIdentityBackupResult>
     getCourseSharing: (courseId: string) => Promise<import('../src/lib/sharing').CourseSharingInfo>
     listCourseUpdates: () => Promise<Record<string, import('../src/lib/sharing').CourseUpdateInfo>>
     applyCourseUpdate: (

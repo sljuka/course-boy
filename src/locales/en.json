@@ -712,5 +712,26 @@
     "showInTest": "Show the course's mnemonics in this test",
     "showInTestHelp": "Off by default: a mnemonic on a term could give an answer away. Turn it on for tests where that's not a risk.",
     "srLabel": "Mnemonic: {{mnemonic}}"
+  },
+  "identityBackup": {
+    "settingsTitle": "Publisher identity",
+    "settingsDescription": "Every course you publish is signed with your publisher identity. Only this computer has it: if you lose it, you can't update your published courses anymore. A backup lets you restore it on a new computer.",
+    "backedUpOn": "Backed up on {{date}}.",
+    "notBackedUp": "Not backed up yet.",
+    "saveButton": "Save backup…",
+    "saveTitle": "Save a backup of your publisher identity",
+    "saveDescription": "The backup is a file protected by a password. Keep it somewhere safe that isn't this computer, like a USB stick or your cloud storage.",
+    "password": "Password",
+    "passwordHint": "At least {{count}} characters.",
+    "passwordConfirmation": "Type the password again",
+    "passwordMismatch": "The passwords don't match.",
+    "passwordWarning": "Write the password down. It can't be recovered: without it, the backup can't be opened.",
+    "cancel": "Cancel",
+    "save": "Save backup",
+    "promptTitle": "Back up your publisher identity",
+    "promptDescription": "Your course is online, signed with a publisher identity only this computer has. If you lose this computer, you won't be able to update your courses. Save a backup now and keep it somewhere safe.",
+    "later": "Later",
+    "reminder": "Your publisher identity isn't backed up",
+    "coursesSince": "Courses published since then, not in it: {{count}}."
   }
 }

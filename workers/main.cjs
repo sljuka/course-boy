@@ -14,6 +14,7 @@ const fsp = require('bare-fs/promises')
 const path = require('bare-path')
 const { isValidCourseId } = require('./course-id.cjs')
 const { verifySource } = require('./course-source.cjs')
+const { createIdentityBackup } = require('./identity-backup.cjs')
 
 const CMD_GET_CREATOR_KEY = 1 // must match electron/bare-worker.ts
 const CMD_PUBLISH_COURSE = 2 // must match electron/bare-worker.ts
@@ -28,6 +29,7 @@ const CMD_DOWNLOAD_UPDATE = 10 // must match electron/bare-worker.ts
 const CMD_GET_TRANSFER = 11 // must match electron/bare-worker.ts
 const CMD_CANCEL_TRANSFER = 12 // must match electron/bare-worker.ts
 const CMD_GET_PEERS = 13 // must match electron/bare-worker.ts
+const CMD_CREATE_IDENTITY_BACKUP = 14 // must match electron/bare-worker.ts
 // Worker → main: an imported course's drive may hold a newer version. Main
 // decides what that means (electron/course-sharing.ts).
 const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
@@ -851,6 +853,27 @@ async function start() {
       const { transferId } = JSON.parse(req.data.toString())
       const transfer = transfers.get(transferId)
       req.reply(JSON.stringify({ transfer: transfer ? transferSnapshot(transfer) : null }))
+      return
+    }
+
+    // The publisher identity backup (SLJ-53): the store's primary key and the
+    // published courses, encrypted with the teacher's password. Only the
+    // encrypted file leaves the worker; main writes it where the teacher chose.
+    if (req.command === CMD_CREATE_IDENTITY_BACKUP) {
+      try {
+        const { courses, password } = JSON.parse(req.data.toString())
+        await store.ready()
+        const creator = await store.createKeyPair('creator')
+        const backup = createIdentityBackup({
+          courses,
+          password,
+          primaryKey: store.primaryKey,
+          publisherId: IdEncoding.normalize(creator.publicKey),
+        })
+        req.reply(JSON.stringify({ backup }))
+      } catch (error) {
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
+      }
       return
     }
 

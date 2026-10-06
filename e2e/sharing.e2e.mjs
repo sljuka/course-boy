@@ -13,13 +13,17 @@ import fs from 'node:fs'
 import path from 'node:path'
 import createTestnet from 'hyperdht/testnet.js'
 import IdEncoding from 'hypercore-id-encoding'
+import Corestore from 'corestore'
+import Hyperdrive from 'hyperdrive'
 import { bodyText, launchApp, waitFor, waitForText } from './launch.mjs'
+import { openIdentityBackup } from '../workers/identity-backup.cjs'
 
 const ROOT = '/tmp/matko-e2e-sharing'
 const dirs = {
   student1: path.join(ROOT, 'student-1'),
   student2: path.join(ROOT, 'student-2'),
   student3: path.join(ROOT, 'student-3'),
+  newTeacher: path.join(ROOT, 'new-teacher'),
   teacher: path.join(ROOT, 'teacher'),
 }
 
@@ -160,6 +164,82 @@ describe('sharing across restarts', () => {
     publishedVersion = await cutAndPublish(page, courseId)
     const second = await waitForSharing(page, courseId, (info) => info.status === 'shared')
     expect(second.code).toBe(code)
+  })
+
+  // SLJ-53: the teacher saves a password-protected backup of the publisher
+  // identity from Settings. The file opens with the password (and only with
+  // it) and holds the identity behind the code and the published course.
+  it('a teacher saves a backup of the publisher identity that opens with the password', async () => {
+    const page = apps.teacher.page
+    const backupPath = path.join(ROOT, 'teacher-identity.matko-identity')
+    await apps.teacher.app.evaluate(({ dialog }, filePath) => {
+      dialog.showSaveDialog = async () => ({ canceled: false, filePath })
+    }, backupPath)
+
+    await finishOnboarding(page, 'teacher')
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await waitForText(page, 'Not backed up yet.')
+    await page.getByRole('button', { name: 'Save backup…' }).click()
+    await page.getByLabel('Password', { exact: true }).fill('correct horse battery')
+    await page.getByLabel('Type the password again').fill('correct horse battery')
+    await page.click('[data-testid="save-identity-backup"]')
+    await waitForText(page, 'Backed up on')
+    expect(await page.locator('[data-testid="backup-reminder-dot"]').count()).toBe(0)
+
+    const text = fs.readFileSync(backupPath, 'utf8')
+    expect(() => openIdentityBackup(text, 'wrong password')).toThrow(/Wrong password/)
+    const opened = openIdentityBackup(text, 'correct horse battery')
+    expect(opened.courses).toEqual([{ id: courseId, title: 'E2E Shared Course' }])
+    expect(opened.publisherId).toBe(await page.evaluate(() => window.sharing.getCreatorKey()))
+    // The identity behind the code: the course's drive key derives from it.
+    const store = new Corestore(path.join(ROOT, 'restored-store'), { primaryKey: opened.primaryKey, unsafe: true })
+    const drive = new Hyperdrive(store.namespace(`course-${courseId}`))
+    await drive.ready()
+    expect(IdEncoding.normalize(drive.key)).toBe(code)
+    await drive.close()
+    await store.close()
+  })
+
+  // SLJ-53: the first Publish (with the sharing consent) is followed by an
+  // offer to back up the identity; "Later" leaves a reminder dot on the menu.
+  it("a teacher's first Publish offers a backup, and Later leaves a reminder", async () => {
+    const page = await launch('newTeacher')
+    await finishOnboarding(page, 'teacher')
+    const { courseId: newCourseId, version } = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E First Publish' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Lesson' })
+      await window.courses.updateLessonContent({
+        courseId,
+        lessonId,
+        locales: { en: { body: '[matko-block]: <> (markdown)\nHello.' } },
+        sectionId,
+      })
+      const { version } = await window.courses.cutVersion({ courseId, releaseType: 'minor' })
+      return { courseId, version }
+    })
+    expect(await page.locator('[data-testid="backup-reminder-dot"]').count()).toBe(0)
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, newCourseId)
+    await waitFor(page, (v) => [...document.querySelectorAll('span')].some((e) => e.textContent === v), { arg: version })
+    await page.locator('span', { hasText: new RegExp(`^${version.replace(/\./g, '\\.')}$`) }).first().click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Publish' }).click()
+    await page.getByRole('button', { name: `Publish ${version}` }).click()
+    await waitForText(page, `Published ${version}`)
+    await page.getByRole('button', { name: 'Done' }).click()
+
+    await page.locator('[data-testid="identity-backup-prompt"]').waitFor()
+    await page.getByRole('button', { name: 'Later' }).click()
+    await page.locator('[data-testid="backup-reminder-dot"]').waitFor()
+    await close('newTeacher')
   })
 
   it('a student imports with the code, and the app records where the course came from', async () => {
