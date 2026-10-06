@@ -9,6 +9,7 @@ import type {
   CourseSectionPreview,
   CourseSectionTest,
   CourseDetails,
+  CourseDiskUsage,
   CourseManifest,
   CoursePreviewItem,
   CourseSummary,
@@ -1511,4 +1512,55 @@ export async function getCourseVersionHistory(
     publishedVersion: releaseState.publishedVersion,
     versions: versionEntries,
   };
+}
+
+// How much space a course takes (CourseDiskUsage), or null if there's no such
+// course. Walks its folders once each; a file reachable through several hard
+// links (kept versions share unchanged files) counts once.
+export async function getCourseDiskUsage(
+  rootDirectoryPath: string,
+  courseId: string,
+): Promise<CourseDiskUsage | null> {
+  const courseRecord =
+    (await listCourseRecords(rootDirectoryPath)).find((record) => record.manifest.id === courseId) ?? null;
+
+  if (!courseRecord) {
+    return null;
+  }
+
+  return {
+    onDeviceBytes: await sumUniqueFileBytes(courseRecord.courseRootPath),
+    sizeBytes: await sumUniqueFileBytes(courseRecord.packageDirectoryPath),
+  };
+}
+
+async function sumUniqueFileBytes(directoryPath: string): Promise<number> {
+  const seen = new Set<string>();
+  let total = 0;
+
+  async function walk(currentPath: string): Promise<void> {
+    let entries;
+    try {
+      entries = await fs.readdir(currentPath, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const entryPath = path.join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        await walk(entryPath);
+      } else if (entry.isFile()) {
+        const stats = await fs.stat(entryPath);
+        const key = `${stats.dev}:${stats.ino}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          total += stats.size;
+        }
+      }
+    }
+  }
+
+  await walk(directoryPath);
+  return total;
 }

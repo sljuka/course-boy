@@ -28,7 +28,7 @@ import {
   updateLocalCourseSectionIntro,
   uploadCourseAssetFromBytes,
 } from "./course-paths";
-import { getCourseDetails, getCourseVersionHistory, listCourses } from "./course-registry";
+import { getCourseDetails, getCourseDiskUsage, getCourseVersionHistory, listCourses } from "./course-registry";
 import { shell } from "electron";
 
 let userDataDir = "";
@@ -978,6 +978,31 @@ describe("imported courses", () => {
       fs.stat(path.join(versions, "0.3.0", sectionFile)),
     ]);
     expect(next.ino).toBe(previous.ino);
+  });
+
+  // The course page's Details: the version in use, and everything on disk with
+  // the files shared between kept versions counted once.
+  it("reports the size of the version in use and of everything kept, shared files counted once", async () => {
+    const { courseId, drive } = await seedImportedCourse();
+    const root = await ensureLocalCoursesRoot();
+    await migrateImportedCourse(courseId);
+    const before = await getCourseDiskUsage(root, courseId);
+    expect(before!.sizeBytes).toBeGreaterThan(0);
+
+    await applyImportedCourseUpdate(expectation(courseId, "0.3.0"), mirrorFrom(drive["0.3.0"]));
+    const after = await getCourseDiskUsage(root, courseId);
+    const versions = path.join(root, courseId, "versions");
+    const sumOf = async (dir: string) =>
+      (await Promise.all((await listFiles(dir)).map((file) => fs.stat(path.join(dir, file))))).reduce(
+        (total, stats) => total + stats.size,
+        0,
+      );
+
+    expect(after!.sizeBytes).toBe(await sumOf(path.join(versions, "0.3.0")));
+    // More than one version, but far less than two full copies: unchanged files are shared.
+    expect(after!.onDeviceBytes).toBeGreaterThan(after!.sizeBytes);
+    expect(after!.onDeviceBytes).toBeLessThan((await sumOf(path.join(versions, "0.2.0"))) + after!.sizeBytes);
+    expect(await getCourseDiskUsage(root, "missing0course00")).toBeNull();
   });
 
   it("goes back without downloading, and returns to a kept version without downloading either", async () => {

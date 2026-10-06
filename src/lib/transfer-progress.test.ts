@@ -20,5 +20,7 @@ describe("transfer progress", () => {
     expect(formatBytes(2_500_000, "en")).toBe("2.5 MB");
     expect(formatBytes(850_000, "en")).toBe("850 kB");
     expect(formatBytes(2_500_000, "sr")).toContain("2,5");
+    expect(formatBytes(850, "en")).toBe("850 B");
+    expect(formatBytes(0, "en")).toBe("0 B");
   });
 });

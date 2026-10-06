@@ -13,6 +13,7 @@ import type {
   CreateCourseSectionTestInput,
   CreateCourseSectionTestResult,
   CourseDetails,
+  CourseDiskUsage,
   CourseSummary,
   CourseVersionHistory,
   DraftChangesPreview,
@@ -117,6 +118,9 @@ contextBridge.exposeInMainWorld('courses', {
   },
   get(courseId: string, locale?: Locale) {
     return ipcRenderer.invoke('courses:get', courseId, locale) as Promise<CourseDetails | null>
+  },
+  getDiskUsage(courseId: string) {
+    return ipcRenderer.invoke('courses:get-disk-usage', courseId) as Promise<CourseDiskUsage | null>
   },
   list(locale?: Locale) {
     return ipcRenderer.invoke('courses:list', locale) as Promise<CourseSummary[]>

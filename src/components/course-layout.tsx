@@ -7,6 +7,7 @@ import { useParams } from "react-router-dom";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { RegisterTitleBarSidebarToggle } from "@/components/app-title-bar/register-title-bar-sidebar-toggle";
+import { CourseInfoCard } from "@/components/course-details/course-info-panel";
 import { VersionsPanel } from "@/components/course-details/versions-panel";
 import { CourseStructurePrototype } from "@/components/course-structure-prototype/course-structure-prototype";
 import {
@@ -18,7 +19,7 @@ import { buildEditorBreadcrumbs } from "@/components/draft-details/editor-breadc
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { PagePanel } from "@/components/ui/page-panel";
 import { EditorStatusBar } from "@/components/ui/editor-status-bar";
-import { PanelCard } from "@/components/ui/panel-card";
+import { PanelCard, PanelCardGroup } from "@/components/ui/panel-card";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import { courseContentSaveMutationKey, useCourseDetailsQuery } from "@/lib/course-queries";
@@ -142,8 +143,9 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   const [explorerPanel, updateExplorerPanel] = useSidePanelPreference("explorerPanel");
   const [versionsPanel, updateVersionsPanel] = useSidePanelPreference("versionsPanel");
   const sections = courseDetailsQuery.data?.sections;
-  // Every editor page shares two panels: the explorer on the left and the
-  // course's versions on the right.
+  const courseDetails = courseDetailsQuery.data ?? null;
+  // Every editor page shares two panels: the explorer on the left, and on the
+  // right one card with the course's Versions and its Details below.
   const sidePanels = useMemo<PageSidePanels>(
     () => ({
       left: {
@@ -165,7 +167,10 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
       right: {
         content: (
           <div className="p-2">
-            <VersionsPanel courseId={courseId ?? ""} />
+            <PanelCardGroup>
+              <VersionsPanel courseId={courseId ?? ""} variant="section" />
+              {courseDetails && <CourseInfoCard course={courseDetails} variant="section" />}
+            </PanelCardGroup>
           </div>
         ),
         label: t("courseVersions.panelTitle"),
@@ -175,6 +180,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
       },
     }),
     [
+      courseDetails,
       courseId,
       courseTitle,
       explorerPanel.open,

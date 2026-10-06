@@ -4,6 +4,7 @@ import type {
   ApplyCourseSvgPresetInput,
   ApplyCourseSvgPresetResult,
   CourseDetails,
+  CourseDiskUsage,
   CourseSummary,
   CourseVersionHistory,
   CreateCourseDraftInput,
@@ -420,5 +421,16 @@ export function usePublishCourseVersionMutation() {
         queryClient.invalidateQueries({ queryKey: ["sharing", "course", input.courseId] }),
       ]);
     },
+  });
+}
+
+// How much space a course takes, for the Details card. It only changes with an
+// edit, an update or a version switch: refetched when the card opens and when
+// `revision` (the course's last edit) changes, not polled.
+export function useCourseDiskUsageQuery(courseId: string | undefined, revision?: string | null) {
+  return useQuery<CourseDiskUsage | null>({
+    enabled: Boolean(courseId),
+    queryKey: ["courses", "disk-usage", courseId, revision ?? null],
+    queryFn: () => window.courses.getDiskUsage(courseId!),
   });
 }

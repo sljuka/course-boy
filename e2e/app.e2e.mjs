@@ -74,6 +74,7 @@ describe('launch', () => {
       'deleteSection',
       'deleteSectionTest',
       'get',
+      'getDiskUsage',
       'getLessonTestDraft',
       'getSectionTestDraft',
       'getUnusedDraftAssets',
@@ -507,6 +508,10 @@ describe('page breadcrumbs', () => {
       { side: 'left', title: 'Explorer' },
       { side: 'right', title: 'Versions' },
     ])
+    // The course's Details card sits under Versions, with its size.
+    await waitFor(harness.page, () =>
+      Boolean(document.querySelector('[data-slot=page-side-panel][data-side=right] [data-testid="course-info-size"]')),
+    )
   })
 })
 

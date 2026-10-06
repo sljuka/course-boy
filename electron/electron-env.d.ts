@@ -79,6 +79,7 @@ interface Window {
       courseId: string,
       locale?: import('../src/lib/i18n').Locale,
     ) => Promise<import('../src/lib/course-package').CourseDetails | null>
+    getDiskUsage: (courseId: string) => Promise<import('../src/lib/course-package').CourseDiskUsage | null>
     list: (
       locale?: import('../src/lib/i18n').Locale,
     ) => Promise<import('../src/lib/course-package').CourseSummary[]>

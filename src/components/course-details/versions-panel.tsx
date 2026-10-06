@@ -1,10 +1,9 @@
-import { FileText, History, Plus, Trash2, Undo2, Upload } from "lucide-react";
+import { FileText, History, Trash2, Undo2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import {
   ContextMenu,
@@ -30,9 +29,17 @@ import { VersionHistoryDialog } from "./version-history-dialog";
 // first. The version the draft is based on is highlighted and marked Current —
 // after a revert that's an older one; the published one has its own badge.
 // Revert / Publish are in each row's context menu (right-click, like the
-// explorer). Publish also puts the version online (see use-publish-with-consent). "+" and the Draft row's context menu open the same Commit dialog
-// as the action bar, from any page of the editor.
-export function VersionsPanel({ courseId }: { courseId: string }) {
+// explorer). Publish also puts the version online (see
+// use-publish-with-consent). The Draft row's context menu opens the same
+// Commit dialog as the action bar's Commit new version.
+export function VersionsPanel({
+  courseId,
+  variant,
+}: {
+  courseId: string;
+  // "section": inside the editor's combined card (with Details).
+  variant?: "card" | "section";
+}) {
   const { t } = useTranslation();
   const { locale } = useAppState();
   const { data: history, refetch: refetchHistory } = useCourseVersionHistoryQuery(courseId);
@@ -65,26 +72,8 @@ export function VersionsPanel({ courseId }: { courseId: string }) {
 
   return (
     <PanelCard
-      action={
-        <Button
-          aria-label={t("courseVersions.commitButton")}
-          // Like the action bar's button: changes, and a structure a version allows.
-          disabled={!canCommit}
-          onClick={() => setIsCommitOpen(true)}
-          size="icon-xs"
-          title={
-            canCommit
-              ? t("courseVersions.commitButton")
-              : hasUncommittedChanges && commitBlocker
-                ? commitBlocker
-                : t("courseVersions.noChangesTooltip")
-          }
-          variant="ghost"
-        >
-          <Plus aria-hidden="true" />
-        </Button>
-      }
       title={t("courseVersions.panelTitle")}
+      variant={variant}
     >
       {error && (
         <Alert className="mb-1.5" variant="destructive">

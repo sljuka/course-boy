@@ -472,6 +472,17 @@ export type CourseSummary = {
   versionBadge: CourseVersionBadge;
 };
 
+// How much space a course takes (the course page's Details panel).
+// - sizeBytes: the course as it's shown: an imported course's version in use,
+//   your own course's draft, the bundled course's files.
+// - onDeviceBytes: everything kept for it (with an imported course's previous
+//   versions, your own course's cut versions). Kept versions share unchanged
+//   files as hard links, so each file on disk counts once.
+export type CourseDiskUsage = {
+  onDeviceBytes: number;
+  sizeBytes: number;
+};
+
 export type CourseDetails = CourseSummary & {
   builtin: boolean;
   // When the course was first created (`course.json` `createdAt`), or null if

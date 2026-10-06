@@ -691,7 +691,9 @@
     "sections": "Sections",
     "lessons": "Lessons",
     "id": "ID",
-    "peersOnline": "Peers online"
+    "peersOnline": "Peers online",
+    "size": "Size",
+    "onDevice": "On this device"
   },
   "mnemonics": {
     "title": "Mnemonics",

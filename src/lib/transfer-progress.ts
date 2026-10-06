@@ -24,12 +24,17 @@ export function formatBytes(bytes: number, locale: string): string {
   ] as const;
   const match = units.find(({ size }) => bytes >= size);
 
+  // Intl spells plain bytes out ("850 byte"); "B" is what people read.
+  if (!match) {
+    return `${new Intl.NumberFormat(locale).format(bytes)} B`;
+  }
+
   return new Intl.NumberFormat(locale, {
-    maximumFractionDigits: match && bytes / match.size < 10 ? 1 : 0,
+    maximumFractionDigits: bytes / match.size < 10 ? 1 : 0,
     style: "unit",
-    unit: match?.unit ?? "byte",
+    unit: match.unit,
     unitDisplay: "short",
-  }).format(match ? bytes / match.size : bytes);
+  }).format(bytes / match.size);
 }
 
 // An import's course title in the reader's language (else the course's

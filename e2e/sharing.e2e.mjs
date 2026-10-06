@@ -640,6 +640,8 @@ describe('sharing across restarts', () => {
         expect(info).toContain(label)
       }
       expect(info).toContain(courseId)
+      // Its size, as the reader reads sizes ("2.4 kB").
+      await waitFor(student, () => /\d/.test(document.querySelector('[data-testid="course-info-size"]')?.textContent ?? ''))
       const installed = (await student.evaluate(() => window.courses.list('en'))).find((course) => course.id === courseId)
       expect(info).toContain(installed.version)
       // The teacher is online and connected: at least one peer.

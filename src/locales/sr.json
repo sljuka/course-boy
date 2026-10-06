@@ -691,7 +691,9 @@
     "sections": "Sekcije",
     "lessons": "Lekcije",
     "id": "ID",
-    "peersOnline": "Korisnici na mreži"
+    "peersOnline": "Korisnici na mreži",
+    "size": "Veličina",
+    "onDevice": "Na ovom uređaju"
   },
   "mnemonics": {
     "title": "Mnemotehnike",

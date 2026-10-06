@@ -24,7 +24,7 @@ import { createIdentityBackupService, type IdentityBackupState } from './identit
 import { createProfile, listProfiles, updateProfile } from './profiles'
 import { getActiveProfile, getBaseDataDir, getProfileDataDir, initProfiles, setActiveProfile } from './profile-context'
 import { lockDownSession, lockDownWindow } from './window-security'
-import { getCourseDetails, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
+import { getCourseDetails, getCourseDiskUsage, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
   applyCourseSvgPreset,
   createLocalCourseDraft,
@@ -69,6 +69,7 @@ import { DEFAULT_HOME_VIEW, parseCourseListView, type CourseListView } from '../
 import { parseExplorerPanelPreference, type ExplorerPanelPreference } from '../src/lib/explorer-panel'
 import { parseRecentlyViewedEntries, type RecentlyViewedEntry } from '../src/lib/recently-viewed'
 import type {
+  CourseDiskUsage,
   ApplyCourseSvgPresetInput,
   CreateCourseDraftInput,
   CreateCourseLessonInput,
@@ -450,6 +451,14 @@ ipcMain.handle(
     )
   },
 )
+
+// The course page's Details: how much space the course takes.
+ipcMain.handle('courses:get-disk-usage', async (_event, courseId: string) => {
+  if (!isValidCourseId(courseId)) {
+    throw new Error(`Invalid course id "${courseId}"`)
+  }
+  return getCourseDiskUsage(await ensureLocalCoursesRoot(), courseId) satisfies Promise<CourseDiskUsage | null>
+})
 
 ipcMain.handle('courses:create-draft', (_event, input: CreateCourseDraftInput) => {
   return createLocalCourseDraft(input)
