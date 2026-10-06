@@ -21,7 +21,23 @@ import { useSaveIdentityBackupMutation } from "@/lib/identity-backup-queries";
 // Saves the publisher identity backup (SLJ-53): a password typed twice, then
 // the OS save dialog. The password is never stored; without it the file can't
 // be opened, which the dialog says plainly.
-export function SaveIdentityBackupDialog({ onClose, open }: { onClose: () => void; open: boolean }) {
+//
+// `beforePublish`: the first online Publish asks for it first (nothing goes
+// online without a backup); the backup then also covers `includeCourseId`,
+// the course about to be published, and `onSaved` publishes it.
+export function SaveIdentityBackupDialog({
+  beforePublish = false,
+  includeCourseId,
+  onClose,
+  onSaved,
+  open,
+}: {
+  beforePublish?: boolean;
+  includeCourseId?: string;
+  onClose: () => void;
+  onSaved?: () => void;
+  open: boolean;
+}) {
   const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -39,19 +55,28 @@ export function SaveIdentityBackupDialog({ onClose, open }: { onClose: () => voi
   }
 
   function save() {
-    saveMutation.mutate(password, {
-      onSuccess: (result) => {
-        if (!("cancelled" in result)) close();
+    saveMutation.mutate(
+      { includeCourseId, password },
+      {
+        onSuccess: (result) => {
+          if ("cancelled" in result) return;
+          close();
+          onSaved?.();
+        },
       },
-    });
+    );
   }
 
   return (
     <Dialog onOpenChange={(nextOpen) => !nextOpen && close()} open={open}>
       <DialogContent className="w-[min(30rem,calc(100vw-2rem))]">
         <DialogHeader>
-          <DialogTitle>{t("identityBackup.saveTitle")}</DialogTitle>
-          <DialogDescription>{t("identityBackup.saveDescription")}</DialogDescription>
+          <DialogTitle>
+            {beforePublish ? t("identityBackup.beforePublishTitle") : t("identityBackup.saveTitle")}
+          </DialogTitle>
+          <DialogDescription>
+            {beforePublish ? t("identityBackup.beforePublishDescription") : t("identityBackup.saveDescription")}
+          </DialogDescription>
         </DialogHeader>
         <form
           className="flex flex-col gap-4"
@@ -105,7 +130,7 @@ export function SaveIdentityBackupDialog({ onClose, open }: { onClose: () => voi
             </Button>
             <Button data-testid="save-identity-backup" disabled={!canSave} type="submit">
               {saveMutation.isPending && <Spinner aria-hidden="true" />}
-              {t("identityBackup.save")}
+              {beforePublish ? t("identityBackup.saveAndPublish") : t("identityBackup.save")}
             </Button>
           </DialogFooter>
         </form>

@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CourseCodeDialog } from "@/components/course-details/course-code-dialog";
-import { IdentityBackupPrompt } from "@/components/identity/identity-backup-prompt";
+import { SaveIdentityBackupDialog } from "@/components/identity/save-identity-backup-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePublishCourseVersionMutation } from "@/lib/course-queries";
+import { fetchIdentityBackupStatus } from "@/lib/identity-backup-queries";
 import {
   useAcknowledgeCreatorKeyMutation,
   useHasAcknowledgedCreatorKeyQuery,
@@ -20,9 +21,12 @@ import {
 
 // Publish puts a version online (SLJ-38). The first Publish asks for the sharing
 // consent; every Publish then shows the course's code. Creating, editing and
-// printing never get here, so teachers who only print never see this. After
-// the Publish that came with the consent, the teacher is offered a backup of
-// the identity that consent created (SLJ-53).
+// printing never get here, so teachers who only print never see this.
+//
+// Nothing goes online without a backup of the publisher identity (SLJ-53):
+// while there's none, Publish asks for it after the consent and publishes
+// once it's saved. Cancelling it cancels the Publish. Later courses don't
+// wait; the reminder dot asks for a fresh backup instead.
 export function usePublishWithConsent(courseId: string): {
   dialogs: ReactNode;
   publishMutation: ReturnType<typeof usePublishCourseVersionMutation>;
@@ -34,9 +38,8 @@ export function usePublishWithConsent(courseId: string): {
   const publishMutation = usePublishCourseVersionMutation();
   const [consentForVersion, setConsentForVersion] = useState<string | null>(null);
   const [publishedVersion, setPublishedVersion] = useState<string | null>(null);
-  // Set when this Publish followed the consent: offer the backup after it.
-  const [offerBackup, setOfferBackup] = useState(false);
-  const [isBackupPromptOpen, setIsBackupPromptOpen] = useState(false);
+  // The version waiting for the first backup before it's published.
+  const [backupForVersion, setBackupForVersion] = useState<string | null>(null);
 
   function publish(version: string) {
     publishMutation.mutate(
@@ -45,9 +48,20 @@ export function usePublishWithConsent(courseId: string): {
     );
   }
 
+  // After the consent: publish, or first ask for the backup if none exists.
+  async function publishOnceBackedUp(version: string) {
+    const status = await fetchIdentityBackupStatus().catch(() => null);
+
+    if (status && status.lastBackupAt === null) {
+      setBackupForVersion(version);
+    } else {
+      publish(version);
+    }
+  }
+
   function requestPublish(version: string) {
     if (hasConsent) {
-      publish(version);
+      void publishOnceBackedUp(version);
     } else {
       setConsentForVersion(version);
     }
@@ -63,8 +77,7 @@ export function usePublishWithConsent(courseId: string): {
     acknowledgeMutation.mutate(undefined, {
       onSuccess: () => {
         setConsentForVersion(null);
-        setOfferBackup(true);
-        publish(version);
+        void publishOnceBackedUp(version);
       },
     });
   }
@@ -93,17 +106,17 @@ export function usePublishWithConsent(courseId: string): {
       <CourseCodeDialog
         courseId={courseId}
         description={t("courseSharing.publishedDescription")}
-        onClose={() => {
-          setPublishedVersion(null);
-          if (offerBackup) {
-            setOfferBackup(false);
-            setIsBackupPromptOpen(true);
-          }
-        }}
+        onClose={() => setPublishedVersion(null)}
         open={publishedVersion !== null}
         title={t("courseSharing.publishedTitle", { version: publishedVersion ?? "" })}
       />
-      <IdentityBackupPrompt onClose={() => setIsBackupPromptOpen(false)} open={isBackupPromptOpen} />
+      <SaveIdentityBackupDialog
+        beforePublish
+        includeCourseId={courseId}
+        onClose={() => setBackupForVersion(null)}
+        onSaved={() => backupForVersion && publish(backupForVersion)}
+        open={backupForVersion !== null}
+      />
     </>
   );
 

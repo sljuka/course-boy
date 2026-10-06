@@ -163,8 +163,8 @@ contextBridge.exposeInMainWorld('sharing', {
   getIdentityBackupStatus() {
     return ipcRenderer.invoke('sharing:get-identity-backup-status') as Promise<IdentityBackupStatus>
   },
-  saveIdentityBackup(password: string) {
-    return ipcRenderer.invoke('sharing:save-identity-backup', password) as Promise<SaveIdentityBackupResult>
+  saveIdentityBackup(password: string, includeCourseId?: string) {
+    return ipcRenderer.invoke('sharing:save-identity-backup', password, includeCourseId) as Promise<SaveIdentityBackupResult>
   },
   getCourseSharing(courseId: string) {
     return ipcRenderer.invoke('sharing:get-course-sharing', courseId) as Promise<CourseSharingInfo>

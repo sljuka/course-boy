@@ -1,5 +1,5 @@
 import { Check, Copy } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,8 @@ import { CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { identityBackupStatusKey } from "@/lib/identity-backup-queries";
+import { queryClient } from "@/lib/query-client";
 import { useCourseSharingQuery } from "@/lib/sharing-queries";
 
 // A course's code (what students type to get it) with a copy button and whether
@@ -15,6 +17,12 @@ export function CourseCode({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
   const { data: sharing } = useCourseSharingQuery(courseId, { watchPeers: true });
   const [hasCopied, setHasCopied] = useState(false);
+  // A course just got its code (went online): the identity backup status
+  // (Settings, the reminder dot) now counts it (SLJ-53).
+  const hasCode = Boolean(sharing?.code);
+  useEffect(() => {
+    if (hasCode) void queryClient.invalidateQueries({ queryKey: identityBackupStatusKey });
+  }, [hasCode]);
 
   if (!sharing) {
     return null;

@@ -212,11 +212,12 @@ const identityBackup = createIdentityBackupService({
   },
   createBackup: createIdentityBackup,
   hasIdentity: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
-  listPublishedCourses: async () => {
-    const courseIds = new Set([
-      ...Object.keys(courseSharingStore.get('published')),
-      ...(await listPublishedLocalCourseIds()),
-    ])
+  // Only courses actually put online (they have a code): a teacher who only
+  // prints or hands course files over has nothing to back up.
+  listPublishedCourses: async (includeCourseId) => {
+    const courseIds = new Set(Object.keys(courseSharingStore.get('published')))
+    if (includeCourseId && isValidCourseId(includeCourseId)) courseIds.add(includeCourseId)
+    if (courseIds.size === 0) return []
     const courses = await listCourses(await ensureLocalCoursesRoot())
     return courses
       .filter((course) => course.distribution === 'local' && courseIds.has(course.id))
@@ -496,8 +497,10 @@ ipcMain.handle('sharing:get-identity-backup-status', () => {
   return identityBackup.getStatus() satisfies Promise<IdentityBackupStatus>
 })
 
-ipcMain.handle('sharing:save-identity-backup', (_event, password: string) => {
-  return identityBackup.save(password) satisfies Promise<SaveIdentityBackupResult>
+ipcMain.handle('sharing:save-identity-backup', (_event, password: string, includeCourseId?: string) => {
+  return identityBackup.save(password, {
+    includeCourseId: typeof includeCourseId === 'string' ? includeCourseId : undefined,
+  }) satisfies Promise<SaveIdentityBackupResult>
 })
 
 ipcMain.handle('sharing:get-course-sharing', async (_event, courseId: string) => {

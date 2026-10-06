@@ -592,9 +592,15 @@ only publishers ever touch, not an onboarding step every user sees.
 
 The identity is the worker's Corestore primary key, and every published course's code
 derives from it. Settings → Publisher identity → **Save backup…** writes a
-`*.matko-identity` file; the first Publish (the one with the sharing consent) offers it
-right away. Until a backup covers every published course, the app menu shows a reminder
-dot.
+`*.matko-identity` file.
+
+- **No course goes online without a backup.** While none exists, Publish asks for it
+  right after the sharing consent (`usePublishWithConsent`). Cancelling it cancels the
+  Publish, and the backup covers the course being published (`includeCourseId`).
+- **Later courses don't wait.** Until a backup covers every course online, the app menu
+  shows a reminder dot. Courses that are only made, printed or handed over as files
+  never count, so those teachers never see any of this.
+- **Settings → Security → Publisher identity** shows the status.
 
 - **Format** ([workers/identity-backup.cjs](../workers/identity-backup.cjs:1)):
   - **In the clear:** `format`, `formatVersion`, `createdAt`, `publisherId` (the creator

@@ -530,6 +530,10 @@
       "title": "Verzije kurseva",
       "previousToKeep": "Broj prethodnih verzija koje se čuvaju",
       "previousToKeepDescription": "Za uvezene kurseve: koliko ranijih verzija ostaje na ovom uređaju, da biste mogli da se vratite na neku od njih. Nepromenjeni fajlovi su zajednički za sve verzije, pa dodatne verzije zauzimaju malo prostora. Manji broj se primenjuje pri sledećem ažuriranju."
+    },
+    "security": {
+      "title": "Bezbednost",
+      "description": "Samo za kurseve koje objaviš na mreži. Pravljenje, štampanje ili predavanje datoteka kursa ne zahteva ništa od ovoga."
     }
   },
   "drawer": {
@@ -732,10 +736,11 @@
     "passwordWarning": "Zapiši lozinku. Ne može se povratiti: bez nje rezervna kopija ne može da se otvori.",
     "cancel": "Otkaži",
     "save": "Sačuvaj rezervnu kopiju",
-    "promptTitle": "Sačuvaj rezervnu kopiju identiteta izdavača",
-    "promptDescription": "Tvoj kurs je na mreži, potpisan identitetom izdavača koji ima samo ovaj računar. Ako izgubiš ovaj računar, nećeš moći da ažuriraš svoje kurseve. Sačuvaj rezervnu kopiju sada i drži je na bezbednom mestu.",
-    "later": "Kasnije",
     "reminder": "Za tvoj identitet izdavača nije sačuvana rezervna kopija",
-    "coursesSince": "Kursevi objavljeni nakon toga, a nisu u njoj: {{count}}."
+    "coursesSince": "Kursevi objavljeni nakon toga, a nisu u njoj: {{count}}.",
+    "notOnline": "Još nije potrebno: nijedan tvoj kurs nije objavljen na mreži. Pravljenje, štampanje ili deljenje datoteka kursa sa tvog računara radi i bez ovoga.",
+    "beforePublishTitle": "Prvo sačuvaj rezervnu kopiju identiteta izdavača",
+    "beforePublishDescription": "Tvoj kurs će biti potpisan identitetom izdavača koji ima samo ovaj računar. Ako izgubiš ovaj računar, kurs više nikad nećeš moći da ažuriraš, zato sačuvaj rezervnu kopiju pre nego što ode na mrežu. Čuvaj datoteku na bezbednom mestu van ovog računara.",
+    "saveAndPublish": "Sačuvaj kopiju i objavi"
   }
 }

@@ -530,6 +530,10 @@
       "title": "Course versions",
       "previousToKeep": "Previous versions to keep",
       "previousToKeepDescription": "For courses you've imported: how many earlier versions stay on this device, so you can go back to one. Unchanged files are shared between versions, so extra versions take little space. A lower number applies at the next update."
+    },
+    "security": {
+      "title": "Security",
+      "description": "Only for courses you publish online. Making, printing or handing over course files needs none of this."
     }
   },
   "drawer": {
@@ -732,10 +736,11 @@
     "passwordWarning": "Write the password down. It can't be recovered: without it, the backup can't be opened.",
     "cancel": "Cancel",
     "save": "Save backup",
-    "promptTitle": "Back up your publisher identity",
-    "promptDescription": "Your course is online, signed with a publisher identity only this computer has. If you lose this computer, you won't be able to update your courses. Save a backup now and keep it somewhere safe.",
-    "later": "Later",
     "reminder": "Your publisher identity isn't backed up",
-    "coursesSince": "Courses published since then, not in it: {{count}}."
+    "coursesSince": "Courses published since then, not in it: {{count}}.",
+    "notOnline": "Not needed yet: you haven't published a course online. Making, printing or sharing course files from your computer works without it.",
+    "beforePublishTitle": "Back up your publisher identity first",
+    "beforePublishDescription": "Your course will be signed with a publisher identity only this computer has. If you lost this computer, you could never update the course again, so save a backup before it goes online. Keep the file somewhere safe that isn't this computer.",
+    "saveAndPublish": "Save backup and publish"
   }
 }

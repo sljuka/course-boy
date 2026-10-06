@@ -9,7 +9,11 @@ function setup({ hasIdentity = true, savePath = '/backups/me.matko-identity' as 
     chooseSavePath: vi.fn(async () => savePath),
     createBackup: vi.fn(async () => 'encrypted'),
     hasIdentity: () => hasIdentity,
-    listPublishedCourses: vi.fn(async () => published),
+    listPublishedCourses: vi.fn(async (includeCourseId?: string) =>
+      includeCourseId && !published.some((course) => course.id === includeCourseId)
+        ? [...published, { id: includeCourseId, title: includeCourseId }]
+        : published,
+    ),
     now: () => new Date('2026-10-05T12:00:00Z'),
     store: { read: () => state, write: (next: IdentityBackupState) => (state = next) },
     writeFileAtomic: vi.fn(async () => {}),
@@ -42,6 +46,19 @@ describe('identity backup', () => {
 
     publish('course-b')
     expect((await service.getStatus()).coursesNotBackedUp).toBe(1)
+  })
+
+  it('covers the course about to be published', async () => {
+    const { deps, service } = setup()
+
+    await service.save('long enough', { includeCourseId: 'course-new' })
+    expect(deps.createBackup).toHaveBeenCalledWith({
+      courses: [
+        { id: 'course-a', title: 'Fractions' },
+        { id: 'course-new', title: 'course-new' },
+      ],
+      password: 'long enough',
+    })
   })
 
   it('writes nothing when the teacher cancels the save dialog', async () => {

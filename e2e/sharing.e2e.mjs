@@ -202,10 +202,15 @@ describe('sharing across restarts', () => {
     await store.close()
   })
 
-  // SLJ-53: the first Publish (with the sharing consent) is followed by an
-  // offer to back up the identity; "Later" leaves a reminder dot on the menu.
-  it("a teacher's first Publish offers a backup, and Later leaves a reminder", async () => {
+  // SLJ-53: nothing goes online without a backup of the publisher identity.
+  // The first Publish asks for one after the consent; cancelling it cancels
+  // the Publish, saving it publishes, and the backup covers the course.
+  it("a teacher's first Publish waits for a backup of the identity", async () => {
     const page = await launch('newTeacher')
+    const backupPath = path.join(ROOT, 'new-teacher.matko-identity')
+    await apps.newTeacher.app.evaluate(({ dialog }, filePath) => {
+      dialog.showSaveDialog = async () => ({ canceled: false, filePath })
+    }, backupPath)
     await finishOnboarding(page, 'teacher')
     const { courseId: newCourseId, version } = await page.evaluate(async () => {
       const { courseId } = await window.courses.createDraft({
@@ -230,15 +235,37 @@ describe('sharing across restarts', () => {
       location.hash = `#/drafts/${id}`
     }, newCourseId)
     await waitFor(page, (v) => [...document.querySelectorAll('span')].some((e) => e.textContent === v), { arg: version })
-    await page.locator('span', { hasText: new RegExp(`^${version.replace(/\./g, '\\.')}$`) }).first().click({ button: 'right' })
-    await page.getByRole('menuitem', { name: 'Publish' }).click()
+    const publishFromPanel = async () => {
+      await page.locator('span', { hasText: new RegExp(`^${version.replace(/\./g, '\\.')}$`) }).first().click({ button: 'right' })
+      await page.getByRole('menuitem', { name: 'Publish' }).click()
+    }
+    const publishedVersion = async () =>
+      (await page.evaluate((id) => window.courses.getVersionHistory(id), newCourseId)).publishedVersion
+
+    // Consent, then the backup: cancelling it leaves the course offline.
+    await publishFromPanel()
     await page.getByRole('button', { name: `Publish ${version}` }).click()
+    await waitForText(page, 'Back up your publisher identity first')
+    await page.getByRole('button', { name: 'Cancel' }).click()
+    expect(await publishedVersion()).toBeNull()
+
+    // Publish again: the consent is given, the backup is still required.
+    await publishFromPanel()
+    await waitForText(page, 'Back up your publisher identity first')
+    await page.getByLabel('Password', { exact: true }).fill('correct horse battery')
+    await page.getByLabel('Type the password again').fill('correct horse battery')
+    await page.getByRole('button', { name: 'Save backup and publish' }).click()
     await waitForText(page, `Published ${version}`)
+    expect(await publishedVersion()).toBe(version)
+    expect(openIdentityBackup(fs.readFileSync(backupPath, 'utf8'), 'correct horse battery').courses).toEqual([
+      { id: newCourseId, title: 'E2E First Publish' },
+    ])
     await page.getByRole('button', { name: 'Done' }).click()
 
-    await page.locator('[data-testid="identity-backup-prompt"]').waitFor()
-    await page.getByRole('button', { name: 'Later' }).click()
-    await page.locator('[data-testid="backup-reminder-dot"]').waitFor()
+    // Online and covered by the backup: no reminder.
+    await waitForSharing(page, newCourseId, (info) => info.status === 'shared')
+    await page.waitForTimeout(500)
+    expect(await page.locator('[data-testid="backup-reminder-dot"]').count()).toBe(0)
     await close('newTeacher')
   })
 

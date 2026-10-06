@@ -2,6 +2,8 @@
 // identity with the teacher's password (workers/identity-backup.cjs); this
 // asks where to save it, writes it safely, and remembers when and which
 // courses it covers, for Settings' "Backed up on …" and "N courses since".
+// The first online Publish requires a backup (the renderer asks for it before
+// publishing), so a course never goes online without one.
 // Main-process only: the renderer gets the status, never the file contents.
 
 import type { IdentityBackupStatus, SaveIdentityBackupResult } from '../src/lib/identity-backup'
@@ -16,8 +18,9 @@ export type IdentityBackupState = {
 export type IdentityBackupDeps = {
   // The teacher has given the sharing consent (there's an identity to keep).
   hasIdentity: () => boolean
-  // The teacher's published courses, with a title to show on restore.
-  listPublishedCourses: () => Promise<{ id: string; title: string }[]>
+  // The teacher's courses online, with a title to show on restore. With
+  // `includeCourseId`, also that course (about to go online).
+  listPublishedCourses: (includeCourseId?: string) => Promise<{ id: string; title: string }[]>
   // The encrypted file's text, from the worker.
   createBackup: (input: { courses: { id: string; title: string }[]; password: string }) => Promise<string>
   // Where to save it (the OS save dialog), or null if the teacher cancelled.
@@ -45,7 +48,9 @@ export function createIdentityBackupService(deps: IdentityBackupDeps) {
       }
     },
 
-    async save(password: string): Promise<SaveIdentityBackupResult> {
+    // `includeCourseId`: the course about to be published, so the backup the
+    // first Publish asks for already covers it.
+    async save(password: string, { includeCourseId }: { includeCourseId?: string } = {}): Promise<SaveIdentityBackupResult> {
       if (!deps.hasIdentity()) {
         throw new Error('There is no publisher identity to back up yet')
       }
@@ -60,7 +65,7 @@ export function createIdentityBackupService(deps: IdentityBackupDeps) {
         return { cancelled: true }
       }
 
-      const courses = await deps.listPublishedCourses()
+      const courses = await deps.listPublishedCourses(includeCourseId)
       const contents = await deps.createBackup({ courses, password })
       await deps.writeFileAtomic(filePath, contents)
       deps.store.write({ courseIds: courses.map((course) => course.id), lastBackupAt: savedAt.toISOString() })

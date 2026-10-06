@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import type { IdentityBackupStatus, SaveIdentityBackupResult } from "@/lib/identity-backup";
+export { needsIdentityBackup } from "@/lib/identity-backup";
 import { queryClient } from "@/lib/query-client";
 
 export const identityBackupStatusKey = ["sharing", "identity-backup"] as const;
@@ -15,15 +16,17 @@ export function useIdentityBackupStatusQuery() {
   });
 }
 
-export function useSaveIdentityBackupMutation() {
-  return useMutation<SaveIdentityBackupResult, Error, string>({
-    mutationFn: (password) => window.sharing.saveIdentityBackup(password),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: identityBackupStatusKey }),
+// Read once, fresh, before a Publish: is there a backup yet?
+export function fetchIdentityBackupStatus() {
+  return queryClient.fetchQuery<IdentityBackupStatus>({
+    queryKey: identityBackupStatusKey,
+    queryFn: () => window.sharing.getIdentityBackupStatus(),
   });
 }
 
-// "Not backed up" deserves a reminder: there's an identity, and either no
-// backup at all or published courses the newest one doesn't cover.
-export function needsIdentityBackup(status: IdentityBackupStatus | undefined): boolean {
-  return Boolean(status?.available && (status.lastBackupAt === null || status.coursesNotBackedUp > 0));
+export function useSaveIdentityBackupMutation() {
+  return useMutation<SaveIdentityBackupResult, Error, { includeCourseId?: string; password: string }>({
+    mutationFn: ({ includeCourseId, password }) => window.sharing.saveIdentityBackup(password, includeCourseId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: identityBackupStatusKey }),
+  });
 }
