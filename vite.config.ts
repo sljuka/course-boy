@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import { configDefaults } from 'vitest/config'
+import type { ChildProcess } from 'node:child_process'
 import path from 'node:path'
+import { startup } from 'vite-plugin-electron'
 import electron from 'vite-plugin-electron/simple'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -9,6 +11,30 @@ import tailwindcss from '@tailwindcss/vite'
 // e.g. "--user-data-dir=/tmp/matko-teacher" to keep a teacher and a student
 // apart while developing.
 const devElectronArgs = ['.', '--no-sandbox', ...(process.env.MATKO_DEV_ELECTRON_ARGS?.split(' ').filter(Boolean) ?? [])]
+
+// After a change to the main process the plugin restarts Electron: it kills the
+// old one and starts the new one at once. The new one then finds the old one
+// still holding the single-instance lock (see electron/main.ts), quits, and
+// the plugin stops Vite with it. So wait until the old Electron has really
+// exited (its P2P worker too: startup.exit kills the whole tree), then start.
+async function restartDevElectron(): Promise<void> {
+  const previous = (process as NodeJS.Process & { electronApp?: ChildProcess }).electronApp
+  const isRunning = Boolean(previous && previous.exitCode === null && previous.signalCode === null)
+
+  // Removes the plugin's "stop Vite when Electron exits" listener, then kills.
+  await startup.exit()
+  if (previous && isRunning) {
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(resolve, 5_000)
+      previous.once('exit', () => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+  }
+
+  await startup(devElectronArgs)
+}
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -19,7 +45,7 @@ export default defineConfig({
       main: {
         // Shortcut of `build.lib.entry`.
         entry: 'electron/main.ts',
-        onstart: ({ startup }) => startup(devElectronArgs),
+        onstart: () => restartDevElectron(),
         vite: {
           build: {
             rollupOptions: {

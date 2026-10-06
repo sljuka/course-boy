@@ -245,16 +245,19 @@ describe('sharing across restarts', () => {
     const publishedVersion = async () =>
       (await page.evaluate((id) => window.courses.getVersionHistory(id), newCourseId)).publishedVersion
 
-    // Consent, then the backup: cancelling it leaves the course offline.
+    // Consent, then the backup, eased in: first what signing and the identity
+    // are. Cancelling leaves the course offline.
     await publishFromPanel()
     await page.getByRole('button', { name: `Publish ${version}` }).click()
-    await waitForText(page, 'Back up your publisher identity first')
+    await waitForText(page, 'Before your course goes online')
+    expect(await bodyText(page)).toContain("Let's start with the password.")
     await page.getByRole('button', { name: 'Cancel' }).click()
     expect(await publishedVersion()).toBeNull()
 
     // Publish again: the consent is given, the backup is still required.
     await publishFromPanel()
-    await waitForText(page, 'Back up your publisher identity first')
+    await waitForText(page, 'Before your course goes online')
+    await page.getByRole('button', { name: 'Choose a password' }).click()
     await page.getByLabel('Password', { exact: true }).fill('correct horse battery')
     await page.getByLabel('Type the password again').fill('correct horse battery')
     await page.getByRole('button', { name: 'Save backup and publish' }).click()
@@ -371,26 +374,26 @@ describe('sharing across restarts', () => {
     await expect.poll(rowText, { timeout: 10_000 }).toContain(version)
   })
 
-  // The action bar's Publish: with uncommitted changes it commits them and
-  // publishes in one go; with none it's already published. Share says which
-  // version the code gives.
-  it('Publish commits the drafts and publishes, and Share shows the version', async () => {
+  // The action bar: Commit new version, then Publish (the newest committed
+  // version), which is disabled once that version is published. Share says
+  // which version the code gives.
+  it('Commit then Publish, and Share shows the version', async () => {
     const page = apps.teacher.page
-    await writeLesson(page, ids, 'Third version. Committed and published in one go.')
+    await writeLesson(page, ids, 'Third version. Committed, then published.')
     await page.evaluate((id) => {
       location.hash = `#/my-courses`
       setTimeout(() => (location.hash = `#/drafts/${id}`), 100)
     }, courseId)
+    const commitButton = page.locator('[data-testid="commit-new-version"]')
+    await expect.poll(() => commitButton.getAttribute('aria-label'), { timeout: 15_000 }).toBe('Commit new version')
+    await commitButton.click()
+    const cut = page.getByRole('dialog').getByRole('button', { name: /^Cut new version / })
+    const version = (await cut.innerText()).replace(/^Cut new version /, '')
+    await cut.click()
+
     const publishButton = page.locator('[data-testid="publish-course"]')
-    await expect
-      .poll(() => publishButton.getAttribute('aria-label'), { timeout: 15_000 })
-      .toBe('Commit new version from drafts and publish')
+    await expect.poll(() => publishButton.getAttribute('aria-label')).toBe(`Publish ${version}`)
     await publishButton.click()
-    const dialog = page.getByRole('dialog')
-    await dialog.getByText('Commit and publish').first().waitFor()
-    const commitAndPublish = dialog.getByRole('button', { name: /^Commit .+ and publish$/ })
-    const version = (await commitAndPublish.innerText()).replace(/^Commit (.+) and publish$/, '$1')
-    await commitAndPublish.click()
     await waitForText(page, `Published ${version}`)
     await page.getByRole('button', { name: 'Done' }).click()
     await expect.poll(() => publishButton.getAttribute('aria-label')).toBe(`${version} is already published`)

@@ -152,7 +152,13 @@ export function CourseMetadataEditor({
   // Committable: there are changes, and the draft's structure makes a valid
   // version (sections with content). The tooltip says which one is missing.
   const commitBlocker = useCommitBlockerMessage(courseId);
-  const hasChangesToCommit = versionBadge?.kind === "draft";
+  // From the version history (as the Versions panel and Publish read it, and
+  // refetched when the editor opens), so all three agree: anything not in a
+  // version yet, or no version at all.
+  const { data: versionHistory } = useCourseVersionHistoryQuery(courseId);
+  const hasChangesToCommit = versionHistory
+    ? versionHistory.versions.length === 0 || !versionHistory.draftMatchesCurrentVersion
+    : versionBadge?.kind === "draft";
   const canCommitNewVersion = hasChangesToCommit && commitBlocker === null;
   const updateDraftMetadataMutation = useUpdateDraftMetadataMutation();
 
@@ -296,6 +302,12 @@ export function CourseMetadataEditor({
     }));
   }
 
+  const commitLabel = canCommitNewVersion
+    ? t("courseVersions.commitButton")
+    : hasChangesToCommit && commitBlocker
+      ? commitBlocker
+      : t("courseVersions.noChangesTooltip");
+
   const courseActionButtons = (
     <>
       <Tooltip>
@@ -316,6 +328,24 @@ export function CourseMetadataEditor({
         <TooltipContent>{t("courseVersions.previewCourse")}</TooltipContent>
       </Tooltip>
       <ShareCourseButton courseId={courseId} />
+      {/* Commit without publishing. Disabled with the reason as its tooltip;
+          a disabled button gets no hover events, so the span carries it. */}
+      <Tooltip>
+        <TooltipTrigger render={<span className="inline-flex" />}>
+          <Button
+            aria-label={commitLabel}
+            data-testid="commit-new-version"
+            disabled={!canCommitNewVersion}
+            onClick={() => setIsVersionHistoryOpen(true)}
+            shape="circle"
+            size="icon-sm"
+            variant="secondary"
+          >
+            <History aria-hidden="true" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{commitLabel}</TooltipContent>
+      </Tooltip>
       <PublishCourseButton courseId={courseId} />
     </>
   );
@@ -323,7 +353,6 @@ export function CourseMetadataEditor({
   // Discard changes (back to the version the draft is based on), red in the
   // ⋯ menu, only while there are changes and a version to go back to. Asks
   // first, like the Versions panel's.
-  const { data: versionHistory } = useCourseVersionHistoryQuery(courseId);
   const canDiscard =
     Boolean(versionHistory?.versions.length) && versionHistory?.draftMatchesCurrentVersion === false;
   const { confirmationDialog: discardConfirmation, requestDiscard, revertMutation } =
@@ -340,23 +369,6 @@ export function CourseMetadataEditor({
     </DropdownMenuItem>
   );
 
-  // Commit without publishing, from the course's ⋯ menu; the reason it can't
-  // shows in place of the label.
-  const commitMenuItem = (
-    <DropdownMenuItem
-      data-testid="commit-new-version"
-      disabled={!canCommitNewVersion}
-      onClick={() => setIsVersionHistoryOpen(true)}
-    >
-      <History aria-hidden="true" />
-      {canCommitNewVersion
-        ? t("courseVersions.commitButton")
-        : hasChangesToCommit && commitBlocker
-          ? commitBlocker
-          : t("courseVersions.noChangesTooltip")}
-    </DropdownMenuItem>
-  );
-
   return (
     <PageContent
       actions={
@@ -366,7 +378,6 @@ export function CourseMetadataEditor({
             afterRemovePath="/my-courses"
             course={{ id: courseId, title: draft.localizedCourse[defaultLocale]?.title ?? "" }}
             destructiveItems={discardMenuItem}
-            items={commitMenuItem}
           />
           {discardConfirmation}
         </>

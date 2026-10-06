@@ -10,7 +10,10 @@ import { LocalizedDocumentEditor } from "@/components/draft-details/localized-do
 import { useLocalizedDocumentDraft } from "@/components/draft-details/use-localized-document-draft";
 import { PageContent } from "@/components/page-content";
 import { Button, ButtonLabel } from "@/components/ui/button";
-import type { CourseLesson, UpdateLessonContentInput } from "@/lib/course-package";
+import type {
+  CourseLesson,
+  UpdateLessonContentInput,
+} from "@/lib/course-package";
 import { buildDraftLessonPreviewPath } from "@/lib/course-utils";
 import type { Locale } from "@/lib/i18n";
 import { blocksToMarkdown } from "@/lib/lesson-content-markdown";
@@ -18,7 +21,10 @@ import {
   useCourseDetailsForLocalesQueries,
   useUpdateLessonContentMutation,
 } from "@/lib/course-queries";
-import { useEntityAutosave, useForwardAutosaveStatus } from "@/lib/use-entity-autosave";
+import {
+  useEntityAutosave,
+  useForwardAutosaveStatus,
+} from "@/lib/use-entity-autosave";
 
 type DraftDocumentEditorProps = {
   appLocale: Locale;
@@ -36,7 +42,10 @@ type DraftDocumentEditorProps = {
 // keystroke there autosave the template over that language's real content.
 export function DraftDocumentEditor(props: DraftDocumentEditorProps) {
   const { courseId, sectionId, selectedNode, supportedLocales } = props;
-  const detailsQueries = useCourseDetailsForLocalesQueries(courseId, supportedLocales);
+  const detailsQueries = useCourseDetailsForLocalesQueries(
+    courseId,
+    supportedLocales,
+  );
 
   // `isPending` (no data yet), not `isFetching`: the refetch after every
   // autosave must not unmount the editor mid-edit.
@@ -49,7 +58,9 @@ export function DraftDocumentEditor(props: DraftDocumentEditorProps) {
       const section = detailsQueries[index]?.data?.sections.find(
         (candidate) => candidate.id === sectionId,
       );
-      const lesson = section?.lessons.find((candidate) => candidate.id === selectedNode.id);
+      const lesson = section?.lessons.find(
+        (candidate) => candidate.id === selectedNode.id,
+      );
 
       return [locale, lesson?.body ?? ""];
     }),
@@ -67,10 +78,16 @@ function LoadedDraftDocumentEditor({
   sectionId,
   selectedNode,
   supportedLocales,
-}: DraftDocumentEditorProps & { lessonBodies: Partial<Record<Locale, string>> }) {
+}: DraftDocumentEditorProps & {
+  lessonBodies: Partial<Record<Locale, string>>;
+}) {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const document = useLocalizedDocumentDraft({ appLocale, bodies: lessonBodies, supportedLocales });
+  const document = useLocalizedDocumentDraft({
+    appLocale,
+    bodies: lessonBodies,
+    supportedLocales,
+  });
   const updateLessonContentMutation = useUpdateLessonContentMutation();
 
   const buildInput = useCallback(
@@ -122,7 +139,11 @@ function LoadedDraftDocumentEditor({
       }
       fullBleed
     >
-      <LocalizedDocumentEditor courseId={courseId} document={document} supportedLocales={supportedLocales} />
+      <LocalizedDocumentEditor
+        courseId={courseId}
+        document={document}
+        supportedLocales={supportedLocales}
+      />
     </PageContent>
   );
 }

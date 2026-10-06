@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { createIdentityBackupService, type IdentityBackupState } from './identity-backup'
 
-function setup({ hasIdentity = true, savePath = '/backups/me.matko-identity' as string | null } = {}) {
+function setup({
+  hasIdentity = true,
+  ownerName = 'Ana Petrović' as string | undefined,
+  savePath = '/backups/me.matko-identity' as string | null,
+} = {}) {
   let state: IdentityBackupState = {}
   let published = [{ id: 'course-a', title: 'Fractions' }]
   const deps = {
@@ -15,6 +19,7 @@ function setup({ hasIdentity = true, savePath = '/backups/me.matko-identity' as 
         : published,
     ),
     now: () => new Date('2026-10-05T12:00:00Z'),
+    ownerName: () => ownerName,
     store: { read: () => state, write: (next: IdentityBackupState) => (state = next) },
     writeFileAtomic: vi.fn(async () => {}),
   }
@@ -32,7 +37,7 @@ describe('identity backup', () => {
 
     expect(await service.getStatus()).toEqual({ available: true, coursesNotBackedUp: 1, lastBackupAt: null })
     expect(await service.save('long enough')).toEqual({ savedAt: '2026-10-05T12:00:00.000Z' })
-    expect(deps.chooseSavePath).toHaveBeenCalledWith('matko-identity-2026-10-05.matko-identity')
+    expect(deps.chooseSavePath).toHaveBeenCalledWith('ana-petrovic-identity.matko-identity')
     expect(deps.createBackup).toHaveBeenCalledWith({
       courses: [{ id: 'course-a', title: 'Fractions' }],
       password: 'long enough',
@@ -46,6 +51,18 @@ describe('identity backup', () => {
 
     publish('course-b')
     expect((await service.getStatus()).coursesNotBackedUp).toBe(1)
+  })
+
+  it('suggests a file name from the profile name, or "matko" without a usable one', async () => {
+    for (const [ownerName, expected] of [
+      ['##$$%', 'matko-identity.matko-identity'],
+      ['', 'matko-identity.matko-identity'],
+      ['Ђорђе', 'djordje-identity.matko-identity'],
+    ] as const) {
+      const { deps, service } = setup({ ownerName })
+      await service.save('long enough')
+      expect(deps.chooseSavePath).toHaveBeenCalledWith(expected)
+    }
   })
 
   it('covers the course about to be published', async () => {

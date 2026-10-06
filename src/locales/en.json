@@ -129,7 +129,6 @@
     "notPublishedBadge": "Not published",
     "openButton": "Version history",
     "previewCourse": "Preview course",
-    "publishButton": "Publish",
     "publishedBadge": "Published",
     "releaseTypeLabel": "Bump type",
     "releaseTypeMajor": "Major",
@@ -174,10 +173,10 @@
     "commitBlockedTitle": "Not ready to commit",
     "commitBlockedNoSections": "Add a section with at least one lesson before committing a version.",
     "commitBlockedEmptySection": "Section \"{{title}}\" has no lessons or tests yet. Add one, or remove the section, before committing a version.",
-    "commitAndPublishAction": "Commit new version from drafts and publish",
-    "commitAndPublishTitle": "Commit and publish",
-    "commitAndPublishButton": "Commit {{version}} and publish",
-    "alreadyPublished": "{{version}} is already published"
+    "alreadyPublished": "{{version}} is already published",
+    "publishVersion": "Publish {{version}}",
+    "publishNeedsVersion": "Commit a version first, then publish it",
+    "publishButton": "Publish"
   },
   "courseTags": {
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."
@@ -723,25 +722,46 @@
   },
   "identityBackup": {
     "settingsTitle": "Publisher identity",
-    "settingsDescription": "Every course you publish is signed with your publisher identity. Only this computer has it: if you lose it, you can't update your published courses anymore. A backup lets you restore it on a new computer.",
+    "settingsDescription": "Matko signs every course you publish with your publisher identity, so students know updates really come from you. Back it up as a file protected by a password: with both, you can keep updating your courses from a new computer, and so could anyone else who has both.",
     "backedUpOn": "Backed up on {{date}}.",
     "notBackedUp": "Not backed up yet.",
     "saveButton": "Save backup…",
     "saveTitle": "Save a backup of your publisher identity",
-    "saveDescription": "The backup is a file protected by a password. Keep it somewhere safe that isn't this computer, like a USB stick or your cloud storage.",
+    "saveDescription": "The backup is a file protected by a password. Anyone who has both the file and the password can publish updates as you, so keep them safe and apart.",
     "password": "Password",
     "passwordHint": "At least {{count}} characters.",
     "passwordConfirmation": "Type the password again",
     "passwordMismatch": "The passwords don't match.",
-    "passwordWarning": "Write the password down. It can't be recovered: without it, the backup can't be opened.",
     "cancel": "Cancel",
     "save": "Save backup",
     "reminder": "Your publisher identity isn't backed up",
     "coursesSince": "Courses published since then, not in it: {{count}}.",
     "notOnline": "Not needed yet: you haven't published a course online. Making, printing or sharing course files from your computer works without it.",
-    "beforePublishTitle": "Back up your publisher identity first",
-    "beforePublishDescription": "Your course will be signed with a publisher identity only this computer has. If you lost this computer, you could never update the course again, so save a backup before it goes online. Keep the file somewhere safe that isn't this computer.",
-    "saveAndPublish": "Save backup and publish"
+    "saveAndPublish": "Save backup and publish",
+    "tipsTitle": "How to keep it safe",
+    "tips": {
+      "separate": "Keep the file and the password in different places, for example the file on a USB stick and in your cloud storage, and the password in a password manager such as KeePassXC, Bitwarden or 1Password.",
+      "twoCopies": "Keep two copies of the file in different places, so one lost USB stick or broken laptop doesn't lose it.",
+      "longPassword": "Use a long password you don't use anywhere else, like four or five unrelated words.",
+      "neverSend": "Never send the file or the password by email or chat, or put them in a shared folder.",
+      "afterNewCourse": "Save a new backup after you publish a new course: an older backup can't find courses published after it."
+    },
+    "intro": {
+      "stepOf": "Step {{step}} of {{total}}",
+      "title": "Before your course goes online",
+      "signingTitle": "Signing",
+      "signingText": "Every course you publish gets your digital signature, like a letter you sign. It tells your students' apps that an update really comes from you, so nobody else can publish in your name.",
+      "identityTitle": "Your publisher identity",
+      "identityText": "Your digital signature is made with your publisher identity: a secret key that represents you on the network. Matko created it just for you, and it's kept on this computer. Keep it safe: whoever has it can publish in your name.",
+      "backupTitle": "A backup with a password",
+      "backupText": "If this computer breaks or gets lost, or when you move to a new one, you'll need your publisher identity to keep updating your courses. So this wizard saves it to a file, locked with a password you choose. Keep that file safe: it's how you bring your identity to a new computer.",
+      "lead": "Let's start with the password.",
+      "next": "Choose a password"
+    },
+    "passwordStepTitle": "Choose a password",
+    "passwordStepDescription": "Use a strong password: four or five unrelated words work well. Or let a password manager such as KeePassXC, Bitwarden or 1Password create one and keep it for you.",
+    "back": "Back",
+    "passwordUnrecoverable": "If you lose the password, it can't be recovered, and the backup can't be opened."
   },
   "profiles": {
     "pickerTitle": "Who's learning?",

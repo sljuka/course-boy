@@ -167,25 +167,20 @@ not as a reason this block type replaces anything.
 
 **Implemented.** The course-level page of the draft editor
 (`src/pages/draft-detail-page.tsx`, the `selectedNode.id === courseRootId`
-branch) has three page actions: **Preview course**, **Share** and **Publish**, all round
-icon buttons with their label in a tooltip. **Commit new version** without publishing is in
-the course's ⋯ menu. While the draft has changes since a committed version, so does
+branch) has four page actions, all round icon buttons with their label in a tooltip:
+**Preview course**, **Share**, **Commit new version** (commit without publishing; disabled
+with the reason when there's nothing to commit or a section has no lessons) and **Publish**.
+While the draft has changes since a committed version, the course's ⋯ menu also has
 **Discard changes**, in red right above Remove course. It asks first, like the Versions
 panel's.
 
-**Publish** (`src/components/course-details/publish-course-button.tsx`) is the one-step
-path:
-
-- **With uncommitted changes** (no version yet, or the draft differs from the version it's
-  based on), it reads "Commit new version from drafts and publish". It opens the Commit
-  dialog (`publishAfterCommit`), whose button reads "Commit x.y.z and publish", and then
-  publishes the version it cut, through the usual consent flow.
-- **With no changes**, it reads "Publish" and publishes the version the draft is, or it's
-  disabled when that version is already the published one.
-- **Disabled** with the reason when the structure doesn't allow a version (an empty
-  section).
-- The Versions panel still publishes or reverts any version. The Share dialog says which
-  version the code gives.
+**Publish** (`src/components/course-details/publish-course-button.tsx`) publishes the
+**newest committed version** ("Publish 0.5.0"). Uncommitted changes aren't included; they're
+committed first with Commit new version. It's disabled, with the reason as its tooltip, when
+there's nothing to publish: no version yet, or the newest is already the published one. The
+Versions panel still publishes or reverts any version, and the Share dialog says which
+version the code gives. Commit and Publish both read "are there changes?" from the version
+history (refetched when the editor opens), the same as the Versions panel.
 
 "Preview course" is just a `<Link to={\`/courses/${courseId}\`}>` to the real,
 read-only `CourseDetails` page — no new player-side code. This works because
@@ -199,7 +194,7 @@ synthetic state (contrast with "Previewing a draft test" below, which *does*
 need synthetic state, because unsaved in-memory test content has no route to
 serve it from).
 
-"Commit new version" (now a ⋯ menu item) opens the existing `VersionHistoryDialog`
+"Commit new version" opens the existing `VersionHistoryDialog`
 (`src/components/course-details/version-history-dialog.tsx`) — the same
 dialog `course-details.tsx`'s "Version history" button opens — rather than
 duplicating cut/publish/revert logic. It is disabled with a tooltip

@@ -1,3 +1,6 @@
+/* Lesson and document text (BlockNote content, previews). Colours come from
+   the theme tokens (src/index.css), so it reads right in light and dark mode
+   and prints in the light values. Code blocks stay dark in both themes. */
 @layer components {
   .typeset {
     --typeset-font-body: inherit;
@@ -6,7 +9,7 @@
     --typeset-leading: 1.75;
     --typeset-flow: 1.25rem;
 
-    color: rgb(68 64 60);
+    color: color-mix(in oklch, var(--foreground) 82%, var(--background));
     font-family: var(--typeset-font-body);
     font-size: var(--typeset-size);
     line-height: var(--typeset-leading);
@@ -27,7 +30,7 @@
   }
 
   .typeset :where(h1, h2, h3, h4) {
-    color: rgb(28 25 23);
+    color: var(--foreground);
     font-family: var(--typeset-font-heading);
     font-weight: 600;
     letter-spacing: -0.02em;
@@ -48,7 +51,7 @@
   }
 
   .typeset :where(a) {
-    color: rgb(21 128 61);
+    color: var(--success);
     text-decoration: underline;
     text-underline-offset: 0.2em;
   }
@@ -62,15 +65,15 @@
   }
 
   .typeset :where(blockquote) {
-    border-inline-start: 3px solid rgb(214 211 209);
-    color: rgb(87 83 78);
+    border-inline-start: 3px solid var(--border);
+    color: var(--muted-foreground);
     padding-inline-start: 1rem;
   }
 
   .typeset :where(code) {
-    background: rgb(245 245 244);
+    background: var(--muted);
     border-radius: 0.35rem;
-    color: rgb(28 25 23);
+    color: var(--foreground);
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     font-size: 0.9em;
     padding: 0.12rem 0.35rem;
@@ -97,34 +100,34 @@
   }
 
   .typeset :where(th, td) {
-    border: 1px solid rgb(231 229 228);
+    border: 1px solid var(--border);
     padding: 0.5rem 0.7rem;
     text-align: left;
     vertical-align: top;
   }
 
   .typeset :where(th) {
-    background: rgb(245 245 244);
-    color: rgb(28 25 23);
+    background: var(--muted);
+    color: var(--foreground);
     font-weight: 600;
   }
 
   .typeset :where(hr) {
     border: 0;
-    border-top: 1px solid rgb(231 229 228);
+    border-top: 1px solid var(--border);
   }
 
   .typeset :where(del) {
-    color: rgb(120 113 108);
+    color: var(--muted-foreground);
   }
 
   .typeset :where(input[type="checkbox"]) {
-    accent-color: rgb(21 128 61);
+    accent-color: var(--success);
     margin-inline-end: 0.5rem;
   }
 
   .typeset :where(strong) {
-    color: rgb(28 25 23);
+    color: var(--foreground);
     font-weight: 600;
   }
 }

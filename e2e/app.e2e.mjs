@@ -491,15 +491,17 @@ describe('page breadcrumbs', () => {
         title: panel.querySelector('[data-slot=panel-card-header]')?.textContent,
       })),
     }))
-    // Preview course and Publish are round icon buttons in the action bar.
+    // Preview course, Commit new version and Publish are round icon buttons in the action bar.
     expect(
       await harness.page.evaluate(() => ({
-        actionBar: ['Preview course', 'Publish'].map((label) =>
-          Boolean(document.querySelector(`[data-slot=page-action-bar] [aria-label="${label}"], [data-slot=page-action-bar] [aria-label^="Commit new version from drafts"]`)),
-        ),
+        actionBar: [
+          '[aria-label="Preview course"]',
+          '[data-testid="commit-new-version"]',
+          '[data-testid="publish-course"]',
+        ].map((selector) => Boolean(document.querySelector(`[data-slot=page-action-bar] ${selector}`))),
         toolbar: Boolean(document.querySelector('[data-slot=page-toolbar] [aria-label="Preview course"]')),
       })),
-    ).toEqual({ actionBar: [true, true], toolbar: false })
+    ).toEqual({ actionBar: [true, true, true], toolbar: false })
     // Explorer on the left, Versions on the right, each a card with its title inside.
     expect(rows.sidePanels).toEqual([
       { side: 'left', title: 'Explorer' },
@@ -735,10 +737,10 @@ describe('lesson editor line breaks', () => {
 })
 
 // A version needs at least one section, and every section a lesson or test.
-// The action bar's Publish (which commits the drafts first) is disabled until
-// then, and says why; a draft may be empty.
+// The action bar's Commit new version is disabled until then, and says why; a
+// draft may be empty.
 describe('commit needs sections with content', () => {
-  it('disables Publish with the reason until every section has a lesson', async () => {
+  it('disables Commit with the reason until every section has a lesson', async () => {
     const { page } = harness
     const courseId = await page.evaluate(async () => {
       const { courseId } = await window.courses.createDraft({
@@ -751,7 +753,7 @@ describe('commit needs sections with content', () => {
     await page.evaluate((id) => {
       location.hash = `#/drafts/${id}`
     }, courseId)
-    const commitButton = page.locator('[data-testid="publish-course"]')
+    const commitButton = page.locator('[data-testid="commit-new-version"]')
     await commitButton.waitFor()
 
     // Hover until the tooltip shows the reason; after a reload the course's
@@ -788,7 +790,7 @@ describe('commit needs sections with content', () => {
     await page.reload()
     await commitButton.waitFor()
     await expect.poll(() => commitButton.isDisabled()).toBe(false)
-    expect(await commitButton.getAttribute('aria-label')).toBe('Commit new version from drafts and publish')
+    expect(await commitButton.getAttribute('aria-label')).toBe('Commit new version')
   })
 })
 
@@ -1189,8 +1191,7 @@ describe('release notes', () => {
     await page.evaluate((id) => {
       location.hash = `#/drafts/${id}`
     }, ids.courseId)
-    // Commit without publishing lives in the course's ⋯ menu.
-    await page.getByRole('button', { name: /^Course actions for / }).click()
+    // Commit without publishing: its own button in the action bar.
     await page.locator('[data-testid="commit-new-version"]').click()
     const dialog = page.getByRole('dialog')
     await dialog.getByText(`Changes since ${ids.first}`).waitFor()

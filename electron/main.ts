@@ -238,6 +238,7 @@ function openProfileServices(dataDir: string) {
     },
     createBackup: whileOpen(createIdentityBackup),
     hasIdentity: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
+    ownerName: () => preferencesStore.get('nickname'),
     // Only courses actually put online (they have a code): a teacher who only
     // prints or hands course files over has nothing to back up.
     listPublishedCourses: async (includeCourseId) => {

@@ -8,6 +8,7 @@
 
 import type { IdentityBackupStatus, SaveIdentityBackupResult } from '../src/lib/identity-backup'
 import { MIN_BACKUP_PASSWORD_LENGTH } from '../src/lib/identity-backup'
+import { slugifyProfileName } from '../src/lib/profiles'
 
 export type IdentityBackupState = {
   // Course ids in the newest backup.
@@ -25,6 +26,9 @@ export type IdentityBackupDeps = {
   createBackup: (input: { courses: { id: string; title: string }[]; password: string }) => Promise<string>
   // Where to save it (the OS save dialog), or null if the teacher cancelled.
   chooseSavePath: (suggestedName: string) => Promise<string | null>
+  // The name the person goes by (the profile's nickname), for the suggested
+  // file name: "ana-petrovic-identity.matko-identity".
+  ownerName: () => string | undefined
   // Writes the file without leaving a half-written one behind.
   writeFileAtomic: (filePath: string, contents: string) => Promise<void>
   now?: () => Date
@@ -59,7 +63,7 @@ export function createIdentityBackupService(deps: IdentityBackupDeps) {
       }
 
       const savedAt = now()
-      const filePath = await deps.chooseSavePath(`matko-identity-${savedAt.toISOString().slice(0, 10)}.matko-identity`)
+      const filePath = await deps.chooseSavePath(`${suggestedFileStem(deps.ownerName())}-identity.matko-identity`)
 
       if (!filePath) {
         return { cancelled: true }
@@ -73,4 +77,11 @@ export function createIdentityBackupService(deps: IdentityBackupDeps) {
       return { savedAt: savedAt.toISOString() }
     },
   }
+}
+
+// "ana-petrovic" from "Ana Petrović" (the profile folder rules: lowercase
+// ASCII, safe on every filesystem); "matko" when there's no usable name.
+function suggestedFileStem(name: string | undefined): string {
+  const slug = name ? slugifyProfileName(name) : 'profile'
+  return slug === 'profile' ? 'matko' : slug
 }

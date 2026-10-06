@@ -42,11 +42,6 @@ type VersionHistoryDialogProps = {
   // "Version history") lists the cut versions with Revert; a bundled course
   // (no `draft/`) can't commit or publish anyway.
   mode: "editor" | "history";
-  // "editor" only: the action bar's Publish while there are uncommitted
-  // changes. The button reads "Commit x.y.z and publish", and `onCommitted`
-  // gets the new version so the caller publishes it.
-  onCommitted?: (version: string) => void;
-  publishAfterCommit?: boolean;
 };
 
 export function VersionHistoryDialog({
@@ -54,8 +49,6 @@ export function VersionHistoryDialog({
   onOpenChange,
   open,
   mode,
-  onCommitted,
-  publishAfterCommit = false,
 }: VersionHistoryDialogProps) {
   const { t } = useTranslation();
   const [releaseType, setReleaseType] = useState<ReleaseType>("patch");
@@ -96,11 +89,7 @@ export function VersionHistoryDialog({
       <DialogContent className="max-h-[calc(100vh-4rem)] w-[min(36rem,calc(100vw-2rem))] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {canCut
-              ? publishAfterCommit
-                ? t("courseVersions.commitAndPublishTitle")
-                : t("courseVersions.commitButton")
-              : t("courseVersions.title")}
+            {canCut ? t("courseVersions.commitButton") : t("courseVersions.title")}
           </DialogTitle>
           <DialogDescription>
             {t("courseVersions.currentDraftVersion", {
@@ -151,11 +140,10 @@ export function VersionHistoryDialog({
                 cutMutation.mutate(
                   { courseId, notes, recommended, releaseType },
                   {
-                    onSuccess: (result) => {
+                    onSuccess: () => {
                       setNotes("");
                       setRecommended(false);
                       onOpenChange(false);
-                      onCommitted?.(result.version);
                     },
                   },
                 )
@@ -163,11 +151,9 @@ export function VersionHistoryDialog({
             >
               {cutMutation.isPending
                 ? t("courseVersions.cutting")
-                : publishAfterCommit
-                  ? t("courseVersions.commitAndPublishButton", { version: nextVersionFor(releaseType) ?? "" })
-                  : nextVersionFor(releaseType)
-                    ? t("courseVersions.cutButtonWithVersion", { version: nextVersionFor(releaseType) })
-                    : t("courseVersions.cutButton")}
+                : nextVersionFor(releaseType)
+                  ? t("courseVersions.cutButtonWithVersion", { version: nextVersionFor(releaseType) })
+                  : t("courseVersions.cutButton")}
             </Button>
           </div>
         )}

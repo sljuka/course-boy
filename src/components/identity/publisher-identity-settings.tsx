@@ -2,6 +2,7 @@ import { Download } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { IdentitySafetyTips } from "@/components/identity/identity-safety-tips";
 import { SaveIdentityBackupDialog } from "@/components/identity/save-identity-backup-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldTitle } from "@/components/ui/field";
@@ -47,6 +48,7 @@ export function PublisherIdentitySettings() {
           status.coursesNotBackedUp > 0 &&
           ` ${t("identityBackup.coursesSince", { count: status.coursesNotBackedUp })}`}
       </FieldDescription>
+      <IdentitySafetyTips />
       <div>
         <Button onClick={() => setIsSaveOpen(true)} size="sm" variant="secondary">
           <Download aria-hidden="true" />
