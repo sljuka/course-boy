@@ -205,12 +205,15 @@ export function createCourseSharing(deps: CourseSharingDeps) {
   // the drive ends up holding the newest published version.
   const rerunRequested = new Set<string>()
   const retries = new Map<string, { attempt: number; timer: { cancel(): void } }>()
+  // Set by stop() (a profile switch, SLJ-57): no more retries or reacting.
+  let stopped = false
 
   function updateState(update: (state: CourseSharingState) => CourseSharingState) {
     deps.store.write(update(deps.store.read()))
   }
 
   function scheduleRetry(key: string, run: () => void) {
+    if (stopped) return
     const attempt = (retries.get(key)?.attempt ?? 0) + 1
     const delay = Math.min(FIRST_RETRY_DELAY_MS * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS)
     retries.get(key)?.timer.cancel()
@@ -367,8 +370,17 @@ export function createCourseSharing(deps: CourseSharingDeps) {
       ])
     },
 
+    // Another profile is being opened (SLJ-57): cancel every pending retry
+    // and ignore drive events from now on. Calls already waiting on the worker
+    // fail as it stops (main also refuses them for a closed profile).
+    stop(): void {
+      stopped = true
+      for (const key of [...retries.keys()]) clearRetry(key)
+    },
+
     // The worker saw a followed drive change (or may have).
     onDriveChanged(driveKey: string): void {
+      if (stopped) return
       const entry = Object.entries(deps.store.read().followed).find(
         ([, followed]) => followed.driveKey === driveKey,
       )

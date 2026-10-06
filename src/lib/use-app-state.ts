@@ -9,7 +9,6 @@ type AppStateContextValue = {
   isOnboarded: boolean
   locale: Locale
   nickname: string
-  logout: () => void
   persona: Persona | null
   role: UserRole | null
   submittedName: string

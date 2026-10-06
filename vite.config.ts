@@ -5,6 +5,11 @@ import electron from 'vite-plugin-electron/simple'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+// MATKO_DEV_ELECTRON_ARGS: extra arguments for the dev app, space-separated,
+// e.g. "--user-data-dir=/tmp/matko-teacher" to keep a teacher and a student
+// apart while developing.
+const devElectronArgs = ['.', '--no-sandbox', ...(process.env.MATKO_DEV_ELECTRON_ARGS?.split(' ').filter(Boolean) ?? [])]
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -14,6 +19,7 @@ export default defineConfig({
       main: {
         // Shortcut of `build.lib.entry`.
         entry: 'electron/main.ts',
+        onstart: ({ startup }) => startup(devElectronArgs),
         vite: {
           build: {
             rollupOptions: {

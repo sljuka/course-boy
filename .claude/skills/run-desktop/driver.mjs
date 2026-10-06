@@ -13,6 +13,7 @@ import {
   INTERACTIVE_SELECTOR,
   launchApp,
   listInteractive,
+  profileDataDir,
   clickIndex,
   fillIndex,
   clickText,
@@ -234,7 +235,8 @@ const COMMANDS = {
   },
 
   async files(sub) {
-    const dir = path.join(USER_DATA, sub || 'courses')
+    // The app keeps its data in the open profile's folder (SLJ-57).
+    const dir = path.join(harness?.dataDir ?? profileDataDir(USER_DATA), sub || 'courses')
     if (!fs.existsSync(dir)) return console.log('missing:', dir)
     const walk = (d, depth = 0) => {
       for (const e of fs.readdirSync(d, { withFileTypes: true })) {

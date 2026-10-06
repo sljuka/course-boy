@@ -119,6 +119,12 @@ interface Window {
       preferences: Partial<import('../src/lib/preferences').UserPreferences>,
     ) => Promise<import('../src/lib/preferences').UserPreferences>
   }
+  profiles: {
+    getState: () => Promise<import('../src/lib/profiles').ProfilesState>
+    create: (input: { locale?: string; name: string }) => Promise<void>
+    open: (profileId: string) => Promise<void>
+    switchProfile: () => Promise<void>
+  }
   sharing: {
     getCreatorKey: () => Promise<string>
     getIdentityBackupStatus: () => Promise<import('../src/lib/identity-backup').IdentityBackupStatus>

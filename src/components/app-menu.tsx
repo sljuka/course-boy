@@ -12,13 +12,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { IndicatorDot } from '@/components/ui/indicator-dot'
 import { needsIdentityBackup, useIdentityBackupStatusQuery } from '@/lib/identity-backup-queries'
-import { useAppState } from '@/lib/use-app-state'
 
-// The app's menu (Settings, About, Logout) behind an icon button, so it fits
+// The app's menu (Settings, About, Switch profile) behind an icon button, so it fits
 // in the sidebar header row next to the language switcher.
 function AppMenu() {
   const navigate = useNavigate()
-  const { logout } = useAppState()
   const { t } = useTranslation()
   // The publisher identity isn't backed up (SLJ-53): a dot on the menu and on
   // Settings, until it is.
@@ -26,9 +24,9 @@ function AppMenu() {
   const showBackupReminder = needsIdentityBackup(backupStatus)
   const menuLabel = showBackupReminder ? `${t('menu.open')} · ${t('identityBackup.reminder')}` : t('menu.open')
 
-  function handleLogout() {
-    logout()
-    navigate('/onboarding')
+  // Back to the profile picker (SLJ-57): the app restarts into the launcher.
+  function handleSwitchProfile() {
+    void window.profiles.switchProfile()
   }
 
   return (
@@ -56,8 +54,8 @@ function AppMenu() {
         </DropdownMenuItem>
         <DropdownMenuItem>{t('menu.about')}</DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} variant="destructive">
-          {t('menu.logout')}
+        <DropdownMenuItem data-testid="switch-profile" onClick={handleSwitchProfile}>
+          {t('menu.switchProfile')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

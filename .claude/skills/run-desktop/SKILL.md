@@ -32,7 +32,9 @@ node .claude/skills/run-desktop/driver.mjs
 
 Launch always uses an isolated `--user-data-dir` (`/tmp/matko-driver-userdata`), so it
 never touches a real course library. `launch` wipes it for a clean first-run; `launch keep`
-preserves it to resume a previous session.
+preserves it to resume a previous session. It opens the e2e profile
+(`profiles/e2e-0000000000000000/`, SLJ-57), where the app keeps its courses and stores;
+`files` lists that folder.
 
 ### Interactive use from an agent (tmux)
 

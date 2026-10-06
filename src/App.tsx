@@ -25,16 +25,30 @@ import { DraftTestPreviewPage } from "@/pages/draft-test-preview-page";
 import { HomePage } from "@/pages/home-page";
 import { MyCoursesPage } from "@/pages/my-courses-page";
 import { PersonaPage } from "@/pages/persona-page";
+import { ProfilesPage } from "@/pages/profiles-page";
 import { RolePage } from "@/pages/role-page";
 import { SettingsPage } from "@/pages/settings-page";
 import { WelcomePage } from "@/pages/welcome-page";
 import { useAppState } from "@/lib/use-app-state";
+import { useProfilesStateQuery } from "@/lib/profiles-queries";
 
 const AppRoutes = () => {
   const { isLoaded } = useAppState();
+  const { data: profilesState } = useProfilesStateQuery();
 
-  if (!isLoaded) {
+  if (!isLoaded || !profilesState) {
     return null;
+  }
+
+  // The launcher: no profile open yet (SLJ-57).
+  if (!profilesState.active) {
+    return (
+      <Routes>
+        <Route element={<OnboardingLayout />}>
+          <Route element={<ProfilesPage />} path="*" />
+        </Route>
+      </Routes>
+    );
   }
 
   return (

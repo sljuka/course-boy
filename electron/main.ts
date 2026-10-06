@@ -16,10 +16,13 @@ import {
   onDriveChanged,
   publishCourse,
   spawnBareWorker,
+  stopBareWorker,
   stopSharing,
 } from './bare-worker'
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
 import { createIdentityBackupService, type IdentityBackupState } from './identity-backup'
+import { createProfile, listProfiles, updateProfile } from './profiles'
+import { getActiveProfile, getBaseDataDir, getProfileDataDir, initProfiles, setActiveProfile } from './profile-context'
 import { lockDownSession, lockDownWindow } from './window-security'
 import { getCourseDetails, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
 import {
@@ -91,6 +94,7 @@ import type {
   UploadCourseAssetInput,
 } from '../src/lib/course-package'
 import type { IdentityBackupStatus, SaveIdentityBackupResult } from '../src/lib/identity-backup'
+import type { ProfilesState } from '../src/lib/profiles'
 import type { Locale } from '../src/lib/i18n'
 import type {
   ApplyCourseUpdateResult,
@@ -100,6 +104,10 @@ import type {
   ImportCourseResult,
 } from '../src/lib/sharing'
 
+// First: choose the profile and move Chromium's own data into the data
+// folder's browser/ (SLJ-57, profile-context.ts), before anything reads paths.
+initProfiles(process.argv)
+
 // Two windows against the same userData directory raced their own
 // autosave writes with no conflict detection (see "Previewing a draft
 // test" / draft persistence notes in docs/persistence-notes.md) — each one
@@ -107,11 +115,10 @@ import type {
 // diffed only against what it last saved itself, so a stale second window
 // silently overwrote a teacher's freshly-added exercises. Refusing a
 // second instance closes that off at the source. The lock is scoped to
-// the userData directory (the same mechanism separate `--user-data-dir`
-// profiles already rely on for the run-desktop driver, or for testing
-// multiple P2P peer identities side by side), so it only blocks a second
-// window sharing the *same* profile — never two instances pointed at
-// different ones.
+// Chromium's data folder (browser/ in the data folder, see initProfiles), so
+// one app runs per data folder, whichever profile is open in it; separate
+// `--user-data-dir` folders (the run-desktop driver, a teacher and a student
+// side by side) still each get their own.
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 
 if (!gotSingleInstanceLock) {
@@ -163,76 +170,114 @@ type UserPreferences = {
   theme?: Theme
 }
 
-const preferencesStore = new Store<UserPreferences>()
+// Everything the app keeps per person (SLJ-57): the stores in the open
+// profile's folder and the services built on them. Opened for the profile at
+// start, closed and opened again for the next one on every switch.
+function openProfileServices(dataDir: string) {
+  let closed = false
+  const whileOpen = <Args extends unknown[], Result>(call: (...args: Args) => Promise<Result>) =>
+    (...args: Args): Promise<Result> =>
+      closed ? Promise.reject(new Error('This profile is no longer open')) : call(...args)
 
-// Where shared courses stand: the teacher's published courses (with their code) and
-// the student's imported courses (where each came from). Main-process only: the
-// renderer can read a course's status but never write where a course comes from.
-const courseSharingStore = new Store<CourseSharingState>({
-  defaults: { followed: {}, published: {} },
-  name: 'course-sharing',
-})
+  const preferencesStore = new Store<UserPreferences>({ cwd: dataDir })
 
-const courseSharing = createCourseSharing({
-  applyUpdateFiles: (expected, download) =>
-    applyImportedCourseUpdate(expected, download, {
-      previousToKeep: clampPreviousVersionsToKeep(preferencesStore.get('previousVersionsToKeep')),
-    }),
-  hasConsent: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
-  listInstalledVersions: listImportedCourseVersions,
-  listPublishedCourseIds: listPublishedLocalCourseIds,
-  readInstalledVersion: readImportedCourseVersion,
-  switchInstalledVersion: switchImportedCourseVersion,
-  store: {
-    read: () => ({
-      followed: courseSharingStore.get('followed'),
-      published: courseSharingStore.get('published'),
-    }),
-    write: (state) => courseSharingStore.set(state),
-  },
-  worker: { checkUpdate, downloadUpdate, followCourse, getPeers, importCourse, publishCourse, stopSharing },
-})
+  // Where shared courses stand: the teacher's published courses (with their code) and
+  // the student's imported courses (where each came from). Main-process only: the
+  // renderer can read a course's status but never write where a course comes from.
+  const courseSharingStore = new Store<CourseSharingState>({
+    cwd: dataDir,
+    defaults: { followed: {}, published: {} },
+    name: 'course-sharing',
+  })
 
-onDriveChanged((driveKey) => courseSharing.onDriveChanged(driveKey))
+  const courseSharing = createCourseSharing({
+    applyUpdateFiles: (expected, download) =>
+      applyImportedCourseUpdate(expected, download, {
+        previousToKeep: clampPreviousVersionsToKeep(preferencesStore.get('previousVersionsToKeep')),
+      }),
+    hasConsent: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
+    listInstalledVersions: listImportedCourseVersions,
+    listPublishedCourseIds: listPublishedLocalCourseIds,
+    readInstalledVersion: readImportedCourseVersion,
+    switchInstalledVersion: switchImportedCourseVersion,
+    store: {
+      read: () => ({
+        followed: courseSharingStore.get('followed'),
+        published: courseSharingStore.get('published'),
+      }),
+      write: (state) => courseSharingStore.set(state),
+    },
+    // Refused once this profile is closed, so a late retry of the previous
+    // profile never reaches the next profile's worker.
+    worker: {
+      checkUpdate: whileOpen(checkUpdate),
+      downloadUpdate: whileOpen(downloadUpdate),
+      followCourse: whileOpen(followCourse),
+      getPeers: whileOpen(getPeers),
+      importCourse: whileOpen(importCourse),
+      publishCourse: whileOpen(publishCourse),
+      stopSharing: whileOpen(stopSharing),
+    },
+  })
 
-// The publisher identity backup (SLJ-53): when it was saved and which courses
-// it covers. Main-process only, like where courses come from.
-const identityBackupStore = new Store<IdentityBackupState>({ name: 'identity-backup' })
 
-const identityBackup = createIdentityBackupService({
-  chooseSavePath: async (suggestedName) => {
-    const window = BrowserWindow.getFocusedWindow()
-    const options = {
-      defaultPath: path.join(app.getPath('documents'), suggestedName),
-      filters: [{ extensions: ['matko-identity'], name: 'Matko identity backup' }],
-    }
-    // Read at call time (not destructured), so e2e tests can stub it.
-    const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
-    return result.canceled || !result.filePath ? null : result.filePath
-  },
-  createBackup: createIdentityBackup,
-  hasIdentity: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
-  // Only courses actually put online (they have a code): a teacher who only
-  // prints or hands course files over has nothing to back up.
-  listPublishedCourses: async (includeCourseId) => {
-    const courseIds = new Set(Object.keys(courseSharingStore.get('published')))
-    if (includeCourseId && isValidCourseId(includeCourseId)) courseIds.add(includeCourseId)
-    if (courseIds.size === 0) return []
-    const courses = await listCourses(await ensureLocalCoursesRoot())
-    return courses
-      .filter((course) => course.distribution === 'local' && courseIds.has(course.id))
-      .map((course) => ({ id: course.id, title: course.title }))
-  },
-  store: {
-    read: () => identityBackupStore.store,
-    write: (state) => identityBackupStore.set(state),
-  },
-  writeFileAtomic: async (filePath, contents) => {
-    const tempPath = `${filePath}.tmp-${process.pid}`
-    await writeFile(tempPath, contents, { mode: 0o600 })
-    await rename(tempPath, filePath)
-  },
-})
+  // The publisher identity backup (SLJ-53): when it was saved and which courses
+  // it covers. Main-process only, like where courses come from.
+  const identityBackupStore = new Store<IdentityBackupState>({ cwd: dataDir, name: 'identity-backup' })
+
+  const identityBackup = createIdentityBackupService({
+    chooseSavePath: async (suggestedName) => {
+      const window = BrowserWindow.getFocusedWindow()
+      const options = {
+        defaultPath: path.join(app.getPath('documents'), suggestedName),
+        filters: [{ extensions: ['matko-identity'], name: 'Matko identity backup' }],
+      }
+      // Read at call time (not destructured), so e2e tests can stub it.
+      const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
+      return result.canceled || !result.filePath ? null : result.filePath
+    },
+    createBackup: whileOpen(createIdentityBackup),
+    hasIdentity: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
+    // Only courses actually put online (they have a code): a teacher who only
+    // prints or hands course files over has nothing to back up.
+    listPublishedCourses: async (includeCourseId) => {
+      const courseIds = new Set(Object.keys(courseSharingStore.get('published')))
+      if (includeCourseId && isValidCourseId(includeCourseId)) courseIds.add(includeCourseId)
+      if (courseIds.size === 0) return []
+      const courses = await listCourses(await ensureLocalCoursesRoot())
+      return courses
+        .filter((course) => course.distribution === 'local' && courseIds.has(course.id))
+        .map((course) => ({ id: course.id, title: course.title }))
+    },
+    store: {
+      read: () => identityBackupStore.store,
+      write: (state) => identityBackupStore.set(state),
+    },
+    writeFileAtomic: async (filePath, contents) => {
+      const tempPath = `${filePath}.tmp-${process.pid}`
+      await writeFile(tempPath, contents, { mode: 0o600 })
+      await rename(tempPath, filePath)
+    },
+  })
+
+  return {
+    close() {
+      closed = true
+      courseSharing.stop()
+    },
+    courseSharing,
+    courseSharingStore,
+    identityBackup,
+    identityBackupStore,
+    preferencesStore,
+  }
+}
+
+// The open profile's stores and services; replaced on every switch, so always
+// read through `profile.` at call time.
+let profile = openProfileServices(getProfileDataDir())
+
+onDriveChanged((driveKey) => profile.courseSharing.onDriveChanged(driveKey))
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -257,97 +302,133 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win: BrowserWindow | null
 
 ipcMain.handle('preferences:get', () => {
-  return preferencesStore.store
+  return profile.preferencesStore.store
 })
 
 ipcMain.handle(
   'preferences:set',
   (_event, preferences: Partial<UserPreferences>) => {
     if (typeof preferences.locale === 'string') {
-      preferencesStore.set('locale', preferences.locale)
+      profile.preferencesStore.set('locale', preferences.locale)
     }
 
     if (typeof preferences.nickname === 'string') {
-      preferencesStore.set('nickname', preferences.nickname)
+      profile.preferencesStore.set('nickname', preferences.nickname)
+      // The picker shows the profile by the name its owner goes by.
+      const open = getActiveProfile()
+      if (open) updateProfile(getBaseDataDir(), open.id, { name: preferences.nickname })
     }
 
     if (typeof preferences.category === 'string') {
-      preferencesStore.set('category', preferences.category)
+      profile.preferencesStore.set('category', preferences.category)
     }
 
     if (typeof preferences.role === 'string') {
-      preferencesStore.set('role', preferences.role)
+      profile.preferencesStore.set('role', preferences.role)
     }
 
     if (typeof preferences.persona === 'string') {
-      preferencesStore.set('persona', preferences.persona)
+      profile.preferencesStore.set('persona', preferences.persona)
+      const open = getActiveProfile()
+      if (open) updateProfile(getBaseDataDir(), open.id, { persona: preferences.persona })
     }
 
     if (typeof preferences.theme === 'string') {
-      preferencesStore.set('theme', preferences.theme)
+      profile.preferencesStore.set('theme', preferences.theme)
     }
 
     // Applied at the next update, not now: lowering it never deletes a version
     // the student might be about to go back to.
     if (typeof preferences.previousVersionsToKeep === 'number') {
-      preferencesStore.set('previousVersionsToKeep', clampPreviousVersionsToKeep(preferences.previousVersionsToKeep))
+      profile.preferencesStore.set('previousVersionsToKeep', clampPreviousVersionsToKeep(preferences.previousVersionsToKeep))
     }
 
     if (typeof preferences.showMnemonics === 'boolean') {
-      preferencesStore.set('showMnemonics', preferences.showMnemonics)
+      profile.preferencesStore.set('showMnemonics', preferences.showMnemonics)
     }
 
     if (typeof preferences.showBundledCourses === 'boolean') {
-      preferencesStore.set('showBundledCourses', preferences.showBundledCourses)
+      profile.preferencesStore.set('showBundledCourses', preferences.showBundledCourses)
     }
 
     if (typeof preferences.hasAcknowledgedCreatorKey === 'boolean') {
-      const hadConsent = preferencesStore.get('hasAcknowledgedCreatorKey') === true
-      preferencesStore.set('hasAcknowledgedCreatorKey', preferences.hasAcknowledgedCreatorKey)
+      const hadConsent = profile.preferencesStore.get('hasAcknowledgedCreatorKey') === true
+      profile.preferencesStore.set('hasAcknowledgedCreatorKey', preferences.hasAcknowledgedCreatorKey)
 
       if (!hadConsent && preferences.hasAcknowledgedCreatorKey) {
-        courseSharing.onConsentGiven()
+        profile.courseSharing.onConsentGiven()
       }
     }
 
     // Validated rather than trusted: it's a list the renderer builds, and only
     // well-formed entries (in-app paths, known kinds, capped length) persist.
     if (typeof preferences.explorerPanel === 'object' && preferences.explorerPanel !== null) {
-      preferencesStore.set('explorerPanel', parseExplorerPanelPreference(preferences.explorerPanel))
+      profile.preferencesStore.set('explorerPanel', parseExplorerPanelPreference(preferences.explorerPanel))
     }
 
     if (typeof preferences.homeView === 'string') {
-      preferencesStore.set('homeView', parseCourseListView(preferences.homeView, DEFAULT_HOME_VIEW))
+      profile.preferencesStore.set('homeView', parseCourseListView(preferences.homeView, DEFAULT_HOME_VIEW))
     }
 
     if (typeof preferences.myCoursesView === 'string') {
-      preferencesStore.set('myCoursesView', parseCourseListView(preferences.myCoursesView))
+      profile.preferencesStore.set('myCoursesView', parseCourseListView(preferences.myCoursesView))
     }
 
     if (typeof preferences.courseInfoPanel === 'object' && preferences.courseInfoPanel !== null) {
-      preferencesStore.set('courseInfoPanel', parseExplorerPanelPreference(preferences.courseInfoPanel))
+      profile.preferencesStore.set('courseInfoPanel', parseExplorerPanelPreference(preferences.courseInfoPanel))
     }
 
     if (typeof preferences.versionsPanel === 'object' && preferences.versionsPanel !== null) {
-      preferencesStore.set('versionsPanel', parseExplorerPanelPreference(preferences.versionsPanel))
+      profile.preferencesStore.set('versionsPanel', parseExplorerPanelPreference(preferences.versionsPanel))
     }
 
     if (Array.isArray(preferences.recentlyViewed)) {
-      preferencesStore.set('recentlyViewed', parseRecentlyViewedEntries(preferences.recentlyViewed))
+      profile.preferencesStore.set('recentlyViewed', parseRecentlyViewedEntries(preferences.recentlyViewed))
     }
 
-    return preferencesStore.store
+    return profile.preferencesStore.store
   },
 )
 
-ipcMain.handle('preferences:reset-onboarding', () => {
-  preferencesStore.delete('nickname')
-  preferencesStore.delete('category')
-  preferencesStore.delete('role')
-  preferencesStore.delete('persona')
-  preferencesStore.delete('recentlyViewed')
+// Profiles (SLJ-57). Creating, opening and switching happen in the running
+// app (switchProfile): the window stays, its page reloads at Home in the
+// chosen profile. The list is read from the folders.
+ipcMain.handle('profiles:get-state', () => {
+  const profiles = listProfiles(getBaseDataDir())
+  const open = getActiveProfile()
+  return {
+    active: open ? (profiles.find((candidate) => candidate.id === open.id) ?? open) : null,
+    profiles,
+  } satisfies ProfilesState
+})
 
-  return preferencesStore.store
+ipcMain.handle('profiles:create', async (_event, input: { locale?: Locale; name: string }) => {
+  const created = createProfile(getBaseDataDir(), { name: String(input?.name ?? '') })
+  // The new profile starts with the name already given (onboarding goes on
+  // from the persona) and the language chosen in the launcher.
+  new Store<UserPreferences>({ cwd: path.join(getBaseDataDir(), 'profiles', created.id) }).set({
+    ...(input?.locale === 'en' || input?.locale === 'sr' || input?.locale === 'sr-Cyrl' ? { locale: input.locale } : {}),
+    nickname: created.name,
+  })
+  await switchProfile(created.id)
+})
+
+ipcMain.handle('profiles:open', async (_event, profileId: string) => {
+  if (listProfiles(getBaseDataDir()).some((candidate) => candidate.id === profileId)) {
+    await switchProfile(profileId)
+  }
+})
+
+ipcMain.handle('profiles:switch', () => switchProfile(null))
+
+ipcMain.handle('preferences:reset-onboarding', () => {
+  profile.preferencesStore.delete('nickname')
+  profile.preferencesStore.delete('category')
+  profile.preferencesStore.delete('role')
+  profile.preferencesStore.delete('persona')
+  profile.preferencesStore.delete('recentlyViewed')
+
+  return profile.preferencesStore.store
 })
 
 ipcMain.handle('courses:preview-draft-changes', (_event, courseId: string) =>
@@ -445,7 +526,7 @@ ipcMain.handle(
 
 ipcMain.handle('courses:remove', async (_event, courseId: string) => {
   await removeLocalCourse(courseId)
-  await courseSharing.forgetCourse(courseId)
+  await profile.courseSharing.forgetCourse(courseId)
 })
 
 ipcMain.handle('courses:open-in-file-system', (_event, courseId: string) => {
@@ -486,7 +567,7 @@ ipcMain.handle('courses:publish-version', async (_event, input: PublishCourseVer
   await publishLocalCourseVersion(input)
   // Publish puts the version online; that runs in the background and can't make
   // Publish fail (see electron/course-sharing.ts).
-  courseSharing.onPublished(input.courseId)
+  profile.courseSharing.onPublished(input.courseId)
 })
 
 ipcMain.handle('sharing:get-creator-key', () => {
@@ -494,11 +575,11 @@ ipcMain.handle('sharing:get-creator-key', () => {
 })
 
 ipcMain.handle('sharing:get-identity-backup-status', () => {
-  return identityBackup.getStatus() satisfies Promise<IdentityBackupStatus>
+  return profile.identityBackup.getStatus() satisfies Promise<IdentityBackupStatus>
 })
 
 ipcMain.handle('sharing:save-identity-backup', (_event, password: string, includeCourseId?: string) => {
-  return identityBackup.save(password, {
+  return profile.identityBackup.save(password, {
     includeCourseId: typeof includeCourseId === 'string' ? includeCourseId : undefined,
   }) satisfies Promise<SaveIdentityBackupResult>
 })
@@ -509,14 +590,14 @@ ipcMain.handle('sharing:get-course-sharing', async (_event, courseId: string) =>
   }
 
   return {
-    ...courseSharing.getInfo(courseId),
-    peers: await courseSharing.getPeers(courseId),
-    versions: await courseSharing.getVersions(courseId),
+    ...profile.courseSharing.getInfo(courseId),
+    peers: await profile.courseSharing.getPeers(courseId),
+    versions: await profile.courseSharing.getVersions(courseId),
   } satisfies CourseSharingInfo
 })
 
 ipcMain.handle('sharing:list-course-updates', () => {
-  return courseSharing.listUpdates() satisfies Record<string, CourseUpdateInfo>
+  return profile.courseSharing.listUpdates() satisfies Record<string, CourseUpdateInfo>
 })
 
 ipcMain.handle('sharing:apply-course-update', async (_event, courseId: string, transferId?: string) => {
@@ -524,7 +605,7 @@ ipcMain.handle('sharing:apply-course-update', async (_event, courseId: string, t
     throw new Error(`Invalid course id "${courseId}"`)
   }
 
-  const result = await courseSharing.applyUpdate(courseId, typeof transferId === 'string' ? transferId : undefined)
+  const result = await profile.courseSharing.applyUpdate(courseId, typeof transferId === 'string' ? transferId : undefined)
   return ('cancelled' in result ? result : { version: result.version }) satisfies ApplyCourseUpdateResult
 })
 
@@ -542,7 +623,7 @@ ipcMain.handle('sharing:switch-course-version', async (_event, courseId: string,
     throw new Error(`Invalid course id "${courseId}"`)
   }
 
-  await courseSharing.switchVersion(courseId, version)
+  await profile.courseSharing.switchVersion(courseId, version)
 })
 
 ipcMain.handle('sharing:finish-on-version', (_event, courseId: string) => {
@@ -550,11 +631,11 @@ ipcMain.handle('sharing:finish-on-version', (_event, courseId: string) => {
     throw new Error(`Invalid course id "${courseId}"`)
   }
 
-  courseSharing.finishOnVersion(courseId)
+  profile.courseSharing.finishOnVersion(courseId)
 })
 
 ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput) => {
-  const result = await courseSharing.importCourse(
+  const result = await profile.courseSharing.importCourse(
     input.code,
     typeof input.transferId === 'string' ? input.transferId : undefined,
   )
@@ -715,13 +796,16 @@ function createWindow() {
     },
   })
 
-  const indexHtmlPath = path.join(RENDERER_DIST, 'index.html')
-  lockDownWindow(win, [VITE_DEV_SERVER_URL ?? pathToFileURL(indexHtmlPath).href])
+  lockDownWindow(win, [VITE_DEV_SERVER_URL ?? pathToFileURL(path.join(RENDERER_DIST, 'index.html')).href])
+  loadApp(win)
+}
 
+// Loads the app at its start page (also after a profile switch).
+function loadApp(window: BrowserWindow): void {
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
+    void window.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    win.loadFile(indexHtmlPath)
+    void window.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 }
 
@@ -751,10 +835,40 @@ app.whenReady().then(() => {
   protocol.handle('matko-asset', handleCourseAssetRequest)
   lockDownSession(session.defaultSession)
   createWindow()
+  startProfile()
+})
+
+// The open profile's background work: its P2P worker (on its own p2p/ store)
+// and sharing. The launcher (no profile open) only picks or creates one: no
+// worker, no sharing.
+function startProfile(): void {
+  if (!getActiveProfile()) {
+    return
+  }
+
   spawnBareWorker()
+  const opened = profile
   // Before sharing starts: an update interrupted by a crash must not leave a
   // course folder missing.
   void cleanUpInterruptedCourseUpdates()
     .catch((error) => console.error('[course-sharing] cleanup failed:', error))
-    .then(() => courseSharing.start())
-})
+    .then(() => (profile === opened ? opened.courseSharing.start() : undefined))
+}
+
+// Opens another profile (or the launcher, with null) in the running app
+// (SLJ-57): close this profile's services and stop its worker, open the next
+// one's stores and start its worker, then reload the window at Home, so
+// nothing on screen or in the renderer's caches belongs to the previous one.
+let switching: Promise<void> = Promise.resolve()
+
+function switchProfile(profileId: string | null): Promise<void> {
+  switching = switching.then(async () => {
+    profile.close()
+    await stopBareWorker()
+    setActiveProfile(profileId)
+    profile = openProfileServices(getProfileDataDir())
+    startProfile()
+    if (win) loadApp(win)
+  })
+  return switching
+}

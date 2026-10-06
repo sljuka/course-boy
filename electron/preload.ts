@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import type { ProfilesState } from '../src/lib/profiles'
 import type { IdentityBackupStatus, SaveIdentityBackupResult } from '../src/lib/identity-backup'
 import type {
   ApplyCourseSvgPresetInput,
@@ -153,6 +154,23 @@ contextBridge.exposeInMainWorld('courses', {
   },
   publishVersion(input: PublishCourseVersionInput) {
     return ipcRenderer.invoke('courses:publish-version', input) as Promise<void>
+  },
+})
+
+// Profiles (SLJ-57): create, open and switch restart the app into the chosen
+// profile, so their promises never settle in this window.
+contextBridge.exposeInMainWorld('profiles', {
+  getState() {
+    return ipcRenderer.invoke('profiles:get-state') as Promise<ProfilesState>
+  },
+  create(input: { locale?: string; name: string }) {
+    return ipcRenderer.invoke('profiles:create', input) as Promise<void>
+  },
+  open(profileId: string) {
+    return ipcRenderer.invoke('profiles:open', profileId) as Promise<void>
+  },
+  switchProfile() {
+    return ipcRenderer.invoke('profiles:switch') as Promise<void>
   },
 })
 

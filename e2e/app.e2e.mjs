@@ -11,6 +11,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import {
   launchApp,
+  profileDataDir,
   listInteractive,
   clickIndex,
   fillIndex,
@@ -23,6 +24,8 @@ import {
 } from './launch.mjs'
 
 const USER_DATA = '/tmp/matko-e2e-vitest'
+// Where the app keeps its data: the e2e profile's folder (SLJ-57).
+const DATA_DIR = profileDataDir(USER_DATA)
 const NICKNAME = 'Quacky McDuck'
 
 let harness
@@ -51,6 +54,7 @@ describe('launch', () => {
     const surface = await harness.page.evaluate(() => ({
       courses: Object.keys(window.courses ?? {}).sort(),
       preferences: Object.keys(window.preferences ?? {}).sort(),
+      profiles: Object.keys(window.profiles ?? {}).sort(),
       sharing: Object.keys(window.sharing ?? {}).sort(),
     }))
 
@@ -90,6 +94,7 @@ describe('launch', () => {
       'uploadAssetBytes',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
+    expect(surface.profiles).toEqual(['create', 'getState', 'open', 'switchProfile'])
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',
       'cancelTransfer',
@@ -261,7 +266,7 @@ describe('courses over IPC', () => {
 
     // Contract 4: drafts live under a `draft/` subdirectory of the course root.
     const manifestPath = path.join(
-      USER_DATA,
+      DATA_DIR,
       'courses',
       probeCourseId,
       'draft',
@@ -317,7 +322,7 @@ describe('course assets', () => {
 
     // Write the asset directly rather than driving the OS file picker behind
     // window.courses.uploadAsset — Playwright cannot automate native dialogs.
-    const assetsDir = path.join(USER_DATA, 'courses', probeCourseId, 'draft', 'assets')
+    const assetsDir = path.join(DATA_DIR, 'courses', probeCourseId, 'draft', 'assets')
     fs.mkdirSync(assetsDir, { recursive: true })
     fs.writeFileSync(path.join(assetsDir, assetFilename), Buffer.from(pngBase64, 'base64'))
 
@@ -355,7 +360,7 @@ describe('course assets', () => {
   // them there, not 404 on the missing draft/ (it did until 2026-10-03).
   it("serves a byte range of an imported course's video from its current version", async () => {
     const importedId = 'e2erangetestaaaa'
-    const courseRoot = path.join(USER_DATA, 'courses', importedId)
+    const courseRoot = path.join(DATA_DIR, 'courses', importedId)
     const assetsDir = path.join(courseRoot, 'versions', '1.0.0', 'assets')
     fs.mkdirSync(assetsDir, { recursive: true })
     fs.writeFileSync(path.join(courseRoot, 'release.json'), JSON.stringify({ publishedVersion: '1.0.0' }))
@@ -420,12 +425,12 @@ describe('course version badge', () => {
     // always rewrites it. Edit the lesson file created in "course assets"
     // instead, a real content file.
     const sectionDir = fs
-      .readdirSync(path.join(USER_DATA, 'courses', probeCourseId, 'draft'))
+      .readdirSync(path.join(DATA_DIR, 'courses', probeCourseId, 'draft'))
       .find((name) => name.startsWith('section-'))
     const lessonPath = fs
-      .readdirSync(path.join(USER_DATA, 'courses', probeCourseId, 'draft', sectionDir))
+      .readdirSync(path.join(DATA_DIR, 'courses', probeCourseId, 'draft', sectionDir))
       .filter((name) => name.startsWith('lesson-'))
-      .map((name) => path.join(USER_DATA, 'courses', probeCourseId, 'draft', sectionDir, name))[0]
+      .map((name) => path.join(DATA_DIR, 'courses', probeCourseId, 'draft', sectionDir, name))[0]
     const lesson = JSON.parse(fs.readFileSync(lessonPath, 'utf8'))
     lesson.locales.en.description = 'Edited after cutting a version'
     // Replace (write temp, then rename) the way the app's own writers do: the
@@ -611,7 +616,7 @@ describe('learner flow: attend a course and complete its test', () => {
     )
 
     const testPath = path.join(
-      USER_DATA,
+      DATA_DIR,
       'courses',
       attendCourseId,
       'draft',
@@ -670,7 +675,7 @@ describe('lesson editor line breaks', () => {
       const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Line breaks lesson' })
       return { courseId, lessonId }
     })
-    const draftDir = path.join(USER_DATA, 'courses', ids.courseId, 'draft')
+    const draftDir = path.join(DATA_DIR, 'courses', ids.courseId, 'draft')
     const lessonFile = () =>
       path.join(
         draftDir,
@@ -806,7 +811,7 @@ describe('section summary and intro', () => {
       })
       return { courseId, lessonId, sectionId }
     })
-    const sectionDir = path.join(USER_DATA, 'courses', ids.courseId, 'draft', ids.sectionId)
+    const sectionDir = path.join(DATA_DIR, 'courses', ids.courseId, 'draft', ids.sectionId)
     const openSectionPage = async () => {
       await page.evaluate((id) => {
         location.hash = `#/drafts/${id}`
@@ -883,7 +888,7 @@ describe('course mnemonics', () => {
       await window.courses.updateLessonContent({ courseId, lessonId, locales: { en: { body } }, sectionId })
       return { courseId, lessonId }
     }, body)
-    const manifestPath = path.join(USER_DATA, 'courses', ids.courseId, 'draft', 'course.json')
+    const manifestPath = path.join(DATA_DIR, 'courses', ids.courseId, 'draft', 'course.json')
 
     // Teacher: the course form's Mnemonics section.
     await page.evaluate((id) => {
@@ -972,7 +977,7 @@ describe('lessons from a newer app version', () => {
       await window.courses.updateLessonContent({ courseId, lessonId, locales: { en: { body } }, sectionId })
       return { courseId, lessonId }
     }, body)
-    const draftDir = path.join(USER_DATA, 'courses', ids.courseId, 'draft')
+    const draftDir = path.join(DATA_DIR, 'courses', ids.courseId, 'draft')
     const lessonFile = path.join(
       draftDir,
       fs.readdirSync(draftDir, { recursive: true }).map(String).find((file) => file.endsWith(`${ids.lessonId}.md`)),

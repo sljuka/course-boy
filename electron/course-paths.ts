@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { app, dialog, shell } from "electron";
+import { dialog, shell } from "electron";
 import type {
   ApplyCourseSvgPresetInput,
   CourseChangelogEntry,
@@ -75,6 +75,7 @@ import {
   transliterateSerbianMarkdown,
   type SerbianScriptSetting,
 } from "../src/lib/serbian-script";
+import { getProfileDataDir } from "./profile-context";
 import { parseMnemonics } from "../src/lib/mnemonics";
 
 // The bundled "Getting Started with Matko" course. Its id follows the same
@@ -122,7 +123,7 @@ function getBundledSvgPresetPath(presetId: string): string {
 }
 
 export function getLocalCoursesRoot(): string {
-  return path.join(app.getPath("userData"), "courses");
+  return path.join(getProfileDataDir(), "courses");
 }
 
 function getBundledSeedStatePath(localCoursesRoot: string): string {

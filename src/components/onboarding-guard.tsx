@@ -8,7 +8,7 @@ type OnboardingGuardProps = {
 }
 
 function OnboardingGuard({ children }: OnboardingGuardProps) {
-  const { isLoaded, isOnboarded } = useAppState()
+  const { isLoaded, isOnboarded, submittedName } = useAppState()
   const location = useLocation()
 
   if (!isLoaded) {
@@ -16,7 +16,9 @@ function OnboardingGuard({ children }: OnboardingGuardProps) {
   }
 
   if (!isOnboarded) {
-    return <Navigate replace state={{ from: location }} to="/onboarding" />
+    // A new profile already has its name (given in the launcher): go on from
+    // the persona.
+    return <Navigate replace state={{ from: location }} to={submittedName ? '/onboarding/persona' : '/onboarding'} />
   }
 
   return <>{children}</>

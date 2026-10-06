@@ -335,9 +335,9 @@
   },
   "menu": {
     "about": "O aplikaciji",
-    "logout": "Odjavi se",
     "settings": "Podešavanja",
-    "open": "Otvori meni"
+    "open": "Otvori meni",
+    "switchProfile": "Promeni profil"
   },
   "nameHint": "Ne moraš koristiti svoje pravo ime. Nije ovo MUP 👮. Možeš koristiti nadimak tipa 'Gušter 🦎' ili 'Patak Kvakanović'. Generalno ne treba unositi lične podatke gde nema potrebe. Naravno, može i lično ime da se koristi, izbor je na tebi.",
   "nameLabel": "Korisničko ime ili nadimak",
@@ -742,5 +742,14 @@
     "beforePublishTitle": "Prvo sačuvaj rezervnu kopiju identiteta izdavača",
     "beforePublishDescription": "Tvoj kurs će biti potpisan identitetom izdavača koji ima samo ovaj računar. Ako izgubiš ovaj računar, kurs više nikad nećeš moći da ažuriraš, zato sačuvaj rezervnu kopiju pre nego što ode na mrežu. Čuvaj datoteku na bezbednom mestu van ovog računara.",
     "saveAndPublish": "Sačuvaj kopiju i objavi"
+  },
+  "profiles": {
+    "pickerTitle": "Ko uči?",
+    "pickerDescription": "Svaki profil ima svoje kurseve i podešavanja na ovom računaru.",
+    "newProfile": "Novi profil",
+    "newProfileTitle": "Novi profil",
+    "newProfileDescription": "Profil čuva svoje kurseve, podešavanja i identitet izdavača, odvojeno od ostalih na ovom računaru.",
+    "nameTooLong": "Najviše {{max}} karaktera.",
+    "cancel": "Otkaži"
   }
 }

@@ -21,6 +21,7 @@ import path from 'node:path'
 import spawnBare from 'bare-runtime/spawn'
 import RPC from 'bare-rpc'
 import { app } from 'electron'
+import { getProfileDataDir } from './profile-context'
 import { getPublishedCoursePackagePath } from './course-paths'
 import { isValidCourseId } from '../src/lib/course-id'
 import type { RemoteCourseVersion } from './course-sharing'
@@ -65,6 +66,8 @@ declare global {
 }
 
 let rpc: RPC | null = null
+// The running worker process, so a profile switch can stop it (stopBareWorker).
+let workerProcess: ReturnType<typeof spawnBare> | null = null
 
 function requireRpc(): RPC {
   if (!rpc) {
@@ -91,7 +94,7 @@ async function resolveSharedCoursePackagePath(
   }
 
   const coursePath = version
-    ? path.join(app.getPath('userData'), 'courses', courseId, 'versions', version)
+    ? path.join(getProfileDataDir(), 'courses', courseId, 'versions', version)
     : await getPublishedCoursePackagePath(courseId)
 
   if (!coursePath) {
@@ -143,7 +146,7 @@ export type ImportedCourseSource = {
 
 // `transferId`: to poll progress (getTransfer) and cancel (cancelTransfer).
 export async function importCourse(driveKey: string, transferId?: string): Promise<ImportedCourseSource> {
-  const coursesRoot = path.join(app.getPath('userData'), 'courses')
+  const coursesRoot = path.join(getProfileDataDir(), 'courses')
   const result = await sendCommand<Partial<ImportedCourseSource>>(CMD_IMPORT_COURSE, {
     coursesRoot,
     driveKey,
@@ -272,7 +275,7 @@ export async function createInvite(
 }
 
 export async function redeemInvite(invite: string): Promise<{ courseId: string }> {
-  const coursesRoot = path.join(app.getPath('userData'), 'courses')
+  const coursesRoot = path.join(getProfileDataDir(), 'courses')
 
   const request = requireRpc().request(CMD_REDEEM_INVITE)
   request.send(JSON.stringify({ coursesRoot, invite }))
@@ -310,12 +313,40 @@ globalThis.__matkoBareWorker = {
   stopSharing,
 }
 
+let quitHookInstalled = false
+
+// Stops the worker (SLJ-57: before switching profiles, so the next one starts
+// on the new profile's p2p/ store). Resolves once the process has exited;
+// calls still waiting for it fail ("Bare worker is not running").
+export async function stopBareWorker(): Promise<void> {
+  const worker = workerProcess
+  workerProcess = null
+  rpc = null
+  globalThis.__creatorPublicKeyPhase1 = 'stopped'
+
+  if (!worker || worker.exitCode !== null || worker.signalCode !== null) {
+    return
+  }
+
+  await new Promise<void>((resolve) => {
+    const timeout = setTimeout(() => {
+      worker.kill('SIGKILL')
+      resolve()
+    }, 5_000)
+    worker.once('exit', () => {
+      clearTimeout(timeout)
+      resolve()
+    })
+    worker.kill()
+  })
+}
+
 export function spawnBareWorker(): void {
   globalThis.__creatorPublicKeyPhase1 = 'spawning'
 
   try {
     const workerPath = path.join(process.env.APP_ROOT, 'workers/main.cjs')
-    const storagePath = path.join(app.getPath('userData'), 'p2p')
+    const storagePath = path.join(getProfileDataDir(), 'p2p')
 
     // Test-only: point the worker's swarm at a local DHT testnet instead of the
     // public one (see e2e/sharing.e2e.mjs). Unset in the app.
@@ -325,6 +356,7 @@ export function spawnBareWorker(): void {
       args: bootstrap ? [workerPath, storagePath, bootstrap] : [workerPath, storagePath],
       stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
     })
+    workerProcess = worker
 
     worker.on('error', (error) => {
       globalThis.__creatorPublicKeyPhase1 = `error: ${error.message}`
@@ -373,9 +405,12 @@ export function spawnBareWorker(): void {
         console.error('[bare-worker] failed to get creator key:', error)
       })
 
-    app.on('will-quit', () => {
-      worker.kill()
-    })
+    if (!quitHookInstalled) {
+      quitHookInstalled = true
+      app.on('will-quit', () => {
+        workerProcess?.kill()
+      })
+    }
   } catch (error) {
     globalThis.__creatorPublicKeyPhase1 = `sync error: ${(error as Error).message}`
     console.error('[bare-worker] synchronous failure:', error)

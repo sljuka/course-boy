@@ -147,7 +147,11 @@ The layout under `courses/<course-id>/` is a contract between the reader
 ([electron/course-paths.ts](../electron/course-paths.ts:1)), and the types in
 `src/lib/course-package.ts`:
 
-Courses live at `app.getPath('userData')/courses` at runtime — **not** in the repo's
+Courses live in the open
+profile's folder, `<data folder>/profiles/<slug>-<16 chars>/`: `getLocalCoursesRoot()` is
+`getProfileDataDir()/courses` (SLJ-57,
+[electron/profile-context.ts](../electron/profile-context.ts:1)), and it changes when the
+teacher switches profiles in the running app. They are **not** in the repo's
 `courses/` directory, which is the bundled seed copied in on first run
 (`bundledSeedCourseIds` in `course-paths.ts`, tracked by
 `courses/.bundled-seed-state.json`).
@@ -555,6 +559,30 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   on — the e2e launch helper treats "something mounted in `#root`" as ready.
 - **Dark mode.** The frame (`--sidebar`) is darker than the page card (`--background`),
   like Linear; flipping them back would draw a light frame around a dark card.
+
+## 10. Everything per person goes through the open profile
+
+Profiles (SLJ-57) switch in the running app: the process and the window stay, and
+everything kept per person is closed and reopened from the next profile's folder. Nothing
+fails loudly when something misses that, so these rules span files:
+
+- **Paths:** per-person files go under `getProfileDataDir()`
+  ([electron/profile-context.ts](../electron/profile-context.ts:1)), read at call time.
+  `app.getPath('userData')` is Chromium's shared `browser/` folder, so writing there
+  leaks between profiles.
+- **Stores and services:** a new electron-store or a long-lived service holding per-person
+  state belongs in `openProfileServices` in [electron/main.ts](../electron/main.ts:1). It's
+  reached through `profile.<name>` at call time, never captured at startup, and anything
+  with timers or worker calls stops in its `close()`. The course-sharing service shows
+  how: `stop()`, plus `whileOpen()` around its worker calls.
+- **The P2P worker** is stopped and started again on every switch (`stopBareWorker`,
+  `spawnBareWorker`), on the new profile's `p2p/` store.
+- **The renderer** is reloaded at Home after a switch, so React Query caches and
+  component state never carry over. Nothing personal may live in Chromium storage
+  (`localStorage`, IndexedDB): every profile shares it.
+
+Checked by `e2e/profiles.e2e.mjs`: a second profile doesn't see the first one's courses and
+has its own publisher identity, and switching back finds both again.
 
 ## Third-party extensions (not yet built)
 

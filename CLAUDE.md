@@ -98,6 +98,26 @@ adding a case to the e2e suite over one-off manual checking.
   `release.json`, and the student can go back (SLJ-40). No `pear-runtime`, no OTA
   updates of the app itself.
 
+## Profiles
+
+Each person on a computer has a profile (SLJ-57): `<data folder>/profiles/<slug>-<16 chars>/`
+holds everything the app keeps for them (courses, the P2P stores, preferences, sharing
+state). Code that stores something per person gets its folder from `getProfileDataDir()`
+([electron/profile-context.ts](electron/profile-context.ts:1)), never from
+`app.getPath('userData')`, which is Chromium's own folder (`browser/`), shared by every
+profile.
+
+- **Startup:** main calls `initProfiles()` first. It opens `--profile=<id>`, else the only
+  profile, else the launcher (the first-run name screen or the picker), which has no
+  courses, worker or sharing.
+- **Switching** happens in the running app (`switchProfile` in `main.ts`). It closes the
+  profile's stores and services (`openProfileServices`), stops the P2P worker, opens the
+  next profile's, starts its worker, and reloads the window at Home.
+- **So nothing personal may live in Chromium storage** (`localStorage`, IndexedDB): every
+  profile would see it.
+- **Tests** run in the fixture profile `e2e-0000000000000000` (`e2e/launch.mjs`).
+  `--user-data-dir` sets the data folder that holds the profiles.
+
 ## Architecture rules
 
 - **Process boundaries.** The renderer owns UI only — no filesystem, no network, no node

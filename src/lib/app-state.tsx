@@ -124,21 +124,12 @@ function AppStateProvider({ children }: { children: ReactNode }) {
     void window.preferences.set({ locale, theme: nextTheme })
   }
 
-  function logout() {
-    setNicknameState('')
-    setSubmittedName('')
-    setCategoryState(null)
-    setRoleState(null)
-    setPersonaState(null)
-    void window.preferences.resetOnboarding()
-  }
 
   const value = {
     category,
     isLoaded,
     isOnboarded: Boolean(submittedName && persona && role),
     locale,
-    logout,
     nickname,
     persona,
     role,

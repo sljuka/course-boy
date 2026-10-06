@@ -217,6 +217,29 @@ describe('course sharing: student', () => {
   })
 })
 
+describe('course sharing: switching profiles (SLJ-57)', () => {
+  it('stop() cancels pending retries and ignores later drive events', async () => {
+    const { sharing, timers, worker } = setup({
+      published: ['course-a'],
+      worker: { publishCourse: vi.fn().mockRejectedValue(new Error('offline')) },
+      initial: {
+        followed: { 'course-b': { driveKey: 'drive-b', followedSince: '', publisherId: '' } },
+        published: {},
+      },
+    })
+    await sharing.start()
+    expect(timers.some((timer) => !timer.cancelled)).toBe(true)
+
+    sharing.stop()
+    expect(timers.every((timer) => timer.cancelled)).toBe(true)
+
+    vi.mocked(worker.checkUpdate).mockClear()
+    sharing.onDriveChanged('drive-b')
+    await flush()
+    expect(worker.checkUpdate).not.toHaveBeenCalled()
+  })
+})
+
 describe('course sharing: removing a course', () => {
   it('stops sharing it and forgets it', async () => {
     const { sharing, state, worker } = setup({

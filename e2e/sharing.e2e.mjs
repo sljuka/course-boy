@@ -15,7 +15,7 @@ import createTestnet from 'hyperdht/testnet.js'
 import IdEncoding from 'hypercore-id-encoding'
 import Corestore from 'corestore'
 import Hyperdrive from 'hyperdrive'
-import { bodyText, launchApp, waitFor, waitForText } from './launch.mjs'
+import { bodyText, launchApp, profileDataDir, waitFor, waitForText } from './launch.mjs'
 import { openIdentityBackup } from '../workers/identity-backup.cjs'
 
 const ROOT = '/tmp/matko-e2e-sharing'
@@ -26,6 +26,9 @@ const dirs = {
   newTeacher: path.join(ROOT, 'new-teacher'),
   teacher: path.join(ROOT, 'teacher'),
 }
+
+// Where each instance keeps its data: its e2e profile's folder (SLJ-57).
+const data = Object.fromEntries(Object.entries(dirs).map(([name, dir]) => [name, profileDataDir(dir)]))
 
 let testnet
 let env
@@ -277,10 +280,10 @@ describe('sharing across restarts', () => {
     const courses = await page.evaluate(() => window.courses.list('en'))
     expect(courses.find((course) => course.id === courseId)?.version).toBe(publishedVersion)
 
-    const source = JSON.parse(fs.readFileSync(path.join(currentVersionDir(dirs.student1, courseId), 'source.json'), 'utf8'))
+    const source = JSON.parse(fs.readFileSync(path.join(currentVersionDir(data.student1, courseId), 'source.json'), 'utf8'))
     expect(IdEncoding.normalize(source.driveKey)).toBe(IdEncoding.normalize(code))
 
-    const sharingState = JSON.parse(fs.readFileSync(path.join(dirs.student1, 'course-sharing.json'), 'utf8'))
+    const sharingState = JSON.parse(fs.readFileSync(path.join(data.student1, 'course-sharing.json'), 'utf8'))
     expect(IdEncoding.normalize(sharingState.followed[courseId].driveKey)).toBe(IdEncoding.normalize(code))
   })
 
@@ -294,10 +297,10 @@ describe('sharing across restarts', () => {
     const student2 = await launch('student2')
     expect(await importCourse(student2, code)).toEqual({ courseId })
     const lessonText = fs
-      .readdirSync(path.join(dirs.student2, 'courses', courseId), { recursive: true })
+      .readdirSync(path.join(data.student2, 'courses', courseId), { recursive: true })
       .map(String)
       .filter((file) => file.endsWith('.md'))
-      .map((file) => fs.readFileSync(path.join(dirs.student2, 'courses', courseId, file), 'utf8'))
+      .map((file) => fs.readFileSync(path.join(data.student2, 'courses', courseId, file), 'utf8'))
       .join('\n')
     expect(lessonText).toContain('Second version.')
   })
@@ -409,7 +412,7 @@ describe('sharing across restarts', () => {
 
     await waitForUpdate(student, courseId, (update) => update.version === newest && update.visibility === 'prominent')
 
-    const before = currentVersionFiles(dirs.student3, courseId)
+    const before = currentVersionFiles(data.student3, courseId)
 
     await finishOnboarding(student, 'student')
     await student.evaluate((id) => {
@@ -424,7 +427,7 @@ describe('sharing across restarts', () => {
     const courses = await student.evaluate(() => window.courses.list('en'))
     expect(courses.find((course) => course.id === courseId)?.version).toBe(newest)
 
-    const after = currentVersionFiles(dirs.student3, courseId)
+    const after = currentVersionFiles(data.student3, courseId)
     const lessonText = after.filter(({ file }) => file.endsWith('.md')).map(({ path }) => fs.readFileSync(path, 'utf8')).join('\n')
     expect(lessonText).toContain('Third version.')
 
@@ -685,7 +688,7 @@ describe('sharing across restarts', () => {
       await student.locator('[data-testid="pending-import"]').waitFor({ state: 'detached' })
       expect(await bodyText(student)).not.toContain("Couldn't import this course")
 
-      const coursesRoot = path.join(dirs.student3, 'courses')
+      const coursesRoot = path.join(data.student3, 'courses')
       expect(fs.readdirSync(coursesRoot).filter((name) => name.startsWith('.import-staging'))).toEqual([])
       expect((await student.evaluate(() => window.courses.list('en'))).length).toBe(coursesBefore)
     })

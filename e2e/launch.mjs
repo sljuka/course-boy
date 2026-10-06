@@ -32,6 +32,27 @@ function electronBinary() {
  * Always pass a throwaway `userData`: the app seeds bundled courses and writes
  * preferences on first run, and we must never touch a real course library.
  */
+// The profile tests run in by default (SLJ-57): the app opens it straight
+// away, so a test starts at onboarding like a first run. Its folder is where
+// the app keeps everything (`courses/`, stores…), returned as `dataDir`.
+export const E2E_PROFILE_ID = 'e2e-0000000000000000'
+
+export function profileDataDir(userData, profileId = E2E_PROFILE_ID) {
+  return path.join(userData, 'profiles', profileId)
+}
+
+function ensureProfile(userData, profileId) {
+  const dir = profileDataDir(userData, profileId)
+  if (!fs.existsSync(path.join(dir, 'profile.json'))) {
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(
+      path.join(dir, 'profile.json'),
+      JSON.stringify({ createdAt: new Date().toISOString(), name: 'E2E', persona: null }),
+    )
+  }
+  return dir
+}
+
 export async function launchApp({
   userData = '/tmp/matko-e2e-userdata',
   fresh = true,
@@ -42,6 +63,11 @@ export async function launchApp({
   // Extra environment variables for the app, e.g. MATKO_DHT_BOOTSTRAP to keep a
   // sharing test on a local DHT testnet (see e2e/sharing.e2e.mjs).
   env = {},
+  // The profile to open (created if missing), or null for the launcher (the
+  // first-run name screen or the profile picker), as a fresh install starts.
+  profile = E2E_PROFILE_ID,
+  // Extra command-line arguments for the app.
+  args = [],
 } = {}) {
   if (!packagedExecutable) {
     const mainJs = path.join(APP_DIR, 'dist-electron/main.js')
@@ -54,19 +80,23 @@ export async function launchApp({
 
   if (fresh) fs.rmSync(userData, { recursive: true, force: true })
 
+  const dataDir = profile ? ensureProfile(userData, profile) : null
+  const appArgs = [`--user-data-dir=${userData}`, ...(profile ? [`--profile=${profile}`] : []), ...args]
+  const appEnv = { ...process.env, ...env }
+
   const app = await electron.launch(
     packagedExecutable
       ? {
           executablePath: packagedExecutable,
-          args: [`--user-data-dir=${userData}`],
-          env: { ...process.env, ...env },
+          args: appArgs,
+          env: appEnv,
           timeout,
         }
       : {
           executablePath: electronBinary(),
-          args: [`--user-data-dir=${userData}`, APP_DIR],
+          args: [...appArgs, APP_DIR],
           cwd: APP_DIR,
-          env: { ...process.env, ...env },
+          env: appEnv,
           timeout,
         },
   )
@@ -93,6 +123,7 @@ export async function launchApp({
     app,
     page,
     userData,
+    dataDir,
     errors,
     close: () => app.close().catch(() => {}),
   }

@@ -335,9 +335,9 @@
   },
   "menu": {
     "about": "About",
-    "logout": "Logout",
     "settings": "Settings",
-    "open": "Open menu"
+    "open": "Open menu",
+    "switchProfile": "Switch profile"
   },
   "nameHint": "You don't need to use your real name. This isn't a government office. You can use a nickname like 'Lizard' or 'Quacky McDuck'. In general, it's better not to share personal data when there's no real need. Of course, you can use your real name too. Your choice.",
   "nameLabel": "Username or nickname",
@@ -742,5 +742,14 @@
     "beforePublishTitle": "Back up your publisher identity first",
     "beforePublishDescription": "Your course will be signed with a publisher identity only this computer has. If you lost this computer, you could never update the course again, so save a backup before it goes online. Keep the file somewhere safe that isn't this computer.",
     "saveAndPublish": "Save backup and publish"
+  },
+  "profiles": {
+    "pickerTitle": "Who's learning?",
+    "pickerDescription": "Each profile has its own courses and settings on this computer.",
+    "newProfile": "New profile",
+    "newProfileTitle": "New profile",
+    "newProfileDescription": "A profile keeps its own courses, settings and publisher identity, separate from the others on this computer.",
+    "nameTooLong": "At most {{max}} characters.",
+    "cancel": "Cancel"
   }
 }
