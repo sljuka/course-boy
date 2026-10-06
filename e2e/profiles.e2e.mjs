@@ -106,6 +106,9 @@ describe('profiles', () => {
     expect(other).toMatch(/^profile-[a-z0-9]{16}$/)
     expect(profileFile(other).name).toBe('##$$%')
 
+    // Onboarding has no sidebar: it offers Switch profile below its card.
+    await harness.page.locator('[data-testid="onboarding-switch-profile"]').waitFor()
+
     const courses = await harness.page.evaluate(() => window.courses.list('en'))
     expect(courses.map((course) => course.id)).not.toContain(anaCourseId)
     // The new profile's worker answers with its own identity.

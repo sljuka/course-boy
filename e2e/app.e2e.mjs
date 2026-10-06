@@ -40,6 +40,8 @@ afterAll(async () => {
 
 describe('launch', () => {
   it('starts at onboarding with the UI mounted', async () => {
+    // The redirect follows once the profile and its preferences have loaded.
+    await waitForUrl(harness.page, '#/onboarding')
     expect(harness.page.url()).toContain('#/onboarding')
     const childCount = await harness.page.evaluate(
       () => document.getElementById('root').childElementCount,
