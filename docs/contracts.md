@@ -304,7 +304,9 @@ Changing it is a migration, not a refactor: existing course directories in users
 
 `course.json` carries **no `publisher` and no `distribution`** (removed 2026-09-28).
 Where a course was published from goes in **`source.json`**,
-`{ "driveKey": "<z32>", "publisher": { "id": "<z32 creator key>" } }`. The Bare worker
+`{ "driveKey": "<z32>", "publicId": "<16 chars>", "publisher": { "id": "<z32 creator key>" } }`
+(`publicId`, since SLJ-55: the public id the code is derived from; the course's own id
+stays in `course.json`, unchanged). The Bare worker
 writes it into the course's drive root on every publish (SLJ-38), next to the version's
 files but never into the teacher's `versions/<v>/`, so a version's hashes in
 `version-meta.json` stay valid. An imported course therefore has one at its root. Import
@@ -328,12 +330,18 @@ root-only; `migrateImportedCourse` moves it right after, and at every start
 root `course.json` and finishes next time, and readers fall back to the root meanwhile.
 The bundled seed course stays root-only.
 
-**A course brought back with a restored publisher identity (SLJ-54)** lands in the
+**A course brought back with a restored publishing identity (SLJ-54/55)** lands in the
 teacher's layout, `draft/` + `versions/<v>/` + `release.json`, from the published
-version downloaded from its students (`landRecoveredCourse` in `course-paths.ts`; built
+version found among its students (`landRecoveredCourse` in `course-paths.ts`; built
 in a `.recover-*` folder and renamed into place; `cleanUpInterruptedCourseUpdates`
 removes leftovers). `source.json` is dropped from the version, as for every teacher
 version: the next publish writes it into the drive again.
+
+**Folders starting with `.` under `courses/` are never courses.** They're a download or an
+update being put together (`.import-staging-*`, `.recover-*`, `.update-*`) and hold a
+`course.json` of their own; the course list skips them (`listCourseRecords` in
+`course-registry.ts`). Until 2026-10-07 it didn't, so a course still downloading counted
+as "already on this device".
 
 **Updating an imported course (SLJ-39/40)** goes through `applyImportedCourseUpdate` in
 [electron/course-paths.ts](../electron/course-paths.ts:1). A version already kept
@@ -583,7 +591,9 @@ fails loudly when something misses that, so these rules span files:
   with timers or worker calls stops in its `close()`. The course-sharing service shows
   how: `stop()`, plus `whileOpen()` around its worker calls.
 - **The P2P worker** is stopped and started again on every switch (`stopBareWorker`,
-  `spawnBareWorker`), on the new profile's `p2p/` store.
+  `spawnBareWorker`), on the new profile's `p2p/` store. The publishing identity is the
+  profile's `publisher-identity.matko-identity`, locked again on every switch; it reaches
+  the worker in memory only once its password is given (SLJ-55).
 - **The renderer** is reloaded at Home after a switch, so React Query caches and
   component state never carry over. Nothing personal may live in Chromium storage
   (`localStorage`, IndexedDB): every profile shares it.

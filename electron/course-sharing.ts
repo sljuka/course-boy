@@ -136,8 +136,11 @@ export function describeUpdate(followed: FollowedCourse): CourseUpdateInfo | nul
 
 export type CourseSharingState = {
   // The teacher's published courses, by course id. The code is the drive key; it
-  // never changes for a course, so it's kept once known.
-  published: Record<string, { code: string }>
+  // never changes for a course, so it's kept once known. `publicIndex` is the
+  // course's number among the publisher's courses, given at its first Publish,
+  // and `publicId` the public id derived from it (SLJ-55); the code follows
+  // from them.
+  published: Record<string, { code?: string; publicId?: string; publicIndex?: number }>
   followed: Record<string, FollowedCourse>
 }
 
@@ -232,7 +235,7 @@ export function createCourseSharing(deps: CourseSharingDeps) {
       const code = await deps.worker.publishCourse(courseId)
       updateState((state) => ({
         ...state,
-        published: { ...state.published, [courseId]: { code } },
+        published: { ...state.published, [courseId]: { ...state.published[courseId], code } },
       }))
       statuses.set(courseId, 'shared')
       clearRetry(courseId)

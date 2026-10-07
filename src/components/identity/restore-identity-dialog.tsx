@@ -17,25 +17,26 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
-  useChooseIdentityBackupFileMutation,
+  useChooseIdentityFileMutation,
   useIdentityRestoreStatusQuery,
   useRestoreIdentityMutation,
-} from "@/lib/identity-backup-queries";
+} from "@/lib/publisher-identity-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 type ChosenFile = { createdAt: string; fileName: string };
 
-// Restores the publisher identity from its backup file on a new computer
-// (SLJ-54): pick the file, enter its password, and the courses published with
-// it come back from their students, shown as they arrive. Only the published
-// version of each comes back, which the last step says plainly.
+// Restores the publishing identity on a new computer (SLJ-54, SLJ-55): pick a
+// copy of the identity file, enter its password, and Matko looks for the
+// courses published with it among students, listing them as they're found.
+// Only the published version of each comes back, which the last step says
+// plainly.
 export function RestoreIdentityDialog({ onClose, open }: { onClose: () => void; open: boolean }) {
   const { t } = useTranslation();
   const { locale } = useAppState();
   const [file, setFile] = useState<ChosenFile | null>(null);
   const [password, setPassword] = useState("");
   const [isDone, setIsDone] = useState(false);
-  const chooseMutation = useChooseIdentityBackupFileMutation();
+  const chooseMutation = useChooseIdentityFileMutation();
   const restoreMutation = useRestoreIdentityMutation();
   const { data: status } = useIdentityRestoreStatusQuery();
   const fileError = chooseMutation.data && "error" in chooseMutation.data ? chooseMutation.data.error : null;
@@ -71,7 +72,7 @@ export function RestoreIdentityDialog({ onClose, open }: { onClose: () => void; 
               <DialogTitle>{t("identityRestore.doneTitle")}</DialogTitle>
               <DialogDescription>{t("identityRestore.doneDescription")}</DialogDescription>
             </DialogHeader>
-            {status && status.courses.length > 0 && <RestoredCoursesList courses={status.courses} />}
+            {status && <RestoredCoursesList status={status} />}
             <DialogFooter>
               <Button autoFocus onClick={close} type="button">
                 {t("identityRestore.done")}

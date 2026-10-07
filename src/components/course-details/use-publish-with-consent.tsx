@@ -2,107 +2,68 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CourseCodeDialog } from "@/components/course-details/course-code-dialog";
-import { SaveIdentityBackupDialog } from "@/components/identity/save-identity-backup-dialog";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { SetUpIdentityDialog } from "@/components/identity/set-up-identity-dialog";
+import { UnlockIdentityDialog } from "@/components/identity/unlock-identity-dialog";
 import { usePublishCourseVersionMutation } from "@/lib/course-queries";
-import { fetchIdentityBackupStatus } from "@/lib/identity-backup-queries";
-import {
-  useAcknowledgeCreatorKeyMutation,
-  useHasAcknowledgedCreatorKeyQuery,
-} from "@/lib/sharing-queries";
+import { fetchIdentityStatus } from "@/lib/publisher-identity-queries";
 
-// Publish puts a version online (SLJ-38). The first Publish asks for the sharing
-// consent; every Publish then shows the course's code. Creating, editing and
-// printing never get here, so teachers who only print never see this.
+// Publish puts a version online (SLJ-38), signed with the publishing identity,
+// and then shows the course's code. Creating, editing and printing never get
+// here, so teachers who only print never see this.
 //
-// Nothing goes online without a backup of the publisher identity (SLJ-53):
-// while there's none, Publish asks for it after the consent and publishes
-// once it's saved. Cancelling it cancels the Publish. Later courses don't
-// wait; the reminder dot asks for a fresh backup instead.
+// Before it publishes (SLJ-55): without an identity yet, the setup wizard runs
+// (what going online, signing and the identity file are, then a password) and
+// publishes once it's done; cancelling it cancels the Publish. With the
+// identity still locked this session ("Open without publishing"), it asks for
+// the password first.
 export function usePublishWithConsent(courseId: string): {
   dialogs: ReactNode;
   publishMutation: ReturnType<typeof usePublishCourseVersionMutation>;
   requestPublish: (version: string) => void;
 } {
   const { t } = useTranslation();
-  const { data: hasConsent } = useHasAcknowledgedCreatorKeyQuery();
-  const acknowledgeMutation = useAcknowledgeCreatorKeyMutation();
   const publishMutation = usePublishCourseVersionMutation();
-  const [consentForVersion, setConsentForVersion] = useState<string | null>(null);
   const [publishedVersion, setPublishedVersion] = useState<string | null>(null);
-  // The version waiting for the first backup before it's published.
-  const [backupForVersion, setBackupForVersion] = useState<string | null>(null);
+  // The version waiting for the identity to be set up, or unlocked.
+  const [setUpForVersion, setSetUpForVersion] = useState<string | null>(null);
+  const [unlockForVersion, setUnlockForVersion] = useState<string | null>(null);
 
   function publish(version: string) {
-    publishMutation.mutate(
-      { courseId, version },
-      { onSuccess: () => setPublishedVersion(version) },
-    );
+    publishMutation.mutate({ courseId, version }, { onSuccess: () => setPublishedVersion(version) });
   }
 
-  // After the consent: publish, or first ask for the backup if none exists.
-  async function publishOnceBackedUp(version: string) {
-    const status = await fetchIdentityBackupStatus().catch(() => null);
+  async function requestPublish(version: string) {
+    const status = await fetchIdentityStatus().catch(() => null);
 
-    if (status && status.lastBackupAt === null) {
-      setBackupForVersion(version);
+    if (status && !status.exists) {
+      setSetUpForVersion(version);
+    } else if (status?.locked) {
+      setUnlockForVersion(version);
     } else {
       publish(version);
     }
   }
 
-  function requestPublish(version: string) {
-    if (hasConsent) {
-      void publishOnceBackedUp(version);
-    } else {
-      setConsentForVersion(version);
-    }
-  }
-
-  function confirmConsent() {
-    const version = consentForVersion;
-
-    if (!version) {
-      return;
-    }
-
-    acknowledgeMutation.mutate(undefined, {
-      onSuccess: () => {
-        setConsentForVersion(null);
-        void publishOnceBackedUp(version);
-      },
-    });
+  // After the wizard or the password: publish the version that waited.
+  function publishWaiting(version: string | null) {
+    setSetUpForVersion(null);
+    setUnlockForVersion(null);
+    if (version) publish(version);
   }
 
   const dialogs = (
     <>
-      <Dialog
-        onOpenChange={(open) => !open && !acknowledgeMutation.isPending && setConsentForVersion(null)}
-        open={consentForVersion !== null}
-      >
-        <DialogContent className="w-[min(30rem,calc(100vw-2rem))]">
-          <DialogHeader>
-            <DialogTitle>{t("courseSharing.consentTitle")}</DialogTitle>
-            <DialogDescription>{t("courseSharing.consentDescription")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setConsentForVersion(null)} variant="secondary">
-              {t("courseSharing.cancel")}
-            </Button>
-            <Button disabled={acknowledgeMutation.isPending} onClick={confirmConsent}>
-              {t("courseSharing.consentConfirm", { version: consentForVersion ?? "" })}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SetUpIdentityDialog
+        beforePublish
+        onClose={() => setSetUpForVersion(null)}
+        onDone={() => publishWaiting(setUpForVersion)}
+        open={setUpForVersion !== null}
+      />
+      <UnlockIdentityDialog
+        onClose={() => setUnlockForVersion(null)}
+        onUnlocked={() => publishWaiting(unlockForVersion)}
+        open={unlockForVersion !== null}
+      />
       <CourseCodeDialog
         courseId={courseId}
         description={t("courseSharing.publishedDescription")}
@@ -110,15 +71,8 @@ export function usePublishWithConsent(courseId: string): {
         open={publishedVersion !== null}
         title={t("courseSharing.publishedTitle", { version: publishedVersion ?? "" })}
       />
-      <SaveIdentityBackupDialog
-        beforePublish
-        includeCourseId={courseId}
-        onClose={() => setBackupForVersion(null)}
-        onSaved={() => backupForVersion && publish(backupForVersion)}
-        open={backupForVersion !== null}
-      />
     </>
   );
 
-  return { dialogs, publishMutation, requestPublish };
+  return { dialogs, publishMutation, requestPublish: (version) => void requestPublish(version) };
 }

@@ -1,12 +1,13 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { ProfilesState } from '../src/lib/profiles'
 import type {
-  ChooseIdentityBackupResult,
-  IdentityBackupStatus,
+  ChooseIdentityFileResult,
   IdentityRestoreStatus,
+  IdentityStatus,
   RestoreIdentityResult,
-  SaveIdentityBackupResult,
-} from '../src/lib/identity-backup'
+  SetUpIdentityResult,
+  UnlockIdentityResult,
+} from '../src/lib/publisher-identity'
 import type {
   ApplyCourseSvgPresetInput,
   ApplyCourseSvgPresetResult,
@@ -188,20 +189,32 @@ contextBridge.exposeInMainWorld('sharing', {
   getCreatorKey() {
     return ipcRenderer.invoke('sharing:get-creator-key') as Promise<string>
   },
-  getIdentityBackupStatus() {
-    return ipcRenderer.invoke('sharing:get-identity-backup-status') as Promise<IdentityBackupStatus>
+  getIdentityStatus() {
+    return ipcRenderer.invoke('sharing:get-identity-status') as Promise<IdentityStatus>
   },
-  saveIdentityBackup(password: string, includeCourseId?: string) {
-    return ipcRenderer.invoke('sharing:save-identity-backup', password, includeCourseId) as Promise<SaveIdentityBackupResult>
+  setUpIdentity(password: string) {
+    return ipcRenderer.invoke('sharing:set-up-identity', password) as Promise<SetUpIdentityResult>
   },
-  chooseIdentityBackupFile() {
-    return ipcRenderer.invoke('sharing:choose-identity-backup-file') as Promise<ChooseIdentityBackupResult>
+  unlockIdentity(password: string) {
+    return ipcRenderer.invoke('sharing:unlock-identity', password) as Promise<UnlockIdentityResult>
+  },
+  openWithoutPublishing() {
+    return ipcRenderer.invoke('sharing:open-without-publishing') as Promise<void>
+  },
+  revealIdentityFile() {
+    return ipcRenderer.invoke('sharing:reveal-identity-file') as Promise<void>
+  },
+  chooseIdentityFile() {
+    return ipcRenderer.invoke('sharing:choose-identity-file') as Promise<ChooseIdentityFileResult>
   },
   restoreIdentity(password: string) {
     return ipcRenderer.invoke('sharing:restore-identity', password) as Promise<RestoreIdentityResult>
   },
   getIdentityRestoreStatus() {
     return ipcRenderer.invoke('sharing:get-identity-restore-status') as Promise<IdentityRestoreStatus>
+  },
+  searchRestoredCourses() {
+    return ipcRenderer.invoke('sharing:search-restored-courses') as Promise<void>
   },
   getCourseSharing(courseId: string) {
     return ipcRenderer.invoke('sharing:get-course-sharing', courseId) as Promise<CourseSharingInfo>

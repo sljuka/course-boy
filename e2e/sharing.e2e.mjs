@@ -17,6 +17,7 @@ import Corestore from 'corestore'
 import Hyperdrive from 'hyperdrive'
 import { bodyText, launchApp, profileDataDir, waitFor, waitForText } from './launch.mjs'
 import { openIdentityBackup } from '../workers/identity-backup.cjs'
+import { courseKeyPair, publicCourseId } from '../workers/identity-keys.cjs'
 
 const ROOT = '/tmp/matko-e2e-sharing'
 const dirs = {
@@ -25,6 +26,8 @@ const dirs = {
   student3: path.join(ROOT, 'student-3'),
   newTeacher: path.join(ROOT, 'new-teacher'),
   teacher: path.join(ROOT, 'teacher'),
+  // SLJ-55: a teacher who locks the identity with a password.
+  lockedTeacher: path.join(ROOT, 'locked-teacher'),
   // SLJ-54: a teacher's old and new computer, and a student of theirs.
   oldComputer: path.join(ROOT, 'old-computer'),
   newComputer: path.join(ROOT, 'new-computer'),
@@ -38,9 +41,27 @@ let testnet
 let env
 const apps = {}
 
-async function launch(name, { fresh = true } = {}) {
-  apps[name] = await launchApp({ env, fresh, userData: dirs[name] })
+async function launch(name, { fresh = true, extraEnv = {} } = {}) {
+  apps[name] = await launchApp({ env: { ...env, ...extraEnv }, fresh, userData: dirs[name] })
   return apps[name].page
+}
+
+// SLJ-55: one password, one file. Publishing online starts with setting up the
+// publishing identity (the wizard, here through its IPC call); after a restart
+// it's locked until the password is given (the screen before Home).
+const IDENTITY_PASSWORD = 'correct horse battery'
+const identityFilePath = (name) => path.join(data[name], 'publisher-identity.matko-identity')
+
+async function setUpIdentity(page) {
+  expect(await page.evaluate((password) => window.sharing.setUpIdentity(password), IDENTITY_PASSWORD)).toEqual({ ok: true })
+}
+
+async function unlockIdentity(page) {
+  expect(await page.evaluate((password) => window.sharing.unlockIdentity(password), IDENTITY_PASSWORD)).toEqual({
+    unlocked: true,
+  })
+  await page.reload()
+  await waitFor(page, () => (document.getElementById('root')?.childElementCount ?? 0) > 0)
 }
 
 async function close(name) {
@@ -119,6 +140,16 @@ function currentVersionFiles(userData, courseId) {
     .map((file) => ({ dir, file, path: path.join(dir, file) }))
 }
 
+// SLJ-55: whether any file under `dir` contains `secret`'s bytes (the store's
+// RocksDB logs and tables hold keys as raw bytes, as the SLJ-46 spike showed).
+function anyFileHolds(dir, secret) {
+  return fs
+    .readdirSync(dir, { recursive: true })
+    .map((file) => path.join(dir, String(file)))
+    .filter((file) => fs.statSync(file).isFile())
+    .some((file) => fs.readFileSync(file).includes(Buffer.from(secret)))
+}
+
 async function importCourse(page, code) {
   return page.evaluate((code) => window.sharing.importCourse({ code }), code)
 }
@@ -147,7 +178,7 @@ describe('sharing across restarts', () => {
 
   it('Publish puts the course online, and the code stays the same for a new version', async () => {
     const page = await launch('teacher')
-    await page.evaluate(() => window.preferences.set({ hasAcknowledgedCreatorKey: true }))
+    await setUpIdentity(page)
 
     ids = await page.evaluate(async () => {
       const { courseId } = await window.courses.createDraft({
@@ -173,51 +204,53 @@ describe('sharing across restarts', () => {
     expect(second.code).toBe(code)
   })
 
-  // SLJ-53: the teacher saves a password-protected backup of the publisher
-  // identity from Settings. The file opens with the password (and only with
-  // it) and holds the identity behind the code and the published course.
-  it('a teacher saves a backup of the publisher identity that opens with the password', async () => {
+  // SLJ-55: the identity file is the identity locked with the password, and the
+  // backup: it opens only with the password and holds the identity behind the
+  // code. Settings → Publishing shows it for copying. The worker's store holds
+  // no secret.
+  it('the identity file opens only with the password and holds the identity behind the code; the store holds no secret', async () => {
     const page = apps.teacher.page
-    const backupPath = path.join(ROOT, 'teacher-identity.matko-identity')
-    await apps.teacher.app.evaluate(({ dialog }, filePath) => {
-      dialog.showSaveDialog = async () => ({ canceled: false, filePath })
-    }, backupPath)
-
-    await finishOnboarding(page, 'teacher')
-    await page.evaluate(() => {
-      location.hash = '#/settings'
-    })
-    await waitForText(page, 'Not backed up yet.')
-    await page.getByRole('button', { name: 'Save backup…' }).click()
-    await page.getByLabel('Password', { exact: true }).fill('correct horse battery')
-    await page.getByLabel('Type the password again').fill('correct horse battery')
-    await page.click('[data-testid="save-identity-backup"]')
-    await waitForText(page, 'Backed up on')
-    expect(await page.locator('[data-testid="backup-reminder-dot"]').count()).toBe(0)
-
-    const text = fs.readFileSync(backupPath, 'utf8')
+    const text = fs.readFileSync(identityFilePath('teacher'), 'utf8')
     expect(() => openIdentityBackup(text, 'wrong password')).toThrow(/Wrong password/)
-    const opened = openIdentityBackup(text, 'correct horse battery')
-    expect(opened.courses).toEqual([{ id: courseId, title: 'E2E Shared Course' }])
+    const opened = openIdentityBackup(text, IDENTITY_PASSWORD)
     expect(opened.publisherId).toBe(await page.evaluate(() => window.sharing.getCreatorKey()))
-    // The identity behind the code: the course's drive key derives from it.
+    expect(text).not.toContain(opened.primaryKey.toString('base64'))
+
+    // The code: the publisher's course #0, its public id from the identity's secret.
+    const publicId = publicCourseId(opened.primaryKey, 0)
     const store = new Corestore(path.join(ROOT, 'restored-store'), { primaryKey: opened.primaryKey, unsafe: true })
-    const drive = new Hyperdrive(store.namespace(`course-${courseId}`))
+    const drive = new Hyperdrive(store.namespace(`course-${publicId}`))
     await drive.ready()
     expect(IdEncoding.normalize(drive.key)).toBe(code)
     await drive.close()
     await store.close()
+
+    const secretKey = courseKeyPair(opened.primaryKey, publicId).secretKey
+    expect(anyFileHolds(path.join(data.teacher, 'p2p'), opened.primaryKey)).toBe(false)
+    expect(anyFileHolds(path.join(data.teacher, 'p2p'), secretKey)).toBe(false)
+    expect(anyFileHolds(path.join(data.teacher, 'p2p'), secretKey.subarray(0, 32))).toBe(false)
+
+    // Settings → Publishing → Open identity file shows the file (stubbed, not Finder).
+    await apps.teacher.app.evaluate(({ shell }) => {
+      shell.showItemInFolder = (filePath) => {
+        globalThis.__revealedPath = filePath
+      }
+    })
+    await finishOnboarding(page, 'teacher')
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await page.click('[data-testid="reveal-identity-file"]')
+    await expect
+      .poll(() => apps.teacher.app.evaluate(() => globalThis.__revealedPath))
+      .toBe(fs.realpathSync(identityFilePath('teacher')))
   })
 
-  // SLJ-53: nothing goes online without a backup of the publisher identity.
-  // The first Publish asks for one after the consent; cancelling it cancels
-  // the Publish, saving it publishes, and the backup covers the course.
-  it("a teacher's first Publish waits for a backup of the identity", async () => {
+  // SLJ-55: the first Publish sets up the publishing identity: the wizard
+  // (what going online, signing and the identity file are, then a password).
+  // Cancelling it cancels the Publish; finishing it publishes.
+  it("a teacher's first Publish sets up the publishing identity", async () => {
     const page = await launch('newTeacher')
-    const backupPath = path.join(ROOT, 'new-teacher.matko-identity')
-    await apps.newTeacher.app.evaluate(({ dialog }, filePath) => {
-      dialog.showSaveDialog = async () => ({ canceled: false, filePath })
-    }, backupPath)
     await finishOnboarding(page, 'teacher')
     const { courseId: newCourseId, version } = await page.evaluate(async () => {
       const { courseId } = await window.courses.createDraft({
@@ -236,7 +269,6 @@ describe('sharing across restarts', () => {
       const { version } = await window.courses.cutVersion({ courseId, releaseType: 'minor' })
       return { courseId, version }
     })
-    expect(await page.locator('[data-testid="backup-reminder-dot"]').count()).toBe(0)
 
     await page.evaluate((id) => {
       location.hash = `#/drafts/${id}`
@@ -249,33 +281,27 @@ describe('sharing across restarts', () => {
     const publishedVersion = async () =>
       (await page.evaluate((id) => window.courses.getVersionHistory(id), newCourseId)).publishedVersion
 
-    // Consent, then the backup, eased in: first what signing and the identity
-    // are. Cancelling leaves the course offline.
+    // The wizard, eased in. Cancelling leaves the course offline and sets nothing up.
     await publishFromPanel()
-    await page.getByRole('button', { name: `Publish ${version}` }).click()
     await waitForText(page, 'Before your course goes online')
     expect(await bodyText(page)).toContain("Let's start with the password.")
     await page.getByRole('button', { name: 'Cancel' }).click()
     expect(await publishedVersion()).toBeNull()
+    expect(fs.existsSync(identityFilePath('newTeacher'))).toBe(false)
 
-    // Publish again: the consent is given, the backup is still required.
     await publishFromPanel()
     await waitForText(page, 'Before your course goes online')
     await page.getByRole('button', { name: 'Choose a password' }).click()
-    await page.getByLabel('Password', { exact: true }).fill('correct horse battery')
-    await page.getByLabel('Type the password again').fill('correct horse battery')
-    await page.getByRole('button', { name: 'Save backup and publish' }).click()
+    await page.getByLabel('Password', { exact: true }).fill(IDENTITY_PASSWORD)
+    await page.getByLabel('Type the password again').fill(IDENTITY_PASSWORD)
+    await page.getByRole('button', { name: 'Set up and publish' }).click()
     await waitForText(page, `Published ${version}`)
     expect(await publishedVersion()).toBe(version)
-    expect(openIdentityBackup(fs.readFileSync(backupPath, 'utf8'), 'correct horse battery').courses).toEqual([
-      { id: newCourseId, title: 'E2E First Publish' },
-    ])
+    expect(openIdentityBackup(fs.readFileSync(identityFilePath('newTeacher'), 'utf8'), IDENTITY_PASSWORD).publisherId).toBe(
+      await page.evaluate(() => window.sharing.getCreatorKey()),
+    )
     await page.getByRole('button', { name: 'Done' }).click()
-
-    // Online and covered by the backup: no reminder.
     await waitForSharing(page, newCourseId, (info) => info.status === 'shared')
-    await page.waitForTimeout(500)
-    expect(await page.locator('[data-testid="backup-reminder-dot"]').count()).toBe(0)
     await close('newTeacher')
   })
 
@@ -317,8 +343,12 @@ describe('sharing across restarts', () => {
     await close('student2')
 
     const teacher = await launch('teacher', { fresh: false })
+    // Locked after a restart (SLJ-55): shared again by its code all the same.
+    expect(await teacher.evaluate(() => window.sharing.getIdentityStatus())).toMatchObject({ locked: true })
     const info = await waitForSharing(teacher, courseId, (info) => info.status === 'shared')
     expect(info.code).toBe(code)
+    // The teacher goes on publishing: the password, as the screen before Home asks.
+    await unlockIdentity(teacher)
 
     const student3 = await launch('student3')
     expect(await importCourse(student3, code)).toEqual({ courseId })
@@ -704,25 +734,24 @@ describe('sharing across restarts', () => {
   })
 })
 
-// SLJ-54: the publisher identity restored on a new computer. The old computer
-// publishes and saves a backup, a student imports, the old computer goes
-// away. The new computer restores the backup from Settings, the course comes
-// back from the student (same code, same identity), and a version published
-// from the new computer reaches the student as a normal update.
+// SLJ-54/55: the publishing identity restored on a new computer. The old
+// computer publishes; its identity file is copied away; a student imports; the
+// old computer goes away. The new computer restores the copy from Settings,
+// finds the course among students from the identity alone (same code, same
+// identity), and a version published from it reaches the student as a normal
+// update.
 describe('restoring the publisher identity on a new computer', () => {
   const backupPath = path.join(ROOT, 'old-computer.matko-identity')
-  const password = 'correct horse battery'
   let ids
   let code
   let publisherId
 
-  it('the old computer publishes, backs up, and a student imports', async () => {
+  it('the old computer publishes, its identity file is copied away, and a student imports', async () => {
     const page = await launch('oldComputer')
-    await apps.oldComputer.app.evaluate(({ dialog }, filePath) => {
-      dialog.showSaveDialog = async () => ({ canceled: false, filePath })
-    }, backupPath)
     await finishOnboarding(page, 'teacher')
-    await page.evaluate(() => window.preferences.set({ hasAcknowledgedCreatorKey: true }))
+    await setUpIdentity(page)
+    // The copy, made right after setup: the file never changes afterwards.
+    fs.copyFileSync(identityFilePath('oldComputer'), backupPath)
     ids = await page.evaluate(async () => {
       const { courseId } = await window.courses.createDraft({
         defaultLocale: 'en',
@@ -740,7 +769,6 @@ describe('restoring the publisher identity on a new computer', () => {
     const version = await cutAndPublish(page, ids.courseId)
     code = (await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')).code
     publisherId = await page.evaluate(() => window.sharing.getCreatorKey())
-    expect(await page.evaluate((password) => window.sharing.saveIdentityBackup(password), password)).toHaveProperty('savedAt')
 
     const student = await launch('restoreStudent')
     await finishOnboarding(student, 'student')
@@ -750,8 +778,9 @@ describe('restoring the publisher identity on a new computer', () => {
     await close('oldComputer')
   })
 
-  it('the new computer restores the backup from Settings, and the course comes back from the student', async () => {
-    const page = await launch('newComputer')
+  it('the new computer restores the copy from Settings, and finds the course among students', async () => {
+    // A short wait per course number, so the search ends soon after the course.
+    const page = await launch('newComputer', { extraEnv: { MATKO_RESTORE_LOOKUP_MS: '20000' } })
     await apps.newComputer.app.evaluate(({ dialog }, filePath) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] })
     }, backupPath)
@@ -761,20 +790,22 @@ describe('restoring the publisher identity on a new computer', () => {
     })
     await page.click('[data-testid="open-restore-identity"]')
     await page.click('[data-testid="choose-identity-backup"]')
-    await waitForText(page, 'old-computer.matko-identity, saved on')
+    await waitForText(page, 'old-computer.matko-identity, made on')
+    const dialog = page.locator('[data-testid="restore-identity-dialog"]')
 
-    await page.getByLabel('Backup password').fill('wrong password')
+    await dialog.getByLabel('Password', { exact: true }).fill('wrong password')
     await page.click('[data-testid="restore-identity"]')
     await waitForText(page, 'Wrong password.')
 
-    await page.getByLabel('Backup password').fill(password)
+    await dialog.getByLabel('Password', { exact: true }).fill(IDENTITY_PASSWORD)
     await page.click('[data-testid="restore-identity"]')
-    await waitForText(page, 'Your publisher identity is restored', { timeout: 30_000 })
-    await waitFor(
-      page,
-      () => document.querySelector('[data-testid="restored-course"]')?.getAttribute('data-state') === 'restored',
-      { timeout: 60_000 },
-    )
+    await waitForText(page, 'Your publishing identity is restored', { timeout: 30_000 })
+    await waitFor(page, () => document.querySelector('[data-testid="restored-course"]')?.textContent?.includes('E2E Restored Course'), {
+      timeout: 60_000,
+    })
+    // The search ends after GAP_LIMIT numbers in a row aren't found (each waits
+    // MATKO_RESTORE_LOOKUP_MS), offering to look again.
+    await dialog.locator('[data-testid="restore-look-again"]').waitFor({ timeout: 90_000 })
     await page.getByRole('button', { name: 'Done' }).click()
 
     // The same identity and the same code; the course is the teacher's own again.
@@ -783,8 +814,8 @@ describe('restoring the publisher identity on a new computer', () => {
     expect(course).toMatchObject({ distribution: 'local', title: 'E2E Restored Course' })
     const shared = await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')
     expect(shared.code).toBe(code)
-    // Restored from a backup: no reminder to make one.
-    expect(await page.locator('[data-testid="backup-reminder-dot"]').count()).toBe(0)
+    // It's this profile's identity file now, the copy as it was.
+    expect(fs.readFileSync(identityFilePath('newComputer'), 'utf8')).toBe(fs.readFileSync(backupPath, 'utf8'))
   })
 
   it('a version published from the new computer reaches the student as a normal update', async () => {
@@ -797,5 +828,77 @@ describe('restoring the publisher identity on a new computer', () => {
     expect(await student.evaluate((id) => window.sharing.applyCourseUpdate(id), ids.courseId)).toMatchObject({ version })
     const lesson = currentVersionFiles(data.restoreStudent, ids.courseId).find(({ file }) => file.endsWith('.md'))
     expect(fs.readFileSync(lesson.path, 'utf8')).toContain('Third version, from the new computer.')
+  })
+})
+
+// SLJ-55: the identity's password. After a restart the profile asks for it
+// before Home; "Open without publishing" skips it: the courses stay online and
+// only publishing waits, asking for the password at the next Publish.
+describe("the identity's password", () => {
+  let ids
+  let code
+
+  it('a teacher sets up the identity and publishes', async () => {
+    const page = await launch('lockedTeacher')
+    await finishOnboarding(page, 'teacher')
+    await setUpIdentity(page)
+    ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Locked Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Lesson' })
+      return { courseId, lessonId, sectionId }
+    })
+    await writeLesson(page, ids, 'First version.')
+    await cutAndPublish(page, ids.courseId)
+    code = (await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')).code
+  })
+
+  it('the profile asks before Home; without it the course stays online and publishing waits', async () => {
+    await close('lockedTeacher')
+    const page = await launch('lockedTeacher', { fresh: false })
+    await page.locator('[data-testid="publisher-password-gate"]').waitFor()
+
+    await page.getByLabel('Password').fill('wrong password')
+    await page.click('[data-testid="unlock-identity"]')
+    await waitForText(page, 'Wrong password.')
+
+    await page.click('[data-testid="open-without-publishing"]')
+    await page.locator('[data-testid="app-menu"]').waitFor()
+    // Shared again at startup by its code, without the password.
+    const shared = await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')
+    expect(shared.code).toBe(code)
+    // Publishing itself refuses while locked.
+    const { version } = await page.evaluate((courseId) => window.courses.cutVersion({ courseId, releaseType: 'minor' }), ids.courseId)
+    await expect(
+      page.evaluate(({ courseId, version }) => window.courses.publishVersion({ courseId, version }), { courseId: ids.courseId, version }),
+    ).rejects.toThrow(/locked/)
+  })
+
+  it('Publish asks for the password, then publishes', async () => {
+    const page = apps.lockedTeacher.page
+    const { publishedVersion: before, versions } = await page.evaluate((id) => window.courses.getVersionHistory(id), ids.courseId)
+    const newest = versions[0].version
+    expect(before).not.toBe(newest)
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await page.click('[data-testid="publish-course"]')
+    const dialog = page.locator('[data-testid="unlock-identity-dialog"]')
+    await dialog.waitFor()
+    expect(await dialog.count()).toBe(1)
+    await dialog.getByLabel('Password').fill(IDENTITY_PASSWORD)
+    await dialog.locator('[data-testid="unlock-identity"]').click()
+
+    await expect
+      .poll(() => page.evaluate((id) => window.courses.getVersionHistory(id), ids.courseId).then((history) => history.publishedVersion))
+      .toBe(newest)
+    const shared = await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')
+    expect(shared.code).toBe(code)
+    expect(await page.evaluate(() => window.sharing.getIdentityStatus())).toMatchObject({ locked: false })
   })
 })

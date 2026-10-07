@@ -2778,8 +2778,9 @@ export async function applyImportedCourseUpdate<T>(
 // ─── Courses brought back with a restored identity (SLJ-54) ─────────────────
 //
 // After the publisher identity is restored on a new computer, each course
-// published with it is downloaded from its students into a staging folder
-// (`createRecoveryStagingPath`) and becomes the teacher's own course again:
+// published with it is found among its students and downloaded into a staging
+// folder (`createRecoveryStagingPath`; its id is only known once its
+// course.json has arrived), and becomes the teacher's own course again:
 //   courses/<id>/versions/<v>/   the published version as downloaded
 //   courses/<id>/draft/          the same content, to edit (hardlinked, as a revert)
 //   courses/<id>/release.json    <v> published
@@ -2787,23 +2788,23 @@ export async function applyImportedCourseUpdate<T>(
 
 const RECOVERY_PREFIX = ".recover-";
 
-export async function createRecoveryStagingPath(courseId: string): Promise<string> {
-  assertValidCourseId(courseId);
+export async function createRecoveryStagingPath(): Promise<string> {
   const localCoursesRoot = await ensureLocalCoursesRoot();
   return path.join(
     localCoursesRoot,
-    `${RECOVERY_PREFIX}staging-${courseId}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+    `${RECOVERY_PREFIX}staging-${Date.now()}-${crypto.randomBytes(6).toString("hex")}`,
   );
 }
 
 // Lands a downloaded course (see above). Built in a hidden folder and renamed
 // into place last, so a crash never leaves half a course; it's refused if the
 // course is already on this device. The staging folder is consumed either way.
+// Returns the course's title, for the restore's list.
 export async function landRecoveredCourse(input: {
   courseId: string;
   stagingPath: string;
   version: string;
-}): Promise<void> {
+}): Promise<{ title: string }> {
   assertValidCourseId(input.courseId);
   // It becomes a folder name: only a real version number.
   parseCourseVersion(input.version);
@@ -2852,6 +2853,7 @@ export async function landRecoveredCourse(input: {
     });
 
     await fs.rename(workPath, courseRootPath);
+    return { title: manifest.locales?.[manifest.defaultLocale]?.title ?? "" };
   } catch (error) {
     await fs.rm(workPath, { force: true, recursive: true }).catch(() => {});
     await fs.rm(input.stagingPath, { force: true, recursive: true }).catch(() => {});

@@ -74,11 +74,10 @@ adding a case to the e2e suite over one-off manual checking.
   about draft storage, publishing, local state, or sharing architecture.
 - [docs/pear-integration-notes.md](docs/pear-integration-notes.md:1) — the planned
   peer-to-peer work. Phases 0–9 are built: `electron/bare-worker.ts` +
-  `workers/main.cjs` spawn a Bare worker, derive and persist a Corestore-backed local
-  identity keypair over `bare-rpc`, mirror a course's *published version* (see
-  [docs/persistence-notes.md](docs/persistence-notes.md:1)) into a Hyperdrive
-  (`publishCourse`, each course namespaced to its own key derived from the same root
-  seed), can find a real peer and replicate a published course over Hyperswarm
+  `workers/main.cjs` spawn a Bare worker over `bare-rpc`, mirror a course's *published
+  version* (see [docs/persistence-notes.md](docs/persistence-notes.md:1)) into a
+  Hyperdrive (`publishCourse`, each course signed by its own key derived from the
+  publisher identity), can find a real peer and replicate a published course over Hyperswarm
   (`importCourse` — discovers the real course id from the fetched manifest, lands it as
   a root-only published course like the bundled seed, and keeps seeding for as long as
   the worker runs), and can gate a course to only vetted peers via a second Corestore
@@ -87,13 +86,17 @@ adding a case to the e2e suite over one-off manual checking.
   it online (unlisted, reachable only with the course's code, which never changes across
   versions), and `electron/course-sharing.ts` reshares published courses and follows
   imported ones at every startup. The code shows in the Publish confirmation and under
-  "Share" (course editor and course page); the first Publish asks for the one-time
-  sharing consent. Students can pass an imported course on from its page with the same
-  code, unless it was shared only with chosen students (`gated`). No course goes online
-  before the teacher saves a password-protected backup of the identity behind every code
-  (Settings → Security; SLJ-53). On a new computer, Settings → Security (or a checkbox on
-  the new-profile screen) restores that backup and brings the courses back from their
-  students (SLJ-54). "Import course" on Home takes a code;
+  "Share" (course editor and course page). Students can pass an imported course on from
+  its page with the same code, unless it was shared only with chosen students (`gated`).
+  The first Publish sets up the **publishing identity** (one password, one file; SLJ-55):
+  a wizard creates it, locked with the teacher's password in
+  `publisher-identity.matko-identity` in the profile, which is also the backup (Settings →
+  Publishing → "Open identity file"). The profile asks for the password when it opens;
+  unlocked, the identity goes to the worker in memory only, and the worker's store holds
+  no secret. Each course's code comes from a public id derived from the identity and its
+  publish number, so on a new computer "Restore from a file…" (Settings, or a checkbox on
+  the new-profile screen) finds the courses among students from the identity alone
+  (SLJ-54). "Import course" on Home takes a code;
   the download runs in the background under Home's Downloading group (SLJ-43, SLJ-49).
   `source.json` in the drive records where a course is shared from. Students are offered newer versions of imported
   courses and apply them from the course page (SLJ-39); imported courses keep previous versions as `versions/<v>/` +

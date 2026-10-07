@@ -1090,7 +1090,7 @@ describe("courses brought back with a restored identity", () => {
     const root = await ensureLocalCoursesRoot();
     await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     const published = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
-    const stagingPath = await createRecoveryStagingPath(courseId);
+    const stagingPath = await createRecoveryStagingPath();
 
     await fs.cp(path.join(root, courseId, "versions", published.version), stagingPath, { recursive: true });
     await fs.writeFile(path.join(stagingPath, "source.json"), JSON.stringify({ driveKey: "drive", publisher: { id: "me" } }));
@@ -1103,7 +1103,7 @@ describe("courses brought back with a restored identity", () => {
     const { courseId, stagingPath, version } = await seedRecoveredDownload();
     const root = await ensureLocalCoursesRoot();
 
-    await landRecoveredCourse({ courseId, stagingPath, version });
+    expect(await landRecoveredCourse({ courseId, stagingPath, version })).toEqual({ title: "Test Course" });
 
     const courseRoot = path.join(root, courseId);
     expect((await fs.readdir(courseRoot)).sort()).toEqual(["draft", "release.json", "versions"]);
@@ -1140,6 +1140,13 @@ describe("courses brought back with a restored identity", () => {
 
     await expect(landRecoveredCourse({ courseId, stagingPath, version: "9.9.9" })).rejects.toThrow(/isn't the one expected/);
     await expect(landRecoveredCourse({ courseId, stagingPath, version: "../x" })).rejects.toThrow();
+  });
+
+  it("doesn't list a download still in its hidden staging folder as a course", async () => {
+    const { courseId } = await seedRecoveredDownload();
+
+    const courses = await listCourses(await ensureLocalCoursesRoot());
+    expect(courses.map((course) => course.id)).not.toContain(courseId);
   });
 
   it("removes a download a crash left behind, at the next start", async () => {

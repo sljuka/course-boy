@@ -128,14 +128,15 @@ interface Window {
   }
   sharing: {
     getCreatorKey: () => Promise<string>
-    getIdentityBackupStatus: () => Promise<import('../src/lib/identity-backup').IdentityBackupStatus>
-    saveIdentityBackup: (
-      password: string,
-      includeCourseId?: string,
-    ) => Promise<import('../src/lib/identity-backup').SaveIdentityBackupResult>
-    chooseIdentityBackupFile: () => Promise<import('../src/lib/identity-backup').ChooseIdentityBackupResult>
-    restoreIdentity: (password: string) => Promise<import('../src/lib/identity-backup').RestoreIdentityResult>
-    getIdentityRestoreStatus: () => Promise<import('../src/lib/identity-backup').IdentityRestoreStatus>
+    getIdentityStatus: () => Promise<import('../src/lib/publisher-identity').IdentityStatus>
+    setUpIdentity: (password: string) => Promise<import('../src/lib/publisher-identity').SetUpIdentityResult>
+    unlockIdentity: (password: string) => Promise<import('../src/lib/publisher-identity').UnlockIdentityResult>
+    openWithoutPublishing: () => Promise<void>
+    revealIdentityFile: () => Promise<void>
+    chooseIdentityFile: () => Promise<import('../src/lib/publisher-identity').ChooseIdentityFileResult>
+    restoreIdentity: (password: string) => Promise<import('../src/lib/publisher-identity').RestoreIdentityResult>
+    getIdentityRestoreStatus: () => Promise<import('../src/lib/publisher-identity').IdentityRestoreStatus>
+    searchRestoredCourses: () => Promise<void>
     getCourseSharing: (courseId: string) => Promise<import('../src/lib/sharing').CourseSharingInfo>
     listCourseUpdates: () => Promise<Record<string, import('../src/lib/sharing').CourseUpdateInfo>>
     applyCourseUpdate: (

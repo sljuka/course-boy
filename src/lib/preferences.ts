@@ -20,7 +20,6 @@ export type UserPreferences = {
   // The course page's right panel (Details): open or closed.
   courseInfoPanel?: ExplorerPanelPreference
   explorerPanel?: ExplorerPanelPreference
-  hasAcknowledgedCreatorKey?: boolean
   // Home: compact rows ("table") or cards ("list").
   homeView?: CourseListView
   locale?: Locale

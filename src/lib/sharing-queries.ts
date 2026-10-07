@@ -8,31 +8,7 @@ import type {
   ImportCourseInput,
   ImportCourseResult,
 } from "@/lib/sharing";
-import { identityBackupStatusKey } from "@/lib/identity-backup-queries";
 import { queryClient } from "@/lib/query-client";
-
-export function useHasAcknowledgedCreatorKeyQuery() {
-  return useQuery<boolean>({
-    queryKey: ["preferences", "has-acknowledged-creator-key"],
-    queryFn: async () => {
-      const preferences = await window.preferences.get();
-      return preferences.hasAcknowledgedCreatorKey ?? false;
-    },
-  });
-}
-
-export function useAcknowledgeCreatorKeyMutation() {
-  return useMutation({
-    mutationFn: () => window.preferences.set({ hasAcknowledgedCreatorKey: true }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["preferences", "has-acknowledged-creator-key"],
-      });
-      // There's now a publisher identity to back up (SLJ-53).
-      await queryClient.invalidateQueries({ queryKey: identityBackupStatusKey });
-    },
-  });
-}
 
 // A course's code and whether it's online. Sharing runs in the background after
 // Publish (see electron/course-sharing.ts), so poll while it's still going.

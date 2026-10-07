@@ -464,7 +464,10 @@ async function listCourseRecords(rootDirectoryPath: string): Promise<CourseRecor
 
   const courseRecords = await Promise.all(
     directoryEntries
-      .filter((directoryEntry) => directoryEntry.isDirectory())
+      // Hidden folders are never courses: they're a download or an update still
+      // being put together (`.import-staging-*`, `.recover-*`, `.update-*`),
+      // holding a course.json of their own.
+      .filter((directoryEntry) => directoryEntry.isDirectory() && !directoryEntry.name.startsWith("."))
       .map(async (directoryEntry) => {
         const courseRootPath = path.join(rootDirectoryPath, directoryEntry.name);
         const packageDirectoryCandidates = await resolvePackageDirectoryCandidates(courseRootPath);

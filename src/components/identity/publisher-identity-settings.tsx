@@ -1,93 +1,77 @@
-import { Download, FileKey } from "lucide-react";
+import { FileKey, FolderOpen, KeyRound } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { IdentitySafetyTips } from "@/components/identity/identity-safety-tips";
 import { RestoreIdentityDialog } from "@/components/identity/restore-identity-dialog";
 import { RestoredCoursesList } from "@/components/identity/restored-courses-list";
-import { SaveIdentityBackupDialog } from "@/components/identity/save-identity-backup-dialog";
+import { SetUpIdentityDialog } from "@/components/identity/set-up-identity-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldTitle } from "@/components/ui/field";
-import {
-  needsIdentityBackup,
-  useIdentityBackupStatusQuery,
-  useIdentityRestoreStatusQuery,
-} from "@/lib/identity-backup-queries";
-import { useAppState } from "@/lib/use-app-state";
+import { useIdentityRestoreStatusQuery, useIdentityStatusQuery } from "@/lib/publisher-identity-queries";
 
-// Settings → Security → Publisher identity (SLJ-53): whether the identity
-// behind the teacher's online courses is backed up, and Save backup…. It only
-// matters once a course is published online: printing or handing course files
-// over never needs it, and the section says so instead of asking for anything.
-// Until then it offers Restore from backup… (SLJ-54), for a teacher who
-// published from another computer; the courses that brings back are listed
-// while they're on their way.
+// Settings → Publishing → Publishing identity (SLJ-55). Before it's set up:
+// what it's for, "Set up your publishing identity" (the same wizard as the
+// first Publish), and "Restore from a file…" for a teacher who published from
+// another computer. Set up: "Open identity file" shows the file to copy (it's
+// the backup), with how to keep it safe; after a restore, the courses found.
 export function PublisherIdentitySettings() {
   const { t } = useTranslation();
-  const { locale } = useAppState();
-  const { data: status } = useIdentityBackupStatusQuery();
+  const { data: status } = useIdentityStatusQuery();
   const { data: restoreStatus } = useIdentityRestoreStatusQuery();
-  const [isSaveOpen, setIsSaveOpen] = useState(false);
+  const [isSetUpOpen, setIsSetUpOpen] = useState(false);
   const [isRestoreOpen, setIsRestoreOpen] = useState(false);
-  const comingBack = restoreStatus?.courses.some((course) => course.state === "waiting") ? restoreStatus.courses : null;
 
-  // Nothing online yet: nothing to back up, nothing to set up.
-  const isOnline = Boolean(status?.available) && (status!.lastBackupAt !== null || status!.coursesNotBackedUp > 0);
+  if (!status) {
+    return null;
+  }
 
   return (
     <>
-      {!status || !isOnline ? (
+      {status.exists ? (
         <Field data-testid="publisher-identity-settings">
-          <FieldTitle>{t("identityBackup.settingsTitle")}</FieldTitle>
-          <FieldDescription>{t("identityBackup.notOnline")}</FieldDescription>
-          <FieldDescription>{t("identityRestore.settingsHint")}</FieldDescription>
+          <FieldTitle>{t("publisherIdentity.settingsTitle")}</FieldTitle>
+          <FieldDescription>{t("publisherIdentity.settingsDescription")}</FieldDescription>
+          <FieldDescription>{t("publisherIdentity.fileNote")}</FieldDescription>
           <div>
             <Button
-              data-testid="open-restore-identity"
-              onClick={() => setIsRestoreOpen(true)}
+              data-testid="reveal-identity-file"
+              onClick={() => void window.sharing.revealIdentityFile()}
               size="sm"
               variant="secondary"
             >
+              <FolderOpen aria-hidden="true" />
+              {t("publisherIdentity.openFile")}
+            </Button>
+          </div>
+          <IdentitySafetyTips />
+          {restoreStatus && (restoreStatus.searching || restoreStatus.courses.length > 0) && (
+            <div className="flex flex-col gap-1">
+              <FieldTitle>{t("identityRestore.comingBack")}</FieldTitle>
+              <RestoredCoursesList status={restoreStatus} />
+            </div>
+          )}
+        </Field>
+      ) : (
+        <Field data-testid="publisher-identity-settings">
+          <FieldTitle>{t("publisherIdentity.settingsTitle")}</FieldTitle>
+          <FieldDescription>{t("publisherIdentity.notSetUp")}</FieldDescription>
+          <div className="flex flex-wrap gap-2">
+            <Button data-testid="open-set-up-identity" onClick={() => setIsSetUpOpen(true)} size="sm" variant="secondary">
+              <KeyRound aria-hidden="true" />
+              {t("publisherIdentity.setUpButton")}
+            </Button>
+            <Button data-testid="open-restore-identity" onClick={() => setIsRestoreOpen(true)} size="sm" variant="secondary">
               <FileKey aria-hidden="true" />
               {t("identityRestore.settingsButton")}
             </Button>
           </div>
-        </Field>
-      ) : (
-        <Field data-testid="publisher-identity-settings">
-          <FieldTitle>{t("identityBackup.settingsTitle")}</FieldTitle>
-          <FieldDescription>{t("identityBackup.settingsDescription")}</FieldDescription>
-          <FieldDescription
-            data-testid="identity-backup-status"
-            variant={needsIdentityBackup(status) ? "destructive" : "default"}
-          >
-            {status.lastBackupAt
-              ? t("identityBackup.backedUpOn", {
-                  date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(status.lastBackupAt)),
-                })
-              : t("identityBackup.notBackedUp")}
-            {status.lastBackupAt &&
-              status.coursesNotBackedUp > 0 &&
-              ` ${t("identityBackup.coursesSince", { count: status.coursesNotBackedUp })}`}
-          </FieldDescription>
-          {comingBack && (
-            <div className="flex flex-col gap-1">
-              <FieldTitle>{t("identityRestore.comingBack")}</FieldTitle>
-              <RestoredCoursesList courses={comingBack} />
-            </div>
-          )}
-          <IdentitySafetyTips />
-          <div>
-            <Button onClick={() => setIsSaveOpen(true)} size="sm" variant="secondary">
-              <Download aria-hidden="true" />
-              {t("identityBackup.saveButton")}
-            </Button>
-          </div>
-          <SaveIdentityBackupDialog onClose={() => setIsSaveOpen(false)} open={isSaveOpen} />
+          <FieldDescription>{t("identityRestore.settingsHint")}</FieldDescription>
         </Field>
       )}
+      <SetUpIdentityDialog onClose={() => setIsSetUpOpen(false)} open={isSetUpOpen} />
       {/* Outside the two branches, so it stays open (with its progress) when a
-          restore turns the section "online" behind it. */}
+          restore sets the identity up behind it. */}
       <RestoreIdentityDialog onClose={() => setIsRestoreOpen(false)} open={isRestoreOpen} />
     </>
   );

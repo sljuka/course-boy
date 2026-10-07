@@ -89,10 +89,13 @@ describe('profiles', () => {
         }),
       )
     ).courseId
-    anaCreatorKey = await expect
-      .poll(() => page.evaluate(() => window.sharing.getCreatorKey().catch(() => null)), { timeout: 20_000 })
-      .toBeTruthy()
-      .then(() => page.evaluate(() => window.sharing.getCreatorKey()))
+    // No publishing identity until it's set up (the wizard at the first Publish,
+    // SLJ-55); its file is in the profile's folder.
+    expect(await page.evaluate(() => window.sharing.getCreatorKey())).toBe('')
+    expect(await page.evaluate(() => window.sharing.setUpIdentity('correct horse battery'))).toEqual({ ok: true })
+    anaCreatorKey = await page.evaluate(() => window.sharing.getCreatorKey())
+    expect(anaCreatorKey).toMatch(/./)
+    expect(fs.existsSync(path.join(USER_DATA, 'profiles', ana, 'publisher-identity.matko-identity'))).toBe(true)
     expect(fs.existsSync(path.join(USER_DATA, 'profiles', ana, 'courses', anaCourseId))).toBe(true)
   })
 
@@ -113,10 +116,10 @@ describe('profiles', () => {
 
     const courses = await harness.page.evaluate(() => window.courses.list('en'))
     expect(courses.map((course) => course.id)).not.toContain(anaCourseId)
-    // The new profile's worker answers with its own identity.
-    await expect
-      .poll(() => harness.page.evaluate(() => window.sharing.getCreatorKey().catch(() => null)), { timeout: 20_000 })
-      .toMatch(/./)
+    // The new profile gets its own identity.
+    expect(await harness.page.evaluate(() => window.sharing.getCreatorKey())).toBe('')
+    expect(await harness.page.evaluate(() => window.sharing.setUpIdentity('another good password'))).toEqual({ ok: true })
+    expect(await harness.page.evaluate(() => window.sharing.getCreatorKey())).toMatch(/./)
     expect(await harness.page.evaluate(() => window.sharing.getCreatorKey())).not.toBe(anaCreatorKey)
     await finishOnboarding('course-monster')
 
@@ -136,6 +139,8 @@ describe('profiles', () => {
     await harness.page.locator('[data-testid="open-profile"]', { hasText: 'Ana Petrović' }).click()
     await waitForActive((active) => active?.id === ana)
     expect(lastUsedId()).toBe(ana)
+    // Ana has a publishing identity: her profile asks for its password first (SLJ-55).
+    await harness.page.click('[data-testid="open-without-publishing"]')
     await expect
       .poll(() => harness.page.evaluate(() => window.sharing.getCreatorKey().catch(() => null)), { timeout: 20_000 })
       .toBe(anaCreatorKey)

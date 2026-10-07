@@ -95,16 +95,16 @@ try {
   }
 
   // The worker reports its state on a main-process global (electron/bare-worker.ts):
-  // 'spawning' until it answers with the creator key, or 'error: …'.
+  // 'spawning' until it answers, then 'ready', or 'error: …'.
   const deadline = Date.now() + WORKER_TIMEOUT_MS
   let workerState
   do {
-    workerState = await harness.app.evaluate(() => globalThis.__creatorPublicKeyPhase1)
+    workerState = await harness.app.evaluate(() => globalThis.__matkoWorkerStatus)
     if (workerState && workerState !== 'spawning') break
     await new Promise((resolve) => setTimeout(resolve, 250))
   } while (Date.now() < deadline)
 
-  if (typeof workerState === 'string' && workerState !== 'spawning' && !/error/.test(workerState)) {
+  if (workerState === 'ready') {
     console.log('✔ the Bare worker started and answered')
   } else {
     fail(`the Bare worker did not answer: ${String(workerState)}`)

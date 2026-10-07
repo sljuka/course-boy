@@ -1,49 +1,51 @@
-// Restoring the publisher identity on a new computer (SLJ-54, part 2 of SLJ-42).
+// Restoring the publisher identity on a new computer (SLJ-54, SLJ-55).
 //
-// 1. The teacher picks the backup file (SLJ-53's `.matko-identity`): the worker
-//    checks it and says whose identity it holds and when it was saved.
-// 2. With the password, the worker creates a fresh store holding that identity,
-//    and it's put in place of this profile's (installRestoredStore). Refused
-//    when this profile already put courses online with its own identity:
-//    they could never be updated again. Restoring into a new profile is the way.
-// 3. Each course in the backup is brought back from its students, in the
-//    background, waiting for as long as it takes one of them to come online. It
-//    lands as the teacher's own course (versions/<v>/ + draft/ + release.json),
-//    and only then is it shared again. So Publish never runs on a course whose
-//    history this computer hasn't caught up with: a publish from a shorter
-//    history would make a second one, which students' apps refuse.
+// 1. The teacher picks a copy of their identity file (`.matko-identity`): the
+//    worker checks it and says whose identity it holds and when it was made.
+// 2. With the password, the worker opens it and it becomes this profile's
+//    identity file (publisher-identity.ts). Refused when this profile already
+//    put courses online with another identity: they could never be updated
+//    again. Restoring into a new profile is the way. The same identity again
+//    is fine, and its courses already here count as found.
+// 3. The courses are found from the identity alone: course number n = 0, 1,
+//    2… has a public id and code derived from it (workers/identity-keys.cjs),
+//    so each number is looked up among students, many at once. A course found
+//    lands as the teacher's own (versions/<v>/ + draft/ + release.json) and
+//    only then is shared again, so Publish never runs on a history this
+//    computer hasn't caught up with (a shorter one would fork the course for
+//    every student). The search stops after GAP_LIMIT numbers in a row aren't
+//    found, like a wallet's gap limit: a deleted course is just a gap. "Look
+//    again" searches again, for courses nobody had online the first time.
 //
 // Earlier versions and changes never published were only on the old computer.
 // Worker access, files and timers are passed in, so this has no Electron
 // dependency and is unit-tested in identity-restore.test.ts.
 
 import type {
-  ChooseIdentityBackupResult,
+  ChooseIdentityFileResult,
   IdentityRestoreStatus,
   RestoreIdentityResult,
-} from '../src/lib/identity-backup'
-import type { TransferInfo } from '../src/lib/sharing'
+} from '../src/lib/publisher-identity'
 
 export type IdentityRestoreState = {
-  // The courses in the backup, and whether each is back on this device.
-  courses?: { id: string; state: 'restored' | 'waiting'; title: string }[]
+  // The courses found and back on this device.
+  courses?: { id: string; publicIndex: number; title: string }[]
   publisherId?: string
   restoredAt?: string
 }
 
+export type FoundCourse = {
+  courseId: string
+  driveKey: string
+  publicId: string
+  publisherId: string
+  version: string
+}
+
 export type IdentityRestoreWorker = {
-  getTransfer(transferId: string): Promise<TransferInfo | null>
+  findCourse(input: { index: number; stagingPath: string; timeoutMs: number; transferId?: string }): Promise<FoundCourse>
+  openIdentity(text: string, password: string): Promise<{ key: Buffer; publisherId: string }>
   readIdentityBackup(text: string): Promise<{ createdAt: string; publisherId: string }>
-  recoverCourse(
-    courseId: string,
-    stagingPath: string,
-    transferId?: string,
-  ): Promise<{ driveKey: string; publisherId: string; version: string }>
-  restoreIdentity(input: {
-    password: string
-    targetPath: string
-    text: string
-  }): Promise<{ courses: { id: string; title: string }[]; publisherId: string }>
 }
 
 export type IdentityRestoreDeps = {
@@ -52,107 +54,119 @@ export type IdentityRestoreDeps = {
   readFile(filePath: string): Promise<string>
   // This profile has courses online with its own identity.
   hasPublishedCourses(): Promise<boolean>
-  // An empty place for the restored store; then puts it in place of the
-  // worker's own and restarts the worker on it.
-  prepareRestoredStore(): Promise<string>
-  installRestoredStore(): Promise<void>
-  // The identity is this profile's now: it counts as consented to sharing and
-  // as backed up (by the file it came from).
-  onIdentityRestored(identity: { backupCreatedAt: string; courseIds: string[] }): void
-  createStagingPath(courseId: string): Promise<string>
+  // This profile's publisher id, if it has an identity.
+  currentPublisherId(): string | null
+  // Makes the opened identity file this profile's, and unlocks it.
+  installIdentity(text: string, key: Buffer): Promise<void>
+  // The course's title, if it's on this device already.
+  courseOnDevice(courseId: string): Promise<{ title: string } | null>
+  createStagingPath(): Promise<string>
   removeStaging(stagingPath: string): Promise<void>
-  landCourse(input: { courseId: string; stagingPath: string; version: string }): Promise<void>
-  // The course is the teacher's again: record its code and share it.
-  onCourseRecovered(courseId: string, driveKey: string): void
+  landCourse(input: { courseId: string; stagingPath: string; version: string }): Promise<{ title: string }>
+  // The course is the teacher's (again): record its number and code, and share it.
+  onCourseFound(course: { courseId: string; driveKey: string; publicId: string; publicIndex: number }): void
   now?: () => Date
-  setTimer?: (callback: () => void, delayMs: number) => { cancel(): void }
+  // How long one course number is looked for among students.
+  lookupTimeoutMs?: number
   store: { read(): IdentityRestoreState; write(state: IdentityRestoreState): void }
   worker: IdentityRestoreWorker
 }
 
-// The worker's error codes for a file or password that won't open.
 function errorCode(error: unknown): string | undefined {
   return (error as { code?: string } | null)?.code
 }
 
-// The transfer a course's recovery is tracked under, for its progress.
-export function recoveryTransferId(courseId: string): string {
-  return `recover-${courseId}`
-}
-
-const MAX_BACKUP_FILE_BYTES = 1024 * 1024
-const FIRST_RETRY_DELAY_MS = 30_000
-const MAX_RETRY_DELAY_MS = 10 * 60_000
-
-function defaultSetTimer(callback: () => void, delayMs: number) {
-  const timer = setTimeout(callback, delayMs)
-  return { cancel: () => clearTimeout(timer) }
-}
+// Numbers not found in a row before the search stops.
+export const GAP_LIMIT = 20
+// How many numbers are looked up at once: enough to finish soon, few enough
+// not to crowd the DHT lookups out.
+const LOOKUPS_AT_ONCE = 10
+const DEFAULT_LOOKUP_TIMEOUT_MS = 30_000
+const MAX_FILE_BYTES = 1024 * 1024
 
 export function createIdentityRestoreService(deps: IdentityRestoreDeps) {
   const now = deps.now ?? (() => new Date())
-  const setTimer = deps.setTimer ?? defaultSetTimer
+  const lookupTimeoutMs = deps.lookupTimeoutMs ?? DEFAULT_LOOKUP_TIMEOUT_MS
   // The file picked in step 1, until the password opens it.
-  let chosen: { createdAt: string; text: string } | null = null
-  const running = new Set<string>()
-  const retries = new Map<string, { attempt: number; timer: { cancel(): void } }>()
+  let chosen: { createdAt: string; publisherId: string; text: string } | null = null
+  let searching: Promise<void> | null = null
   let stopped = false
 
-  function setCourseState(courseId: string, state: 'restored' | 'waiting') {
-    const current = deps.store.read()
-    deps.store.write({
-      ...current,
-      courses: (current.courses ?? []).map((course) => (course.id === courseId ? { ...course, state } : course)),
-    })
+  function recordCourse(course: { id: string; publicIndex: number; title: string }) {
+    const state = deps.store.read()
+    const others = (state.courses ?? []).filter((candidate) => candidate.id !== course.id)
+    deps.store.write({ ...state, courses: [...others, course] })
   }
 
-  function scheduleRetry(courseId: string) {
-    if (stopped) return
-    const attempt = (retries.get(courseId)?.attempt ?? 0) + 1
-    const delay = Math.min(FIRST_RETRY_DELAY_MS * 2 ** (attempt - 1), MAX_RETRY_DELAY_MS)
-    retries.get(courseId)?.timer.cancel()
-    retries.set(courseId, { attempt, timer: setTimer(() => void recover(courseId), delay) })
-  }
-
-  // Brings one course back. Never throws: a failure is retried later.
-  async function recover(courseId: string): Promise<void> {
-    const course = deps.store.read().courses?.find((candidate) => candidate.id === courseId)
-    if (stopped || !course || course.state !== 'waiting' || running.has(courseId)) return
-
-    running.add(courseId)
+  // Is course number `index` online? Lands it if so. Never throws.
+  async function lookUp(index: number): Promise<boolean> {
     let stagingPath: string | null = null
 
     try {
-      stagingPath = await deps.createStagingPath(courseId)
-      const result = await deps.worker.recoverCourse(courseId, stagingPath, recoveryTransferId(courseId))
-
-      if (result.publisherId !== deps.store.read().publisherId) {
+      stagingPath = await deps.createStagingPath()
+      const found = await deps.worker.findCourse({
+        index,
+        stagingPath,
+        timeoutMs: lookupTimeoutMs,
+        transferId: `find-${index}`,
+      })
+      if (found.publisherId !== deps.store.read().publisherId) {
         throw new Error('The course found was published by someone else')
       }
 
-      await deps.landCourse({ courseId, stagingPath, version: result.version })
-      stagingPath = null
-      setCourseState(courseId, 'restored')
-      retries.delete(courseId)
-      deps.onCourseRecovered(courseId, result.driveKey)
+      // The same identity restored again: the course never left.
+      const onDevice = await deps.courseOnDevice(found.courseId)
+      let title: string
+      if (onDevice) {
+        title = onDevice.title
+      } else {
+        title = (await deps.landCourse({ courseId: found.courseId, stagingPath, version: found.version })).title
+        stagingPath = null // landing consumed it
+      }
+
+      recordCourse({ id: found.courseId, publicIndex: index, title })
+      deps.onCourseFound({ courseId: found.courseId, driveKey: found.driveKey, publicId: found.publicId, publicIndex: index })
+      return true
     } catch (error) {
-      if (!stopped) console.error(`[identity-restore] bringing back ${courseId} failed:`, error)
-      if (stagingPath) await deps.removeStaging(stagingPath).catch(() => {})
-      scheduleRetry(courseId)
+      if (!stopped && errorCode(error) !== 'NOT_FOUND') {
+        console.error(`[identity-restore] looking for course #${index} failed:`, error)
+      }
+      return false
     } finally {
-      running.delete(courseId)
+      if (stagingPath) await deps.removeStaging(stagingPath).catch(() => {})
     }
   }
 
-  function recoverAll() {
-    for (const course of deps.store.read().courses ?? []) {
-      if (course.state === 'waiting') void recover(course.id)
+  // Course numbers from 0, many at once, until GAP_LIMIT in a row aren't found.
+  async function search(): Promise<void> {
+    let next = 0
+    let lastFound = -1
+    const running = new Set<Promise<void>>()
+
+    while (!stopped) {
+      while (!stopped && next <= lastFound + GAP_LIMIT && running.size < LOOKUPS_AT_ONCE) {
+        const index = next++
+        const lookup: Promise<void> = lookUp(index).then((found) => {
+          if (found) lastFound = Math.max(lastFound, index)
+          running.delete(lookup)
+        })
+        running.add(lookup)
+      }
+      if (running.size === 0) break
+      await Promise.race(running)
     }
+  }
+
+  function startSearch(): void {
+    if (searching || stopped) return
+    searching = search().finally(() => {
+      searching = null
+    })
   }
 
   return {
     // Step 1: the file, checked. Kept until restore() or the next pick.
-    async chooseFile(): Promise<ChooseIdentityBackupResult> {
+    async chooseFile(): Promise<ChooseIdentityFileResult> {
       const filePath = await deps.chooseFile()
       if (!filePath) return { cancelled: true }
 
@@ -163,11 +177,11 @@ export function createIdentityRestoreService(deps: IdentityRestoreDeps) {
       } catch {
         return { error: 'invalidFile' }
       }
-      if (text.length > MAX_BACKUP_FILE_BYTES) return { error: 'invalidFile' }
+      if (text.length > MAX_FILE_BYTES) return { error: 'invalidFile' }
 
       try {
         const info = await deps.worker.readIdentityBackup(text)
-        chosen = { createdAt: info.createdAt, text }
+        chosen = { createdAt: info.createdAt, publisherId: info.publisherId, text }
         return {
           file: {
             createdAt: info.createdAt,
@@ -180,68 +194,59 @@ export function createIdentityRestoreService(deps: IdentityRestoreDeps) {
       }
     },
 
-    // Step 2: open it with the password, install the identity, and start
-    // bringing the courses back (in the background).
+    // Step 2: open it with the password, make it this profile's identity, and
+    // search for the courses (in the background).
     async restore(password: string): Promise<RestoreIdentityResult> {
       if (!chosen) return { error: 'noFile' }
-      if (await deps.hasPublishedCourses()) return { error: 'alreadyPublishing' }
+      if (deps.currentPublisherId() !== chosen.publisherId && (await deps.hasPublishedCourses())) {
+        return { error: 'alreadyPublishing' }
+      }
 
       const file = chosen
-      let identity: Awaited<ReturnType<IdentityRestoreWorker['restoreIdentity']>>
+      let opened: Awaited<ReturnType<IdentityRestoreWorker['openIdentity']>>
       try {
-        const targetPath = await deps.prepareRestoredStore()
-        identity = await deps.worker.restoreIdentity({ password, targetPath, text: file.text })
+        opened = await deps.worker.openIdentity(file.text, password)
       } catch (error) {
         if (errorCode(error) === 'WRONG_PASSWORD') return { error: 'wrongPassword' }
         throw error
       }
 
-      // Courses of an earlier restore that never came back belong to that one.
-      for (const retry of retries.values()) retry.timer.cancel()
-      retries.clear()
-
-      await deps.installRestoredStore()
+      await deps.installIdentity(file.text, opened.key)
       chosen = null
-      deps.store.write({
-        courses: identity.courses.map((course) => ({ id: course.id, state: 'waiting', title: course.title })),
-        publisherId: identity.publisherId,
-        restoredAt: now().toISOString(),
-      })
-      deps.onIdentityRestored({
-        backupCreatedAt: file.createdAt,
-        courseIds: identity.courses.map((course) => course.id),
-      })
-      recoverAll()
+      deps.store.write({ courses: [], publisherId: opened.publisherId, restoredAt: now().toISOString() })
+      startSearch()
 
-      return { restored: { courseCount: identity.courses.length } }
+      return { restored: true }
     },
 
-    async getStatus(): Promise<IdentityRestoreStatus> {
+    // "Look again": for courses nobody who has them was online the first time.
+    searchAgain(): void {
+      if (deps.store.read().publisherId) startSearch()
+    },
+
+    getStatus(): IdentityRestoreStatus {
       const state = deps.store.read()
       if (!state.publisherId || !state.restoredAt) return null
 
-      const courses = await Promise.all(
-        (state.courses ?? []).map(async (course) => ({
-          ...course,
-          transfer:
-            course.state === 'waiting'
-              ? await deps.worker.getTransfer(recoveryTransferId(course.id)).catch(() => null)
-              : null,
-        })),
-      )
-      return { courses, publisherId: state.publisherId, restoredAt: state.restoredAt }
+      return {
+        courses: (state.courses ?? [])
+          .slice()
+          .sort((left, right) => left.publicIndex - right.publicIndex)
+          .map(({ id, title }) => ({ id, title })),
+        publisherId: state.publisherId,
+        restoredAt: state.restoredAt,
+        searching: searching !== null,
+      }
     },
 
-    // At profile start: carry on with courses not back yet.
-    resume(): void {
-      recoverAll()
+    // Resolves when the current search is done (tests).
+    whenSearched(): Promise<void> {
+      return searching ?? Promise.resolve()
     },
 
-    // Another profile is being opened: no more retries.
+    // Another profile is being opened: stop searching.
     stop(): void {
       stopped = true
-      for (const retry of retries.values()) retry.timer.cancel()
-      retries.clear()
       chosen = null
     },
   }

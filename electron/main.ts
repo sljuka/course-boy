@@ -1,32 +1,33 @@
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, screen, session } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, screen, session, shell } from 'electron'
+import { randomBytes } from 'node:crypto'
+import { readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { open as openFile, readFile, rename, rm, stat as statFile, writeFile } from 'node:fs/promises'
+import { open as openFile, readFile, rm, stat as statFile } from 'node:fs/promises'
 import path from 'node:path'
 import Store from 'electron-store'
 import {
   cancelTransfer,
   checkUpdate,
   downloadUpdate,
+  findCourse,
   followCourse,
-  createIdentityBackup,
-  getCreatorKey,
   getPeers,
-  getRestoredStoragePath,
   getTransfer,
   importCourse,
-  installRestoredStore,
   onDriveChanged,
+  openIdentity,
   publishCourse,
   readIdentityBackup,
-  recoverCourse,
-  restoreIdentity,
+  sealIdentity,
+  seedCourse,
+  setIdentity,
   spawnBareWorker,
   stopBareWorker,
   stopSharing,
 } from './bare-worker'
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
-import { createIdentityBackupService, type IdentityBackupState } from './identity-backup'
 import { createIdentityRestoreService, type IdentityRestoreState } from './identity-restore'
+import { createPublisherIdentity, IDENTITY_FILE_NAME } from './publisher-identity'
 import { createProfile, listProfiles, updateProfile } from './profiles'
 import { getActiveProfile, getBaseDataDir, getProfileDataDir, initProfiles, setActiveProfile } from './profile-context'
 import { lockDownSession, lockDownWindow } from './window-security'
@@ -103,12 +104,13 @@ import type {
   UploadCourseAssetInput,
 } from '../src/lib/course-package'
 import type {
-  ChooseIdentityBackupResult,
-  IdentityBackupStatus,
+  ChooseIdentityFileResult,
   IdentityRestoreStatus,
+  IdentityStatus,
   RestoreIdentityResult,
-  SaveIdentityBackupResult,
-} from '../src/lib/identity-backup'
+  SetUpIdentityResult,
+  UnlockIdentityResult,
+} from '../src/lib/publisher-identity'
 import type { ProfilesState } from '../src/lib/profiles'
 import type { Locale } from '../src/lib/i18n'
 import type {
@@ -173,7 +175,6 @@ type UserPreferences = {
   myCoursesView?: CourseListView
   versionsPanel?: ExplorerPanelPreference
   courseInfoPanel?: ExplorerPanelPreference
-  hasAcknowledgedCreatorKey?: boolean
   showBundledCourses?: boolean
   showMnemonics?: boolean
   locale?: Locale
@@ -197,21 +198,69 @@ function openProfileServices(dataDir: string) {
 
   const preferencesStore = new Store<UserPreferences>({ cwd: dataDir })
 
-  // Where shared courses stand: the teacher's published courses (with their code) and
-  // the student's imported courses (where each came from). Main-process only: the
-  // renderer can read a course's status but never write where a course comes from.
-  const courseSharingStore = new Store<CourseSharingState>({
+  // The publisher identity (SLJ-55): one password, one file. The identity file
+  // in the profile's folder is the identity locked with the teacher's password,
+  // and it is the backup too; unlocked, the identity is handed to the worker in
+  // memory only.
+  const identityFilePath = path.join(dataDir, IDENTITY_FILE_NAME)
+  const publisherIdentity = createPublisherIdentity({
+    file: {
+      read: () => {
+        try {
+          return readFileSync(identityFilePath, 'utf8')
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+          throw error
+        }
+      },
+      write: (text) => {
+        const tempPath = `${identityFilePath}.tmp-${process.pid}`
+        writeFileSync(tempPath, text, { mode: 0o600 })
+        renameSync(tempPath, identityFilePath)
+      },
+    },
+    randomKey: () => randomBytes(32),
+    worker: {
+      openIdentity: whileOpen(openIdentity),
+      sealIdentity: whileOpen(sealIdentity),
+      setIdentity: whileOpen(setIdentity),
+    },
+  })
+
+  // Where shared courses stand: the teacher's published courses (with their code and
+  // public number) and the student's imported courses (where each came from).
+  // Main-process only: the renderer can read a course's status but never write where
+  // a course comes from. `nextPublicIndex` is the number the next course published
+  // with this identity gets; it only grows, so a removed course's number (and code)
+  // is never given to another course.
+  const courseSharingStore = new Store<CourseSharingState & { nextPublicIndex?: number }>({
     cwd: dataDir,
     defaults: { followed: {}, published: {} },
     name: 'course-sharing',
   })
+
+  // A published course's number among this publisher's courses (SLJ-55), given
+  // at its first Publish and kept, so its public id and code never change.
+  function publicIndexFor(courseId: string): number {
+    const known = courseSharingStore.get('published')[courseId]?.publicIndex
+    if (typeof known === 'number') return known
+
+    const index = courseSharingStore.get('nextPublicIndex') ?? 0
+    courseSharingStore.set('nextPublicIndex', index + 1)
+    courseSharingStore.set('published', {
+      ...courseSharingStore.get('published'),
+      [courseId]: { ...courseSharingStore.get('published')[courseId], publicIndex: index },
+    })
+    return index
+  }
 
   const courseSharing = createCourseSharing({
     applyUpdateFiles: (expected, download) =>
       applyImportedCourseUpdate(expected, download, {
         previousToKeep: clampPreviousVersionsToKeep(preferencesStore.get('previousVersionsToKeep')),
       }),
-    hasConsent: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
+    // Publishing online starts with setting up the identity.
+    hasConsent: () => publisherIdentity.exists(),
     listInstalledVersions: listImportedCourseVersions,
     listPublishedCourseIds: listPublishedLocalCourseIds,
     readInstalledVersion: readImportedCourseVersion,
@@ -221,7 +270,10 @@ function openProfileServices(dataDir: string) {
         followed: courseSharingStore.get('followed'),
         published: courseSharingStore.get('published'),
       }),
-      write: (state) => courseSharingStore.set(state),
+      write: (state) => {
+        courseSharingStore.set('followed', state.followed)
+        courseSharingStore.set('published', state.published)
+      },
     },
     // Refused once this profile is closed, so a late retry of the previous
     // profile never reaches the next profile's worker.
@@ -231,92 +283,63 @@ function openProfileServices(dataDir: string) {
       followCourse: whileOpen(followCourse),
       getPeers: whileOpen(getPeers),
       importCourse: whileOpen(importCourse),
-      publishCourse: whileOpen(publishCourse),
+      // Locked (until the password is given), an already published course is
+      // still shared by its code; a new version waits for the password.
+      publishCourse: whileOpen(async (courseId: string) => {
+        const published = courseSharingStore.get('published')[courseId]
+        if (publisherIdentity.isLocked()) {
+          if (!published?.code) throw Object.assign(new Error('The publisher identity is locked'), { code: 'LOCKED' })
+          await seedCourse(courseId, published.code)
+          return published.code
+        }
+        const { driveKey, publicId } = await publishCourse(courseId, publicIndexFor(courseId))
+        courseSharingStore.set('published', {
+          ...courseSharingStore.get('published'),
+          [courseId]: { ...courseSharingStore.get('published')[courseId], publicId },
+        })
+        return driveKey
+      }),
       stopSharing: whileOpen(stopSharing),
     },
   })
 
-
-  // The publisher identity backup (SLJ-53): when it was saved and which courses
-  // it covers. Main-process only, like where courses come from.
-  const identityBackupStore = new Store<IdentityBackupState>({ cwd: dataDir, name: 'identity-backup' })
-
-  const identityBackup = createIdentityBackupService({
-    chooseSavePath: async (suggestedName) => {
-      const window = BrowserWindow.getFocusedWindow()
-      const options = {
-        defaultPath: path.join(app.getPath('documents'), suggestedName),
-        filters: [{ extensions: ['matko-identity'], name: 'Matko identity backup' }],
-      }
-      // Read at call time (not destructured), so e2e tests can stub it.
-      const result = window ? await dialog.showSaveDialog(window, options) : await dialog.showSaveDialog(options)
-      return result.canceled || !result.filePath ? null : result.filePath
-    },
-    createBackup: whileOpen(createIdentityBackup),
-    hasIdentity: () => preferencesStore.get('hasAcknowledgedCreatorKey') === true,
-    ownerName: () => preferencesStore.get('nickname'),
-    // Only courses actually put online (they have a code): a teacher who only
-    // prints or hands course files over has nothing to back up.
-    listPublishedCourses: async (includeCourseId) => {
-      const courseIds = new Set(Object.keys(courseSharingStore.get('published')))
-      if (includeCourseId && isValidCourseId(includeCourseId)) courseIds.add(includeCourseId)
-      if (courseIds.size === 0) return []
-      const courses = await listCourses(await ensureLocalCoursesRoot())
-      return courses
-        .filter((course) => course.distribution === 'local' && courseIds.has(course.id))
-        .map((course) => ({ id: course.id, title: course.title }))
-    },
-    store: {
-      read: () => identityBackupStore.store,
-      write: (state) => identityBackupStore.set(state),
-    },
-    writeFileAtomic: async (filePath, contents) => {
-      const tempPath = `${filePath}.tmp-${process.pid}`
-      await writeFile(tempPath, contents, { mode: 0o600 })
-      await rename(tempPath, filePath)
-    },
-  })
-
-  // Restoring the publisher identity from its backup (SLJ-54): which courses
-  // it brings back and whether each is back yet. Main-process only.
+  // Restoring the publisher identity from a copy of its file (SLJ-54): the
+  // courses found again with it. Main-process only.
   const identityRestoreStore = new Store<IdentityRestoreState>({ cwd: dataDir, name: 'identity-restore' })
-  const hasConsent = () => preferencesStore.get('hasAcknowledgedCreatorKey') === true
 
   const identityRestore = createIdentityRestoreService({
     chooseFile: async () => {
       const window = BrowserWindow.getFocusedWindow()
       const options = {
-        filters: [{ extensions: ['matko-identity'], name: 'Matko identity backup' }],
+        filters: [{ extensions: ['matko-identity'], name: 'Matko identity file' }],
         properties: ['openFile' as const],
       }
       // Read at call time (not destructured), so e2e tests can stub it.
       const result = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options)
       return result.canceled || result.filePaths.length === 0 ? null : result.filePaths[0]
     },
+    courseOnDevice: async (courseId) => {
+      const course = (await listCourses(await ensureLocalCoursesRoot())).find((candidate) => candidate.id === courseId)
+      return course ? { title: course.title } : null
+    },
     createStagingPath: createRecoveryStagingPath,
+    currentPublisherId: () => publisherIdentity.publisherId(),
     // Courses online with this profile's own identity: the code is recorded
-    // once shared, and a published course is shared as soon as there's consent.
+    // once shared, and a published course is shared as soon as there's one.
     hasPublishedCourses: async () =>
       Object.keys(courseSharingStore.get('published')).length > 0 ||
-      (hasConsent() && (await listPublishedLocalCourseIds()).length > 0),
-    installRestoredStore: async () => {
-      await installRestoredStore()
-      // The new worker knows nothing yet: follow the imported courses again.
-      void courseSharing.start()
-    },
+      (publisherIdentity.exists() && (await listPublishedLocalCourseIds()).length > 0),
+    installIdentity: (text, key) => publisherIdentity.install(text, key),
     landCourse: landRecoveredCourse,
-    onCourseRecovered: (courseId, driveKey) => {
-      courseSharingStore.set('published', { ...courseSharingStore.get('published'), [courseId]: { code: driveKey } })
+    // Test-only: a shorter wait per course number (e2e/sharing.e2e.mjs). Unset in the app.
+    lookupTimeoutMs: Number(process.env.MATKO_RESTORE_LOOKUP_MS) || undefined,
+    onCourseFound: ({ courseId, driveKey, publicId, publicIndex }) => {
+      courseSharingStore.set('published', {
+        ...courseSharingStore.get('published'),
+        [courseId]: { code: driveKey, publicId, publicIndex },
+      })
+      courseSharingStore.set('nextPublicIndex', Math.max(courseSharingStore.get('nextPublicIndex') ?? 0, publicIndex + 1))
       courseSharing.onPublished(courseId)
-    },
-    onIdentityRestored: ({ backupCreatedAt, courseIds }) => {
-      preferencesStore.set('hasAcknowledgedCreatorKey', true)
-      identityBackupStore.set({ courseIds, lastBackupAt: backupCreatedAt })
-    },
-    prepareRestoredStore: async () => {
-      const targetPath = getRestoredStoragePath()
-      await rm(targetPath, { force: true, recursive: true })
-      return targetPath
     },
     readFile: (filePath) => readFile(filePath, 'utf8'),
     removeStaging: (stagingPath) => rm(stagingPath, { force: true, recursive: true }),
@@ -325,10 +348,9 @@ function openProfileServices(dataDir: string) {
       write: (state) => identityRestoreStore.set(state),
     },
     worker: {
-      getTransfer: whileOpen(getTransfer),
+      findCourse: whileOpen(findCourse),
+      openIdentity: whileOpen(openIdentity),
       readIdentityBackup: whileOpen(readIdentityBackup),
-      recoverCourse: whileOpen(recoverCourse),
-      restoreIdentity: whileOpen(restoreIdentity),
     },
   })
 
@@ -337,13 +359,14 @@ function openProfileServices(dataDir: string) {
       closed = true
       courseSharing.stop()
       identityRestore.stop()
+      publisherIdentity.close()
     },
     courseSharing,
     courseSharingStore,
-    identityBackup,
-    identityBackupStore,
+    identityFilePath,
     identityRestore,
     preferencesStore,
+    publisherIdentity,
   }
 }
 
@@ -381,7 +404,7 @@ ipcMain.handle('preferences:get', () => {
 
 ipcMain.handle(
   'preferences:set',
-  (_event, preferences: Partial<UserPreferences>) => {
+  async (_event, preferences: Partial<UserPreferences>) => {
     if (typeof preferences.locale === 'string') {
       profile.preferencesStore.set('locale', preferences.locale)
     }
@@ -427,15 +450,6 @@ ipcMain.handle(
 
     if (typeof preferences.showBundledCourses === 'boolean') {
       profile.preferencesStore.set('showBundledCourses', preferences.showBundledCourses)
-    }
-
-    if (typeof preferences.hasAcknowledgedCreatorKey === 'boolean') {
-      const hadConsent = profile.preferencesStore.get('hasAcknowledgedCreatorKey') === true
-      profile.preferencesStore.set('hasAcknowledgedCreatorKey', preferences.hasAcknowledgedCreatorKey)
-
-      if (!hadConsent && preferences.hasAcknowledgedCreatorKey) {
-        profile.courseSharing.onConsentGiven()
-      }
     }
 
     // Validated rather than trusted: it's a list the renderer builds, and only
@@ -652,6 +666,11 @@ ipcMain.handle('courses:revert-to-version', (_event, input: RevertCourseDraftInp
 })
 
 ipcMain.handle('courses:publish-version', async (_event, input: PublishCourseVersionInput) => {
+  // Publishing puts a new version online, signed: with the identity locked by
+  // its password, the renderer asks for it first (unlockIdentity).
+  if (profile.publisherIdentity.isLocked()) {
+    throw new Error('The publisher identity is locked: unlock it to publish')
+  }
   await publishLocalCourseVersion(input)
   // Publish puts the version online; that runs in the background and can't make
   // Publish fail (see electron/course-sharing.ts).
@@ -659,23 +678,36 @@ ipcMain.handle('courses:publish-version', async (_event, input: PublishCourseVer
 })
 
 ipcMain.handle('sharing:get-creator-key', () => {
-  return getCreatorKey()
+  return profile.publisherIdentity.publisherId() ?? ''
 })
 
-ipcMain.handle('sharing:get-identity-backup-status', () => {
-  return profile.identityBackup.getStatus() satisfies Promise<IdentityBackupStatus>
+// The publisher identity (SLJ-55): set up with the wizard, unlocked with its
+// password, its file shown for copying, or restored from a copy (SLJ-54).
+ipcMain.handle('sharing:get-identity-status', () => {
+  return profile.publisherIdentity.getStatus() satisfies IdentityStatus
 })
 
-ipcMain.handle('sharing:save-identity-backup', (_event, password: string, includeCourseId?: string) => {
-  return profile.identityBackup.save(password, {
-    includeCourseId: typeof includeCourseId === 'string' ? includeCourseId : undefined,
-  }) satisfies Promise<SaveIdentityBackupResult>
+ipcMain.handle('sharing:set-up-identity', async (_event, password: string) => {
+  const result = await profile.publisherIdentity.setUp(String(password ?? ''))
+  // Published courses waiting for an identity go online now.
+  if ('ok' in result) profile.courseSharing.onConsentGiven()
+  return result satisfies SetUpIdentityResult
 })
 
-// Restoring the publisher identity (SLJ-54): pick the backup file, then
-// restore it with its password; the courses come back in the background.
-ipcMain.handle('sharing:choose-identity-backup-file', () => {
-  return profile.identityRestore.chooseFile() satisfies Promise<ChooseIdentityBackupResult>
+ipcMain.handle('sharing:unlock-identity', (_event, password: string) => {
+  return profile.publisherIdentity.unlock(String(password ?? '')) satisfies Promise<UnlockIdentityResult>
+})
+
+ipcMain.handle('sharing:open-without-publishing', () => {
+  profile.publisherIdentity.openWithoutPublishing()
+})
+
+ipcMain.handle('sharing:reveal-identity-file', () => {
+  if (profile.publisherIdentity.exists()) shell.showItemInFolder(profile.identityFilePath)
+})
+
+ipcMain.handle('sharing:choose-identity-file', () => {
+  return profile.identityRestore.chooseFile() satisfies Promise<ChooseIdentityFileResult>
 })
 
 ipcMain.handle('sharing:restore-identity', (_event, password: string) => {
@@ -683,7 +715,11 @@ ipcMain.handle('sharing:restore-identity', (_event, password: string) => {
 })
 
 ipcMain.handle('sharing:get-identity-restore-status', () => {
-  return profile.identityRestore.getStatus() satisfies Promise<IdentityRestoreStatus>
+  return profile.identityRestore.getStatus() satisfies IdentityRestoreStatus
+})
+
+ipcMain.handle('sharing:search-restored-courses', () => {
+  profile.identityRestore.searchAgain()
 })
 
 ipcMain.handle('sharing:get-course-sharing', async (_event, courseId: string) => {
@@ -951,14 +987,11 @@ function startProfile(): void {
   spawnBareWorker()
   const opened = profile
   // Before sharing starts: an update interrupted by a crash must not leave a
-  // course folder missing.
+  // course folder missing. (The publisher identity starts locked: published
+  // courses are shared by their code until the password is given.)
   void cleanUpInterruptedCourseUpdates()
     .catch((error) => console.error('[course-sharing] cleanup failed:', error))
-    .then(() => {
-      if (profile !== opened) return
-      opened.identityRestore.resume()
-      return opened.courseSharing.start()
-    })
+    .then(() => (profile === opened ? opened.courseSharing.start() : undefined))
 }
 
 // Opens another profile (or the launcher, with null) in the running app

@@ -111,11 +111,10 @@ export const SettingsPage = () => {
           <FieldDescription>{t("settings.courseVersions.previousToKeepDescription")}</FieldDescription>
         </Field>
       </FieldSet>
-      {/* Security-related settings: the publisher identity's backup now, its
-          protection at rest later (SLJ-55). */}
-      <FieldSet className="max-w-xl" data-testid="security-settings">
-        <FieldLegend>{t("settings.security.title")}</FieldLegend>
-        <FieldDescription>{t("settings.security.description")}</FieldDescription>
+      {/* Publishing: the publishing identity (SLJ-55): set up, its file, restore. */}
+      <FieldSet className="max-w-xl" data-testid="publishing-settings">
+        <FieldLegend>{t("settings.publishing.title")}</FieldLegend>
+        <FieldDescription>{t("settings.publishing.description")}</FieldDescription>
         <PublisherIdentitySettings />
       </FieldSet>
     </PageContent>

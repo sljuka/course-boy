@@ -101,18 +101,22 @@ describe('launch', () => {
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',
       'cancelTransfer',
-      'chooseIdentityBackupFile',
+      'chooseIdentityFile',
       'finishOnVersion',
       'getCourseSharing',
       'getCreatorKey',
-      'getIdentityBackupStatus',
       'getIdentityRestoreStatus',
+      'getIdentityStatus',
       'getTransfer',
       'importCourse',
       'listCourseUpdates',
+      'openWithoutPublishing',
       'restoreIdentity',
-      'saveIdentityBackup',
+      'revealIdentityFile',
+      'searchRestoredCourses',
+      'setUpIdentity',
       'switchCourseVersion',
+      'unlockIdentity',
     ])
   })
 })

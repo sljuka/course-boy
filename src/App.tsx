@@ -11,6 +11,7 @@ import { OnboardingLayout } from "@/components/onboarding-layout";
 import { RoleRoute } from "@/components/role-route";
 import { SidebarLayout } from "@/components/sidebar-layout";
 import { AppShell, AppShellMain } from "@/components/ui/app-shell";
+import { PublisherPasswordGate } from "@/components/identity/publisher-password-gate";
 import { RestoreIdentityAfterOnboarding } from "@/components/identity/restore-identity-after-onboarding";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppStateProvider } from "@/lib/app-state";
@@ -116,7 +117,9 @@ const AppFrame = () => {
     <AppShell>
       <AppTitleBar />
       <AppShellMain>
-        <AppRoutes />
+        <PublisherPasswordGate>
+          <AppRoutes />
+        </PublisherPasswordGate>
       </AppShellMain>
       <RestoreIdentityAfterOnboarding />
       <AppFrameStatusBar />

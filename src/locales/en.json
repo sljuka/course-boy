@@ -182,9 +182,6 @@
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."
   },
   "courseSharing": {
-    "consentTitle": "Before you publish",
-    "consentDescription": "Publishing puts this version online, so students can get the course with its code. From now on, every course you publish is shared this way: anyone with the code can download it, and nobody can find it without the code. Publishing also creates a permanent identity used for every course you publish. It can't be reset later.",
-    "consentConfirm": "Publish {{version}}",
     "cancel": "Cancel",
     "publishedTitle": "Published {{version}}",
     "publishedDescription": "Students can get this course with this code. It's the same code for every version, so students who already have it don't need a new one.",
@@ -530,8 +527,8 @@
       "previousToKeep": "Previous versions to keep",
       "previousToKeepDescription": "For courses you've imported: how many earlier versions stay on this device, so you can go back to one. Unchanged files are shared between versions, so extra versions take little space. A lower number applies at the next update."
     },
-    "security": {
-      "title": "Security",
+    "publishing": {
+      "title": "Publishing",
       "description": "Only for courses you publish online. Making, printing or handing over course files needs none of this."
     }
   },
@@ -722,73 +719,77 @@
     "showInTestHelp": "Off by default: a mnemonic on a term could give an answer away. Turn it on for tests where that's not a risk.",
     "srLabel": "Mnemonic: {{mnemonic}}"
   },
-  "identityBackup": {
-    "settingsTitle": "Publisher identity",
-    "settingsDescription": "Matko signs every course you publish with your publisher identity, so students know updates really come from you. Back it up as a file protected by a password: with both, you can keep updating your courses from a new computer, and so could anyone else who has both.",
-    "backedUpOn": "Backed up on {{date}}.",
-    "notBackedUp": "Not backed up yet.",
-    "saveButton": "Save backup…",
-    "saveTitle": "Save a backup of your publisher identity",
-    "saveDescription": "The backup is a file protected by a password. Anyone who has both the file and the password can publish updates as you, so keep them safe and apart.",
+  "publisherIdentity": {
+    "stepOf": "Step {{step}} of {{total}}",
+    "introTitlePublish": "Before your course goes online",
+    "introTitle": "Set up your publishing identity",
+    "onlineTitle": "Online, unlisted",
+    "onlineText": "Publishing puts a version of your course online, so students can get it with its code. Nobody can find it without the code, and the code stays the same for every version.",
+    "signingTitle": "Signing",
+    "signingText": "Every course you publish gets your digital signature, like a letter you sign. It tells your students' apps that an update really comes from you, so nobody else can publish in your name.",
+    "fileTitle": "Your identity file",
+    "fileText": "Your digital signature is made with your publishing identity: a secret key that Matko keeps in a file, locked with a password you choose. That file is also your backup. Copy it somewhere safe: with it and the password, you can keep publishing from a new computer.",
+    "lead": "Let's start with the password.",
+    "next": "Choose a password",
+    "passwordTitle": "Choose a password",
+    "passwordDescription": "Use a strong password: four or five unrelated words work well. Or let a password manager such as KeePassXC, Bitwarden or 1Password create one and keep it for you.",
     "password": "Password",
     "passwordHint": "At least {{count}} characters.",
     "passwordConfirmation": "Type the password again",
     "passwordMismatch": "The passwords don't match.",
+    "passwordUnrecoverable": "If you forget the password, it can't be recovered: your identity can't be opened, not even from a copy of the file, and you can't publish updates to your courses anymore.",
+    "back": "Back",
     "cancel": "Cancel",
-    "save": "Save backup",
-    "reminder": "Your publisher identity isn't backed up",
-    "coursesSince": "Courses published since then, not in it: {{count}}.",
-    "notOnline": "Not needed yet: you haven't published a course online. Making, printing or sharing course files from your computer works without it.",
-    "saveAndPublish": "Save backup and publish",
+    "setUp": "Set up",
+    "setUpAndPublish": "Set up and publish",
+    "settingsTitle": "Publishing identity",
+    "notSetUp": "Needed only to publish courses online. Making, printing or sharing course files from your computer works without it.",
+    "setUpButton": "Set up your publishing identity",
+    "settingsDescription": "Matko signs every course you publish with your publishing identity, so students know updates really come from you. It's locked with your password, which Matko asks for when this profile opens. The password protects publishing in your name, not your course files: they stay ordinary files on this computer.",
+    "fileNote": "Your identity file is also your backup. Copy it somewhere safe: with it and the password, you can keep publishing from a new computer.",
+    "openFile": "Open identity file",
     "tipsTitle": "How to keep it safe",
     "tips": {
-      "separate": "Keep the file and the password in different places, for example the file on a USB stick and in your cloud storage, and the password in a password manager such as KeePassXC, Bitwarden or 1Password.",
+      "separate": "Keep copies of the file and the password in different places, for example the file on a USB stick and in your cloud storage, and the password in a password manager such as KeePassXC, Bitwarden or 1Password.",
       "twoCopies": "Keep two copies of the file in different places, so one lost USB stick or broken laptop doesn't lose it.",
       "longPassword": "Use a long password you don't use anywhere else, like four or five unrelated words.",
-      "neverSend": "Never send the file or the password by email or chat, or put them in a shared folder.",
-      "afterNewCourse": "Save a new backup after you publish a new course: an older backup can't find courses published after it."
+      "neverSend": "Never send the file or the password by email or chat, or put them in a shared folder."
     },
-    "intro": {
-      "stepOf": "Step {{step}} of {{total}}",
-      "title": "Before your course goes online",
-      "signingTitle": "Signing",
-      "signingText": "Every course you publish gets your digital signature, like a letter you sign. It tells your students' apps that an update really comes from you, so nobody else can publish in your name.",
-      "identityTitle": "Your publisher identity",
-      "identityText": "Your digital signature is made with your publisher identity: a secret key that represents you on the network. Matko created it just for you, and it's kept on this computer. Keep it safe: whoever has it can publish in your name.",
-      "backupTitle": "A backup with a password",
-      "backupText": "If this computer breaks or gets lost, or when you move to a new one, you'll need your publisher identity to keep updating your courses. So this wizard saves it to a file, locked with a password you choose. Keep that file safe: it's how you bring your identity to a new computer.",
-      "lead": "Let's start with the password.",
-      "next": "Choose a password"
-    },
-    "passwordStepTitle": "Choose a password",
-    "passwordStepDescription": "Use a strong password: four or five unrelated words work well. Or let a password manager such as KeePassXC, Bitwarden or 1Password create one and keep it for you.",
-    "back": "Back",
-    "passwordUnrecoverable": "If you lose the password, it can't be recovered, and the backup can't be opened."
+    "unlockTitle": "Enter your password",
+    "unlockDescription": "Your publishing identity is locked. Enter its password to publish in your name.",
+    "unlock": "Unlock",
+    "wrongPassword": "Wrong password.",
+    "gateTitle": "Enter your password",
+    "gateDescription": "This profile publishes courses in your name, so it asks for your password when it opens. Without it you can still learn, make and print courses, and your courses stay online. Only publishing waits.",
+    "gateForgotten": "Forgot it? It can't be recovered. Open without publishing to keep learning, making and printing courses.",
+    "openWithoutPublishing": "Open without publishing"
   },
   "identityRestore": {
-    "title": "Restore your publisher identity",
-    "description": "Have courses published with Matko on another computer? Choose the identity backup file from that computer and enter its password. Your courses then come back from your students.",
-    "chooseFile": "Choose backup file…",
+    "title": "Restore your publishing identity",
+    "description": "Have courses published with Matko on another computer? Choose a copy of your identity file from there and enter its password. Matko then looks for your courses among your students.",
+    "chooseFile": "Choose identity file…",
     "chooseOtherFile": "Choose another file…",
-    "fileSummary": "{{fileName}}, saved on {{date}}",
-    "password": "Backup password",
+    "fileSummary": "{{fileName}}, made on {{date}}",
+    "password": "Password",
     "cancel": "Cancel",
     "restore": "Restore",
-    "doneTitle": "Your publisher identity is restored",
-    "doneDescription": "Your courses are coming back from your students and appear in My courses as they arrive. Only the published version of each course comes back: earlier versions and changes that were never published stayed on the other computer.",
+    "doneTitle": "Your publishing identity is restored",
+    "doneDescription": "Matko is looking for your courses among your students, and they appear in My courses as they're found. Only the published version of each course comes back: earlier versions and changes that were never published stayed on the other computer.",
     "done": "Done",
     "courseRestored": "In My courses",
-    "courseDownloading": "Downloading {{done}} of {{total}}",
-    "courseWaiting": "Waiting for a student who has it to come online",
-    "settingsButton": "Restore from backup…",
-    "settingsHint": "Have courses published with Matko on another computer? Restore your publisher identity and keep updating them from here.",
-    "comingBack": "Courses coming back from your students",
+    "searching": "Looking for your courses among your students…",
+    "foundNone": "No courses found yet. A course comes back only while a student who has it is online.",
+    "foundMore": "Missing a course? It comes back only while a student who has it is online.",
+    "lookAgain": "Look again",
+    "settingsButton": "Restore from a file…",
+    "settingsHint": "Have courses published with Matko on another computer? Restore your publishing identity from a copy of its file and keep updating them from here.",
+    "comingBack": "Courses found again",
     "errors": {
-      "invalidFile": "This isn't a Matko identity backup, or it's damaged.",
-      "unsupportedVersion": "This backup was made by a newer version of Matko. Update Matko and try again.",
+      "invalidFile": "This isn't a Matko identity file, or it's damaged.",
+      "unsupportedVersion": "This file was made by a newer version of Matko. Update Matko and try again.",
       "wrongPassword": "Wrong password.",
-      "alreadyPublishing": "This profile already publishes courses with its own publisher identity. To restore another one, create a new profile and restore it there.",
-      "noFile": "Choose the backup file first."
+      "alreadyPublishing": "This profile already publishes courses with its own publishing identity. To restore another one, create a new profile and restore it there.",
+      "noFile": "Choose the identity file first."
     }
   },
   "profiles": {
@@ -799,6 +800,6 @@
     "newProfileDescription": "A profile keeps its own courses, settings and publisher identity, separate from the others on this computer.",
     "nameTooLong": "At most {{max}} characters.",
     "cancel": "Cancel",
-    "restoreIdentity": "I have courses published with Matko on another computer: restore my publisher identity after setup"
+    "restoreIdentity": "I have courses published with Matko on another computer: restore my publishing identity after setup"
   }
 }

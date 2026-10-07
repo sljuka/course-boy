@@ -17,7 +17,6 @@
 // request/response protocol, so the pipe carries `bare-rpc` — bare-rpc does its own
 // framing and must sit directly on the raw duplex, not stacked under another framing
 // layer.
-import { rename, rm } from 'node:fs/promises'
 import path from 'node:path'
 import spawnBare from 'bare-runtime/spawn'
 import RPC from 'bare-rpc'
@@ -42,15 +41,19 @@ const CMD_DOWNLOAD_UPDATE = 10
 const CMD_GET_TRANSFER = 11
 const CMD_CANCEL_TRANSFER = 12
 const CMD_GET_PEERS = 13
-const CMD_CREATE_IDENTITY_BACKUP = 14
 const CMD_READ_IDENTITY_BACKUP = 15
-const CMD_RESTORE_IDENTITY = 16
-const CMD_RECOVER_COURSE = 17
+const CMD_OPEN_IDENTITY = 16
+const CMD_FIND_COURSE = 17
+const CMD_SET_IDENTITY = 18
+const CMD_SEAL_IDENTITY = 19
+const CMD_SEED_COURSE = 20
 // Sent by the worker to main (the only worker → main message).
 const EVENT_DRIVE_CHANGED = 100
 
 declare global {
-  var __creatorPublicKeyPhase1: string
+  // 'spawning' until the worker answers, then 'ready', or 'error: …'
+  // (scripts/check-packaged.mjs reads it).
+  var __matkoWorkerStatus: string
   var __matkoBareWorker: {
     createInvite: typeof createInvite
     cancelTransfer: typeof cancelTransfer
@@ -58,9 +61,10 @@ declare global {
     downloadUpdate: typeof downloadUpdate
     getTransfer: typeof getTransfer
     getPeers: typeof getPeers
-    createIdentityBackup: typeof createIdentityBackup
+    openIdentity: typeof openIdentity
     readIdentityBackup: typeof readIdentityBackup
-    recoverCourse: typeof recoverCourse
+    findCourse: typeof findCourse
+    seedCourse: typeof seedCourse
     followCourse: typeof followCourse
     getCreatorKey: typeof getCreatorKey
     importCourse: typeof importCourse
@@ -83,6 +87,10 @@ function requireRpc(): RPC {
   return rpc
 }
 
+// The publisher id while the identity is unlocked in the worker, else ''.
+// The app's own publisher id comes from main (publisher-identity.ts), which
+// knows it while locked too; this is the worker's answer, used at start to
+// know it runs.
 export async function getCreatorKey(): Promise<string> {
   const request = requireRpc().request(CMD_GET_CREATOR_KEY)
   request.send()
@@ -111,6 +119,7 @@ async function resolveSharedCoursePackagePath(
 }
 
 // Every reply is JSON with an optional `error`; turn that into a thrown Error.
+// `code` (e.g. LOCKED, WRONG_PASSWORD, CANCELLED) is kept on it.
 async function sendCommand<T>(command: number, payload: unknown): Promise<T> {
   const request = requireRpc().request(command)
   request.send(JSON.stringify(payload))
@@ -131,16 +140,20 @@ export function isCancelledError(error: unknown): boolean {
 }
 
 // Mirrors the course's *current published version* into its drive (plus
-// source.json) and announces it. Returns the drive key — the course's code, which
-// is the same for every version.
-export async function publishCourse(courseId: string): Promise<string> {
+// source.json) and announces it. `publicIndex` is the course's number among
+// the publisher's courses (given at its first Publish, the same ever after);
+// its public id and the drive key (the course's code) follow from it and the
+// identity. Needs the identity: fails with `code` LOCKED without it.
+export async function publishCourse(
+  courseId: string,
+  publicIndex: number,
+): Promise<{ driveKey: string; publicId: string }> {
   const coursePath = await resolveSharedCoursePackagePath(courseId)
-  const result = await sendCommand<{ driveKey?: string }>(CMD_PUBLISH_COURSE, {
+  return sendCommand<{ driveKey: string; publicId: string }>(CMD_PUBLISH_COURSE, {
     courseId,
     coursePath,
+    publicIndex,
   })
-
-  return result.driveKey ?? ''
 }
 
 export type ImportedCourseSource = {
@@ -205,15 +218,6 @@ export async function getPeers(target: { courseId: string } | { driveKey: string
   return (await sendCommand<{ peers: number | null }>(CMD_GET_PEERS, target)).peers
 }
 
-// The publisher identity backup file's contents (SLJ-53), encrypted in the
-// worker with `password`; see workers/identity-backup.cjs.
-export async function createIdentityBackup(input: {
-  courses: { id: string; title: string }[]
-  password: string
-}): Promise<string> {
-  return (await sendCommand<{ backup: string }>(CMD_CREATE_IDENTITY_BACKUP, input)).backup
-}
-
 export type IdentityBackupInfo = { createdAt: string; publisherId: string }
 
 // The backup file's public part, checked by the worker (it owns the format):
@@ -223,55 +227,62 @@ export async function readIdentityBackup(text: string): Promise<IdentityBackupIn
   return sendCommand<IdentityBackupInfo>(CMD_READ_IDENTITY_BACKUP, { text })
 }
 
-export type RestoredIdentity = { courses: { id: string; title: string }[]; publisherId: string }
-
-// Opens the backup with `password` and creates a new store at `targetPath`
-// holding its identity (SLJ-54); see installRestoredStore. The key never
-// leaves the worker. Fails with `code` WRONG_PASSWORD on a wrong password.
-export async function restoreIdentity(input: {
-  password: string
-  targetPath: string
-  text: string
-}): Promise<RestoredIdentity> {
-  return sendCommand<RestoredIdentity>(CMD_RESTORE_IDENTITY, input)
+// The publisher identity (SLJ-55) is kept by main (electron/publisher-identity.ts)
+// and handed to the worker in memory; null takes it back (locked). Returns the
+// publisher id it signs as.
+export async function setIdentity(key: Buffer | null): Promise<string | null> {
+  return (await sendCommand<{ publisherId: string | null }>(CMD_SET_IDENTITY, { key: key?.toString('base64') ?? null }))
+    .publisherId
 }
 
-export type RecoveredCourse = { driveKey: string; publisherId: string; version: string }
-
-// Downloads the published version of a course of this identity into
-// `stagingPath`, from the students who have it; waits (phase "finding") until
-// one is online. `transferId`: to poll progress and cancel.
-export async function recoverCourse(courseId: string, stagingPath: string, transferId?: string): Promise<RecoveredCourse> {
-  return sendCommand<RecoveredCourse>(CMD_RECOVER_COURSE, { courseId, stagingPath, transferId })
+// The identity locked with `password`, in the backup file's format (no courses).
+export async function sealIdentity(key: Buffer, password: string): Promise<string> {
+  return (await sendCommand<{ sealed: string }>(CMD_SEAL_IDENTITY, { key: key.toString('base64'), password })).sealed
 }
 
-// The worker's store: everything P2P for the open profile. The store for
-// chosen-students-only courses is next to it (`p2p-gated`).
+export type OpenedIdentity = { courses: { id: string; title: string }[]; key: Buffer; publisherId: string }
+
+// Opens a backup file, or main's password-locked copy, with `password`. Fails
+// with `code` WRONG_PASSWORD on a wrong password, INVALID_FILE on a damaged file.
+export async function openIdentity(text: string, password: string): Promise<OpenedIdentity> {
+  const result = await sendCommand<{ courses: OpenedIdentity['courses']; key: string; publisherId: string }>(
+    CMD_OPEN_IDENTITY,
+    { password, text },
+  )
+  return { courses: result.courses, key: Buffer.from(result.key, 'base64'), publisherId: result.publisherId }
+}
+
+// Shares a published course by its code without the identity (locked):
+// students can still download it; a new version needs the identity.
+export async function seedCourse(courseId: string, driveKey: string): Promise<void> {
+  await sendCommand(CMD_SEED_COURSE, { courseId, driveKey })
+}
+
+export type FoundCourse = {
+  // The course's own (local) id, from its course.json.
+  courseId: string
+  driveKey: string
+  publicId: string
+  publisherId: string
+  version: string
+}
+
+// Restoring: looks for this publisher's course number `index` among students
+// for at most `timeoutMs` and downloads its published version into
+// `stagingPath`. Fails with `code` NOT_FOUND when nobody who has it answered.
+export async function findCourse(input: {
+  index: number
+  stagingPath: string
+  timeoutMs: number
+  transferId?: string
+}): Promise<FoundCourse> {
+  return sendCommand<FoundCourse>(CMD_FIND_COURSE, input)
+}
+
+// The worker's store: everything P2P for the open profile, and no secret
+// (SLJ-55). The store for chosen-students-only courses is next to it (`p2p-gated`).
 export function getWorkerStoragePath(): string {
   return path.join(getProfileDataDir(), 'p2p')
-}
-
-// Where restoreIdentity creates the new store before it's put in place.
-export function getRestoredStoragePath(): string {
-  return path.join(getProfileDataDir(), 'p2p-restore')
-}
-
-// Puts the restored store in place of the worker's (SLJ-54): stop the worker,
-// swap the folders, start it again on the restored identity. The old store
-// goes: restoring is refused while it has published anything (its identity
-// would be lost), so it holds at most imported courses' cached data, which
-// is fetched again when needed.
-export async function installRestoredStore(): Promise<void> {
-  const storagePath = getWorkerStoragePath()
-  const replacedPath = `${storagePath}-replaced-${Date.now()}`
-
-  await stopBareWorker()
-  await rename(storagePath, replacedPath).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== 'ENOENT') throw error
-  })
-  await rename(getRestoredStoragePath(), storagePath)
-  spawnBareWorker()
-  await rm(replacedPath, { force: true, recursive: true }).catch(() => {})
 }
 
 const driveChangedListeners = new Set<(driveKey: string) => void>()
@@ -369,10 +380,11 @@ globalThis.__matkoBareWorker = {
   downloadUpdate,
   followCourse,
   getCreatorKey,
-  createIdentityBackup,
   getPeers,
+  openIdentity,
   readIdentityBackup,
-  recoverCourse,
+  findCourse,
+  seedCourse,
   getTransfer,
   importCourse,
   publishCourse,
@@ -390,7 +402,7 @@ export async function stopBareWorker(): Promise<void> {
   const worker = workerProcess
   workerProcess = null
   rpc = null
-  globalThis.__creatorPublicKeyPhase1 = 'stopped'
+  globalThis.__matkoWorkerStatus = 'stopped'
 
   if (!worker || worker.exitCode !== null || worker.signalCode !== null) {
     return
@@ -410,7 +422,7 @@ export async function stopBareWorker(): Promise<void> {
 }
 
 export function spawnBareWorker(): void {
-  globalThis.__creatorPublicKeyPhase1 = 'spawning'
+  globalThis.__matkoWorkerStatus = 'spawning'
 
   try {
     const workerPath = path.join(process.env.APP_ROOT, 'workers/main.cjs')
@@ -427,7 +439,7 @@ export function spawnBareWorker(): void {
     workerProcess = worker
 
     worker.on('error', (error) => {
-      globalThis.__creatorPublicKeyPhase1 = `error: ${error.message}`
+      globalThis.__matkoWorkerStatus = `error: ${error.message}`
       console.error('[bare-worker] failed to spawn:', error)
     })
 
@@ -464,13 +476,12 @@ export function spawnBareWorker(): void {
     })
 
     getCreatorKey()
-      .then((key) => {
-        globalThis.__creatorPublicKeyPhase1 = key
-        console.log('[bare-worker] creator key:', key)
+      .then(() => {
+        globalThis.__matkoWorkerStatus = 'ready'
       })
       .catch((error: Error) => {
-        globalThis.__creatorPublicKeyPhase1 = `error: ${error.message}`
-        console.error('[bare-worker] failed to get creator key:', error)
+        globalThis.__matkoWorkerStatus = `error: ${error.message}`
+        console.error('[bare-worker] the worker did not answer:', error)
       })
 
     if (!quitHookInstalled) {
@@ -480,7 +491,7 @@ export function spawnBareWorker(): void {
       })
     }
   } catch (error) {
-    globalThis.__creatorPublicKeyPhase1 = `sync error: ${(error as Error).message}`
+    globalThis.__matkoWorkerStatus = `sync error: ${(error as Error).message}`
     console.error('[bare-worker] synchronous failure:', error)
   }
 }

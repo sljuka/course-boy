@@ -453,11 +453,14 @@ only publishers ever touch, not an onboarding step every user sees.
      every follower). The code is the drive key of the per-course namespace
      (`course-<id>`), so it never changes across versions; it's shown in the Publish
      confirmation and under "Share" in the course editor and on the course page.
+     (Since SLJ-55 the namespace is the course's public id, `course-<publicId>`: see "The
+     publishing identity" below.)
    - **Consent moved to the first Publish.** The `hasAcknowledgedCreatorKey` dialog now
      appears on the first Publish, with text saying that every published course is
      shared automatically and stays unlisted (reachable only with its code). Nothing is
      shared before it; giving it shares everything already published. Creating, editing
-     and printing never ask.
+     and printing never ask. (Superseded by SLJ-55: the setup wizard at the first Publish
+     is the consent, and the preference is gone.)
    - **`electron/course-sharing.ts`** (unit-tested with fakes) reshares every published
      course and follows every imported course at startup. Publish never fails because
      sharing does: a failed attempt leaves the course "waiting" and retries with backoff
@@ -588,90 +591,128 @@ only publishers ever touch, not an onboarding step every user sees.
        they imported with. A `gated` followed course (invite-only, not in the UI yet)
        gets no code.
 
-## Publisher identity backup (SLJ-53)
+## The publishing identity: one password, one file (SLJ-53, SLJ-54, SLJ-55)
 
-The identity is the worker's Corestore primary key, and every published course's code
-derives from it. Settings → Publisher identity → **Save backup…** writes a
-`*.matko-identity` file.
+The publishing identity is 32 random bytes. Every course's public id and code, and
+the publisher id, are derived from it ([workers/identity-keys.cjs](../workers/identity-keys.cjs:1)).
+It's kept as **one file locked with one password**, and that file is also the backup.
+The design was simplified on 2026-10-07; before that there was a separate backup file
+and an optional second password, and the identity sat in the OS keychain.
 
-- **No course goes online without a backup.** While none exists, Publish asks for it
-  right after the sharing consent (`usePublishWithConsent`). Cancelling it cancels the
-  Publish, and the backup covers the course being published (`includeCourseId`).
-- **Later courses don't wait.** Until a backup covers every course online, the app menu
-  shows a reminder dot. Courses that are only made, printed or handed over as files
-  never count, so those teachers never see any of this.
-- **Settings → Security → Publisher identity** shows the status.
+### Setting it up
 
+- **The wizard** ([set-up-identity-dialog.tsx](../src/components/identity/set-up-identity-dialog.tsx:1)):
+  first what going online, signing and the identity file are, then a password typed
+  twice. It runs at the **first Publish** (`usePublishWithConsent`: cancelling it
+  cancels the Publish) or from **Settings → Publishing → "Set up your publishing
+  identity"**. Teachers who only make, print or hand over course files never see it.
+- **The identity file** is `<profile>/publisher-identity.matko-identity`
+  ([electron/publisher-identity.ts](../electron/publisher-identity.ts:1)). It's written
+  once and never changes, so a copy never goes stale. **Settings → Publishing → "Open
+  identity file"** shows it in Finder or Explorer (`shell.showItemInFolder`) for
+  copying somewhere safe.
 - **Format** ([workers/identity-backup.cjs](../workers/identity-backup.cjs:1)):
   - **In the clear:** `format`, `formatVersion`, `createdAt`, `publisherId` (the creator
     public key), and the KDF parameters.
-  - **Encrypted:** `{ primaryKey, courses: [{ id, title }] }`.
+  - **Encrypted:** `{ primaryKey, courses: [] }`. The course list is always empty: courses
+    are found from the identity instead (below).
   - **Encryption:** Argon2id (`crypto_pwhash`, moderate: ~0.6 s, 256 MiB) →
     `crypto_secretbox`. Parameters above the caps are refused when the file is opened.
   - **Failures:** a wrong password and an edited file both fail authentication
-    (`WRONG_PASSWORD`). Passwords are NFC-normalized.
-- **Flow:** the renderer sends the password to main
-  (`sharing:save-identity-backup`). Main asks for a path (OS save dialog), the worker
-  encrypts with the store's primary key (`CMD_CREATE_IDENTITY_BACKUP` = 14), and main
-  writes the file atomically with mode `0600`. The key never reaches the renderer.
-- **Status** ([electron/identity-backup.ts](../electron/identity-backup.ts:1), the
-  `identity-backup` store, main-process only): when the newest backup was saved and
-  which course ids it covers, for "Backed up on …" and "Courses published since then,
-  not in it: N".
-- **Restoring it:** see the next section.
+    (`WRONG_PASSWORD`). Passwords are NFC-normalized. A forgotten password can't be
+    recovered, which the wizard says plainly.
+  - The worker seals and opens it (`CMD_SEAL_IDENTITY` = 19, `CMD_OPEN_IDENTITY` = 16);
+    main writes it atomically with mode `0600`. The key never reaches the renderer.
 
-## Restoring the publisher identity (SLJ-54)
+### Unlocking it
 
-On a new computer, **Settings → Security → Restore from backup…** (or "I have courses
-published with Matko on another computer" on the new-profile screen, which opens the same
-dialog once onboarding is done) takes the backup file and its password. The flow is in
-[electron/identity-restore.ts](../electron/identity-restore.ts:1).
+- **Locked at every start.** A profile with an identity asks for the password before
+  Home (`PublisherPasswordGate`), or "Open without publishing". Unlocked, main hands the
+  identity to the worker in memory (`CMD_SET_IDENTITY` = 18); it's never stored there.
+- **Locked, the courses stay online.** Published courses are shared by their code
+  (`CMD_SEED_COURSE` = 20), and Publish is refused (`courses:publish-version`); the
+  next Publish asks for the password (`UnlockIdentityDialog`).
+- **The password protects publishing, not the course files**, which stay ordinary files
+  on disk. Settings says so.
+
+### Public ids: finding courses again from the identity alone
+
+- Each course keeps its own random **local id** (its folder, the package's `course.json`
+  id; students keep it too).
+- At its **first Publish** a course gets the next number for this identity, n = 0, 1,
+  2… (`publicIndexFor` in `electron/main.ts`; `nextPublicIndex` in the `course-sharing`
+  store only grows, so a removed course's number is never reused). Its **public id** is
+  `publicCourseId(identity, n)`: a keyed hash with the identity's *secret*, so without
+  it nobody can work out a teacher's other public ids or codes, and unlisted courses
+  stay unlisted. The course's key pair (and code) is derived from the public id with
+  Corestore's scheme (`namespace('course-<publicId>').createKeyPair('db')`). The public
+  id is written into the drive's `source.json`; n itself is never published.
+
+### Restoring it on a new computer
+
+On a new computer, **Settings → Publishing → "Restore from a file…"** (or "I have
+courses published with Matko on another computer" on the new-profile screen, which
+opens the same dialog once onboarding is done) takes a copy of the identity file and its
+password. The flow is in [electron/identity-restore.ts](../electron/identity-restore.ts:1).
 
 1. **The file.** Main reads it (OS open dialog, at most 1 MB) and the worker checks it
    (`CMD_READ_IDENTITY_BACKUP` = 15): the dialog shows its name and date.
-2. **The identity.** The worker opens it with the password and creates a fresh store at
-   `<profile>/p2p-restore` with the restored primary key (`CMD_RESTORE_IDENTITY` = 16),
-   checking that its creator key is the file's `publisherId`. Main then stops the
-   worker, puts that store in place of `p2p/` and starts the worker again
-   (`installRestoredStore` in `electron/bare-worker.ts`). The key never leaves the
-   worker. The identity counts as consented to sharing and as backed up by the file.
-   - **Refused** when this profile already put courses online with its own identity:
+2. **The identity.** The worker opens it with the password, checking the key inside is
+   the file's `publisherId`, and the copy becomes the profile's identity file as it is
+   (`publisherIdentity.install`), unlocked.
+   - **Refused** when this profile already put courses online with another identity:
      they could never be updated again. A new profile is the way.
-   - The old `p2p/` goes. With nothing published from it, it held only imported
-     courses' cached blocks, which are fetched again when needed. `p2p-gated` stays.
-3. **The courses.** For every course in the backup, in the background and for as long
-   as it takes a student who has it to come online (`CMD_RECOVER_COURSE` = 17, tracked
-   as transfer `recover-<courseId>`), the worker downloads the published version into
-   `courses/.recover-staging-*`. `landRecoveredCourse` (`course-paths.ts`) makes it the
-   teacher's own course: `versions/<v>/` (without `source.json`), `draft/` from it,
-   `release.json`. Only then is it shared again, so the code and identity are the old
-   ones. Earlier versions and changes never published stayed on the old computer; the
-   dialog says so. Progress is in the dialog and in Settings
-   (`identity-restore` store, main-process only).
+   - **The same identity again is allowed;** its courses already on this device count
+     as found.
+3. **The courses.** The search looks up course numbers 0, 1, 2… among students, ten at
+   a time (`CMD_FIND_COURSE` = 17: derive the public id and code, look for someone who
+   has it for 30 s, `NOT_FOUND` otherwise), and stops after 20 numbers in a row aren't
+   found (`GAP_LIMIT`, like a wallet's gap limit; a deleted course is just a gap).
+   Lookups join the swarm as clients only: announcing many topics at once slowed them
+   down. A course found is downloaded into `courses/.recover-staging-*`, and
+   `landRecoveredCourse` (`course-paths.ts`) makes it the teacher's own course:
+   `versions/<v>/` (without `source.json`), `draft/` from it, `release.json`. Only then
+   is it shared again, with its number recorded, so the code and identity are the old
+   ones. **"Look again"** searches once more for courses nobody had online the first
+   time. Earlier versions and changes never published stayed on the old computer; the
+   dialog says so.
 
 **Why the order matters (proven 2026-10-06, then by the e2e).** A core opened with its
-key pair is *writable*, and a writable core never asks peers for a longer history:
-`update()` on a fresh store's `namespace('course-<id>')` drive stays at length 0, and the
-next publish would start a second history that students' apps refuse. So recovery opens
-the drive **by its key only** (created from the manifest, no key pair stored), which
-syncs from students like any import. Publishing then passes the key pair **in memory**:
-`openPublishedDrive` builds the drive's db core itself with
-`namespace.get({ keyPair })` and hands it to Hyperdrive as `_db` (a Hyperbee; hence
-`hyperbee` in `dependencies`). The blobs core takes the db core's key pair. For a course
-published on this device both ways open the same core, so this is the only path. It is
-also the in-memory signing SLJ-55 builds on. Only the current version's blocks are
-needed to continue the history; the e2e's student never had the older ones.
+key pair is *writable*, and a writable core never asks peers for a longer history: it
+would stay at length 0, and the next publish would start a second history that
+students' apps refuse. So the lookup opens the drive **by its key only** (created from
+the manifest, no key pair stored), which syncs from students like any import.
+Publishing then passes the key pair **in memory**: `openPublishedDrive` builds the
+drive's db core itself with `store.get({ key, keyPair })` and hands it to Hyperdrive as
+`_db` (a Hyperbee; hence `hyperbee` in `dependencies`). The blobs core takes the db
+core's key pair. Only the current version's blocks are needed to continue the history.
 
-Pinned by `e2e/sharing.e2e.mjs` ("restoring the publisher identity on a new
-computer"): the old computer publishes twice and backs up, a student imports, the old
-computer goes away; the new computer restores from Settings (a wrong password first),
-gets the course back from the student with the same code and identity, and publishes a
-version the student is offered as a normal update.
+### The worker's store holds no secret
+
+Its Corestore has its own random seed; cores are created from their manifests only
+(`openCourseCores`), and only writing sessions get a key pair, in memory. The swarm key
+comes from the store's seed, so sharing needs no unlocking. Passing a key pair when a
+core is *created* would store the secret again; the regression check below guards it.
+
+**Tests** (`e2e/sharing.e2e.mjs`):
+- the identity file opens only with the password and holds the identity behind the
+  code, and the teacher's `p2p/` contains neither the identity nor the course's signing
+  key after publishing;
+- the first Publish runs the wizard; cancelling it publishes nothing;
+- after a restart: the password screen, "Open without publishing", the course still
+  shared, Publish refused, then Publish asking for the password;
+- restoring: the old computer's identity file copied right after setup, a student
+  imports, the new computer restores (a wrong password first), finds the course by its
+  number, and publishes a version the student gets as a normal update.
 
 ## Publisher key at rest (SLJ-46 spike, 2026-10-05)
 
 **Question:** can the publisher's signing keys stay out of plain-text storage, so an
-optional publisher password (SLJ-42) actually protects something?
+optional publisher password (SLJ-42) actually protects something? **Yes**; built in
+SLJ-55 as the section above describes (without the keychain and the migration below:
+development data was throwaway).
+
+The spike's findings and design, for the record:
 
 **Verdict: feasible.** Proven with throwaway Node scripts against the same corestore
 7.12 / hypercore 11.35 / hyperdrive 13.3 the worker uses. Each run scanned every file of
