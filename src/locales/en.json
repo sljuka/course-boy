@@ -662,6 +662,8 @@
     "newestVersion": "{{version}} (newest)"
   },
   "draftSection": {
+    "titleLabel": "Section title",
+    "titleRequired": "Section title is required.",
     "summaryLabel": "Section summary",
     "summaryPlaceholder": "What this section is about, in one line",
     "summaryHint": "{{count}}/{{max}} · Shown wherever sections are listed.",

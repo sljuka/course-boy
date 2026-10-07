@@ -43,17 +43,6 @@ function isSectionTitleValid(title: string | undefined): boolean {
   return (title?.trim().length ?? 0) > 0;
 }
 
-function getSectionTitleValidationMessage(
-  locale: Locale,
-  title: string | undefined,
-) {
-  if (!isSectionTitleValid(title)) {
-    return `Section title for ${locale} is required.`;
-  }
-
-  return null;
-}
-
 function buildSectionLocales(
   section: CourseSectionPreview | undefined,
 ): Partial<Record<Locale, SectionDraftLocaleValue>> {
@@ -165,7 +154,7 @@ export function DraftSectionEditor({
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor={`draft-section-title-${locale}`}>
-                  Section title
+                  {t("draftSection.titleLabel")}
                   <span aria-hidden="true" className="text-destructive">
                     *
                   </span>
@@ -177,10 +166,8 @@ export function DraftSectionEditor({
                   placeholder={getInitialSectionTitle(locale)}
                   value={locales[locale]?.title ?? ""}
                 />
-                {getSectionTitleValidationMessage(locale, locales[locale]?.title) && (
-                  <FieldDescription variant="destructive">
-                    {getSectionTitleValidationMessage(locale, locales[locale]?.title)}
-                  </FieldDescription>
+                {!isSectionTitleValid(locales[locale]?.title) && (
+                  <FieldDescription variant="destructive">{t("draftSection.titleRequired")}</FieldDescription>
                 )}
               </Field>
               <Field>
@@ -230,6 +217,7 @@ export function DraftSectionEditor({
       />
       {section && (
         <SectionIntroArea
+          activeLocale={activeSectionLocale}
           courseId={courseId}
           onAutosaveChange={setIntroAutosave}
           section={section}

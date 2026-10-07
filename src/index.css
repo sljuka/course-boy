@@ -354,3 +354,18 @@ button:disabled {
     @apply font-sans;
   }
 }
+
+/* BlockNote paints the editor in its own colors (#fff, or #1f1f1f in dark
+   mode); use the page's instead. While editing, a hairline outline marks the
+   document's area; read-only (the player) it sits flat on the page. */
+:root .bn-root[data-color-scheme] {
+  --bn-colors-editor-background: var(--background);
+}
+:root .bn-editor[contenteditable="true"] {
+  box-shadow: 0 0 0 1px var(--border);
+}
+@media print {
+  :root .bn-editor[contenteditable="true"] {
+    box-shadow: none;
+  }
+}

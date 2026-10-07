@@ -39,13 +39,17 @@ export type SectionIntroAutosave = {
 // language) and "Remove intro", which asks first. Students see the intro first
 // when they start the section. Its autosave status is reported to the section
 // page (`onAutosaveChange`), which merges it with the section's own fields.
+// The section page's language tabs pick the intro's language too
+// (`activeLocale`), so the page has one language picker.
 export function SectionIntroArea({
+  activeLocale,
   courseId,
   onAutosaveChange,
   section,
   sectionTitles,
   supportedLocales,
 }: {
+  activeLocale: Locale;
   courseId: string;
   onAutosaveChange: (autosave: SectionIntroAutosave | null) => void;
   section: CourseSectionPreview;
@@ -119,6 +123,7 @@ export function SectionIntroArea({
         </Button>
       </div>
       <SectionIntroDocument
+        activeLocale={activeLocale}
         // Remounted when the intro is (re)created, so its editor seeds afresh.
         bodies={Object.fromEntries(
           Object.entries(introBodies).map(([locale, body]) => [locale, body ?? ""]),
@@ -168,12 +173,14 @@ export function SectionIntroArea({
 }
 
 function SectionIntroDocument({
+  activeLocale,
   bodies,
   courseId,
   onAutosaveChange,
   sectionId,
   supportedLocales,
 }: {
+  activeLocale: Locale;
   bodies: Partial<Record<Locale, string>>;
   courseId: string;
   onAutosaveChange: (autosave: SectionIntroAutosave | null) => void;
@@ -181,7 +188,7 @@ function SectionIntroDocument({
   supportedLocales: Locale[];
 }) {
   const { locale: appLocale } = useAppState();
-  const document = useLocalizedDocumentDraft({ appLocale, bodies, supportedLocales });
+  const document = useLocalizedDocumentDraft({ activeLocale, appLocale, bodies, supportedLocales });
   const updateMutation = useUpdateSectionIntroMutation();
 
   const buildInput = useCallback(
@@ -210,5 +217,12 @@ function SectionIntroDocument({
 
   useEffect(() => () => onAutosaveChange(null), [onAutosaveChange]);
 
-  return <LocalizedDocumentEditor courseId={courseId} document={document} supportedLocales={supportedLocales} />;
+  return (
+    <LocalizedDocumentEditor
+      courseId={courseId}
+      document={document}
+      showLocaleTabs={false}
+      supportedLocales={supportedLocales}
+    />
+  );
 }

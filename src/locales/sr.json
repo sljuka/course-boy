@@ -662,6 +662,8 @@
     "newestVersion": "{{version}} (najnovija)"
   },
   "draftSection": {
+    "titleLabel": "Naslov sekcije",
+    "titleRequired": "Naslov sekcije je obavezan.",
     "summaryLabel": "Sažetak sekcije",
     "summaryPlaceholder": "O čemu je ova sekcija, u jednom redu",
     "summaryHint": "{{count}}/{{max}} · Prikazuje se svuda gde su sekcije navedene.",

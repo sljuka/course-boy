@@ -87,7 +87,7 @@ import {
   otherSerbianLocale,
   type SerbianScriptSetting,
 } from "@/lib/serbian-script";
-import { SerbianScriptContext } from "@/lib/use-serbian-script";
+import { isGeneratedLocale, SerbianScriptContext, useGeneratedSerbianLocale } from "@/lib/use-serbian-script";
 import {
   useEntityAutosave,
   useForwardAutosaveStatus,
@@ -136,6 +136,7 @@ export function CourseMetadataEditor({
   const { t, i18n } = useTranslation();
   const supportedLocalesAnchor = useComboboxAnchor();
   const serbianScript = useContext(SerbianScriptContext);
+  const generatedLocale = useGeneratedSerbianLocale();
   const courseTitleRef = useRef<HTMLInputElement | null>(null);
   const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const [seed] = useState<CourseMetadataDraft>(() => ({
@@ -384,6 +385,65 @@ export function CourseMetadataEditor({
       }
     >
       <div className="flex flex-col gap-6">
+        <LocalesTabs
+          activeLocale={activeCourseLocale}
+          getIsIncomplete={(locale) =>
+            (draft.localizedCourse[locale]?.title ?? "").trim().length === 0
+          }
+          locales={draft.supportedLocales}
+          onActiveLocaleChange={setActiveCourseLocale}
+          renderContent={(locale) => (
+            <FieldSet className="pt-2">
+              <FieldLegend className="sr-only">
+                {getLocaleLabel(locale, t)}
+              </FieldLegend>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor={`draft-course-title-${locale}`}>
+                    Course title
+                  </FieldLabel>
+                  <Input
+                    className="h-9 text-base"
+                    id={`draft-course-title-${locale}`}
+                    onChange={(event) =>
+                      updateLocalizedCourseField(
+                        locale,
+                        "title",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Course"
+                    ref={
+                      locale === activeCourseLocale ? courseTitleRef : undefined
+                    }
+                    value={draft.localizedCourse[locale]?.title ?? ""}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor={`draft-course-description-${locale}`}>
+                    Description
+                  </FieldLabel>
+                  <Textarea
+                    id={`draft-course-description-${locale}`}
+                    onChange={(event) =>
+                      updateLocalizedCourseField(
+                        locale,
+                        "description",
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Add a short course description"
+                    ref={
+                      locale === activeCourseLocale ? descriptionRef : undefined
+                    }
+                    rows={3}
+                    value={draft.localizedCourse[locale]?.description ?? ""}
+                  />
+                </Field>
+              </FieldGroup>
+            </FieldSet>
+          )}
+        />
         <FieldSet>
           <FieldGroup>
             <Field>
@@ -485,71 +545,16 @@ export function CourseMetadataEditor({
             value={draft.serbianScript}
           />
         )}
-        <LocalesTabs
-          activeLocale={activeCourseLocale}
-          getIsIncomplete={(locale) =>
-            (draft.localizedCourse[locale]?.title ?? "").trim().length === 0
-          }
-          className="pt-1"
-          locales={draft.supportedLocales}
-          onActiveLocaleChange={setActiveCourseLocale}
-          renderContent={(locale) => (
-            <FieldSet className="pt-2">
-              <FieldLegend className="sr-only">
-                {getLocaleLabel(locale, t)}
-              </FieldLegend>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel htmlFor={`draft-course-title-${locale}`}>
-                    Course title
-                  </FieldLabel>
-                  <Input
-                    className="h-9 text-base"
-                    id={`draft-course-title-${locale}`}
-                    onChange={(event) =>
-                      updateLocalizedCourseField(
-                        locale,
-                        "title",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="Course"
-                    ref={
-                      locale === activeCourseLocale ? courseTitleRef : undefined
-                    }
-                    value={draft.localizedCourse[locale]?.title ?? ""}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor={`draft-course-description-${locale}`}>
-                    Description
-                  </FieldLabel>
-                  <Textarea
-                    id={`draft-course-description-${locale}`}
-                    onChange={(event) =>
-                      updateLocalizedCourseField(
-                        locale,
-                        "description",
-                        event.target.value,
-                      )
-                    }
-                    placeholder="Add a short course description"
-                    ref={
-                      locale === activeCourseLocale ? descriptionRef : undefined
-                    }
-                    rows={3}
-                    value={draft.localizedCourse[locale]?.description ?? ""}
-                  />
-                </Field>
-                <CourseMnemonicsEditor
-                  locale={locale}
-                  mnemonics={draft.localizedCourse[locale]?.mnemonics ?? []}
-                  onChange={(mnemonics) => updateLocalizedMnemonics(locale, mnemonics)}
-                />
-              </FieldGroup>
-            </FieldSet>
-          )}
-        />
+        {/* The course's mnemonics in the language the tabs above pick (the
+            generated Serbian script has none of its own: it's made on save). */}
+        {!isGeneratedLocale(generatedLocale, activeCourseLocale) && (
+          <CourseMnemonicsEditor
+            key={activeCourseLocale}
+            locale={activeCourseLocale}
+            mnemonics={draft.localizedCourse[activeCourseLocale]?.mnemonics ?? []}
+            onChange={(mnemonics) => updateLocalizedMnemonics(activeCourseLocale, mnemonics)}
+          />
+        )}
         <FieldSet>
           <FieldGroup>
             <Field>

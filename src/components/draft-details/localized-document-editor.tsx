@@ -152,10 +152,13 @@ export function LocalizedDocumentEditor({
   courseId,
   document,
   header,
+  showLocaleTabs = true,
   supportedLocales,
 }: {
   courseId: string;
   document: LocalizedDocumentDraft;
+  // False when the page's own language tabs already pick the language.
+  showLocaleTabs?: boolean;
   // Above the text, below the language tabs: a document's title field for
   // the language being edited.
   header?: ReactNode;
@@ -163,7 +166,7 @@ export function LocalizedDocumentEditor({
 }) {
   return (
     <>
-      {supportedLocales.length > 1 && (
+      {showLocaleTabs && supportedLocales.length > 1 && (
         <LocalesTabs
           activeLocale={document.activeLocale}
           locales={supportedLocales}

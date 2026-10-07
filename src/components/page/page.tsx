@@ -115,7 +115,7 @@ export function Page({
             className={cn(
               "mx-auto flex w-full flex-col gap-4 p-4 sm:p-5 lg:p-6 print:block print:max-w-none print:p-0",
               !fullBleed && "max-w-6xl",
-              isImmersive && "max-w-3xl pt-10",
+              isImmersive && "max-w-5xl pt-10",
               className,
             )}
           >

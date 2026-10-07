@@ -14,17 +14,21 @@ import type { Locale } from "@/lib/i18n";
 // a section intro), seeded from the saved bodies so an untouched language is
 // never rewritten. Shown by `LocalizedDocumentEditor`; saved by the caller.
 export function useLocalizedDocumentDraft({
+  activeLocale: controlledLocale,
   appLocale,
   bodies,
   supportedLocales,
 }: {
+  // Set when the page's own language tabs pick the language (the section
+  // page: one picker for its fields and its intro); otherwise the editor's.
+  activeLocale?: Locale;
   appLocale: Locale;
   // Each language's saved body (markdown); missing or blank → the template.
   bodies: Partial<Record<Locale, string>>;
   supportedLocales: Locale[];
 }) {
   const [initialLocale] = useState<Locale>(() =>
-    supportedLocales.includes(appLocale) ? appLocale : (supportedLocales[0] ?? appLocale),
+    controlledLocale ?? (supportedLocales.includes(appLocale) ? appLocale : (supportedLocales[0] ?? appLocale)),
   );
   // Frozen at mount: the editor's starting content per language, and the
   // autosave baseline — so an untouched language tab is never written.
@@ -33,15 +37,16 @@ export function useLocalizedDocumentDraft({
   // Frozen at mount, same as `seed` above — a document that starts blank gets
   // its heading autofocused; one that already has real content never does.
   const [isNewDocument] = useState(() => (bodies[initialLocale] ?? "").trim().length === 0);
-  const [activeLocale, setActiveLocale] = useState<Locale>(initialLocale);
+  const [ownLocale, setActiveLocale] = useState<Locale>(initialLocale);
+  const activeLocale = controlledLocale ?? ownLocale;
 
   useEffect(() => {
-    if (supportedLocales.includes(activeLocale)) {
+    if (controlledLocale || supportedLocales.includes(activeLocale)) {
       return;
     }
 
     setActiveLocale(supportedLocales[0] ?? appLocale);
-  }, [activeLocale, appLocale, supportedLocales]);
+  }, [activeLocale, appLocale, controlledLocale, supportedLocales]);
 
   const activeBlocks = draft[activeLocale] ?? createInitialDocumentBlocks(undefined, activeLocale);
   const setActiveBlocks = useCallback(
