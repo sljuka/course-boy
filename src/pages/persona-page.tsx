@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
+import { CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { PERSONAS } from '@/lib/personas'
@@ -59,7 +60,9 @@ export const PersonaPage = () => {
             <ArrowLeft aria-hidden="true" className="h-4 w-4" />
             {t('back')}
           </Button>
-          <h2 className="text-xl font-semibold text-foreground">{t('personaTitle')}</h2>
+          <CardTitle size="lg">
+            {t('personaTitle')}
+          </CardTitle>
         </div>
         <div className="self-end sm:self-auto">
           <LanguageSwitcher locale={locale} onLocaleChange={setLocale} />

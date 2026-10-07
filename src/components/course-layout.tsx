@@ -144,8 +144,10 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   const [versionsPanel, updateVersionsPanel] = useSidePanelPreference("versionsPanel");
   const sections = courseDetailsQuery.data?.sections;
   const courseDetails = courseDetailsQuery.data ?? null;
-  // Every editor page shares two panels: the explorer on the left, and on the
-  // right one card with the course's Versions and its Details below.
+  // The explorer on the left on every editor page; on the right, only on the
+  // course's own page (not a section, document or test), one card with the
+  // course's Versions and its Details below.
+  const isCoursePage = selectedNode.type === "course";
   const sidePanels = useMemo<PageSidePanels>(
     () => ({
       left: {
@@ -164,26 +166,29 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
         open: explorerPanel.open,
         toggleLabel: t("explorer.toggle"),
       },
-      right: {
-        content: (
-          <div className="p-2">
-            <PanelCardGroup>
-              <VersionsPanel courseId={courseId ?? ""} variant="section" />
-              {courseDetails && <CourseInfoCard course={courseDetails} variant="section" />}
-            </PanelCardGroup>
-          </div>
-        ),
-        label: t("courseVersions.panelTitle"),
-        onOpenChange: (open) => updateVersionsPanel({ open }),
-        open: versionsPanel.open,
-        toggleLabel: t("courseVersions.togglePanel"),
-      },
+      right: isCoursePage
+        ? {
+            content: (
+              <div className="p-2">
+                <PanelCardGroup>
+                  <VersionsPanel courseId={courseId ?? ""} variant="section" />
+                  {courseDetails && <CourseInfoCard course={courseDetails} variant="section" />}
+                </PanelCardGroup>
+              </div>
+            ),
+            label: t("courseVersions.panelTitle"),
+            onOpenChange: (open) => updateVersionsPanel({ open }),
+            open: versionsPanel.open,
+            toggleLabel: t("courseVersions.togglePanel"),
+          }
+        : undefined,
     }),
     [
       courseDetails,
       courseId,
       courseTitle,
       explorerPanel.open,
+      isCoursePage,
       sections,
       selectedNode.id,
       t,

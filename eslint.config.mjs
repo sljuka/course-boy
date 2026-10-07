@@ -83,8 +83,11 @@ export default [
               pattern: "^Card$",
               allow: ["layout", "spacing", "color", "shape", "effects"],
             },
+            // CardTitle isn't here: its look comes from its own `size` variant
+            // only (the onboarding cards' one-off large orange titles were the
+            // last restyle, removed 2026-10-07).
             {
-              pattern: "^Card(Content|Title|Description|Header|Footer|Action)$",
+              pattern: "^Card(Content|Description|Header|Footer|Action)$",
               allow: ["layout", "spacing", "typography", "color"],
             },
             // The app shell's one sidebar (plus the course-editor's second

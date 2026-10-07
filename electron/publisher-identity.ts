@@ -2,7 +2,7 @@
 //
 // The identity is 32 random bytes. Every course's public id and code, and the
 // publisher id, are derived from it (workers/identity-keys.cjs). The setup
-// wizard creates it (at the first Publish, or from Settings → Publishing),
+// wizard creates it (at the first Publish, or from Settings → Sharing),
 // never before, so a teacher who only makes or prints courses never has one.
 //
 // It's kept in the profile's identity file, `publisher-identity.matko-identity`:

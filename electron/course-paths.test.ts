@@ -28,6 +28,7 @@ import {
   revertLocalCourseDraftToVersion,
   switchImportedCourseVersion,
   updateLocalCourseDraftMetadata,
+  updateLocalCourseLessonMetadata,
   updateLocalCourseSectionIntro,
   uploadCourseAssetFromBytes,
 } from "./course-paths";
@@ -1155,6 +1156,36 @@ describe("courses brought back with a restored identity", () => {
     await cleanUpInterruptedCourseUpdates();
 
     await expect(fs.stat(stagingPath)).rejects.toThrow();
+  });
+});
+
+describe("updateLocalCourseLessonMetadata", () => {
+  it("renames a document in the given language, keeping its id, other languages and fields", async () => {
+    const { courseId } = await createLocalCourseDraft({
+      defaultLocale: "en",
+      locales: { en: { description: "", title: "Course" }, sr: { description: "", title: "Kurs" } },
+      supportedLocales: ["en", "sr"],
+    });
+    const { sectionId } = await createLocalCourseSection({ courseId, title: "Section" });
+    const { lessonId } = await createLocalCourseLesson({ courseId, sectionId, title: "Old title" });
+    const root = await ensureLocalCoursesRoot();
+    const lessonPath = path.join(root, courseId, "draft", sectionId, `${lessonId}.json`);
+
+    await updateLocalCourseLessonMetadata({ courseId, lessonId, locales: { en: { description: "", title: "New title" } }, sectionId });
+
+    const lesson = JSON.parse(await fs.readFile(lessonPath, "utf8"));
+    expect(lesson.id).toBe(lessonId);
+    expect(lesson.locales.en.title).toBe("New title");
+    expect(lesson.locales.sr.title).toBe("Old title");
+    const details = await getCourseDetails(root, courseId, "en");
+    expect(details?.sections[0].lessons[0]).toMatchObject({ id: lessonId, title: "New title" });
+  });
+
+  it("refuses a lesson id that isn't a plain id", async () => {
+    const courseId = await seedDraftCourse();
+    await expect(
+      updateLocalCourseLessonMetadata({ courseId, lessonId: "../x", locales: { en: { description: "", title: "T" } }, sectionId: "s" }),
+    ).rejects.toThrow(/Invalid lesson id/);
   });
 });
 

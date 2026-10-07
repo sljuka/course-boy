@@ -25,7 +25,7 @@ const INTRO_PARTS = ["online", "signing", "file"] as const;
 // online, signing and the identity file are (nothing to fill in), then a
 // password, typed twice. It creates the identity and its file, locked with
 // that password; the file is also the backup. Opened by the first Publish
-// (`beforePublish`: it then publishes) or from Settings → Publishing. A lost
+// (`beforePublish`: it then publishes) or from Settings → Sharing. A lost
 // password can't be recovered, which the password step says plainly.
 export function SetUpIdentityDialog({
   beforePublish = false,

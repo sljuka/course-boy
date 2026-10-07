@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { filterSuggestionItems } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
@@ -151,10 +151,14 @@ function DocumentBlockNoteEditor({
 export function LocalizedDocumentEditor({
   courseId,
   document,
+  header,
   supportedLocales,
 }: {
   courseId: string;
   document: LocalizedDocumentDraft;
+  // Above the text, below the language tabs: a document's title field for
+  // the language being edited.
+  header?: ReactNode;
   supportedLocales: Locale[];
 }) {
   return (
@@ -167,6 +171,7 @@ export function LocalizedDocumentEditor({
           renderContent={() => null}
         />
       )}
+      {header}
       <DocumentEditorContextProvider courseId={courseId} supportedLocales={supportedLocales}>
         <DocumentBlockNoteEditor
           activeLocale={document.activeLocale}

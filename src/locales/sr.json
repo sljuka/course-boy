@@ -31,7 +31,8 @@
     "removing": "Uklanjanje…",
     "title": "Pregled",
     "testLabel": "Test",
-    "toggle": "Prikaži ili sakrij pregled"
+    "toggle": "Prikaži ili sakrij pregled",
+    "rename": "Preimenuj"
   },
   "courseSearch": {
     "courseMenuLabel": "Radnje za kurs {{title}}",
@@ -335,11 +336,11 @@
     "open": "Otvori meni",
     "switchProfile": "Promeni profil"
   },
-  "nameHint": "Ne moraš koristiti svoje pravo ime. Nije ovo MUP 👮. Možeš koristiti nadimak tipa 'Gušter 🦎' ili 'Patak Kvakanović'. Generalno ne treba unositi lične podatke gde nema potrebe. Naravno, može i lično ime da se koristi, izbor je na tebi.",
-  "nameLabel": "Korisničko ime ili nadimak",
-  "namePlaceholder": "Unesi ime ili nadimak",
+  "nameHint": "Vidi se samo na ovom računaru, da bi se profili na njemu razlikovali. Nikad se ne deli, čak ni sa tvojim učenicima. Nadimak tipa 'Gušter 🦎' ili 'Patak Kvakanović' radi isto kao i pravo ime.",
+  "nameLabel": "Ime profila",
+  "namePlaceholder": "Tvoje ime ili nadimak",
   "niceToMeetYou": "Drago mi je, {{name}}.",
-  "personaTitle": "Koji logo ti se više sviđa?",
+  "personaTitle": "Koji avatar ti se više sviđa?",
   "personas": {
     "courseBoy": "Course boy",
     "courseGirl": "Course girl",
@@ -483,8 +484,8 @@
     "switchToDark": "Prebaci na tamnu temu",
     "switchToLight": "Prebaci na svetlu temu"
   },
-  "welcomeSubtitle": "Matko je otvorena platforma za kreiranje i pohađanje kurseva. Testovi i dokumenti od kojih su kursevi sastavljeni prilagođeni su za štampanje. Fokus je na tome da učenje i podučavanje budu prijatno iskustvo 😊",
-  "welcomeTitle": "Dobrodošli! 😊",
+  "welcomeSubtitle": "Matko je otvorena platforma za kreiranje i pohađanje kurseva. Testovi i dokumenti od kojih su kursevi sastavljeni prilagođeni su za štampanje. Fokus je na tome da učenje i podučavanje budu prijatno iskustvo.",
+  "welcomeTitle": "Dobrodošli!",
   "titleBar": {
     "back": "Nazad",
     "forward": "Napred",
@@ -512,7 +513,10 @@
     "title": "Podešavanja",
     "subtitle": "Kako koristiš aplikaciju na ovom uređaju.",
     "general": {
-      "title": "Opšte"
+      "title": "Opšte",
+      "profileName": "Ime profila",
+      "profileNameDescription": "Vidi se samo na ovom računaru, da bi se profili razlikovali. Nikad se ne deli.",
+      "profileNameEmpty": "Unesi ime."
     },
     "role": {
       "title": "Uloga",
@@ -526,6 +530,7 @@
     },
     "interface": {
       "title": "Izgled",
+      "avatar": "Avatar",
       "theme": "Tema",
       "light": "Svetla",
       "dark": "Tamna"
@@ -829,7 +834,10 @@
     "newProfileTitle": "Novi profil",
     "newProfileDescription": "Profil čuva svoje kurseve, podešavanja i identitet izdavača, odvojeno od ostalih na ovom računaru.",
     "nameTooLong": "Najviše {{max}} karaktera.",
-    "cancel": "Otkaži",
-    "restoreIdentity": "Imam kurseve objavljene u Matku na drugom računaru: vrati moj identitet izdavača posle podešavanja"
+    "cancel": "Otkaži"
+  },
+  "draftDocument": {
+    "title": "Naslov dokumenta",
+    "titlePlaceholder": "Dokument bez naslova"
   }
 }

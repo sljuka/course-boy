@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { PublisherIdentitySettings } from "@/components/identity/publisher-identity-settings";
 import { PageContent } from "@/components/page-content";
+import { ProfileNameSetting } from "@/components/profile/profile-name-setting";
 import { RemoveProfileSetting } from "@/components/profile/remove-profile-setting";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,7 +18,8 @@ import {
 } from "@/components/ui/select";
 import { SettingsSection } from "@/components/ui/settings-section";
 import { usePreviousVersionsToKeep } from "@/lib/previous-versions-queries";
-import type { Theme, UserRole } from "@/lib/preferences";
+import { PERSONAS } from "@/lib/personas";
+import type { Persona, Theme, UserRole } from "@/lib/preferences";
 import { useShowBundledCourses } from "@/lib/show-bundled-courses-queries";
 import { useAppState } from "@/lib/use-app-state";
 
@@ -27,13 +29,13 @@ const themeOptions: Theme[] = ["light", "dark"];
 // Must match MAX_PREVIOUS_VERSIONS_TO_KEEP in electron/course-paths.ts.
 const previousVersionsOptions = Array.from({ length: 11 }, (_, count) => count);
 
-// Settings: General (role, Getting Started), Interface (theme), Sharing
+// Settings: General (profile name, role, Getting Started), Interface (avatar, theme), Sharing
 // (versions kept of imported courses, the publishing identity), and last the
 // danger zone (removing the profile). Each section is its title above a card
 // of its settings.
 export const SettingsPage = () => {
   const { t } = useTranslation();
-  const { role, setRole, setTheme, theme } = useAppState();
+  const { persona, role, setPersona, setRole, setTheme, theme } = useAppState();
   const [showBundledCourses, setShowBundledCourses] = useShowBundledCourses();
   const [previousVersionsToKeep, setPreviousVersionsToKeep] = usePreviousVersionsToKeep();
 
@@ -48,6 +50,7 @@ export const SettingsPage = () => {
       }
     >
       <SettingsSection title={t("settings.general.title")}>
+        <ProfileNameSetting />
         <Field>
           <FieldTitle>{t("settings.role.title")}</FieldTitle>
           <FieldDescription>{t("settings.role.description")}</FieldDescription>
@@ -84,6 +87,25 @@ export const SettingsPage = () => {
         </FieldLabel>
       </SettingsSection>
       <SettingsSection data-testid="interface-settings" title={t("settings.interface.title")}>
+        <Field>
+          <FieldTitle>{t("settings.interface.avatar")}</FieldTitle>
+          <RadioGroup
+            aria-label={t("settings.interface.avatar")}
+            className="grid sm:grid-cols-2"
+            onValueChange={(value) => setPersona(value as Persona)}
+            value={persona ?? undefined}
+          >
+            {PERSONAS.map((option) => (
+              <FieldLabel htmlFor={`settings-avatar-${option.id}`} key={option.id}>
+                <Field orientation="horizontal">
+                  <RadioGroupItem id={`settings-avatar-${option.id}`} value={option.id} />
+                  <img alt="" className="size-10 shrink-0 rounded-full" src={option.imageUrl} />
+                  <FieldTitle>{t(option.labelKey)}</FieldTitle>
+                </Field>
+              </FieldLabel>
+            ))}
+          </RadioGroup>
+        </Field>
         <Field>
           <FieldTitle>{t("settings.interface.theme")}</FieldTitle>
           <RadioGroup

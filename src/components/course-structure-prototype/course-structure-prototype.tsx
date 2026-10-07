@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ArrowDown,
   ArrowUp,
@@ -11,6 +12,7 @@ import {
   FolderOpen,
   FolderPlus,
   PanelRightOpen,
+  Pencil,
   Trash2,
   type LucideIcon,
 } from "lucide-react";
@@ -455,6 +457,9 @@ function SectionRow({
         onInsertTest={onAddTest}
         onMoveDown={() => {}}
         onMoveUp={() => {}}
+        onRename={() =>
+          onSelectionChange?.({ id: node.id, renameRequest: Date.now(), title: node.title, type: node.type })
+        }
         onSelect={() =>
           onSelectionChange?.({ id: node.id, title: node.title, type: node.type })
         }
@@ -485,6 +490,14 @@ function SectionRow({
                   onMoveDown={() => {}}
                   onMoveUp={() => {}}
                   onOpen={() => {}}
+                  onRename={() =>
+                    onSelectionChange?.({
+                      id: child.id,
+                      renameRequest: Date.now(),
+                      title: child.title,
+                      type: child.type,
+                    })
+                  }
                   onSelect={() =>
                     onSelectionChange?.({
                       id: child.id,
@@ -538,6 +551,14 @@ function SectionRow({
                 }
                 onMoveDown={() => {}}
                 onMoveUp={() => {}}
+                onRename={() =>
+                  onSelectionChange?.({
+                    id: child.id,
+                    renameRequest: Date.now(),
+                    title: child.title,
+                    type: child.type,
+                  })
+                }
                 onSelect={() =>
                   onSelectionChange?.({
                     id: child.id,
@@ -641,6 +662,7 @@ function ExplorerRow({
   onMoveUp,
   onOpen,
   onOpenInFileSystem,
+  onRename,
   onSelect,
   onToggle,
   title,
@@ -665,10 +687,14 @@ function ExplorerRow({
   onMoveUp: () => void;
   onOpen?: () => void;
   onOpenInFileSystem?: () => void;
+  // Opens the node with its title field focused (all languages are edited
+  // there).
+  onRename?: () => void;
   onSelect?: () => void;
   onToggle?: () => void;
   title: string;
 }) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
 
@@ -823,6 +849,12 @@ function ExplorerRow({
           <ContextMenuItem onClick={onOpen}>
             <PanelRightOpen aria-hidden="true" />
             <span>Open</span>
+          </ContextMenuItem>
+        )}
+        {onRename && (
+          <ContextMenuItem data-testid="explorer-rename" onClick={onRename}>
+            <Pencil aria-hidden="true" />
+            <span>{t("explorer.rename")}</span>
           </ContextMenuItem>
         )}
         {onOpenInFileSystem && (

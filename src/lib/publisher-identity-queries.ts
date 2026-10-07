@@ -1,5 +1,4 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useCallback } from "react";
 
 import type {
   ChooseIdentityFileResult,
@@ -98,23 +97,4 @@ export function useSearchRestoredCoursesMutation() {
     mutationFn: () => window.sharing.searchRestoredCourses(),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: identityRestoreStatusKey }),
   });
-}
-
-const restoreAfterOnboardingKey = ["preferences", "restoreIdentityAfterOnboarding"] as const;
-
-// "I have courses published with Matko on another computer" on the new-profile
-// screen: the restore dialog opens once onboarding is done. Dismissing it
-// (restored or not) clears it.
-export function useRestoreIdentityAfterOnboarding(): [boolean, () => void] {
-  const { data } = useQuery({
-    queryKey: restoreAfterOnboardingKey,
-    queryFn: async () => (await window.preferences.get()).restoreIdentityAfterOnboarding === true,
-  });
-
-  const dismiss = useCallback(() => {
-    queryClient.setQueryData(restoreAfterOnboardingKey, false);
-    void window.preferences.set({ restoreIdentityAfterOnboarding: false });
-  }, []);
-
-  return [data ?? false, dismiss];
 }

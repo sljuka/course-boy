@@ -90,6 +90,7 @@ describe('launch', () => {
       'saveSectionTest',
       'updateDraftMetadata',
       'updateLessonContent',
+      'updateLessonMetadata',
       'updateSection',
       'updateSectionIntro',
       'updateSectionTestMetadata',
@@ -808,6 +809,48 @@ describe('commit needs sections with content', () => {
 
 // SLJ-45: a section's summary (one line, for lists) and intro (a page students
 // see first when they start the section).
+describe('rename from the explorer', () => {
+  it('Rename opens a section, a document or a test with its title field focused, and the new title is saved', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Rename Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Old section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Old document' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Old test' })
+      return { courseId, lessonId, sectionId, testId }
+    })
+    const sectionDir = path.join(DATA_DIR, 'courses', ids.courseId, 'draft', ids.sectionId)
+    const readJson = (file) => JSON.parse(fs.readFileSync(path.join(sectionDir, file), 'utf8'))
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+
+    const rename = async (oldTitle, fieldPrefix, newTitle) => {
+      await page.getByText(oldTitle, { exact: true }).first().click({ button: 'right' })
+      await page.locator('[data-testid="explorer-rename"]').click()
+      await waitFor(page, (prefix) => document.activeElement?.id?.startsWith(prefix), { arg: fieldPrefix })
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A')
+      await page.keyboard.type(newTitle)
+    }
+
+    await waitForText(page, 'Old section')
+    await rename('Old section', 'draft-section-title-', 'New section')
+    await expect.poll(() => readJson('section.json').locales.en.title, { timeout: 15_000 }).toBe('New section')
+
+    await rename('Old document', 'draft-document-title-', 'New document')
+    await expect.poll(() => readJson(`${ids.lessonId}.json`).locales.en.title, { timeout: 15_000 }).toBe('New document')
+    // The explorer shows it, and the document keeps its id (and file).
+    await waitForText(page, 'New document')
+
+    await rename('Old test', 'draft-test-title-', 'New test')
+    await expect.poll(() => readJson(`${ids.testId}.json`).locales.en.title, { timeout: 15_000 }).toBe('New test')
+  })
+})
+
 describe('section summary and intro', () => {
   it('a teacher adds both, a student sees the summary and starts with the intro, and removing asks first', async () => {
     const { page } = harness

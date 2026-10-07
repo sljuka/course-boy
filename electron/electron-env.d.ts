@@ -33,6 +33,9 @@ interface Window {
     updateSection: (
       input: import('../src/lib/course-package').UpdateCourseSectionInput,
     ) => Promise<void>
+    updateLessonMetadata: (
+      input: import('../src/lib/course-package').UpdateCourseLessonMetadataInput,
+    ) => Promise<void>
     createLesson: (
       input: import('../src/lib/course-package').CreateCourseLessonInput,
     ) => Promise<import('../src/lib/course-package').CreateCourseLessonResult>
@@ -122,7 +125,7 @@ interface Window {
   }
   profiles: {
     getState: () => Promise<import('../src/lib/profiles').ProfilesState>
-    create: (input: { locale?: string; name: string; restoreIdentity?: boolean }) => Promise<void>
+    create: (input: { locale?: string; name: string }) => Promise<void>
     open: (profileId: string) => Promise<void>
     switchProfile: () => Promise<void>
     getRemovalSummary: () => Promise<import('../src/lib/profiles').ProfileRemovalSummary>

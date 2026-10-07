@@ -94,9 +94,8 @@ adding a case to the e2e suite over one-off manual checking.
   Publishing → "Open identity file"). The profile asks for the password when it opens;
   unlocked, the identity goes to the worker in memory only, and the worker's store holds
   no secret. Each course's code comes from a public id derived from the identity and its
-  publish number, so on a new computer "Restore from a file…" (Settings, or a checkbox on
-  the new-profile screen) finds the courses among students from the identity alone
-  (SLJ-54). "Import course" on Home takes a code;
+  publish number, so on a new computer "Restore from a file…" (Settings → Sharing) finds
+  the courses among students from the identity alone (SLJ-54). "Import course" on Home takes a code;
   the download runs in the background under Home's Downloading group (SLJ-43, SLJ-49).
   `source.json` in the drive records where a course is shared from. Students are offered newer versions of imported
   courses and apply them from the course page (SLJ-39); imported courses keep previous versions as `versions/<v>/` +

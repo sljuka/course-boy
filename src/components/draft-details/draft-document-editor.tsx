@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -10,8 +10,12 @@ import { LocalizedDocumentEditor } from "@/components/draft-details/localized-do
 import { useLocalizedDocumentDraft } from "@/components/draft-details/use-localized-document-draft";
 import { PageContent } from "@/components/page-content";
 import { Button, ButtonLabel } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { useFocusTitleOnRename } from "@/components/draft-details/use-focus-title-on-rename";
 import type {
   CourseLesson,
+  UpdateCourseLessonMetadataInput,
   UpdateLessonContentInput,
 } from "@/lib/course-package";
 import { buildDraftLessonPreviewPath } from "@/lib/course-utils";
@@ -20,8 +24,10 @@ import { blocksToMarkdown } from "@/lib/lesson-content-markdown";
 import {
   useCourseDetailsForLocalesQueries,
   useUpdateLessonContentMutation,
+  useUpdateLessonMetadataMutation,
 } from "@/lib/course-queries";
 import {
+  mergeAutosaveStatuses,
   useEntityAutosave,
   useForwardAutosaveStatus,
 } from "@/lib/use-entity-autosave";
@@ -53,20 +59,21 @@ export function DraftDocumentEditor(props: DraftDocumentEditorProps) {
     return <PageContent>{null}</PageContent>;
   }
 
+  const lessonsByLocale = supportedLocales.map((locale, index) => {
+    const section = detailsQueries[index]?.data?.sections.find(
+      (candidate) => candidate.id === sectionId,
+    );
+    return [locale, section?.lessons.find((candidate) => candidate.id === selectedNode.id)] as const;
+  });
   const lessonBodies = Object.fromEntries(
-    supportedLocales.map((locale, index) => {
-      const section = detailsQueries[index]?.data?.sections.find(
-        (candidate) => candidate.id === sectionId,
-      );
-      const lesson = section?.lessons.find(
-        (candidate) => candidate.id === selectedNode.id,
-      );
-
-      return [locale, lesson?.body ?? ""];
-    }),
+    lessonsByLocale.map(([locale, lesson]) => [locale, lesson?.body ?? ""]),
+  ) as Partial<Record<Locale, string>>;
+  // Its title in every language, for the title field (and so renaming).
+  const lessonTitles = Object.fromEntries(
+    lessonsByLocale.map(([locale, lesson]) => [locale, lesson?.title ?? ""]),
   ) as Partial<Record<Locale, string>>;
 
-  return <LoadedDraftDocumentEditor {...props} lessonBodies={lessonBodies} />;
+  return <LoadedDraftDocumentEditor {...props} lessonBodies={lessonBodies} lessonTitles={lessonTitles} />;
 }
 
 function LoadedDraftDocumentEditor({
@@ -74,12 +81,14 @@ function LoadedDraftDocumentEditor({
   courseId,
   lesson,
   lessonBodies,
+  lessonTitles,
   reportAutosaveStatus,
   sectionId,
   selectedNode,
   supportedLocales,
 }: DraftDocumentEditorProps & {
   lessonBodies: Partial<Record<Locale, string>>;
+  lessonTitles: Partial<Record<Locale, string>>;
 }) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -112,7 +121,45 @@ function LoadedDraftDocumentEditor({
     value: document.draft,
   });
 
-  useForwardAutosaveStatus(reportAutosaveStatus, autosave);
+  // The title per language: its own save (it's in the lesson's file, the
+  // body in its own); the page shows one status for both.
+  const [titleSeed] = useState(lessonTitles);
+  const [titles, setTitles] = useState(titleSeed);
+  const updateLessonMetadataMutation = useUpdateLessonMetadataMutation();
+  const buildTitleInput = useCallback(
+    (value: Partial<Record<Locale, string>>): UpdateCourseLessonMetadataInput => ({
+      courseId,
+      lessonId: selectedNode.id,
+      locales: Object.fromEntries(Object.entries(value).map(([locale, title]) => [locale, { title: title ?? "" }])),
+      sectionId,
+    }),
+    [courseId, sectionId, selectedNode.id],
+  );
+  const titleAutosave = useEntityAutosave({
+    buildInput: buildTitleInput,
+    initialValue: titleSeed,
+    mutation: updateLessonMetadataMutation,
+    value: titles,
+  });
+  useFocusTitleOnRename(selectedNode.renameRequest, "draft-document-title-");
+
+  const { saveNow: saveBodyNow } = autosave;
+  const { saveNow: saveTitleNow } = titleAutosave;
+  const saveNow = useCallback(() => {
+    saveBodyNow();
+    saveTitleNow();
+  }, [saveBodyNow, saveTitleNow]);
+  const pageAutosave = useMemo(
+    () => ({
+      errorMessage: autosave.errorMessage ?? titleAutosave.errorMessage,
+      saveNow,
+      status: mergeAutosaveStatuses([autosave.status, titleAutosave.status]),
+    }),
+    [autosave.errorMessage, autosave.status, saveNow, titleAutosave.errorMessage, titleAutosave.status],
+  );
+
+  useForwardAutosaveStatus(reportAutosaveStatus, pageAutosave);
+  const activeTitle = titles[document.activeLocale] ?? "";
 
   function openPreview() {
     navigate(buildDraftLessonPreviewPath(courseId), {
@@ -142,6 +189,25 @@ function LoadedDraftDocumentEditor({
       <LocalizedDocumentEditor
         courseId={courseId}
         document={document}
+        header={
+          <Field>
+            <FieldLabel htmlFor={`draft-document-title-${document.activeLocale}`}>
+              {t("draftDocument.title")}
+              <span aria-hidden="true" className="text-destructive">
+                *
+              </span>
+            </FieldLabel>
+            <Input
+              aria-invalid={activeTitle.trim().length === 0}
+              id={`draft-document-title-${document.activeLocale}`}
+              onChange={(event) =>
+                setTitles((current) => ({ ...current, [document.activeLocale]: event.target.value }))
+              }
+              placeholder={t("draftDocument.titlePlaceholder")}
+              value={activeTitle}
+            />
+          </Field>
+        }
         supportedLocales={supportedLocales}
       />
     </PageContent>

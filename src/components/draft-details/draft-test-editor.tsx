@@ -47,6 +47,7 @@ import {
   useEntityAutosave,
   useForwardAutosaveStatus,
 } from "@/lib/use-entity-autosave";
+import { useFocusTitleOnRename } from "@/components/draft-details/use-focus-title-on-rename";
 
 function isTestTitleValid(title: string | undefined): boolean {
   return (title?.trim().length ?? 0) > 0;
@@ -316,6 +317,8 @@ function DraftStandaloneTestEditor({
     saveNow: combinedSaveNow,
     status: combinedStatus,
   });
+
+  useFocusTitleOnRename(selectedNode.renameRequest, "draft-test-title-");
 
   function updateTitleLocale(locale: Locale, title: string) {
     setTitleLocales((current) => ({ ...current, [locale]: title }));

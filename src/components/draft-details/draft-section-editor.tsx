@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getLocaleLabel } from "@/components/draft-details/draft-locale-utils";
+import { useFocusTitleOnRename } from "@/components/draft-details/use-focus-title-on-rename";
 import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import type { CourseLayoutOutletContext } from "@/components/course-layout";
 import { LocalesTabs } from "@/components/locales-tabs";
@@ -90,6 +91,7 @@ export function DraftSectionEditor({
   const [locales, setLocales] = useState(seed);
   const [activeSectionLocale, setActiveSectionLocale] = useState<Locale>(defaultLocale);
   const updateSectionMutation = useUpdateSectionMutation();
+  useFocusTitleOnRename(selectedNode.renameRequest, "draft-section-title-");
 
   useEffect(() => {
     if (supportedLocales.includes(activeSectionLocale)) {

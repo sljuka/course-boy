@@ -66,6 +66,7 @@ import {
   updateLocalCourseSectionIntro,
   removeLocalCourseSectionIntro,
   updateLocalCourseLessonTest,
+  updateLocalCourseLessonMetadata,
   updateLocalCourseSection,
   updateLocalCourseSectionTest,
   updateLocalCourseSectionTestMetadata,
@@ -95,6 +96,7 @@ import type {
   SaveLessonTestInput,
   SaveSectionTestInput,
   UpdateCourseDraftMetadataInput,
+  UpdateCourseLessonMetadataInput,
   UpdateCourseSectionInput,
   UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
@@ -182,7 +184,6 @@ type UserPreferences = {
   persona?: Persona
   previousVersionsToKeep?: number
   recentlyViewed?: RecentlyViewedEntry[]
-  restoreIdentityAfterOnboarding?: boolean
   role?: UserRole
   theme?: Theme
 }
@@ -441,10 +442,6 @@ ipcMain.handle(
       profile.preferencesStore.set('previousVersionsToKeep', clampPreviousVersionsToKeep(preferences.previousVersionsToKeep))
     }
 
-    if (typeof preferences.restoreIdentityAfterOnboarding === 'boolean') {
-      profile.preferencesStore.set('restoreIdentityAfterOnboarding', preferences.restoreIdentityAfterOnboarding)
-    }
-
     if (typeof preferences.showMnemonics === 'boolean') {
       profile.preferencesStore.set('showMnemonics', preferences.showMnemonics)
     }
@@ -495,14 +492,12 @@ ipcMain.handle('profiles:get-state', () => {
   } satisfies ProfilesState
 })
 
-ipcMain.handle('profiles:create', async (_event, input: { locale?: Locale; name: string; restoreIdentity?: boolean }) => {
+ipcMain.handle('profiles:create', async (_event, input: { locale?: Locale; name: string }) => {
   const created = createProfile(getBaseDataDir(), { name: String(input?.name ?? '') })
   // The new profile starts with the name already given (onboarding goes on
-  // from the persona) and the language chosen in the launcher; with
-  // "I already have a publisher identity", the restore dialog after onboarding.
+  // from the persona) and the language chosen in the launcher.
   new Store<UserPreferences>({ cwd: path.join(getBaseDataDir(), 'profiles', created.id) }).set({
     ...(input?.locale === 'en' || input?.locale === 'sr' || input?.locale === 'sr-Cyrl' ? { locale: input.locale } : {}),
-    ...(input?.restoreIdentity === true ? { restoreIdentityAfterOnboarding: true } : {}),
     nickname: created.name,
   })
   await switchProfile(created.id)
@@ -584,6 +579,12 @@ ipcMain.handle('courses:create-section', (_event, input: CreateCourseSectionInpu
 
 ipcMain.handle('courses:update-section', (_event, input: UpdateCourseSectionInput) => {
   return updateLocalCourseSection(input)
+})
+
+// A document's title (and description) per language: the document editor's
+// title fields, and so renaming a document.
+ipcMain.handle('courses:update-lesson-metadata', (_event, input: UpdateCourseLessonMetadataInput) => {
+  return updateLocalCourseLessonMetadata(input)
 })
 
 ipcMain.handle('courses:create-lesson', (_event, input: CreateCourseLessonInput) => {

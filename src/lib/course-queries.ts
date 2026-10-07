@@ -30,6 +30,7 @@ import type {
   SaveSectionTestInput,
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
+  UpdateCourseLessonMetadataInput,
   UpdateCourseSectionInput,
   UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
@@ -133,6 +134,19 @@ export function useCreateCourseSectionMutation() {
 export function useUpdateSectionMutation() {
   return useMutation<void, Error, UpdateCourseSectionInput>({
     mutationFn: (input) => window.courses.updateSection(input),
+    mutationKey: courseContentSaveMutationKey,
+    onSuccess: async (_result, input) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["courses", "detail", input.courseId],
+      });
+    },
+  });
+}
+
+// A document's titles per language (the document editor's title fields).
+export function useUpdateLessonMetadataMutation() {
+  return useMutation<void, Error, UpdateCourseLessonMetadataInput>({
+    mutationFn: (input) => window.courses.updateLessonMetadata(input),
     mutationKey: courseContentSaveMutationKey,
     onSuccess: async (_result, input) => {
       await queryClient.invalidateQueries({

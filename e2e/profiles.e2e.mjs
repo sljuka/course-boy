@@ -25,11 +25,10 @@ async function waitForActive(predicate) {
   await expect.poll(async () => predicate(await activeProfile().catch(() => undefined)), { timeout: 20_000 }).toBe(true)
 }
 
-async function createProfile(name, { restoreIdentity = false } = {}) {
+async function createProfile(name) {
   const { page } = harness
   await page.locator('[data-testid="create-profile"]').waitFor()
-  await page.getByLabel('Username or nickname').fill(name)
-  if (restoreIdentity) await page.click('[data-testid="restore-identity-after-setup"]')
+  await page.getByLabel('Profile name').fill(name)
   await page.getByRole('button', { name: 'Continue' }).click()
   await waitForActive((active) => active?.name === name)
   // The name was given in the launcher: onboarding goes on from the persona.
@@ -104,8 +103,7 @@ describe('profiles', () => {
     expect(await bodyText(harness.page)).toContain('Ana Petrović')
 
     await harness.page.getByRole('button', { name: 'New profile' }).click()
-    // SLJ-54: "I have courses published with Matko on another computer".
-    await createProfile('##$$%', { restoreIdentity: true })
+    await createProfile('##$$%')
 
     const other = profileFolders().find((id) => id !== ana)
     expect(other).toMatch(/^profile-[a-z0-9]{16}$/)
@@ -122,13 +120,6 @@ describe('profiles', () => {
     expect(await harness.page.evaluate(() => window.sharing.getCreatorKey())).toMatch(/./)
     expect(await harness.page.evaluate(() => window.sharing.getCreatorKey())).not.toBe(anaCreatorKey)
     await finishOnboarding('course-monster')
-
-    // Ticked on the new-profile screen: the restore dialog opens once
-    // onboarding is done, and only once.
-    await harness.page.locator('[data-testid="restore-identity-dialog"]').waitFor()
-    await harness.page.getByRole('button', { name: 'Cancel' }).click()
-    await harness.page.locator('[data-testid="restore-identity-dialog"]').waitFor({ state: 'detached' })
-    expect((await harness.page.evaluate(() => window.preferences.get())).restoreIdentityAfterOnboarding).toBe(false)
   })
 
   it('the picker lists the last used first and opens the one chosen, in the same window', async () => {
@@ -169,6 +160,10 @@ describe('profiles', () => {
     await page.evaluate(() => {
       location.hash = '#/settings'
     })
+    // Settings → General → Profile name renames it, for the picker too.
+    await page.locator('#settings-profile-name').fill('Boris')
+    await page.locator('#settings-profile-name').press('Enter')
+    await expect.poll(() => profileFile(other).name).toBe('Boris')
     await page.click('[data-testid="open-remove-profile"]')
     const dialog = page.locator('[data-testid="remove-profile-dialog"]')
     const removeButton = dialog.locator('[data-testid="remove-profile"]')
@@ -191,6 +186,6 @@ describe('profiles', () => {
     await page.locator('[data-testid="profile-picker"]').waitFor()
 
     expect(profileFolders()).toEqual([ana])
-    expect(await page.locator('[data-testid="open-profile"]').allInnerTexts()).toEqual(['Ana Petrović'])
+    expect((await page.locator('[data-testid="open-profile"]').allInnerTexts()).map((name) => name.trim())).toEqual(['Ana Petrović'])
   })
 })

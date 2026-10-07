@@ -38,6 +38,7 @@ import type {
   SaveSectionTestInput,
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
+  UpdateCourseLessonMetadataInput,
   UpdateCourseSectionInput,
   UpdateCourseSectionTestMetadataInput,
   UpdateLessonContentInput,
@@ -80,6 +81,9 @@ contextBridge.exposeInMainWorld('courses', {
   },
   updateSection(input: UpdateCourseSectionInput) {
     return ipcRenderer.invoke('courses:update-section', input) as Promise<void>
+  },
+  updateLessonMetadata(input: UpdateCourseLessonMetadataInput) {
+    return ipcRenderer.invoke('courses:update-lesson-metadata', input) as Promise<void>
   },
   createLesson(input: CreateCourseLessonInput) {
     return ipcRenderer.invoke('courses:create-lesson', input) as Promise<CreateCourseLessonResult>
@@ -174,7 +178,7 @@ contextBridge.exposeInMainWorld('profiles', {
   getState() {
     return ipcRenderer.invoke('profiles:get-state') as Promise<ProfilesState>
   },
-  create(input: { locale?: string; name: string; restoreIdentity?: boolean }) {
+  create(input: { locale?: string; name: string }) {
     return ipcRenderer.invoke('profiles:create', input) as Promise<void>
   },
   open(profileId: string) {

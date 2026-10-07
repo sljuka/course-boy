@@ -31,7 +31,8 @@
     "removing": "Removing…",
     "title": "Explorer",
     "testLabel": "Test",
-    "toggle": "Show or hide explorer"
+    "toggle": "Show or hide explorer",
+    "rename": "Rename"
   },
   "courseSearch": {
     "courseMenuLabel": "Course actions for {{title}}",
@@ -335,11 +336,11 @@
     "open": "Open menu",
     "switchProfile": "Switch profile"
   },
-  "nameHint": "You don't need to use your real name. This isn't a government office. You can use a nickname like 'Lizard' or 'Quacky McDuck'. In general, it's better not to share personal data when there's no real need. Of course, you can use your real name too. Your choice.",
-  "nameLabel": "Username or nickname",
-  "namePlaceholder": "Type a name or nickname",
+  "nameHint": "Only shown on this computer, so the people who use it can tell their profiles apart. It's never shared, not even with your students. A nickname like 'Lizard' or 'Quacky McDuck' works just as well as your name.",
+  "nameLabel": "Profile name",
+  "namePlaceholder": "Your name or a nickname",
   "niceToMeetYou": "Nice to meet you, {{name}}.",
-  "personaTitle": "Which logo do you prefer?",
+  "personaTitle": "Which avatar do you prefer?",
   "personas": {
     "courseBoy": "Course boy",
     "courseGirl": "Course girl",
@@ -483,8 +484,8 @@
     "switchToDark": "Switch to dark theme",
     "switchToLight": "Switch to light theme"
   },
-  "welcomeSubtitle": "Matko is an open platform for creating and attending courses. Tests and documents that make up the courses are adjusted to be print-friendly. The focus is on making learning and teaching an enjoyable experience 😊",
-  "welcomeTitle": "Welcome! 😊",
+  "welcomeSubtitle": "Matko is an open platform for creating and attending courses. Tests and documents that make up the courses are adjusted to be print-friendly. The focus is on making learning and teaching an enjoyable experience.",
+  "welcomeTitle": "Welcome!",
   "titleBar": {
     "back": "Back",
     "forward": "Forward",
@@ -512,7 +513,10 @@
     "title": "Settings",
     "subtitle": "Preferences for how you use Matko on this device.",
     "general": {
-      "title": "General"
+      "title": "General",
+      "profileName": "Profile name",
+      "profileNameDescription": "Only shown on this computer, to tell profiles apart. It's never shared.",
+      "profileNameEmpty": "Enter a name."
     },
     "role": {
       "title": "Role",
@@ -526,6 +530,7 @@
     },
     "interface": {
       "title": "Interface",
+      "avatar": "Avatar",
       "theme": "Theme",
       "light": "Light",
       "dark": "Dark"
@@ -829,7 +834,10 @@
     "newProfileTitle": "New profile",
     "newProfileDescription": "A profile keeps its own courses, settings and publisher identity, separate from the others on this computer.",
     "nameTooLong": "At most {{max}} characters.",
-    "cancel": "Cancel",
-    "restoreIdentity": "I have courses published with Matko on another computer: restore my publishing identity after setup"
+    "cancel": "Cancel"
+  },
+  "draftDocument": {
+    "title": "Document title",
+    "titlePlaceholder": "Untitled document"
   }
 }

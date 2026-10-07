@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // How to keep the identity file safe (SLJ-53, SLJ-55), as one warning in
-// Settings → Publishing: copies of the file and the password apart, two copies,
+// Settings → Sharing: copies of the file and the password apart, two copies,
 // a long unique password, never sent around. (The setup wizard only says that a
 // lost password can't be recovered.)
 const TIPS = ["separate", "twoCopies", "longPassword", "neverSend"] as const;

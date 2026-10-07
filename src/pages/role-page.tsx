@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { LanguageSwitcher } from '@/components/language-switcher'
 import { Button } from '@/components/ui/button'
+import { CardTitle } from '@/components/ui/card'
 import { useAppState } from '@/lib/use-app-state'
 import type { UserRole } from '@/lib/preferences'
 
@@ -40,9 +41,9 @@ export const RolePage = () => {
             <ArrowLeft aria-hidden="true" className="h-4 w-4" />
             {t('back')}
           </Button>
-          <h2 className="text-xl font-semibold text-foreground">
+          <CardTitle size="lg">
             {t('roleTitle', { name: submittedName })}
-          </h2>
+          </CardTitle>
           <p className="text-sm leading-6 text-muted-foreground">
             {t('roleSubtitle')}
           </p>

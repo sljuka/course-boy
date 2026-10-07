@@ -540,6 +540,16 @@ export type CreateCourseLessonResult = {
   lessonId: string;
 };
 
+// A document's (lesson's) title and description per language. Only the
+// languages given change; everything else in the lesson's file is kept.
+export type UpdateCourseLessonMetadataInput = {
+  courseId: string;
+  lessonId: string;
+  // A missing description keeps the one saved.
+  locales: Partial<Record<Locale, { description?: string; title: string }>>;
+  sectionId: string;
+};
+
 export type UpdateLessonContentInput = {
   courseId: string;
   lessonId: string;

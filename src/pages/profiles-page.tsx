@@ -6,8 +6,7 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldTitle } from "@/components/ui/field";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { getPersonaImageUrl } from "@/lib/personas";
@@ -42,7 +41,7 @@ function ProfilePicker({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex flex-col gap-5" data-testid="profile-picker">
       <div className="flex flex-col gap-1">
-        <CardTitle className="text-3xl text-primary">{t("profiles.pickerTitle")}</CardTitle>
+        <CardTitle size="lg">{t("profiles.pickerTitle")}</CardTitle>
         <CardDescription>{t("profiles.pickerDescription")}</CardDescription>
       </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -81,8 +80,6 @@ function CreateProfileForm({ firstProfile, onCancel }: { firstProfile: boolean; 
   const { t } = useTranslation();
   const { locale, setLocale } = useAppState();
   const [name, setName] = useState("");
-  // SLJ-54: the restore dialog opens once onboarding is done.
-  const [restoreIdentity, setRestoreIdentity] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const check = checkProfileName(name);
@@ -92,7 +89,7 @@ function CreateProfileForm({ firstProfile, onCancel }: { firstProfile: boolean; 
     if (!check.ok || isCreating) return;
 
     setIsCreating(true);
-    window.profiles.create({ locale, name: check.name, restoreIdentity }).catch((createError: Error) => {
+    window.profiles.create({ locale, name: check.name }).catch((createError: Error) => {
       setIsCreating(false);
       setError(createError.message);
     });
@@ -102,7 +99,7 @@ function CreateProfileForm({ firstProfile, onCancel }: { firstProfile: boolean; 
     <form className="flex flex-col gap-4" data-testid="create-profile" onSubmit={handleSubmit}>
       <div className="flex flex-col-reverse gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-4 pr-2">
-          <CardTitle className="text-3xl text-primary sm:text-4xl">
+          <CardTitle size="lg">
             {firstProfile ? t("welcomeTitle") : t("profiles.newProfileTitle")}
           </CardTitle>
           <p className="max-w-lg text-sm leading-6 text-muted-foreground">
@@ -134,17 +131,6 @@ function CreateProfileForm({ firstProfile, onCancel }: { firstProfile: boolean; 
           <Info aria-hidden="true" className="h-4 w-4 text-info" />
           <AlertDescription>{t("nameHint")}</AlertDescription>
         </Alert>
-        <FieldLabel htmlFor="restore-identity">
-          <Field orientation="horizontal">
-            <Checkbox
-              checked={restoreIdentity}
-              data-testid="restore-identity-after-setup"
-              id="restore-identity"
-              onCheckedChange={(checked) => setRestoreIdentity(checked === true)}
-            />
-            <FieldTitle>{t("profiles.restoreIdentity")}</FieldTitle>
-          </Field>
-        </FieldLabel>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button className="sm:w-auto sm:px-6" disabled={!check.ok || isCreating} type="submit">
             {isCreating && <Spinner aria-hidden="true" />}

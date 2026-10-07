@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldTitle } from "@/components/ui/field";
 import { useIdentityRestoreStatusQuery, useIdentityStatusQuery } from "@/lib/publisher-identity-queries";
 
-// Settings → Publishing → Publishing identity (SLJ-55). Before it's set up:
+// Settings → Sharing → Publishing identity (SLJ-55). Before it's set up:
 // what it's for, "Set up your publishing identity" (the same wizard as the
 // first Publish), and "Restore from a file…" for a teacher who published from
 // another computer. Set up: "Open identity file" shows the file to copy (it's

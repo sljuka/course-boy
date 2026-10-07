@@ -604,11 +604,11 @@ and an optional second password, and the identity sat in the OS keychain.
 - **The wizard** ([set-up-identity-dialog.tsx](../src/components/identity/set-up-identity-dialog.tsx:1)):
   first what going online, signing and the identity file are, then a password typed
   twice. It runs at the **first Publish** (`usePublishWithConsent`: cancelling it
-  cancels the Publish) or from **Settings → Publishing → "Set up your publishing
+  cancels the Publish) or from **Settings → Sharing → "Set up your publishing
   identity"**. Teachers who only make, print or hand over course files never see it.
 - **The identity file** is `<profile>/publisher-identity.matko-identity`
   ([electron/publisher-identity.ts](../electron/publisher-identity.ts:1)). It's written
-  once and never changes, so a copy never goes stale. **Settings → Publishing → "Open
+  once and never changes, so a copy never goes stale. **Settings → Sharing → "Open
   identity file"** shows it in Finder or Explorer (`shell.showItemInFolder`) for
   copying somewhere safe.
 - **Format** ([workers/identity-backup.cjs](../workers/identity-backup.cjs:1)):
@@ -650,10 +650,9 @@ and an optional second password, and the identity sat in the OS keychain.
 
 ### Restoring it on a new computer
 
-On a new computer, **Settings → Publishing → "Restore from a file…"** (or "I have
-courses published with Matko on another computer" on the new-profile screen, which
-opens the same dialog once onboarding is done) takes a copy of the identity file and its
-password. The flow is in [electron/identity-restore.ts](../electron/identity-restore.ts:1).
+On a new computer, **Settings → Sharing → "Restore from a file…"** takes a copy of the
+identity file and its password. (Until 2026-10-07 the new-profile screen also offered it,
+as a checkbox opening the same dialog after onboarding; it lives in Settings only now.) The flow is in [electron/identity-restore.ts](../electron/identity-restore.ts:1).
 
 1. **The file.** Main reads it (OS open dialog, at most 1 MB) and the worker checks it
    (`CMD_READ_IDENTITY_BACKUP` = 15): the dialog shows its name and date.
