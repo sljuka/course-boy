@@ -49,6 +49,7 @@ import {
   normalizeExerciseKind,
   resolveSharedTestForPlayer,
 } from "../src/lib/exercise-kinds/registry";
+import { promptGaps, titleGaps, writtenLocales } from "../src/lib/course-gaps";
 
 type CourseRecord = {
   courseRootPath: string;
@@ -634,8 +635,9 @@ async function readCourseSectionTest(
   ].filter((locale, index, locales): locale is Locale => {
     return Boolean(locale) && locales.indexOf(locale) === index;
   });
+  // An empty title is a missing translation: fall back like a missing one.
   const matchedLocale = requestedLocales.find(
-    (locale) => sharedSectionTest.locales[locale],
+    (locale) => sharedSectionTest.locales[locale]?.title?.trim(),
   );
   const preview: LessonPreview = matchedLocale
     ? {
@@ -659,7 +661,13 @@ async function readCourseSectionTest(
     ? resolveSharedTestForPlayer(sharedSectionTest, requestedLocales, testId, courseRecord.manifest.id)
     : null;
 
-  return { ...preview, locales: sharedSectionTest.locales, test };
+  const checked = writtenLocales(courseRecord.manifest.supportedLocales, courseRecord.manifest.serbianScript);
+  const gaps = [
+    ...titleGaps(sharedSectionTest.locales, checked),
+    ...(isSharedTestDefinition(sharedSectionTest) ? promptGaps(sharedSectionTest.exercises, checked) : []),
+  ];
+
+  return { ...preview, gaps, locales: sharedSectionTest.locales, test };
 }
 
 function resolveLocalizedLessonBodyPath(
@@ -690,7 +698,8 @@ async function readLessonPreview(
 
   for (const locale of requestedLocales) {
     const lessonMetadata = sharedLesson.locales[locale];
-    if (lessonMetadata) {
+    // An empty title is a missing translation: try the next language.
+    if (lessonMetadata?.title?.trim()) {
       return {
         description: lessonMetadata.description,
         id: lessonId,
@@ -763,15 +772,21 @@ async function readCourseLesson(
 ): Promise<CourseLesson> {
   const preview = await readLessonPreview(courseRecord, sectionId, lessonId, preferredLocale);
   const testId = resolveTestIdForLesson(lessonId);
-  const [body, test] = await Promise.all([
+  const [body, test, sharedLesson, sharedTest] = await Promise.all([
     readLocalizedLessonBody(courseRecord, sectionId, lessonId, preferredLocale),
     readLessonTest(courseRecord, sectionId, testId, preferredLocale).catch(() => null),
+    readSharedLessonDefinition(courseRecord, sectionId, lessonId).catch(() => null),
+    readSharedTestDefinition(courseRecord, sectionId, testId).catch(() => null),
   ]);
+  const checked = writtenLocales(courseRecord.manifest.supportedLocales, courseRecord.manifest.serbianScript);
 
   return {
     ...preview,
     body,
+    gaps: titleGaps(sharedLesson?.locales, checked),
+    locales: sharedLesson?.locales,
     test,
+    testGaps: sharedTest ? promptGaps(sharedTest.exercises, checked) : [],
   };
 }
 
@@ -976,13 +991,18 @@ async function readCourseSections(
       ].filter((locale, index, locales): locale is Locale => {
         return Boolean(locale) && locales.indexOf(locale) === index;
       });
+      // An empty title is a missing translation: fall back like a missing one.
       const localizedSectionMetadata =
         requestedLocales
           .map((locale) => section.locales[locale])
-          .find((metadata) => Boolean(metadata)) ?? null;
+          .find((metadata) => Boolean(metadata?.title?.trim())) ?? null;
 
       return {
         description: localizedSectionMetadata?.description,
+        gaps: titleGaps(
+          section.locales,
+          writtenLocales(courseRecord.manifest.supportedLocales, courseRecord.manifest.serbianScript),
+        ),
         id: section.id,
         intro: await readLocalizedSectionIntro(courseRecord, section.id, preferredLocale),
         ...(courseRecord.distribution === "local"

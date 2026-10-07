@@ -8,6 +8,7 @@ import {
   WindowTitleBarButton,
   WindowTitleBarGroup,
 } from "@/components/ui/window-title-bar";
+import { useImmersiveMode } from "@/lib/use-immersive-mode";
 import { useAppState } from "@/lib/use-app-state";
 import { useHistoryAvailability } from "@/lib/use-history-availability";
 import { useTitleBarSidebar } from "@/lib/use-title-bar-sidebar";
@@ -21,11 +22,12 @@ function AppTitleBar() {
   const { canGoBack, canGoForward } = useHistoryAvailability();
   const { toggle: toggleSidebar } = useTitleBarSidebar();
   const { isLoaded } = useAppState();
+  const { isImmersive } = useImmersiveMode();
 
   // Rendered together with the routes (see `AppRoutes`), once preferences have
   // loaded — so the first thing that mounts is the page the app actually
   // starts on (e.g. the onboarding redirect), not a bar over an empty window.
-  if (!isLoaded) {
+  if (!isLoaded || isImmersive) {
     return null;
   }
 

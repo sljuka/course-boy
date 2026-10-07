@@ -12,10 +12,9 @@ import { PrintDocumentHeader } from "@/components/course-player/print-document-h
 import { useCoursePlayer, type CoursePlayerReadyState } from "@/components/course-player/use-course-player";
 import { buildPlayerBreadcrumbs } from "@/components/course-player/player-breadcrumbs";
 import { Page } from "@/components/page/page";
-import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardDescription, CardTitle } from "@/components/ui/card";
+import { CardDescription } from "@/components/ui/card";
 import type { CourseLesson } from "@/lib/course-package";
 import { defaultLessonPrintOptions } from "@/lib/print-options";
 import { buildLessonTestPath } from "@/lib/course-utils";
@@ -111,25 +110,16 @@ export function LessonPlayerView({
   return (
     <Page
       breadcrumbs={buildPlayerBreadcrumbs(playerState, activeLesson.title)}
-      header={
-        <PageHeader
-          className="print:hidden"
-          title={
-            <div className="flex items-center gap-2">
-              <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
-              {playerState.isPreview && (
-                <Badge variant="secondary">{t("courseDetails.previewBadge")}</Badge>
-              )}
-            </div>
-          }
-          subtitle={
-            // The section/progress line is synthetic in preview (a single
-            // fake "Preview" section, always "1 of 1") — skip it there,
-            // same as `TestPlayerView` does.
+      // No heading: the breadcrumbs say which course, section and lesson this
+      // is. Where the student is in the section (and that a teacher is only
+      // previewing) sits quietly in the action bar.
+      actionBarStart={
+        <div className="flex items-center gap-2">
+          {playerState.isPreview && <Badge variant="secondary">{t("courseDetails.previewBadge")}</Badge>}
+          {
+            // In preview the progress is synthetic (one fake section, "1 of 1"): skip it.
             !playerState.isPreview && (
-              <CardDescription className="text-base">
-                {playerState.sectionTitle}
-                {" · "}
+              <CardDescription data-testid="lesson-progress">
                 {playerState.isSectionIntro
                   ? t("courseDetails.sectionIntro")
                   : t("courseDetails.progress", {
@@ -139,7 +129,7 @@ export function LessonPlayerView({
               </CardDescription>
             )
           }
-        />
+        </div>
       }
       actions={playerActions}
     >

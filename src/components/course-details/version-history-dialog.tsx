@@ -26,6 +26,7 @@ import {
 import { nextCourseVersion, type CourseVersionReleaseType } from "@/lib/course-versioning";
 import { useCommitBlockerMessage } from "@/lib/use-commit-blocker";
 import { CommitReleaseNotes } from "./commit-release-notes";
+import { IncompleteContentWarning } from "./incomplete-content-warning";
 import { UnusedAssetsWarning } from "./unused-assets-warning";
 import { useRevertWithConfirmation } from "./use-revert-with-confirmation";
 import { VersionHistoryRow } from "./version-history-row";
@@ -113,6 +114,7 @@ export function VersionHistoryDialog({
             recommended={recommended}
           />
         )}
+        {canCut && <IncompleteContentWarning courseId={courseId} open={open} />}
         {canCut && <UnusedAssetsWarning courseId={courseId} open={open} />}
         {canCut && (
           <div className="flex items-end gap-2">

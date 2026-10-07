@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
 import { useCreateBlockNote } from "@blocknote/react";
@@ -8,6 +8,7 @@ import { editorPrototypeBlocksToBlockNote } from "@/components/editor-prototype/
 import { decorateBlocksWithMnemonics } from "@/components/course-player/lesson-mnemonics";
 import { lessonPlayerSchema } from "@/components/course-player/mnemonic-inline-content";
 import { UnsupportedContentNotice } from "@/components/course-player/unsupported-content-notice";
+import { useVideoPrintFrames } from "@/components/course-player/use-video-print-frames";
 import { hasUnknownBlocks, markdownToBlocks } from "@/lib/lesson-content-markdown";
 import { useAppState } from "@/lib/use-app-state";
 import { useCourseMnemonics } from "@/lib/use-course-mnemonics";
@@ -40,13 +41,16 @@ export function LessonBlocks({ courseId, source }: { courseId: string; source: s
     },
     [courseId, source, mnemonics],
   );
+  // Videos print as their first frame (see use-video-print-frames.ts).
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  useVideoPrintFrames(contentRef, editor);
 
   return (
     <div className="flex flex-col gap-4">
       {showUnsupportedNotice && (
         <UnsupportedContentNotice onDismiss={() => setDismissedForSource(source)} />
       )}
-      <div className="typeset typeset-course">
+      <div className="typeset typeset-course" ref={contentRef}>
         <DocumentEditorContextProvider courseId={courseId} supportedLocales={[]}>
           {/* No formatting toolbar: in read-only mode BlockNote shows one above a
               selected file block whose only actions are Download and a preview

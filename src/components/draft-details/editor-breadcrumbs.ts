@@ -30,7 +30,7 @@ export function buildEditorBreadcrumbs({
   const crumbs: PageBreadcrumb[] = [
     { icon: BookOpen, label: myCoursesLabel, to: "/my-courses" },
     {
-      icon: Folder,
+      icon: BookOpen,
       label: courseTitle,
       onSelect: () => onSelect({ id: courseRootId, title: courseTitle, type: "course" }),
     },

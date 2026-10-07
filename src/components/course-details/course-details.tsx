@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, Folder, History, Home, Play, Star } from "lucide-react";
+import { BookOpen, History, Home, Play, Star } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -143,11 +143,11 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
     resolvedCourse.distribution === "local"
       ? [
           { icon: BookOpen, label: t("sidebar.myCourses"), to: "/my-courses" },
-          { icon: Folder, label: resolvedCourse.title },
+          { icon: BookOpen, label: resolvedCourse.title },
         ]
       : [
           { icon: Home, label: t("sidebar.home"), to: "/" },
-          { icon: Folder, label: resolvedCourse.title },
+          { icon: BookOpen, label: resolvedCourse.title },
         ];
 
   const pageHero = (

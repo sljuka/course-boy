@@ -914,10 +914,11 @@ describe('section summary and intro', () => {
     await waitForText(page, 'Welcome to this section.')
     expect(await page.evaluate(() => location.hash)).toContain('/lessons/intro-')
     // The intro isn't counted as a lesson.
-    expect(await bodyText(page)).toContain('Intro section · Introduction')
+    // The breadcrumbs name the section; the action bar says it's the intro.
+    expect(await page.locator('[data-testid="lesson-progress"]').innerText()).toBe('Introduction')
     expect(await clickText(page, 'Continue')).toContain('OK')
     await waitForText(page, 'Lesson one text.')
-    expect(await bodyText(page)).toContain('Intro section · Lesson 1 of 1')
+    await expect.poll(() => page.locator('[data-testid="lesson-progress"]').innerText()).toBe('Lesson 1 of 1')
 
     // Teacher: removing an intro that was never committed says it's gone for good.
     await openSectionPage()
@@ -1469,5 +1470,135 @@ describe('window lockdown', () => {
 describe('runtime health', () => {
   it('logged no uncaught renderer errors', () => {
     expect(harness.errors).toEqual([])
+  })
+})
+
+// Something missing in one of the course's languages shows as a red dot in
+// the explorer: on the item, and on its section, which may be closed.
+describe('incomplete items in the explorer', () => {
+  it('marks a document without a title in one language, and its section', async () => {
+    const { page } = harness
+    const courseId = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Gaps Course' } },
+        supportedLocales: ['en', 'sr'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Gaps section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Untranslated' })
+      await window.courses.updateLessonMetadata({ courseId, lessonId, locales: { sr: { title: '' } }, sectionId })
+      return courseId
+    })
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, courseId)
+
+    // The document and its section (shown in whichever language the app is in).
+    await expect.poll(() => page.locator('[data-testid="explorer-incomplete"]').count(), { timeout: 15_000 }).toBe(2)
+    // Its tooltip says what's missing.
+    await page.locator('[data-testid="explorer-incomplete"]').last().hover()
+    await page.locator('[data-slot="tooltip-content"]').waitFor()
+    expect((await page.locator('[data-slot="tooltip-content"]').innerText()).trim()).not.toBe('')
+
+    // Commit lists it as a warning, and still lets the teacher commit.
+    await page.mouse.move(0, 0)
+    await page.click('[data-testid="commit-new-version"]')
+    await page.locator('[data-testid="incomplete-content-warning"]').waitFor()
+    await page.keyboard.press('Escape')
+  })
+})
+
+// Printing a lesson with a video: Chromium prints a <video> as an empty box
+// with its controls, so each video's first frame is captured once it loads,
+// as its poster and as an image only print shows (use-video-print-frames.ts).
+describe('videos in print', () => {
+  it("prints a lesson's video as its first frame", async () => {
+    const { page } = harness
+    const video = [...fs.readFileSync(path.join(import.meta.dirname, 'fixtures', 'test-video.mp4'))]
+    const ids = await page.evaluate(async (bytes) => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Video Print Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Lesson' })
+      const asset = await window.courses.uploadAssetBytes({
+        courseId,
+        data: new Uint8Array(bytes).buffer,
+        filename: 'clip.mp4',
+        kind: 'video',
+      })
+      await window.courses.updateLessonContent({
+        courseId,
+        lessonId,
+        locales: { en: { body: `[matko-block]: <> (video)\n[The clip](${asset.path})` } },
+        sectionId,
+      })
+      return { courseId, lessonId }
+    }, video)
+    await page.evaluate(({ courseId, lessonId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${lessonId}`
+    }, ids)
+
+    const frame = page.locator('img.video-print-frame')
+    await frame.waitFor({ state: 'attached', timeout: 15_000 })
+    expect(await frame.getAttribute('src')).toMatch(/^data:image\/jpeg/)
+    expect(await page.evaluate(() => document.querySelector('video').poster)).toMatch(/^data:image\/jpeg/)
+
+    // On screen the player; in print the frame instead.
+    expect(await frame.isVisible()).toBe(false)
+    await page.emulateMedia({ media: 'print' })
+    try {
+      expect(await frame.isVisible()).toBe(true)
+      expect(await page.locator('video').isVisible()).toBe(false)
+    } finally {
+      await page.emulateMedia({ media: 'screen' })
+    }
+  })
+})
+
+// Full screen for writing a document: the window goes full screen and the
+// app's chrome (title bar, sidebar, explorer, toolbars) steps aside; Esc and
+// "Exit full screen" bring it back. Last in this file: it changes the window.
+describe('document full screen', () => {
+  it('hides the chrome in a full-screen window, and Esc or Exit full screen restores it', async () => {
+    const { app, page } = harness
+    const courseId = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Full Screen Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      await window.courses.createLesson({ courseId, sectionId, title: 'Full screen document' })
+      return courseId
+    })
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, courseId)
+    await page.getByText('Full screen document', { exact: true }).first().click()
+    const isWindowFullScreen = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isFullScreen())
+    // The app sidebar's menu: there outside full screen, gone inside it.
+    const chromeShown = async () => (await page.locator('[data-testid="app-menu"]').count()) > 0
+
+    await page.click('[data-testid="document-full-screen"]')
+    await page.locator('[data-testid="exit-full-screen"]').waitFor()
+    await expect.poll(isWindowFullScreen, { timeout: 10_000 }).toBe(true)
+    expect(await chromeShown()).toBe(false)
+    // Only the text: the title field stays in the normal view.
+    expect(await page.locator('[id^="draft-document-title-"]').count()).toBe(0)
+    await page.locator('.bn-editor').waitFor()
+
+    await page.keyboard.press('Escape')
+    await page.locator('[data-testid="exit-full-screen"]').waitFor({ state: 'detached' })
+    await expect.poll(isWindowFullScreen, { timeout: 10_000 }).toBe(false)
+    expect(await chromeShown()).toBe(true)
+    expect(await page.locator('[id^="draft-document-title-"]').count()).toBe(1)
+
+    await page.click('[data-testid="document-full-screen"]')
+    await page.locator('[data-testid="exit-full-screen"]').click()
+    await expect.poll(isWindowFullScreen, { timeout: 10_000 }).toBe(false)
+    expect(await chromeShown()).toBe(true)
   })
 })

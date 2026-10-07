@@ -11,6 +11,7 @@ import { OnboardingLayout } from "@/components/onboarding-layout";
 import { RoleRoute } from "@/components/role-route";
 import { SidebarLayout } from "@/components/sidebar-layout";
 import { AppShell, AppShellMain } from "@/components/ui/app-shell";
+import { ImmersiveModeProvider } from "@/lib/immersive-mode";
 import { PublisherPasswordGate } from "@/components/identity/publisher-password-gate";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppStateProvider } from "@/lib/app-state";
@@ -135,12 +136,14 @@ export const App = () => {
   return (
     <AppStateProvider>
       <TooltipProvider>
+        <ImmersiveModeProvider>
         <TitleBarSidebarProvider>
           <AppStatusBarProvider>
             <RecentlyViewedTracker />
             <AppFrame />
           </AppStatusBarProvider>
         </TitleBarSidebarProvider>
+        </ImmersiveModeProvider>
       </TooltipProvider>
     </AppStateProvider>
   );

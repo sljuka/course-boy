@@ -16,6 +16,7 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsCompactSidePanels } from "@/hooks/use-mobile";
 import { useLayoutBreadcrumbs } from "@/lib/use-layout-breadcrumbs";
+import { useImmersiveMode } from "@/lib/use-immersive-mode";
 import { usePageSidePanels, type PageSidePanelValue } from "@/lib/use-page-side-panel";
 import { cn } from "@/lib/utils";
 
@@ -64,14 +65,17 @@ export function Page({
   header,
 }: PageProps) {
   const layoutBreadcrumbs = useLayoutBreadcrumbs();
-  const panels = usePageSidePanels();
+  // Full screen for writing: no toolbars or side panels, the content at a
+  // reading width (see lib/immersive-mode.tsx).
+  const { isImmersive } = useImmersiveMode();
+  const layoutPanels = usePageSidePanels();
+  const panels = isImmersive ? {} : layoutPanels;
   // Below the side panels' compact width they become drawers (sheets).
   const isMobile = useIsCompactSidePanels();
   const trail = breadcrumbs ?? layoutBreadcrumbs ?? undefined;
-  const hasToolbar = Boolean(trail?.length || crumbActions);
-  const hasActionBar = Boolean(
-    panels.left || panels.right || actionBarStart || actionBarCenter || actions,
-  );
+  const hasToolbar = !isImmersive && Boolean(trail?.length || crumbActions);
+  const hasActionBar =
+    !isImmersive && Boolean(panels.left || panels.right || actionBarStart || actionBarCenter || actions);
 
   return (
     <>
@@ -111,6 +115,7 @@ export function Page({
             className={cn(
               "mx-auto flex w-full flex-col gap-4 p-4 sm:p-5 lg:p-6 print:block print:max-w-none print:p-0",
               !fullBleed && "max-w-6xl",
+              isImmersive && "max-w-3xl pt-10",
               className,
             )}
           >

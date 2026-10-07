@@ -32,7 +32,11 @@
     "title": "Explorer",
     "testLabel": "Test",
     "toggle": "Show or hide explorer",
-    "rename": "Rename"
+    "rename": "Rename",
+    "incomplete": "Incomplete",
+    "incompleteInside": "Something inside is incomplete",
+    "gapTitle": "No title in {{language}}",
+    "gapPrompt": "No prompt in {{language}} (exercise {{exercise}})"
   },
   "courseSearch": {
     "courseMenuLabel": "Course actions for {{title}}",
@@ -177,7 +181,10 @@
     "alreadyPublished": "{{version}} is already published",
     "publishVersion": "Publish {{version}}",
     "publishNeedsVersion": "Commit a version first, then publish it",
-    "publishButton": "Publish"
+    "publishButton": "Publish",
+    "incompleteTitle": "Not written in every language: {{count}}",
+    "incompleteDescription": "You can commit anyway; students reading in another language get the course's main language where something is missing.",
+    "incompleteShow": "Show all {{count}}"
   },
   "courseTags": {
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."
@@ -838,6 +845,8 @@
   },
   "draftDocument": {
     "title": "Document title",
-    "titlePlaceholder": "Untitled document"
+    "titlePlaceholder": "Untitled document",
+    "fullScreen": "Full screen",
+    "exitFullScreen": "Exit full screen"
   }
 }

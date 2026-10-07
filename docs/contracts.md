@@ -574,6 +574,13 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   on — the e2e launch helper treats "something mounted in `#root`" as ready.
 - **Dark mode.** The frame (`--sidebar`) is darker than the page card (`--background`),
   like Linear; flipping them back would draw a light frame around a dark card.
+- **Full screen for writing** (`useImmersiveMode`, `src/lib/use-immersive-mode.ts`; the
+  document editor's "Full screen", ⌘⇧F / Ctrl+Shift+F) puts the window in full screen and
+  hides the title bar, the app sidebar, the page's toolbars and side panels, and the page
+  card's frame (`PagePanel immersive`); the status bar stays. Each of these reads the mode
+  itself, so a new piece of frame chrome must too, or it shows in full screen. Esc
+  leaves it (Electron doesn't end a page's full screen on Esc by itself), as does
+  closing the editor.
 
 ## 10. Everything per person goes through the open profile
 

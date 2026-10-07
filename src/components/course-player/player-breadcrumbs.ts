@@ -1,4 +1,4 @@
-import { FileText, Folder } from "lucide-react";
+import { BookOpen, FileText, Folder } from "lucide-react";
 
 import type { CoursePlayerReadyState } from "@/components/course-player/use-course-player";
 import type { PageBreadcrumb } from "@/components/page/page-breadcrumbs";
@@ -14,11 +14,11 @@ export function buildPlayerBreadcrumbs(
   const item: PageBreadcrumb = { icon: FileText, label: itemTitle };
 
   if (playerState.isPreview) {
-    return [{ icon: Folder, label: playerState.courseTitle }, item];
+    return [{ icon: BookOpen, label: playerState.courseTitle }, item];
   }
 
   return [
-    { icon: Folder, label: playerState.courseTitle, to: `/courses/${playerState.courseId}` },
+    { icon: BookOpen, label: playerState.courseTitle, to: `/courses/${playerState.courseId}` },
     { icon: Folder, label: playerState.sectionTitle },
     item,
   ];

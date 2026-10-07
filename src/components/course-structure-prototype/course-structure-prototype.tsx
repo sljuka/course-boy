@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowDown,
   ArrowUp,
+  BookOpen,
   ChevronDown,
   ChevronRight,
   FilePlus2,
@@ -43,10 +44,15 @@ import {
   useCreateCourseSectionMutation,
   useCreateCourseSectionTestMutation,
 } from "@/lib/course-queries";
+import { describeCourseGap } from "@/components/draft-details/describe-course-gap";
+import { IndicatorDot } from "@/components/ui/indicator-dot";
+import type { CourseItemGap } from "@/lib/course-gaps";
 
 type DocumentNode = {
+  gaps: CourseItemGap[];
   hasTest: boolean;
   id: string;
+  testGaps: CourseItemGap[];
   title: string;
   type: "document";
 };
@@ -55,6 +61,7 @@ type DocumentNode = {
 // document. Distinct from the "Test" row nested under a DocumentNode above,
 // which represents a lesson-attached test instead.
 type TestNode = {
+  gaps: CourseItemGap[];
   id: string;
   title: string;
   type: "test";
@@ -62,6 +69,7 @@ type TestNode = {
 
 type SectionNode = {
   children: Array<DocumentNode | TestNode>;
+  gaps: CourseItemGap[];
   id: string;
   title: string;
   type: "section";
@@ -138,20 +146,24 @@ export function CourseStructurePrototype({
     children: [
       ...section.lessons.map(
         (lesson): DocumentNode => ({
+          gaps: lesson.gaps ?? [],
           hasTest: lesson.test !== null,
           id: lesson.id,
+          testGaps: lesson.testGaps ?? [],
           title: lesson.title,
           type: "document",
         }),
       ),
       ...section.tests.map(
         (test): TestNode => ({
+          gaps: test.gaps ?? [],
           id: test.id,
           title: test.title,
           type: "test",
         }),
       ),
     ],
+    gaps: section.gaps ?? [],
     id: section.id,
     title: section.title,
     type: "section",
@@ -319,7 +331,7 @@ export function CourseStructurePrototype({
             <ExplorerRow
               canMoveDown={false}
               canMoveUp={false}
-              icon={Folder}
+              icon={BookOpen}
               isExpanded={isCourseRootExpanded}
               isFixed
               isSelected={selectedNodeId === courseRootId}
@@ -445,6 +457,10 @@ function SectionRow({
       <ExplorerRow
         canMoveDown={false}
         canMoveUp={false}
+        gaps={node.gaps}
+        hasIncompleteChildren={node.children.some(
+          (child) => child.gaps.length > 0 || (child.type === "document" && child.testGaps.length > 0),
+        )}
         icon={Folder}
         isExpanded={sectionIsExpanded}
         isFixed
@@ -475,6 +491,7 @@ function SectionRow({
                 <ExplorerRow
                   canMoveDown={false}
                   canMoveUp={false}
+                  gaps={child.gaps}
                   icon={FileText}
                   isFixed
                   isSelected={selectedNodeId === child.id}
@@ -512,6 +529,7 @@ function SectionRow({
                     <ExplorerRow
                       canMoveDown={false}
                       canMoveUp={false}
+                      gaps={child.testGaps}
                       icon={FlaskConical}
                       isFixed
                       isSelected={selectedNodeId === resolveTestIdForLesson(child.id)}
@@ -536,6 +554,7 @@ function SectionRow({
               <ExplorerRow
                 canMoveDown={false}
                 canMoveUp={false}
+                gaps={child.gaps}
                 icon={FlaskConical}
                 isFixed
                 isSelected={selectedNodeId === child.id}
@@ -645,6 +664,8 @@ function ExplorerRow({
   autoFocus = false,
   canMoveDown,
   canMoveUp,
+  gaps,
+  hasIncompleteChildren = false,
   icon: Icon,
   isFixed = false,
   isEditing = false,
@@ -670,6 +691,11 @@ function ExplorerRow({
   autoFocus?: boolean;
   canMoveDown: boolean;
   canMoveUp: boolean;
+  // What's missing in one of the course's languages: a red dot after the
+  // title, with the list in its tooltip. `hasIncompleteChildren`: something
+  // inside (a section's documents and tests) is, so a closed section shows it.
+  gaps?: CourseItemGap[];
+  hasIncompleteChildren?: boolean;
   icon: LucideIcon;
   isFixed?: boolean;
   isEditing?: boolean;
@@ -758,8 +784,25 @@ function ExplorerRow({
                 value={title}
               />
             ) : (
-              <div className="block w-full truncate rounded-sm px-1 py-1 text-left text-sm text-foreground">
-                {title || `Untitled ${label.toLowerCase()}`}
+              <div className="flex w-full min-w-0 items-center gap-1.5 rounded-sm px-1 py-1 text-left text-sm text-foreground">
+                <span className="truncate">{title || `Untitled ${label.toLowerCase()}`}</span>
+                {((gaps?.length ?? 0) > 0 || hasIncompleteChildren) && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      aria-label={t("explorer.incomplete")}
+                      data-testid="explorer-incomplete"
+                      render={<span className="inline-flex shrink-0 items-center" />}
+                    >
+                      <IndicatorDot tone="destructive" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="flex flex-col gap-0.5">
+                        {gaps?.map((gap, index) => <span key={index}>{describeCourseGap(gap, t)}</span>)}
+                        {hasIncompleteChildren && <span>{t("explorer.incompleteInside")}</span>}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             )}
           </div>

@@ -74,20 +74,19 @@ export function resolveSharedExerciseForPlayer(
   requestedLocales: Locale[],
   courseId: string,
 ) {
-  const hint = requestedLocales
-    .map((locale) => exercise.locales[locale]?.hint)
-    .find((hintCandidate) => typeof hintCandidate === "string");
-  const prompt =
-    requestedLocales
-      .map((locale) => exercise.locales[locale]?.prompt)
-      .find((promptCandidate) => typeof promptCandidate === "string") ?? "";
-  const answerPlaceholder = requestedLocales
-    .map(
+  // The reader's language first, then the course's default. An empty text
+  // counts as missing (not translated yet), so a student never gets a blank
+  // prompt where another language has one.
+  const firstWritten = (values: (string | undefined)[]) =>
+    values.find((value) => typeof value === "string" && value.trim().length > 0);
+  const hint = firstWritten(requestedLocales.map((locale) => exercise.locales[locale]?.hint));
+  const prompt = firstWritten(requestedLocales.map((locale) => exercise.locales[locale]?.prompt)) ?? "";
+  const answerPlaceholder = firstWritten(
+    requestedLocales.map(
       (locale) =>
-        (exercise.locales[locale] as { answerPlaceholder?: string } | undefined)
-          ?.answerPlaceholder,
-    )
-    .find((placeholderCandidate) => typeof placeholderCandidate === "string");
+        (exercise.locales[locale] as { answerPlaceholder?: string } | undefined)?.answerPlaceholder,
+    ),
+  );
   const kind = normalizeExerciseKind(exercise.kind);
 
   if (!kind) {

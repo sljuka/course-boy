@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import type { SharedNumericTestExerciseDefinition } from "@/lib/course-package";
 import {
   getExerciseKindRuntime,
   isExerciseKind,
   normalizeExerciseKind,
+  resolveSharedExerciseForPlayer,
 } from "@/lib/exercise-kinds/registry";
 
 describe("isExerciseKind", () => {
@@ -39,5 +41,23 @@ describe("getExerciseKindRuntime", () => {
     for (const kind of ["numeric", "multiple-choice", "word-types"] as const) {
       expect(getExerciseKindRuntime(kind).kind).toBe(kind);
     }
+  });
+});
+
+describe("resolveSharedExerciseForPlayer", () => {
+  it("falls back to the next language when the prompt is empty in the reader's", () => {
+    const exercise: SharedNumericTestExerciseDefinition = {
+      kind: "numeric",
+      locales: {
+        en: { answerPlaceholder: "", hint: "", prompt: "{{x}} + {{y}}?" },
+        sr: { answerPlaceholder: "", hint: "", prompt: "" },
+      },
+      solution: { formula: "x + y", precision: 0 },
+      tags: [],
+      variables: { x: { max: 5, min: 1, type: "integer" }, y: { max: 5, min: 1, type: "integer" } },
+    };
+
+    const resolved = resolveSharedExerciseForPlayer(exercise, "t#1", ["sr", "en"], "course");
+    expect(resolved.prompt).toBe("{{x}} + {{y}}?");
   });
 });

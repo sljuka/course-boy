@@ -32,7 +32,11 @@
     "title": "Pregled",
     "testLabel": "Test",
     "toggle": "Prikaži ili sakrij pregled",
-    "rename": "Preimenuj"
+    "rename": "Preimenuj",
+    "incomplete": "Nedovršeno",
+    "incompleteInside": "Nešto unutra nije dovršeno",
+    "gapTitle": "Nema naslova na jeziku: {{language}}",
+    "gapPrompt": "Nema postavke na jeziku: {{language}} (zadatak {{exercise}})"
   },
   "courseSearch": {
     "courseMenuLabel": "Radnje za kurs {{title}}",
@@ -177,7 +181,10 @@
     "alreadyPublished": "{{version}} je već objavljena",
     "publishVersion": "Objavi {{version}}",
     "publishNeedsVersion": "Prvo sačuvaj verziju, pa je objavi",
-    "publishButton": "Objavi"
+    "publishButton": "Objavi",
+    "incompleteTitle": "Nije napisano na svim jezicima: {{count}}",
+    "incompleteDescription": "Možeš svejedno da sačuvaš verziju; učenici koji čitaju na drugom jeziku tamo gde nešto nedostaje dobijaju glavni jezik kursa.",
+    "incompleteShow": "Prikaži sve ({{count}})"
   },
   "courseTags": {
     "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."
@@ -838,6 +845,8 @@
   },
   "draftDocument": {
     "title": "Naslov dokumenta",
-    "titlePlaceholder": "Dokument bez naslova"
+    "titlePlaceholder": "Dokument bez naslova",
+    "fullScreen": "Ceo ekran",
+    "exitFullScreen": "Izađi iz celog ekrana"
   }
 }

@@ -328,7 +328,13 @@ export function TestEditorPrototype({
         {supportedLocales.length > 1 && (
           <StickyBar>
             <LocaleTabsList
-              getIsIncomplete={getIsLocaleIncomplete}
+              getIsIncomplete={(locale) =>
+                Boolean(getIsLocaleIncomplete?.(locale)) ||
+                // An exercise without a prompt in a written language (the
+                // generated Serbian script follows its source).
+                (!(generatedLocale && isGeneratedLocale(generatedLocale, locale)) &&
+                  state.exercises.some((exercise) => !exercise.locales[locale]?.prompt?.trim()))
+              }
               locales={supportedLocales}
             />
           </StickyBar>

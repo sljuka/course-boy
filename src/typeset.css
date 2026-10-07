@@ -131,3 +131,22 @@
     font-weight: 600;
   }
 }
+
+/* Videos print as their first frame (course-player/use-video-print-frames.ts):
+   Chromium prints a video as an empty box with its controls. The frame image
+   shows only in print, the player only on screen. */
+.typeset .video-print-frame {
+  display: none;
+}
+
+@media print {
+  .typeset video {
+    display: none;
+  }
+
+  .typeset .video-print-frame {
+    display: block;
+    height: auto;
+    max-width: 100%;
+  }
+}

@@ -7,6 +7,7 @@ import type {
   CourseVersionInfo,
   CourseVersionReleaseType,
 } from "@/lib/course-versioning";
+import type { CourseItemGap } from "./course-gaps";
 
 export type CourseStatus = "draft" | "published";
 export type ContentRating = "all-ages" | "mature-themes" | "explicit";
@@ -403,7 +404,15 @@ export type CoursePreviewItem = {
 
 export type CourseLesson = LessonPreview & {
   body: string;
+  // What's missing in a written language (course-gaps.ts): its title, and
+  // its test's exercise prompts.
+  gaps?: CourseItemGap[];
+  // Its title and description in every language, as written (the fields
+  // above fall back to the default language where one is missing): what the
+  // document editor edits.
+  locales?: Partial<Record<Locale, LocalizedLessonMetadata>>;
   test: CourseTest | null;
+  testGaps?: CourseItemGap[];
 };
 
 // A test that stands on its own as a section item — no parent lesson, no
@@ -420,6 +429,8 @@ export type CourseSectionTest = LessonPreview & {
   // current-app-locale projection of it. Needed so the editor can offer
   // per-locale title/description editing the same way a section does.
   locales?: Record<Locale, LocalizedSectionMetadata>;
+  // Its title or exercise prompts missing in a written language (course-gaps.ts).
+  gaps?: CourseItemGap[];
   test: CourseTest | null;
 };
 
@@ -428,6 +439,8 @@ export type CourseSectionPreview = {
   // characters, shown wherever sections are listed. Stored as each locale's
   // `description` (older courses' longer descriptions are cut off when shown).
   description?: string;
+  // Its title missing in a written language (course-gaps.ts).
+  gaps?: CourseItemGap[];
   id: string;
   // The section intro document (`locales/<lang>/intro.md`, the lesson body
   // format), in the reader's language or the course's default; null when the

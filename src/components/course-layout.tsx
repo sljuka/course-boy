@@ -36,6 +36,7 @@ import { LayoutBreadcrumbsContext } from "@/lib/use-layout-breadcrumbs";
 import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-panel";
 import { SerbianScriptContext } from "@/lib/use-serbian-script";
 import type { Locale } from "@/lib/i18n";
+import { useImmersiveMode } from "@/lib/use-immersive-mode";
 
 type CourseLayoutOutletContext = {
   contentRating: ContentRating;
@@ -148,6 +149,8 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   // course's own page (not a section, document or test), one card with the
   // course's Versions and its Details below.
   const isCoursePage = selectedNode.type === "course";
+  // Full screen for writing (a document): no app sidebar, the page fills the window.
+  const { isImmersive } = useImmersiveMode();
   const sidePanels = useMemo<PageSidePanels>(
     () => ({
       left: {
@@ -225,11 +228,11 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
     <OnboardingGuard>
       <SidebarProvider style={{ "--sidebar-width": "14rem" } as React.CSSProperties}>
         <RegisterTitleBarSidebarToggle />
-        <AppSidebar />
+        {!isImmersive && <AppSidebar />}
         <SerbianScriptContext.Provider value={courseDetailsQuery.data?.serbianScript ?? null}>
         <PageSidePanelsContext.Provider value={sidePanels}>
         <LayoutBreadcrumbsContext.Provider value={breadcrumbs}>
-        <PagePanel>
+        <PagePanel immersive={isImmersive}>
           <div className="flex min-h-0 flex-1 flex-col">
             <Outlet
               context={
