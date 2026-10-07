@@ -125,6 +125,9 @@ interface Window {
     create: (input: { locale?: string; name: string; restoreIdentity?: boolean }) => Promise<void>
     open: (profileId: string) => Promise<void>
     switchProfile: () => Promise<void>
+    getRemovalSummary: () => Promise<import('../src/lib/profiles').ProfileRemovalSummary>
+    openCoursesFolder: () => Promise<void>
+    removeCurrent: (password?: string) => Promise<import('../src/lib/profiles').RemoveProfileResult>
   }
   sharing: {
     getCreatorKey: () => Promise<string>

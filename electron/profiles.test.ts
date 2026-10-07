@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { chooseStartupProfile, createProfile, listProfiles, setLastUsedProfile, updateProfile } from './profiles'
+import { chooseStartupProfile, createProfile, listProfiles, removeProfile, setLastUsedProfile, updateProfile } from './profiles'
 
 let baseDir = ''
 beforeEach(() => {
@@ -62,5 +62,23 @@ describe('profiles', () => {
     expect(chooseStartupProfile(baseDir, [])).toEqual({ kind: 'launcher' })
     expect(chooseStartupProfile(baseDir, [`--profile=${marko.id}`])).toEqual({ kind: 'profile', profile: marko })
     expect(chooseStartupProfile(baseDir, ['--profile=../../etc'])).toEqual({ kind: 'launcher' })
+  })
+
+  it('removes a profile and everything in its folder, leaving the others', async () => {
+    const ana = createProfile(baseDir, { name: 'Ana' })
+    const boris = createProfile(baseDir, { name: 'Boris' })
+    fs.mkdirSync(path.join(baseDir, 'profiles', ana.id, 'courses', 'abcdefghijklmn23'), { recursive: true })
+    setLastUsedProfile(baseDir, ana.id)
+
+    await removeProfile(baseDir, ana.id)
+
+    expect(fs.existsSync(path.join(baseDir, 'profiles', ana.id))).toBe(false)
+    expect(listProfiles(baseDir)).toEqual([boris])
+    // Not the last used one any more.
+    expect(JSON.parse(fs.readFileSync(path.join(baseDir, 'profiles.json'), 'utf8')).lastUsedId).toBeNull()
+  })
+
+  it('refuses an id that is not a profile folder', async () => {
+    await expect(removeProfile(baseDir, '../outside')).rejects.toThrow(/Invalid profile id/)
   })
 })

@@ -597,6 +597,10 @@ fails loudly when something misses that, so these rules span files:
 - **The renderer** is reloaded at Home after a switch, so React Query caches and
   component state never carry over. Nothing personal may live in Chromium storage
   (`localStorage`, IndexedDB): every profile shares it.
+- **Removing a profile** (SLJ-61) deletes its folder, and so everything kept per person
+  must live in it: anything kept elsewhere would outlive the profile. The folder is
+  deleted only after the profile is closed and its worker stopped, inside the same
+  `switching` chain as a switch.
 
 Checked by `e2e/profiles.e2e.mjs`: a second profile doesn't see the first one's courses and
 has its own publisher identity, and switching back finds both again.

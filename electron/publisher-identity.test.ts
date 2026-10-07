@@ -111,4 +111,14 @@ describe('publisher identity', () => {
     // The key must be the one the file names.
     await expect(service.install(text, Buffer.alloc(32, 3))).rejects.toThrow(/doesn't match/)
   })
+
+  it("checks a password without unlocking the identity", async () => {
+    const { restart, service } = setup()
+    await service.setUp('correct horse')
+
+    const next = restart()
+    expect(await next.checkPassword('wrong')).toBe(false)
+    expect(await next.checkPassword('correct horse')).toBe(true)
+    expect(next.isLocked()).toBe(true)
+  })
 })

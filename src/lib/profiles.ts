@@ -80,3 +80,21 @@ export function createProfileId(name: string, random: (length: number) => Uint8A
   const suffix = [...bytes].map((byte) => PROFILE_ID_ALPHABET[byte % PROFILE_ID_ALPHABET.length]).join("");
   return `${slugifyProfileName(name)}-${suffix}`;
 }
+
+// ─── Removing a profile (SLJ-61) ────────────────────────────────────────────
+
+// What removing the open profile would delete, for the confirmation dialog.
+export type ProfileRemovalSummary = {
+  // Courses made in this profile, and how many of them never went online
+  // (they exist nowhere else).
+  coursesMade: number;
+  coursesNeverPublished: number;
+  // It has a publishing identity: removing needs its password.
+  hasIdentity: boolean;
+  // Courses put online with that identity from this profile. With
+  // `identityRestored`, more may have been published from another computer.
+  coursesPublished: number;
+  identityRestored: boolean;
+};
+
+export type RemoveProfileResult = { removed: true } | { error: "passwordRequired" | "wrongPassword" };

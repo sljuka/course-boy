@@ -105,6 +105,20 @@ export function createPublisherIdentity(deps: PublisherIdentityDeps) {
       deps.file.write(text)
     },
 
+    // Is `password` the identity's? (Removing the profile asks for it, SLJ-61.)
+    // Nothing is unlocked by it.
+    async checkPassword(password: string): Promise<boolean> {
+      const text = deps.file.read()
+      if (!text) return false
+      try {
+        ;(await deps.worker.openIdentity(text, password)).key.fill(0)
+        return true
+      } catch (error) {
+        if ((error as { code?: string }).code === 'WRONG_PASSWORD') return false
+        throw error
+      }
+    },
+
     // "Open without publishing" on the password screen before Home.
     openWithoutPublishing(): void {
       openedWithoutPublishing = true

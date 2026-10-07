@@ -118,6 +118,9 @@ profile.
 - **Switching** happens in the running app (`switchProfile` in `main.ts`). It closes the
   profile's stores and services (`openProfileServices`), stops the P2P worker, opens the
   next profile's, starts its worker, and reloads the window at Home.
+- **Removing** (Settings → Profile, SLJ-61; `removeCurrentProfile` in `main.ts`) checks the
+  publishing identity's password (if there is one), closes the profile like a switch to
+  the launcher, and only then deletes its folder (`removeProfile` in `profiles.ts`).
 - **So nothing personal may live in Chromium storage** (`localStorage`, IndexedDB): every
   profile would see it.
 - **Tests** run in the fixture profile `e2e-0000000000000000` (`e2e/launch.mjs`).

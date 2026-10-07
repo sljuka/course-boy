@@ -28,7 +28,7 @@ import {
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
 import { createIdentityRestoreService, type IdentityRestoreState } from './identity-restore'
 import { createPublisherIdentity, IDENTITY_FILE_NAME } from './publisher-identity'
-import { createProfile, listProfiles, updateProfile } from './profiles'
+import { createProfile, listProfiles, removeProfile, updateProfile } from './profiles'
 import { getActiveProfile, getBaseDataDir, getProfileDataDir, initProfiles, setActiveProfile } from './profile-context'
 import { lockDownSession, lockDownWindow } from './window-security'
 import { getCourseDetails, getCourseDiskUsage, getCourseVersionHistory, listCourses, resolvePackageDirectoryCandidates } from './course-registry'
@@ -111,7 +111,7 @@ import type {
   SetUpIdentityResult,
   UnlockIdentityResult,
 } from '../src/lib/publisher-identity'
-import type { ProfilesState } from '../src/lib/profiles'
+import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import type { Locale } from '../src/lib/i18n'
 import type {
   ApplyCourseUpdateResult,
@@ -365,6 +365,7 @@ function openProfileServices(dataDir: string) {
     courseSharingStore,
     identityFilePath,
     identityRestore,
+    identityRestoreStore,
     preferencesStore,
     publisherIdentity,
   }
@@ -514,6 +515,27 @@ ipcMain.handle('profiles:open', async (_event, profileId: string) => {
 })
 
 ipcMain.handle('profiles:switch', () => switchProfile(null))
+
+// Removing the open profile (SLJ-61): what it would delete, for the dialog,
+// then the removal itself. With a publishing identity it needs its password.
+ipcMain.handle('profiles:get-removal-summary', async () => {
+  const coursesRoot = await ensureLocalCoursesRoot()
+  const made = (await listCourses(coursesRoot)).filter((course) => course.distribution === 'local')
+  const published = new Set(await listPublishedLocalCourseIds())
+  return {
+    coursesMade: made.length,
+    coursesNeverPublished: made.filter((course) => !published.has(course.id)).length,
+    coursesPublished: Object.values(profile.courseSharingStore.get('published')).filter((entry) => entry.code).length,
+    hasIdentity: profile.publisherIdentity.exists(),
+    identityRestored: Boolean(profile.identityRestoreStore.get('publisherId')),
+  } satisfies ProfileRemovalSummary
+})
+
+ipcMain.handle('profiles:open-courses-folder', async () => {
+  await shell.openPath(await ensureLocalCoursesRoot())
+})
+
+ipcMain.handle('profiles:remove-current', (_event, password?: string) => removeCurrentProfile(password))
 
 ipcMain.handle('preferences:reset-onboarding', () => {
   profile.preferencesStore.delete('nickname')
@@ -999,6 +1021,34 @@ function startProfile(): void {
 // one's stores and start its worker, then reload the window at Home, so
 // nothing on screen or in the renderer's caches belongs to the previous one.
 let switching: Promise<void> = Promise.resolve()
+
+// Removes the open profile (SLJ-61): its identity's password first (if it has
+// one), then, like a switch to the launcher, close its services and stop its
+// worker, and only then delete its folder, so nothing still writes into it.
+async function removeCurrentProfile(password: unknown): Promise<RemoveProfileResult> {
+  const removed = getActiveProfile()
+  if (!removed) {
+    throw new Error('No profile is open')
+  }
+
+  if (profile.publisherIdentity.exists()) {
+    if (typeof password !== 'string' || !password) return { error: 'passwordRequired' }
+    if (!(await profile.publisherIdentity.checkPassword(password))) return { error: 'wrongPassword' }
+  }
+
+  const removing = switching.then(async () => {
+    profile.close()
+    await stopBareWorker()
+    setActiveProfile(null)
+    profile = openProfileServices(getProfileDataDir())
+    await removeProfile(getBaseDataDir(), removed.id)
+    startProfile()
+    if (win) loadApp(win)
+  })
+  switching = removing.catch(() => {})
+  await removing
+  return { removed: true }
+}
 
 function switchProfile(profileId: string | null): Promise<void> {
   switching = switching.then(async () => {

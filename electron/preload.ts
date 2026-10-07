@@ -1,5 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
-import type { ProfilesState } from '../src/lib/profiles'
+import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import type {
   ChooseIdentityFileResult,
   IdentityRestoreStatus,
@@ -182,6 +182,15 @@ contextBridge.exposeInMainWorld('profiles', {
   },
   switchProfile() {
     return ipcRenderer.invoke('profiles:switch') as Promise<void>
+  },
+  getRemovalSummary() {
+    return ipcRenderer.invoke('profiles:get-removal-summary') as Promise<ProfileRemovalSummary>
+  },
+  openCoursesFolder() {
+    return ipcRenderer.invoke('profiles:open-courses-folder') as Promise<void>
+  },
+  removeCurrent(password?: string) {
+    return ipcRenderer.invoke('profiles:remove-current', password) as Promise<RemoveProfileResult>
   },
 })
 

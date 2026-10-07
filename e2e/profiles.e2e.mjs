@@ -157,4 +157,40 @@ describe('profiles', () => {
     await harness.page.locator('[data-testid="profile-picker"]').waitFor()
     expect(await activeProfile()).toBeNull()
   })
+
+  // SLJ-61: Settings → Profile → Remove this profile. A checklist (all data,
+  // the publishing identity) and the identity's password; only then Remove.
+  it('removes a profile after every item is ticked and its password is given, leaving the others', async () => {
+    const { page } = harness
+    const other = profileFolders().find((id) => id !== ana)
+    await page.locator('[data-testid="open-profile"]', { hasText: '##$$%' }).click()
+    await waitForActive((active) => active?.id === other)
+    await page.click('[data-testid="open-without-publishing"]')
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await page.click('[data-testid="open-remove-profile"]')
+    const dialog = page.locator('[data-testid="remove-profile-dialog"]')
+    const removeButton = dialog.locator('[data-testid="remove-profile"]')
+    await dialog.locator('[data-testid="remove-profile-identity"]').waitFor()
+
+    expect(await removeButton.isDisabled()).toBe(true)
+    await dialog.locator('[data-testid="remove-profile-data"]').click()
+    expect(await removeButton.isDisabled()).toBe(true)
+    await dialog.locator('[data-testid="remove-profile-identity"]').click()
+    expect(await removeButton.isDisabled()).toBe(true)
+
+    await dialog.getByLabel('Password of your publishing identity').fill('wrong password')
+    await removeButton.click()
+    await waitForText(page, 'Wrong password. Nothing was removed.')
+    expect(fs.existsSync(path.join(USER_DATA, 'profiles', other))).toBe(true)
+
+    await dialog.getByLabel('Password of your publishing identity').fill('another good password')
+    await removeButton.click()
+    await waitForActive((active) => active === null)
+    await page.locator('[data-testid="profile-picker"]').waitFor()
+
+    expect(profileFolders()).toEqual([ana])
+    expect(await page.locator('[data-testid="open-profile"]').allInnerTexts()).toEqual(['Ana Petrović'])
+  })
 })

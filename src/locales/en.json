@@ -511,6 +511,9 @@
   "settings": {
     "title": "Settings",
     "subtitle": "Preferences for how you use Matko on this device.",
+    "general": {
+      "title": "General"
+    },
     "role": {
       "title": "Role",
       "description": "Changes what Matko shows you. You can switch at any time.",
@@ -518,18 +521,27 @@
       "teacherDescription": "Create, edit, print and share your own courses, and take courses too."
     },
     "home": {
-      "title": "Home",
       "showBundledCourses": "Show Getting Started course",
       "showBundledCoursesDescription": "A short guide to Matko, on Home. Hiding it keeps it on this device, so you can bring it back here any time."
     },
+    "interface": {
+      "title": "Interface",
+      "theme": "Theme",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "sharing": {
+      "title": "Sharing",
+      "description": "Courses you get from others, and courses you put online."
+    },
     "courseVersions": {
-      "title": "Course versions",
       "previousToKeep": "Previous versions to keep",
       "previousToKeepDescription": "For courses you've imported: how many earlier versions stay on this device, so you can go back to one. Unchanged files are shared between versions, so extra versions take little space. A lower number applies at the next update."
     },
-    "publishing": {
-      "title": "Publishing",
-      "description": "Only for courses you publish online. Making, printing or handing over course files needs none of this."
+    "dangerZone": {
+      "title": "Danger zone",
+      "removeProfileTitle": "Remove this profile",
+      "removeProfileDescription": "Removes the profile {{name}} and everything it keeps on this computer: its courses, settings and publishing identity. This can't be undone."
     }
   },
   "drawer": {
@@ -791,6 +803,24 @@
       "alreadyPublishing": "This profile already publishes courses with its own publishing identity. To restore another one, create a new profile and restore it there.",
       "noFile": "Choose the identity file first."
     }
+  },
+  "removeProfile": {
+    "open": "Remove profile",
+    "title": "Remove the profile {{name}}?",
+    "description": "Removes this profile and everything it keeps on this computer. Other profiles, and students' copies of your courses, aren't affected. This can't be undone. Tick each item to confirm.",
+    "data": "Remove all data, including courses",
+    "dataCourses": "Courses you made: {{count}}, courses published: {{published}}. Copy any you want to keep first: they exist only here. Imported courses, progress and settings go too.",
+    "dataNoCourses": "Imported courses, progress and settings.",
+    "openCoursesFolder": "Open courses folder",
+    "identity": "Remove my publishing identity",
+    "identityCourses": "Courses published with it: {{count}}. Without a copy of your identity file they can never be updated again; students keep them.",
+    "identityCoursesAtLeast": "Courses published with it: at least {{count}} (more may have been published from another computer). Without a copy of your identity file they can never be updated again; students keep them.",
+    "identityNoCourses": "No courses are published with it yet.",
+    "openIdentityFile": "Open identity file",
+    "password": "Password of your publishing identity",
+    "wrongPassword": "Wrong password. Nothing was removed.",
+    "cancel": "Cancel",
+    "remove": "Remove profile"
   },
   "profiles": {
     "pickerTitle": "Who's learning?",

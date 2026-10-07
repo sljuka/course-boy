@@ -97,7 +97,7 @@ describe('launch', () => {
       'uploadAssetBytes',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
-    expect(surface.profiles).toEqual(['create', 'getState', 'open', 'switchProfile'])
+    expect(surface.profiles).toEqual(['create', 'getRemovalSummary', 'getState', 'open', 'openCoursesFolder', 'removeCurrent', 'switchProfile'])
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',
       'cancelTransfer',

@@ -511,6 +511,9 @@
   "settings": {
     "title": "Podešavanja",
     "subtitle": "Kako koristiš aplikaciju na ovom uređaju.",
+    "general": {
+      "title": "Opšte"
+    },
     "role": {
       "title": "Uloga",
       "description": "Menja šta ti Matko prikazuje. Možeš je promeniti u bilo kom trenutku.",
@@ -518,18 +521,27 @@
       "teacherDescription": "Pravi, uređuj, štampaj i deli svoje kurseve, a možeš i da pratiš kurseve."
     },
     "home": {
-      "title": "Početna",
       "showBundledCourses": "Prikaži uvodni kurs o Matku",
       "showBundledCoursesDescription": "Kratak vodič kroz Matka, na početnoj strani. Skriven kurs ostaje na ovom uređaju, pa ga ovde možeš vratiti kad god želiš."
     },
+    "interface": {
+      "title": "Izgled",
+      "theme": "Tema",
+      "light": "Svetla",
+      "dark": "Tamna"
+    },
+    "sharing": {
+      "title": "Deljenje",
+      "description": "Kursevi koje dobiješ od drugih i kursevi koje stavljaš na mrežu."
+    },
     "courseVersions": {
-      "title": "Verzije kurseva",
       "previousToKeep": "Broj prethodnih verzija koje se čuvaju",
       "previousToKeepDescription": "Za uvezene kurseve: koliko ranijih verzija ostaje na ovom uređaju, da biste mogli da se vratite na neku od njih. Nepromenjeni fajlovi su zajednički za sve verzije, pa dodatne verzije zauzimaju malo prostora. Manji broj se primenjuje pri sledećem ažuriranju."
     },
-    "publishing": {
-      "title": "Objavljivanje",
-      "description": "Samo za kurseve koje objaviš na mreži. Pravljenje, štampanje ili predavanje datoteka kursa ne zahteva ništa od ovoga."
+    "dangerZone": {
+      "title": "Opasna zona",
+      "removeProfileTitle": "Ukloni ovaj profil",
+      "removeProfileDescription": "Uklanja profil {{name}} i sve što on čuva na ovom računaru: kurseve, podešavanja i identitet izdavača. Ovo ne može da se poništi."
     }
   },
   "drawer": {
@@ -791,6 +803,24 @@
       "alreadyPublishing": "Ovaj profil već objavljuje kurseve sa svojim identitetom izdavača. Za vraćanje drugog identiteta napravi novi profil i vrati ga tamo.",
       "noFile": "Prvo izaberi datoteku identiteta."
     }
+  },
+  "removeProfile": {
+    "open": "Ukloni profil",
+    "title": "Ukloniti profil {{name}}?",
+    "description": "Uklanja ovaj profil i sve što on čuva na ovom računaru. Ostali profili i kopije tvojih kurseva kod učenika ostaju netaknuti. Ovo ne može da se poništi. Označi svaku stavku za potvrdu.",
+    "data": "Ukloni sve podatke, uključujući kurseve",
+    "dataCourses": "Tvoji kursevi: {{count}}, objavljeni kursevi: {{published}}. Prvo kopiraj one koje želiš da sačuvaš: postoje samo ovde. Uklanjaju se i preuzeti kursevi, napredak i podešavanja.",
+    "dataNoCourses": "Preuzeti kursevi, napredak i podešavanja.",
+    "openCoursesFolder": "Otvori fasciklu kurseva",
+    "identity": "Ukloni moj identitet izdavača",
+    "identityCourses": "Kursevi objavljeni s njim: {{count}}. Bez kopije datoteke identiteta nikad više ne mogu da se ažuriraju; učenici ih zadržavaju.",
+    "identityCoursesAtLeast": "Kursevi objavljeni s njim: najmanje {{count}} (možda ih je još objavljeno sa drugog računara). Bez kopije datoteke identiteta nikad više ne mogu da se ažuriraju; učenici ih zadržavaju.",
+    "identityNoCourses": "S njim još nije objavljen nijedan kurs.",
+    "openIdentityFile": "Otvori datoteku identiteta",
+    "password": "Lozinka tvog identiteta izdavača",
+    "wrongPassword": "Pogrešna lozinka. Ništa nije uklonjeno.",
+    "cancel": "Otkaži",
+    "remove": "Ukloni profil"
   },
   "profiles": {
     "pickerTitle": "Ko uči?",

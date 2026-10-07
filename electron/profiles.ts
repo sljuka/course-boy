@@ -12,6 +12,7 @@
 
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
+import { rm } from 'node:fs/promises'
 import path from 'node:path'
 
 import type { Persona } from '../src/lib/preferences'
@@ -139,6 +140,18 @@ export function updateProfile(baseDir: string, id: string, patch: { name?: strin
     name,
     persona: patch.persona === undefined ? current.persona : patch.persona,
   } satisfies ProfileFile)
+}
+
+// Removes a profile's folder and everything in it (SLJ-61). The caller closes
+// the profile first (its stores, and the P2P worker that holds files open in
+// it). Retries a file still busy for a moment (Windows). The last used
+// profile is forgotten if it was this one, so the next start doesn't look
+// for it.
+export async function removeProfile(baseDir: string, id: string): Promise<void> {
+  await rm(profileDir(baseDir, id), { force: true, maxRetries: 5, recursive: true, retryDelay: 200 })
+  if (readLastUsedId(baseDir) === id) {
+    writeJsonAtomic(path.join(baseDir, 'profiles.json'), { lastUsedId: null })
+  }
 }
 
 export type StartupChoice = { kind: 'profile'; profile: ProfileSummary } | { kind: 'launcher' }
