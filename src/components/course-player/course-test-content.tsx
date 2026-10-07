@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
 
+import { ExerciseMediaView } from "@/components/course-player/exercise-media-view";
+import { getExerciseMedia } from "@/lib/exercise-media";
 import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
 import { InlineMarkdown } from "@/components/course-player/inline-markdown";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ export const CourseTestContent = ({
   onUpdateExerciseAnswer,
   printAnswerStyle,
   printExerciseHintStyle,
+  showPrintDecorativeMedia = false,
   showPrintTestSeparators,
   testFeedback,
 }: {
@@ -45,6 +48,7 @@ export const CourseTestContent = ({
   onUpdateExerciseAnswer: (index: number, value: string) => void;
   printAnswerStyle: CoursePrintAnswerStyle;
   printExerciseHintStyle: CoursePrintExerciseHintStyle;
+  showPrintDecorativeMedia?: boolean;
   showPrintTestSeparators: boolean;
   testFeedback: string | null;
 }) => {
@@ -129,6 +133,7 @@ export const CourseTestContent = ({
               }`}
               key={exercise.id}
             >
+              <ExerciseMediaView media={getExerciseMedia(exercise)} printDecorative={showPrintDecorativeMedia} />
               <ExercisePromptHeader index={index} promptSource={promptSource} />
               {(() => {
                 const { AnswerComponent } = getExerciseKindEditor(exercise.kind);

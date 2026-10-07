@@ -255,6 +255,7 @@ export function TestPlayerView({
               onUpdateExerciseAnswer={updateExerciseAnswer}
               printAnswerStyle={printOptions.answerStyle}
               printExerciseHintStyle={printOptions.exerciseHintStyle}
+              showPrintDecorativeMedia={printOptions.showDecorativeMedia}
               showPrintTestSeparators={printOptions.showTestSeparators}
               testFeedback={testFeedback}
             />

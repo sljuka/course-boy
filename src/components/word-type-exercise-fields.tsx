@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ExerciseMoreOptions } from "@/components/exercise-kinds/exercise-more-options";
 import { Check, Plus, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -143,6 +144,7 @@ function getValidationLabel(status: "error" | "valid" | "warning") {
 export function WordTypeExerciseFields({
   exercise,
   locale,
+  moreOptions,
   onChange,
 }: FieldsComponentProps<WordTypeTestExercise>) {
   const prompt = exercise.locales[locale]?.prompt ?? "";
@@ -299,6 +301,9 @@ export function WordTypeExerciseFields({
           </div>
         )}
       </Field>
+      {moreOptions && (
+        <ExerciseMoreOptions defaultOpen={Boolean(exercise.media)}>{moreOptions}</ExerciseMoreOptions>
+      )}
     </>
   );
 }

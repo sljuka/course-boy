@@ -22,6 +22,14 @@ describe("partitionAssetsByUsage", () => {
     expect(usage.unreferenced).toEqual(["clip-bbbb.mp4"]);
   });
 
+  it("counts an exercise's image or video, referenced from its test JSON (SLJ-56)", () => {
+    const testJson = JSON.stringify({
+      exercises: [{ kind: "numeric", media: { assetFilename: "pizza-3fa1c2d9e8b7a6f5.png", kind: "image" } }],
+    });
+
+    expect(partitionAssetsByUsage(["pizza-3fa1c2d9e8b7a6f5.png"], [testJson]).unreferenced).toEqual([]);
+  });
+
   it("treats every asset as unreferenced when there is no text", () => {
     expect(partitionAssetsByUsage(["b.png", "a.png"], []).unreferenced).toEqual([
       "a.png",

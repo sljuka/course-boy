@@ -7,6 +7,9 @@ export type CoursePrintExerciseHintStyle =
 export type CoursePrintOptions = {
   answerStyle: CoursePrintAnswerStyle;
   exerciseHintStyle: CoursePrintExerciseHintStyle;
+  // Exercises' decorative images and videos (SLJ-56): left out unless the
+  // student asks for them; media that's part of the question always prints.
+  showDecorativeMedia: boolean;
   showHeader: boolean;
   showTestSeparators: boolean;
 };
@@ -14,6 +17,7 @@ export type CoursePrintOptions = {
 export const defaultLessonPrintOptions: CoursePrintOptions = {
   answerStyle: "lines",
   exerciseHintStyle: "hidden",
+  showDecorativeMedia: false,
   showHeader: true,
   showTestSeparators: true,
 };
@@ -21,6 +25,7 @@ export const defaultLessonPrintOptions: CoursePrintOptions = {
 export const defaultTestPrintOptions: CoursePrintOptions = {
   answerStyle: "lines",
   exerciseHintStyle: "hidden",
+  showDecorativeMedia: false,
   showHeader: true,
   showTestSeparators: true,
 };

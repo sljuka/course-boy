@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n";
+import type { ExerciseMediaKind } from "@/lib/exercise-media";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 
 type BlueprintRule = {
@@ -39,9 +40,20 @@ type PromptVariable = {
 
 type NumericSolutionSpace = "sm" | "md" | "lg" | "xl";
 
+// An image or video above the prompt (SLJ-56), as the editor holds it: the
+// alt text per language sits here, and moves into each language's `locales`
+// entry (`mediaAlt`) when saved; see lib/exercise-media.ts.
+type ExerciseMediaDraft = {
+  alt: Record<string, string>;
+  assetFilename: string;
+  decorative: boolean;
+  kind: ExerciseMediaKind;
+};
+
 type NumericTestExercise = {
   kind: "numeric";
   id: string;
+  media?: ExerciseMediaDraft;
   locales: Record<string, ExerciseLocaleContent>;
   solution: string;
   solutionSpace: NumericSolutionSpace;
@@ -53,6 +65,7 @@ type MultipleChoiceTestExercise = {
   kind: "multiple-choice";
   correctOptionIndexes: number[];
   id: string;
+  media?: ExerciseMediaDraft;
   locales: Record<string, MultipleChoiceExerciseLocaleContent>;
   selectionMode: "single" | "multiple";
   tagIds: string[];
@@ -77,6 +90,7 @@ type WordTypeExerciseLocaleContent = {
 type WordTypeTestExercise = {
   kind: "word-types";
   id: string;
+  media?: ExerciseMediaDraft;
   locales: Record<string, WordTypeExerciseLocaleContent>;
   tagIds: string[];
   wordTypes: WordTypeDefinitionDraft[];
@@ -100,6 +114,7 @@ type MissingWordExerciseLocaleContent = {
 type MissingWordTestExercise = {
   kind: "missing-word";
   id: string;
+  media?: ExerciseMediaDraft;
   locales: Record<string, MissingWordExerciseLocaleContent>;
   tagIds: string[];
 };
@@ -198,6 +213,7 @@ type SolutionValidationResult =
 
 export type {
   BlueprintRule,
+  ExerciseMediaDraft,
   CourseTagDefinition,
   ExerciseLocaleContent,
   MissingWordExerciseLocaleContent,

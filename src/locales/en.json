@@ -485,7 +485,8 @@
     "title": "Teacher workspace"
   },
   "testEditor": {
-    "tagsTooltip": "Tags are useful for marking exercises. They are used for exercise randomization. Tags can be configured in the course root folder."
+    "tagsTooltip": "Tags are useful for marking exercises. They are used for exercise randomization. Tags can be configured in the course root folder.",
+    "moreOptions": "Show more options"
   },
   "theme": {
     "switchToDark": "Switch to dark theme",
@@ -850,5 +851,25 @@
     "titlePlaceholder": "Untitled document",
     "fullScreen": "Full screen",
     "exitFullScreen": "Exit full screen"
+  },
+  "exerciseMedia": {
+    "label": "Image or video",
+    "hint": "Optional. Shown above the prompt.",
+    "addImage": "Add image",
+    "addVideo": "Add video",
+    "imageLabel": "Image",
+    "videoLabel": "Video",
+    "replace": "Replace",
+    "remove": "Remove",
+    "decorative": "Decorative asset",
+    "decorativeHint": "Image is not required to find the answer (mascot, mood picture, jingle...). Skipped by screen readers and printouts",
+    "altImage": "Alt text (optional)",
+    "altImageHint": "What the image shows, for students who can’t see it.",
+    "altVideo": "Short description (optional)",
+    "altVideoHint": "What the video shows, for students who can’t watch it.",
+    "image": "Image",
+    "enlarge": "Enlarge image",
+    "printVideo": "Video: watch it in Matko",
+    "printDecorative": "Decorative images and videos"
   }
 }

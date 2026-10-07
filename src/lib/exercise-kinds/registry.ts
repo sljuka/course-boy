@@ -4,6 +4,7 @@ import type {
   SharedTestDefinition,
   SharedTestExerciseDefinition,
 } from "../course-package";
+import { resolveExerciseMediaForPlayer, type SharedExerciseMedia, supportsExerciseMedia } from "../exercise-media";
 import type { Locale } from "../i18n";
 
 import { missingWordExerciseRuntime } from "./missing-word";
@@ -93,7 +94,7 @@ export function resolveSharedExerciseForPlayer(
     throw new Error(`Unresolvable exercise kind "${String(exercise.kind)}" in "${id}"`);
   }
 
-  return getExerciseKindRuntime(kind).resolveForPlayer(exercise, {
+  const resolved = getExerciseKindRuntime(kind).resolveForPlayer(exercise, {
     answerPlaceholder,
     courseId,
     hint,
@@ -101,6 +102,17 @@ export function resolveSharedExerciseForPlayer(
     prompt,
     requestedLocales,
   });
+  // Media is the same for every kind that has it, so it's resolved here
+  // rather than by each kind (SLJ-56).
+  const media = supportsExerciseMedia(kind)
+    ? resolveExerciseMediaForPlayer(
+        exercise as { locales: Partial<Record<Locale, { mediaAlt?: string }>>; media?: SharedExerciseMedia },
+        requestedLocales,
+        courseId,
+      )
+    : undefined;
+
+  return media ? { ...resolved, media } : resolved;
 }
 
 export function resolveSharedTestForPlayer(

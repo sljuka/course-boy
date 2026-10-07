@@ -1,5 +1,6 @@
 import { Plus, X } from "lucide-react";
 
+import { ExerciseMoreOptions } from "@/components/exercise-kinds/exercise-more-options";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
@@ -37,6 +38,7 @@ function getValidationLabel(status: "error" | "valid" | "warning") {
 export function MultipleChoiceExerciseFields({
   exercise,
   locale,
+  moreOptions,
   onChange,
 }: FieldsComponentProps<MultipleChoiceTestExercise>) {
   const prompt = exercise.locales[locale]?.prompt ?? "";
@@ -162,6 +164,9 @@ export function MultipleChoiceExerciseFields({
           </div>
         )}
       </Field>
+      {moreOptions && (
+        <ExerciseMoreOptions defaultOpen={Boolean(exercise.media)}>{moreOptions}</ExerciseMoreOptions>
+      )}
     </>
   );
 }

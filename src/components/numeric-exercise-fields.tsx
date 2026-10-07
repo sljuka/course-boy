@@ -4,7 +4,7 @@ import { Plus, TriangleAlert, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ExerciseMoreOptions } from "@/components/exercise-kinds/exercise-more-options";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,7 @@ function getValidationLabel(status: "error" | "valid" | "warning") {
 export function NumericExerciseFields({
   exercise,
   locale,
+  moreOptions,
   onChange,
 }: FieldsComponentProps<NumericTestExercise>) {
   const [activeConstraintVariableId, setActiveConstraintVariableId] = useState<
@@ -250,9 +251,7 @@ export function NumericExerciseFields({
         )}
       </Field>
 
-      <Collapsible>
-        <CollapsibleTrigger>Show more options</CollapsibleTrigger>
-        <CollapsibleContent>
+      <ExerciseMoreOptions defaultOpen={Boolean(exercise.media)}>
           <Field>
             <FieldLabel htmlFor={`exercise-answer-placeholder-${exercise.id}-${locale}`}>
               Result input placeholder
@@ -345,8 +344,8 @@ export function NumericExerciseFields({
               value={hint}
             />
           </Field>
-        </CollapsibleContent>
-      </Collapsible>
+          {moreOptions}
+      </ExerciseMoreOptions>
     </>
   );
 }

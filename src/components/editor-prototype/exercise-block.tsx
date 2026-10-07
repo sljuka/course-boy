@@ -4,7 +4,10 @@ import type { BlockNoteEditor } from "@blocknote/core";
 import { createReactBlockSpec, useBlockNoteEditor } from "@blocknote/react";
 import { FlaskConical } from "lucide-react";
 
+import { ExerciseMediaView } from "@/components/course-player/exercise-media-view";
+import { getExerciseMedia } from "@/lib/exercise-media";
 import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
+import { ExerciseMediaField } from "@/components/exercise-media-field";
 import { useDocumentEditorContext } from "@/components/editor-prototype/document-editor-context";
 import {
   getExerciseKindEditor,
@@ -116,6 +119,14 @@ function ExerciseAuthoringCard({
             courseId={courseId}
             exercise={exercise}
             locale={locale}
+            moreOptions={
+              <ExerciseMediaField
+                courseId={courseId}
+                exercise={exercise}
+                locale={locale}
+                onChange={(updater) => onChange(updater(exercise))}
+              />
+            }
             onChange={(updater) => onChange(updater(exercise))}
           />
         )}
@@ -167,6 +178,7 @@ function ExercisePlayerCard({
             : "border-border")
       }
     >
+      <ExerciseMediaView media={getExerciseMedia(courseExercise)} />
       <ExercisePromptHeader
         index={0}
         promptSource={promptSource}

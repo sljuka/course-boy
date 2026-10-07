@@ -1,3 +1,4 @@
+import type { CourseExerciseMedia, SharedExerciseMedia } from "@/lib/exercise-media";
 import type { Locale } from "@/lib/i18n";
 import type { CourseMnemonic } from "@/lib/mnemonics";
 import type { CourseAssetKind } from "@/lib/course-asset-id";
@@ -97,6 +98,8 @@ export type NumericCourseExercise = {
   answerPlaceholder?: string;
   hint?: string;
   id: string;
+  // An image or video shown above the prompt (SLJ-56); see lib/exercise-media.ts.
+  media?: CourseExerciseMedia;
   precision: number;
   prompt: string;
   solutionSpace: CourseExerciseSolutionSpace;
@@ -109,6 +112,8 @@ export type MultipleChoiceCourseExercise = {
   kind: "multiple-choice";
   hint?: string;
   id: string;
+  // An image or video shown above the prompt (SLJ-56); see lib/exercise-media.ts.
+  media?: CourseExerciseMedia;
   prompt: string;
   tags: string[];
   options: string[];
@@ -135,6 +140,8 @@ export type WordTypeCourseExercise = {
   kind: "word-types";
   hint?: string;
   id: string;
+  // An image or video shown above the prompt (SLJ-56); see lib/exercise-media.ts.
+  media?: CourseExerciseMedia;
   prompt: string;
   tags: string[];
   tokens: WordTypeToken[];
@@ -163,6 +170,8 @@ export type MissingWordCourseExercise = {
   kind: "missing-word";
   hint?: string;
   id: string;
+  // An image or video shown above the prompt (SLJ-56); see lib/exercise-media.ts.
+  media?: CourseExerciseMedia;
   prompt: string;
   segments: MissingWordSegment[];
   tags: string[];
@@ -294,8 +303,10 @@ export type CourseTest = {
 export type SharedNumericTestExerciseDefinition = {
   kind: "numeric";
   locales: Partial<
-    Record<Locale, { answerPlaceholder?: string; hint?: string; prompt: string }>
+    Record<Locale, { answerPlaceholder?: string; hint?: string; mediaAlt?: string; prompt: string }>
   >;
+  // An image or video shown above the prompt (SLJ-56); see lib/exercise-media.ts.
+  media?: SharedExerciseMedia;
   solution: {
     formula: string;
     precision: number;
@@ -307,7 +318,8 @@ export type SharedNumericTestExerciseDefinition = {
 
 export type SharedMultipleChoiceTestExerciseDefinition = {
   kind: "multiple-choice";
-  locales: Partial<Record<Locale, { hint?: string; prompt: string; options: string[] }>>;
+  locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; options: string[] }>>;
+  media?: SharedExerciseMedia;
   // `selectionMode` is explicit teacher intent, not derived from the option
   // count — a file written before multi-select existed has neither field and
   // is normalized at read time (see `normalizeMultipleChoiceCorrectOptions`
@@ -320,7 +332,8 @@ export type SharedMultipleChoiceTestExerciseDefinition = {
 
 export type SharedWordTypeTestExerciseDefinition = {
   kind: "word-types";
-  locales: Partial<Record<Locale, { hint?: string; prompt: string; text: string }>>;
+  locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; text: string }>>;
+  media?: SharedExerciseMedia;
   tags: string[];
   wordTypes: WordTypeDefinition[];
 };
@@ -330,9 +343,10 @@ export type SharedMissingWordTestExerciseDefinition = {
   locales: Partial<
     Record<
       Locale,
-      { hint?: string; prompt: string; text: string; variables: MissingWordVariable[] }
+      { hint?: string; mediaAlt?: string; prompt: string; text: string; variables: MissingWordVariable[] }
     >
   >;
+  media?: SharedExerciseMedia;
   tags: string[];
 };
 

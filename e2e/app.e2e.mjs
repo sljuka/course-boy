@@ -1558,6 +1558,128 @@ describe('videos in print', () => {
   })
 })
 
+// SLJ-56: an exercise can have an image or a video above its prompt. The
+// teacher adds them in the test editor (the file picker is stubbed); they're
+// saved on the exercise in the test's JSON, kept when a version is committed,
+// and shown to the student: the image with its alt text, the decorative video
+// hidden from screen readers.
+describe('exercise media', () => {
+  it('adds an image with alt text and a decorative video, keeps them on commit, and shows them to students', async () => {
+    const { app, page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Media Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Media section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Media lesson' })
+      await window.courses.saveLessonTest({
+        courseId,
+        lessonId,
+        sectionId,
+        test: {
+          exercises: [
+            {
+              kind: 'numeric',
+              locales: { en: { prompt: 'Count the apples' } },
+              solution: { formula: '3', precision: 0 },
+              tags: [],
+              variables: {},
+            },
+            {
+              kind: 'numeric',
+              locales: { en: { prompt: 'Count the beats' } },
+              solution: { formula: '4', precision: 0 },
+              tags: [],
+              variables: {},
+            },
+          ],
+          template: '',
+        },
+      })
+      return { courseId, lessonId, sectionId }
+    })
+    const draftDir = path.join(DATA_DIR, 'courses', ids.courseId, 'draft')
+    const testFile = path.join(draftDir, ids.sectionId, `${ids.lessonId.replace(/^lesson-/, 'test-')}.json`)
+    const readTest = () => JSON.parse(fs.readFileSync(testFile, 'utf8'))
+    // A 1×1 PNG, and the video fixture, as the files the teacher picks.
+    const imagePath = path.join(USER_DATA, 'apples.png')
+    fs.writeFileSync(
+      imagePath,
+      Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+    )
+    const pickFile = (filePath) =>
+      app.evaluate(({ dialog }, picked) => {
+        dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [picked] })
+      }, filePath)
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await page.getByText('Media lesson', { exact: true }).first().click()
+    await page.getByText('Test', { exact: true }).first().click()
+
+    // The first exercise: an image, with alt text.
+    // Media is under "Show more options", there and in the "Add exercise" form.
+    await page.getByText('Count the apples', { exact: true }).first().click()
+    await page.locator('[data-testid="exercise-more-options"]:visible').last().click()
+    await pickFile(imagePath)
+    await page.locator('[data-testid="exercise-media-add-image"]').first().click()
+    await page.locator('[data-testid="exercise-media-alt"]').first().fill('Three red apples')
+
+    // The second: a decorative video.
+    await page.getByText('Count the beats', { exact: true }).first().click()
+    await page.locator('[data-testid="exercise-more-options"]:visible').last().click()
+    await pickFile(path.join(import.meta.dirname, 'fixtures', 'test-video.mp4'))
+    await page.locator('[data-testid="exercise-media-add-video"]').first().click()
+    await page.locator('[data-testid="exercise-media-decorative"]').last().click()
+
+    await expect
+      .poll(() => readTest().exercises.map((exercise) => [exercise.media?.kind, exercise.media?.decorative ?? false, exercise.locales.en.mediaAlt]), {
+        timeout: 15_000,
+      })
+      .toEqual([
+        ['image', false, 'Three red apples'],
+        ['video', true, undefined],
+      ])
+    const [imageFile, videoFile] = readTest().exercises.map((exercise) => exercise.media.assetFilename)
+
+    // Committing keeps both files in the version.
+    const { version } = await page.evaluate(
+      (id) => window.courses.cutVersion({ courseId: id, releaseType: 'minor' }),
+      ids.courseId,
+    )
+    const versionAssets = path.join(DATA_DIR, 'courses', ids.courseId, 'versions', version, 'assets')
+    expect(fs.existsSync(path.join(versionAssets, imageFile))).toBe(true)
+    expect(fs.existsSync(path.join(versionAssets, videoFile))).toBe(true)
+
+    // The student sees the image, named by its alt text, above its prompt.
+    await page.evaluate(({ courseId, lessonId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${lessonId}/test`
+    }, ids)
+    const image = page.locator('[data-testid="exercise-media"] img[alt="Three red apples"]').first()
+    await image.waitFor({ timeout: 15_000 })
+    expect(await image.getAttribute('src')).toBe(`matko-asset://${ids.courseId}/${imageFile}`)
+    expect(await page.evaluate(() => document.querySelector('[data-testid="exercise-media"] img').naturalWidth)).toBe(1)
+
+    // The decorative video (the next exercise, when the test shows one at a time).
+    const decorative = page.locator('[data-testid="exercise-media"][data-decorative]')
+    if ((await decorative.count()) === 0) {
+      await page.locator('input:visible').first().fill('3')
+      await clickText(page, 'Check answer')
+      await clickText(page, 'Next')
+    }
+    await decorative.first().waitFor({ timeout: 15_000 })
+    expect(await decorative.first().getAttribute('aria-hidden')).toBe('true')
+    expect(await decorative.locator('video').getAttribute('controlslist')).toBe('nodownload')
+
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+  })
+})
+
 // Full screen for writing a document: the window goes full screen and the
 // app's chrome (title bar, sidebar, explorer, toolbars) steps aside; Esc and
 // "Exit full screen" bring it back. Last in this file: it changes the window.

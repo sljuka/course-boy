@@ -16,6 +16,7 @@ import {
   removeLocalCourseSectionIntro,
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
+  updateLocalCourseLessonTest,
   updateLocalCourseSection,
   updateLocalCourseSectionIntro,
   uploadCourseAssetFromBytes,
@@ -282,5 +283,72 @@ describe("findMissingAssets", () => {
         location: { section: "Basics", target: "lesson", title: "Addition" },
       },
     ]);
+  });
+});
+
+// SLJ-56: an exercise's image or video is referenced from its test's JSON by
+// bare filename, like any other asset, so committing keeps it and the
+// missing-files check sees it, with no code of its own.
+describe("exercise media", () => {
+  function testWithMedia(assetFilename: string) {
+    return {
+      exercises: [
+        {
+          kind: "numeric" as const,
+          locales: { en: { mediaAlt: "Three apples", prompt: "How many apples?" } },
+          media: { assetFilename, kind: "image" as const },
+          solution: { formula: "3", precision: 0 },
+          tags: [],
+          variables: {},
+        },
+      ],
+      template: "default",
+    };
+  }
+
+  it("keeps the file when a version is committed, and reports it when it's missing", async () => {
+    const course = await seedCutCourse();
+    const { path: filename } = await uploadCourseAssetFromBytes({
+      courseId: course.courseId,
+      data: new TextEncoder().encode("not really a png").buffer,
+      filename: "apples.png",
+      kind: "image",
+    });
+
+    await updateLocalCourseLessonTest({
+      courseId: course.courseId,
+      lessonId: course.lessonId,
+      sectionId: course.sectionId,
+      test: testWithMedia(filename),
+    });
+    const { version } = await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "patch" });
+
+    await expect(fs.access(path.join(path.dirname(course.draftDir), "versions", version, "assets", filename))).resolves.toBeUndefined();
+    await expect(fs.access(path.join(course.draftDir, "assets", filename))).resolves.toBeUndefined();
+    expect(await findMissingAssets(course.draftDir)).toEqual([]);
+
+    await updateLocalCourseLessonTest({
+      courseId: course.courseId,
+      lessonId: course.lessonId,
+      sectionId: course.sectionId,
+      test: testWithMedia("gone-0123456789abcdef.png"),
+    });
+
+    expect(await findMissingAssets(course.draftDir)).toEqual([
+      { filename: "gone-0123456789abcdef.png", location: { section: "Basics", target: "test", title: "Addition" } },
+    ]);
+  });
+
+  it("refuses to save media that names a path instead of a course file", async () => {
+    const course = await seedCutCourse();
+
+    await expect(
+      updateLocalCourseLessonTest({
+        courseId: course.courseId,
+        lessonId: course.lessonId,
+        sectionId: course.sectionId,
+        test: testWithMedia("../../secret.png"),
+      }),
+    ).rejects.toThrow("Test data is invalid");
   });
 });

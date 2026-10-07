@@ -9,6 +9,7 @@ import type {
   SharedTestDefinition,
   SharedTestExerciseDefinition,
 } from "@/lib/course-package";
+import { supportsExerciseMedia } from "@/lib/exercise-media";
 import type { Locale } from "@/lib/i18n";
 
 function createId(prefix: string) {
@@ -18,7 +19,32 @@ function createId(prefix: string) {
 export function toSharedTestExerciseDefinition(
   exercise: TestExercise,
 ): SharedTestExerciseDefinition {
-  return getExerciseKindEditor(exercise.kind).toShared(exercise);
+  const shared = getExerciseKindEditor(exercise.kind).toShared(exercise);
+  const media = "media" in exercise ? exercise.media : undefined;
+
+  if (!media || !supportsExerciseMedia(exercise.kind)) {
+    return shared;
+  }
+
+  // The media itself on the exercise; its alt text into each language's
+  // `locales` entry, next to the prompt (lib/exercise-media.ts).
+  const locales = Object.fromEntries(
+    Object.entries(shared.locales as Record<string, object>).map(([locale, content]) => {
+      const mediaAlt = media.decorative ? "" : (media.alt[locale] ?? "").trim();
+
+      return [locale, mediaAlt ? { ...content, mediaAlt } : content];
+    }),
+  );
+
+  return {
+    ...shared,
+    locales,
+    media: {
+      assetFilename: media.assetFilename,
+      kind: media.kind,
+      ...(media.decorative ? { decorative: true } : {}),
+    },
+  } as SharedTestExerciseDefinition;
 }
 
 export function fromSharedTestExerciseDefinition(
@@ -28,8 +54,25 @@ export function fromSharedTestExerciseDefinition(
   // `kind` field at all — default it to "numeric", same as the backend's
   // read-time normalization in electron/course-registry.ts.
   const kind = definition.kind ?? "numeric";
+  const exercise = getExerciseKindEditor(kind).fromShared(definition);
+  const media = "media" in definition ? definition.media : undefined;
 
-  return getExerciseKindEditor(kind).fromShared(definition);
+  if (!media || !supportsExerciseMedia(kind)) {
+    return exercise;
+  }
+
+  const alt = Object.fromEntries(
+    Object.entries(definition.locales).flatMap(([locale, content]) => {
+      const mediaAlt = (content as { mediaAlt?: string } | undefined)?.mediaAlt;
+
+      return mediaAlt ? [[locale, mediaAlt]] : [];
+    }),
+  );
+
+  return {
+    ...exercise,
+    media: { alt, assetFilename: media.assetFilename, decorative: media.decorative ?? false, kind: media.kind },
+  } as TestExercise;
 }
 
 export function toSharedTestDefinition(testState: TestEditorState): SharedTestDefinition {

@@ -1,4 +1,4 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import type { SolutionValidationResult, TestExercise } from "@/components/test-editor-prototype-types";
 import type { CourseExercise, ExerciseKind, SharedTestExerciseDefinition } from "@/lib/course-package";
@@ -25,6 +25,10 @@ export type FieldsComponentProps<TExercise extends TestExercise> = {
   courseId: string;
   exercise: TExercise;
   locale: Locale;
+  // Extra fields for the kind's "Show more options", the same for every kind
+  // that has them (the exercise's image or video); rendered there by each
+  // kind's fields. Nothing shown when absent.
+  moreOptions?: ReactNode;
   onChange: (updater: (exercise: TExercise) => TExercise) => void;
 };
 

@@ -49,6 +49,7 @@ import {
   normalizeExerciseKind,
   resolveSharedTestForPlayer,
 } from "../src/lib/exercise-kinds/registry";
+import { hasValidExerciseMedia } from "../src/lib/exercise-media";
 import { promptGaps, titleGaps, writtenLocales } from "../src/lib/course-gaps";
 
 type CourseRecord = {
@@ -347,7 +348,7 @@ function isSharedTestDefinitionShape(
       return false;
     }
 
-    return getExerciseKindRuntime(kind).isValid(typedExercise);
+    return getExerciseKindRuntime(kind).isValid(typedExercise) && hasValidExerciseMedia(typedExercise);
   });
 
   if (!exercisesAreValid) {

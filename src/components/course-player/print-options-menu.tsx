@@ -59,6 +59,7 @@ export function PrintOptionsMenu({
             visible: t("courseDetails.printExerciseHintsPrint"),
           }
         : undefined,
+    decorativeMedia: mode === "test" ? t("exerciseMedia.printDecorative") : undefined,
     header: t("courseDetails.printOptionHeader"),
     printNow: t("courseDetails.printNow"),
     testSeparators:
@@ -111,6 +112,15 @@ export function PrintOptionsMenu({
             }
           >
             {labels.testSeparators}
+          </DropdownMenuCheckboxItem>
+        )}
+        {labels.decorativeMedia && (
+          <DropdownMenuCheckboxItem
+            checked={printOptions.showDecorativeMedia}
+            data-testid="print-decorative-media"
+            onCheckedChange={(checked) => updateOption("showDecorativeMedia", checked)}
+          >
+            {labels.decorativeMedia}
           </DropdownMenuCheckboxItem>
         )}
         {labels.answerStyle && (

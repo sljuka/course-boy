@@ -485,7 +485,8 @@
     "title": "Nastavnički radni prostor"
   },
   "testEditor": {
-    "tagsTooltip": "Oznake su korisne za obeležavanje zadataka. Koriste se za nasumičan izbor zadataka. Oznake se podešavaju u korenskom folderu kursa."
+    "tagsTooltip": "Oznake su korisne za obeležavanje zadataka. Koriste se za nasumičan izbor zadataka. Oznake se podešavaju u korenskom folderu kursa.",
+    "moreOptions": "Prikaži još opcija"
   },
   "theme": {
     "switchToDark": "Prebaci na tamnu temu",
@@ -850,5 +851,25 @@
     "titlePlaceholder": "Dokument bez naslova",
     "fullScreen": "Ceo ekran",
     "exitFullScreen": "Izađi iz celog ekrana"
+  },
+  "exerciseMedia": {
+    "label": "Slika ili video",
+    "hint": "Nije obavezno. Prikazuje se iznad zadatka.",
+    "addImage": "Dodaj sliku",
+    "addVideo": "Dodaj video",
+    "imageLabel": "Slika",
+    "videoLabel": "Video",
+    "replace": "Zameni",
+    "remove": "Ukloni",
+    "decorative": "Ukrasni sadržaj",
+    "decorativeHint": "Slika nije potrebna za pronalaženje odgovora (maskota, slika za atmosferu, džingl...). Preskaču je čitači ekrana i štampa",
+    "altImage": "Alternativni tekst (nije obavezno)",
+    "altImageHint": "Šta je na slici, za učenike koji je ne vide.",
+    "altVideo": "Kratak opis (nije obavezno)",
+    "altVideoHint": "Šta se vidi u videu, za učenike koji ne mogu da ga pogledaju.",
+    "image": "Slika",
+    "enlarge": "Uvećaj sliku",
+    "printVideo": "Video: pogledajte ga u Matku",
+    "printDecorative": "Ukrasne slike i video snimci"
   }
 }

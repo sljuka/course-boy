@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { ExerciseMoreOptions } from "@/components/exercise-kinds/exercise-more-options";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,6 +35,7 @@ function getValidationLabel(status: "error" | "valid" | "warning") {
 export function MissingWordExerciseFields({
   exercise,
   locale,
+  moreOptions,
   onChange,
 }: FieldsComponentProps<MissingWordTestExercise>) {
   const content = exercise.locales[locale];
@@ -133,6 +135,9 @@ export function MissingWordExerciseFields({
             segments={previewSegments}
           />
         </Card>
+      )}
+      {moreOptions && (
+        <ExerciseMoreOptions defaultOpen={Boolean(exercise.media)}>{moreOptions}</ExerciseMoreOptions>
       )}
     </>
   );

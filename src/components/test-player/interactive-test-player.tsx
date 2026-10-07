@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ExerciseMediaView } from "@/components/course-player/exercise-media-view";
+import { getExerciseMedia } from "@/lib/exercise-media";
 import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
 import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -162,6 +164,7 @@ export function InteractiveTestPlayer({
         ref={answerContainerRef}
         tabIndex={-1}
       >
+        <ExerciseMediaView media={getExerciseMedia(exercise)} />
         <ExercisePromptHeader
           index={currentIndex}
           promptSource={promptSource}

@@ -508,6 +508,19 @@ precision at the registry boundary itself (an eslint-disable comment marks each 
 Each kind's own module still gets full type safety internally; only code that looks a
 kind up generically (rather than importing it directly) sees the erased type.
 
+**Exercise media is not per kind** (SLJ-56). An optional image or video above the
+prompt is stored the same way on every kind that has it: `media: { assetFilename,
+kind: "image" | "video", decorative? }` on the exercise definition, and its alt text as
+`locales[locale].mediaAlt` next to `prompt`/`hint`. It's handled once, around the
+registries rather than inside a kind: `toShared`/`fromSharedTestExerciseDefinition` in
+`test-editor-prototype-persistence.ts` (draft ↔ disk), `resolveSharedExerciseForPlayer`
+(player), and `hasValidExerciseMedia` next to each kind's `isValid` in
+`electron/course-registry.ts` (save and read). The pieces live in
+[src/lib/exercise-media.ts](../src/lib/exercise-media.ts:1). A new kind gets media for
+free; the region kinds opt out (`supportsExerciseMedia`), since their diagram is the
+exercise. Being referenced by bare filename, the asset is counted by
+`getCourseAssetUsage` and the missing-files check like any other.
+
 ## 9. The app frame: title bar, sidebar, status bar, and the page card
 
 The native title bar is hidden (`titleBarStyle: 'hidden'` in

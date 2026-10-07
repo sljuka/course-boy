@@ -35,6 +35,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ExerciseMediaField } from "@/components/exercise-media-field";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
 import { GeneratedLocaleNotice } from "@/components/generated-locale-notice";
 import { PageContent } from "@/components/page-content";
@@ -644,6 +645,18 @@ export function TestEditorPrototype({
                             courseId={courseId}
                             exercise={draftExercise}
                             locale={locale}
+                            moreOptions={
+                              <ExerciseMediaField
+                                courseId={courseId}
+                                exercise={draftExercise}
+                                locale={locale}
+                                onChange={(updater) =>
+                                  setDraftExercise((currentDraft) =>
+                                    currentDraft ? updater(currentDraft) : currentDraft,
+                                  )
+                                }
+                              />
+                            }
                             onChange={(updater) =>
                               setDraftExercise((currentDraft) =>
                                 currentDraft
