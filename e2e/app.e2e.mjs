@@ -1699,6 +1699,7 @@ describe('course progress', () => {
       })
       const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
       const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Progress lesson' })
+      await window.courses.updateSectionIntro({ courseId, locales: { en: { body: 'Welcome to the section.' } }, sectionId })
       await window.courses.saveLessonTest({
         courseId,
         lessonId,
@@ -1711,16 +1712,22 @@ describe('course progress', () => {
           template: '',
         },
       })
-      return { courseId, lessonId }
+      return { courseId, introId: `intro-${sectionId}`, lessonId }
     })
     const progressFile = path.join(DATA_DIR, 'course-progress.json')
     const courseProgress = () => JSON.parse(fs.readFileSync(progressFile, 'utf8')).courses[ids.courseId]
     const testStepId = ids.lessonId.replace(/^lesson-/, 'test-')
 
-    // Opening the lesson starts the course; Continue marks it done.
-    await page.evaluate(({ courseId, lessonId }) => {
-      location.hash = `#/courses/${courseId}/lessons/${lessonId}`
+    // Opening the section's intro starts the course; Continue marks it done
+    // (it shows Done, but isn't one of the steps "N of M done" counts).
+    await page.evaluate(({ courseId, introId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${introId}`
     }, ids)
+    await page.click('[data-testid="lesson-continue"]')
+    await expect.poll(() => courseProgress()?.steps?.[ids.introId]?.doneAt, { timeout: 15_000 }).toBeTruthy()
+
+    // Then the lesson: Continue marks it done.
+    await page.locator('[data-testid="lesson-continue"]').waitFor()
     await page.click('[data-testid="lesson-continue"]')
     await expect.poll(() => courseProgress()?.steps?.[ids.lessonId]?.doneAt, { timeout: 15_000 }).toBeTruthy()
     expect(courseProgress().startedAt).toBeTruthy()
@@ -1749,13 +1756,14 @@ describe('course progress', () => {
       .map((file) => fs.readFileSync(path.join(courseDir, file), 'utf8'))
     expect(courseTexts.some((text) => text.includes('longestStreak') || text.includes('startedAt'))).toBe(false)
 
-    // The course page: finished, the lesson done, the test's best score.
+    // The course page: finished, the lesson and the test done, and the test's
+    // best streak (one first-try right answer in a row, out of two).
     await page.evaluate((courseId) => {
       location.hash = `#/courses/${courseId}`
     }, ids.courseId)
     await page.locator('[data-testid="course-progress-label"]').waitFor({ timeout: 15_000 })
-    expect(await page.locator('[data-testid="step-progress-done"]').count()).toBe(1)
-    expect((await page.locator('[data-testid="step-progress-score"]').innerText()).trim()).toBe('1/2')
+    expect(await page.locator('[data-testid="step-progress-done"]').count()).toBe(3)
+    expect((await page.locator('[data-testid="step-progress-streak"]').innerText()).trim()).toBe('1/2')
 
     // Starring a course from its page saves it; it stays in its own group on
     // Home, and the :favorites search filter shows only starred courses.

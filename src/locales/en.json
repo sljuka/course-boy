@@ -879,7 +879,8 @@
     "finished": "Finished",
     "doneOf": "{{done}} of {{total}} done",
     "done": "Done",
-    "score": "{{correct}}/{{total}}",
-    "scoreDetails": "Best score · longest streak {{streak}} · attempts: {{attempts}}"
+    "streak": "{{streak}}/{{total}}",
+    "streakLabel": "Best streak: {{streak}} of {{total}} right first time in a row",
+    "streakDetails": "Best streak · best score {{correct}}/{{total}} · attempts: {{attempts}}"
   }
 }

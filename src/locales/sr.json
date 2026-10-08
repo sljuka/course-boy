@@ -879,7 +879,8 @@
     "finished": "Završeno",
     "doneOf": "Urađeno {{done}} od {{total}}",
     "done": "Urađeno",
-    "score": "{{correct}}/{{total}}",
-    "scoreDetails": "Najbolji rezultat · najduži niz {{streak}} · pokušaji: {{attempts}}"
+    "streak": "{{streak}}/{{total}}",
+    "streakLabel": "Najbolji niz: {{streak}} od {{total}} tačnih iz prve zaredom",
+    "streakDetails": "Najbolji niz · najbolji rezultat {{correct}}/{{total}} · pokušaji: {{attempts}}"
   }
 }

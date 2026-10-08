@@ -145,9 +145,11 @@ export function LessonPlayerView({
         activeLesson={activeLesson}
         courseId={playerState.courseId}
         onContinueFromLesson={(lesson) => {
-          // Moving past a lesson marks it done (SLJ-50); a section intro
-          // isn't a step, and a preview records nothing.
-          if (!playerState.isPreview && !playerState.isSectionIntro) {
+          // Moving past a lesson or a section intro marks it done (SLJ-50);
+          // an intro shows Done on the course page but isn't counted in
+          // "N of M done" (it isn't one of the course's steps). A preview
+          // records nothing.
+          if (!playerState.isPreview) {
             recordStepDone(playerState.courseId, lesson.id);
           }
           if (!lesson.test || lesson.test.exercises.length === 0) {
