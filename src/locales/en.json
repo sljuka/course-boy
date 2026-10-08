@@ -325,8 +325,6 @@
   },
   "coursesSubtitle": "Choose a course to continue. More courses will be added here over time.",
   "coursesTitle": "Choose a course",
-  "favoriteCourse": "Favorite course",
-  "removeFavoriteCourse": "Remove favorite course",
   "inDevelopment": {
     "description": "This part of Matko is still being built. The teacher workspace isn't ready yet, but the route is in place and will be available soon.",
     "title": "Under development"
@@ -482,7 +480,8 @@
     "myCourses": "My courses",
     "teaching": "Teaching",
     "home": "Home",
-    "title": "Teacher workspace"
+    "title": "Teacher workspace",
+    "favorites": "Favorites"
   },
   "testEditor": {
     "tagsTooltip": "Tags are useful for marking exercises. They are used for exercise randomization. Tags can be configured in the course root folder.",
@@ -690,7 +689,9 @@
   "home": {
     "groups": {
       "downloading": "Downloading",
-      "imported": "Imported"
+      "imported": "Imported",
+      "started": "Started",
+      "finished": "Finished"
     },
     "newCourse": "New course",
     "importFailed": "Import failed",
@@ -871,5 +872,14 @@
     "enlarge": "Enlarge image",
     "printVideo": "Video: watch it in Matko",
     "printDecorative": "Decorative images and videos"
+  },
+  "courseProgress": {
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites",
+    "finished": "Finished",
+    "doneOf": "{{done}} of {{total}} done",
+    "done": "Done",
+    "score": "{{correct}}/{{total}}",
+    "scoreDetails": "Best score · longest streak {{streak}} · attempts: {{attempts}}"
   }
 }

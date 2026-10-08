@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ClipboardCheck } from "lucide-react";
 
 import { PreviewTile } from "@/components/course-preview-tile";
@@ -6,6 +7,7 @@ import type { CoursePreviewStripItem } from "@/components/course-preview-strip-i
 type TestItemProps = {
   item: CoursePreviewStripItem;
   onSelect?: (item: CoursePreviewStripItem) => void;
+  status?: ReactNode;
   testLabel: string;
 };
 
@@ -26,12 +28,13 @@ function formatPreviewItemTitle(
   return testLabel.replace("{{index}}", matchedIndex[1]);
 }
 
-export function TestItem({ item, onSelect, testLabel }: TestItemProps) {
+export function TestItem({ item, onSelect, status, testLabel }: TestItemProps) {
   return (
     <PreviewTile
       item={item}
       label={formatPreviewItemTitle(item, testLabel)}
       onSelect={onSelect}
+      status={status}
     >
       <ClipboardCheck aria-hidden="true" className="h-12 w-12 text-foreground" />
     </PreviewTile>

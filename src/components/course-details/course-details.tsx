@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, History, Home, Play, Star } from "lucide-react";
+import { BookOpen, History, Home, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -12,11 +12,14 @@ import {
   CoursePreviewStrip,
 } from "@/components/course-preview-strip";
 import { CourseActionsMenu } from "@/components/course-actions-menu";
+import { CourseFavoriteToggle } from "@/components/course-progress/course-favorite-toggle";
+import { CourseProgressBadge } from "@/components/course-progress/course-progress-badge";
 import { PageContent } from "@/components/page-content";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { useCourseSharingQuery } from "@/lib/sharing-queries";
 import { CourseInfoSidePanel } from "@/components/course-details/course-info-panel";
@@ -36,7 +39,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   const navigate = useNavigate();
   const { locale } = useAppState();
   const { t } = useTranslation();
-  const [isFavorite, setIsFavorite] = useState(false);
+  const { data: progress } = useCourseProgressQuery();
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
     throwOnError: true,
@@ -124,19 +127,8 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   );
 
   // On the course itself, so it sits by its crumb (like Linear's ★).
-  const crumbActions = (
-    <Button
-      aria-label={t(isFavorite ? "removeFavoriteCourse" : "favoriteCourse")}
-      aria-pressed={isFavorite}
-      onClick={() => setIsFavorite((currentValue) => !currentValue)}
-      shape="circle"
-      size="icon-sm"
-      title={t(isFavorite ? "removeFavoriteCourse" : "favoriteCourse")}
-      variant="subtle"
-    >
-      <Star aria-hidden="true" className={isFavorite ? "fill-current" : undefined} />
-    </Button>
-  );
+  const crumbActions = <CourseFavoriteToggle courseId={courseId} />;
+  const courseProgress = progress?.courses[courseId];
 
   // Your own course sits under My courses; the bundled and imported ones under Home.
   const breadcrumbs =
@@ -183,6 +175,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         <CardDescription className="max-w-3xl">
           {resolvedCourse.description}
         </CardDescription>
+        <CourseProgressBadge course={resolvedCourse} progress={courseProgress} />
       </div>
     </div>
   );
@@ -218,6 +211,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
                 <CoursePreviewStrip
                   items={buildSectionPreviewItems(section, { introTitle: t("courseDetails.sectionIntro") })}
                   onSelect={handlePreviewItemSelect}
+                  progress={courseProgress}
                 />
               </div>
             </CardContent>

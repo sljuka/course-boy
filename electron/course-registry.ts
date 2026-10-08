@@ -921,8 +921,11 @@ async function readCoursePreviewItems(
     ),
   ]);
 
-  return previewItems.flat().slice(0, 6);
+  return previewItems.flat();
 }
+
+// How many of a course's lessons and tests a course card previews.
+const PREVIEW_ITEM_LIMIT = 6;
 
 function formatSectionTitle(sectionSlug: string): string {
   return sectionSlug
@@ -1234,7 +1237,9 @@ async function toCourseSummary(
   courseRecord: CourseRecord,
   localizedCourseMetadata: LocalizedCourseMetadata,
   lessonPreviews: LessonPreview[],
-  previewItems: CoursePreviewItem[],
+  // Every lesson and test, in order: the first few are previewed, all of
+  // them are the steps the student's progress counts (SLJ-50).
+  items: CoursePreviewItem[],
 ): Promise<CourseSummary> {
   return {
     contentRating: courseRecord.manifest.contentRating,
@@ -1244,7 +1249,8 @@ async function toCourseSummary(
     distribution: courseRecord.distribution,
     id: courseRecord.manifest.id,
     lessonPreviews,
-    previewItems,
+    previewItems: items.slice(0, PREVIEW_ITEM_LIMIT),
+    stepIds: items.map((item) => item.id),
     lastCutAt:
       courseRecord.distribution === "local" ? await readLastCutAt(courseRecord.courseRootPath) : null,
     publishedVersion:

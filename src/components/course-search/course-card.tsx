@@ -2,6 +2,7 @@ import type * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { useCourseProgressLabel } from "@/components/course-progress/course-progress-label";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CourseSummary } from "@/lib/course-package";
+import type { CourseProgressSummary } from "@/lib/course-progress";
 import type { CourseUpdateInfo } from "@/lib/sharing";
 import { formatShortDate } from "@/lib/format-date";
 import { useAppState } from "@/lib/use-app-state";
@@ -20,14 +22,19 @@ import { getLocaleFlag } from "@/lib/locale-flags";
 type CourseCardProps = {
   course: CourseSummary;
   href: string;
-  // An icon before the title (My courses: published / local / changed).
+  // An icon before the title (My courses: published / local / changed;
+  // Home: the favorite star).
   leading?: React.ReactNode;
+  // Home: how far the student is (SLJ-50), shown as "3 of 8 done" or
+  // "Finished" once started.
+  progress?: { isStarted: boolean; summary: CourseProgressSummary };
   // An imported course's pending update (SLJ-39), shown as a badge.
   update?: CourseUpdateInfo;
 };
 
-export function CourseCard({ course, href, leading, update }: CourseCardProps) {
+export function CourseCard({ course, href, leading, progress, update }: CourseCardProps) {
   const { t } = useTranslation();
+  const progressLabel = useCourseProgressLabel(progress?.summary, progress?.isStarted ?? false);
   const { locale } = useAppState();
 
   return (
@@ -52,6 +59,11 @@ export function CourseCard({ course, href, leading, update }: CourseCardProps) {
           </CardTitle>
           <CardDescription>{course.description}</CardDescription>
           <div className="flex min-w-0 flex-wrap gap-2">
+            {progressLabel && (
+              <Badge data-testid="course-progress-label" variant={progress?.summary.completedAt ? "success" : "secondary"}>
+                {progressLabel}
+              </Badge>
+            )}
             {update && (
               <Badge data-testid="course-update-badge" variant={update.kind === "recommended" ? "warning" : "info"}>
                 {update.kind === "recommended"

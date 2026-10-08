@@ -18,6 +18,7 @@ import { CardDescription } from "@/components/ui/card";
 import type { CourseLesson } from "@/lib/course-package";
 import { defaultLessonPrintOptions } from "@/lib/print-options";
 import { buildLessonTestPath } from "@/lib/course-utils";
+import { recordStepDone } from "@/lib/course-progress-queries";
 
 // `CoursePlayerReadyState.activeStep` is a `{item: CourseLesson, kind: "lesson"} |
 // {item: CourseSectionTest, kind: "test"}` union — narrowed to the lesson
@@ -144,6 +145,11 @@ export function LessonPlayerView({
         activeLesson={activeLesson}
         courseId={playerState.courseId}
         onContinueFromLesson={(lesson) => {
+          // Moving past a lesson marks it done (SLJ-50); a section intro
+          // isn't a step, and a preview records nothing.
+          if (!playerState.isPreview && !playerState.isSectionIntro) {
+            recordStepDone(playerState.courseId, lesson.id);
+          }
           if (!lesson.test || lesson.test.exercises.length === 0) {
             playerState.moveToNextStep();
             return;

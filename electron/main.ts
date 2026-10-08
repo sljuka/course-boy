@@ -25,7 +25,9 @@ import {
   stopBareWorker,
   stopSharing,
 } from './bare-worker'
+import { createCourseProgress } from './course-progress'
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
+import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import { createIdentityRestoreService, type IdentityRestoreState } from './identity-restore'
 import { createPublisherIdentity, IDENTITY_FILE_NAME } from './publisher-identity'
 import { createProfile, listProfiles, removeProfile, updateProfile } from './profiles'
@@ -234,6 +236,22 @@ function openProfileServices(dataDir: string) {
   // a course comes from. `nextPublicIndex` is the number the next course published
   // with this identity gets; it only grows, so a removed course's number (and code)
   // is never given to another course.
+  // The student's progress through their courses (SLJ-50): only
+  // course-progress.ts reads or writes it.
+  const courseProgressStore = new Store<CourseProgressState>({
+    cwd: dataDir,
+    defaults: { courses: {} },
+    name: 'course-progress',
+  })
+  const courseProgress = createCourseProgress({
+    store: {
+      read: () => courseProgressStore.store,
+      write: (state) => {
+        courseProgressStore.store = state
+      },
+    },
+  })
+
   const courseSharingStore = new Store<CourseSharingState & { nextPublicIndex?: number }>({
     cwd: dataDir,
     defaults: { followed: {}, published: {} },
@@ -362,6 +380,7 @@ function openProfileServices(dataDir: string) {
       identityRestore.stop()
       publisherIdentity.close()
     },
+    courseProgress,
     courseSharing,
     courseSharingStore,
     identityFilePath,
@@ -652,6 +671,50 @@ ipcMain.handle(
 ipcMain.handle('courses:remove', async (_event, courseId: string) => {
   await removeLocalCourse(courseId)
   await profile.courseSharing.forgetCourse(courseId)
+  profile.courseProgress.forgetCourse(courseId)
+})
+
+// ─── Progress (SLJ-50) ──────────────────────────────────────────────────────
+// The student's own progress, per profile: see electron/course-progress.ts.
+
+const isId = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length < 256
+const isCount = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0
+
+ipcMain.handle('progress:get', () => profile.courseProgress.read())
+
+ipcMain.handle('progress:record-opened', (_event, courseId: unknown) => {
+  if (!isId(courseId)) throw new Error('Invalid course id')
+  profile.courseProgress.recordOpened(courseId)
+})
+
+ipcMain.handle('progress:record-step-done', (_event, input: { courseId?: unknown; stepId?: unknown }) => {
+  if (!isId(input?.courseId) || !isId(input.stepId)) throw new Error('Invalid step')
+  profile.courseProgress.recordStepDone(input.courseId, input.stepId)
+})
+
+ipcMain.handle('progress:record-test-result', (_event, input: RecordTestResultInput) => {
+  const result = input?.result
+  if (
+    !isId(input?.courseId) ||
+    !isId(input.stepId) ||
+    !isCount(result?.correct) ||
+    !isCount(result.total) ||
+    !isCount(result.longestStreak) ||
+    result.correct > result.total ||
+    result.longestStreak > result.correct
+  ) {
+    throw new Error('Invalid test result')
+  }
+  profile.courseProgress.recordTestResult(input.courseId, input.stepId, {
+    correct: result.correct,
+    longestStreak: result.longestStreak,
+    total: result.total,
+  })
+})
+
+ipcMain.handle('progress:set-favorite', (_event, input: { courseId?: unknown; favorite?: unknown }) => {
+  if (!isId(input?.courseId) || typeof input.favorite !== 'boolean') throw new Error('Invalid favorite')
+  profile.courseProgress.setFavorite(input.courseId, input.favorite)
 })
 
 ipcMain.handle('courses:open-in-file-system', (_event, courseId: string) => {

@@ -150,6 +150,21 @@ describe('course sharing: student', () => {
     })
   })
 
+  // Importing a course that's already here (a code entered twice) returns it
+  // at once and keeps its record, import date included.
+  it('keeps an already imported course as it is', async () => {
+    const followed = { driveKey: 'drive-b', followedSince: '2026-09-01T00:00:00.000Z', publisherId: 'teacher' }
+    const { sharing, state } = setup({
+      initial: { followed: { 'course-b': followed }, published: {} },
+      worker: {
+        importCourse: vi.fn(async () => ({ alreadyImported: true, courseId: 'course-b', driveKey: 'drive-b', publisherId: '' })),
+      },
+    })
+
+    await expect(sharing.importCourse('drive-b')).resolves.toEqual({ courseId: 'course-b' })
+    expect(state().followed['course-b']).toEqual(followed)
+  })
+
   it('follows every imported course again at startup', async () => {
     const { sharing, worker } = setup({
       initial: {

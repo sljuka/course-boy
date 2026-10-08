@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import type {
   ChooseIdentityFileResult,
@@ -174,6 +175,25 @@ contextBridge.exposeInMainWorld('courses', {
 
 // Profiles (SLJ-57): create, open and switch restart the app into the chosen
 // profile, so their promises never settle in this window.
+// The student's own progress through their courses (SLJ-50).
+contextBridge.exposeInMainWorld('progress', {
+  get() {
+    return ipcRenderer.invoke('progress:get') as Promise<CourseProgressState>
+  },
+  recordOpened(courseId: string) {
+    return ipcRenderer.invoke('progress:record-opened', courseId) as Promise<void>
+  },
+  recordStepDone(input: { courseId: string; stepId: string }) {
+    return ipcRenderer.invoke('progress:record-step-done', input) as Promise<void>
+  },
+  recordTestResult(input: RecordTestResultInput) {
+    return ipcRenderer.invoke('progress:record-test-result', input) as Promise<void>
+  },
+  setFavorite(input: { courseId: string; favorite: boolean }) {
+    return ipcRenderer.invoke('progress:set-favorite', input) as Promise<void>
+  },
+})
+
 contextBridge.exposeInMainWorld('profiles', {
   getState() {
     return ipcRenderer.invoke('profiles:get-state') as Promise<ProfilesState>

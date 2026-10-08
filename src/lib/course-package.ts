@@ -483,7 +483,11 @@ export type CourseSummary = {
   distribution: CourseDistribution;
   id: string;
   lessonPreviews: LessonPreview[];
+  // The first few lessons and tests, for a course card's preview.
   previewItems: CoursePreviewItem[];
+  // Every lesson and test id, in order (a lesson's test as its own id; no
+  // section intros): the steps a student's progress counts (SLJ-50).
+  stepIds: string[];
   // Your own courses only: when the newest version was cut (committed), or
   // null if none was. Always null for bundled and imported courses.
   lastCutAt: string | null;

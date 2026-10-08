@@ -25,6 +25,9 @@ import { defaultTestPrintOptions } from "@/lib/print-options";
 import { PromptMnemonicsContext } from "@/lib/prompt-mnemonics-context";
 import { useCourseMnemonics } from "@/lib/use-course-mnemonics";
 import { buildLessonPath } from "@/lib/course-utils";
+import { recordTestResult } from "@/lib/course-progress-queries";
+import { scoreTestAttempt } from "@/lib/course-progress";
+import { resolveTestIdForLesson } from "@/lib/course-test-id";
 
 const NO_MNEMONICS: CourseMnemonic[] = [];
 
@@ -69,6 +72,7 @@ export function TestPlayerView({
     activeTestInstances,
     exerciseAnswers,
     exerciseResults,
+    firstTryCorrect,
     isInteractiveHintVisible,
     isInteractiveMode,
     isPrintHintVisible,
@@ -82,6 +86,21 @@ export function TestPlayerView({
     testFeedback,
     updateExerciseAnswer,
   } = useTestPlayerState(activeItem);
+
+  // Continue after the test: it's done, with this attempt's first-try score
+  // (SLJ-50). A teacher's preview records nothing. A lesson's test is kept
+  // under its own step id, the one course summaries list it by.
+  function continueAfterTest() {
+    if (!playerState.isPreview) {
+      recordTestResult({
+        courseId: playerState.courseId,
+        result: scoreTestAttempt(firstTryCorrect),
+        stepId:
+          playerState.activeStep.kind === "lesson" ? resolveTestIdForLesson(activeItem.id) : activeItem.id,
+      });
+    }
+    playerState.moveToNextStep();
+  }
 
   function startInteractiveMode() {
     setCurrentExerciseIndex(0);
@@ -223,7 +242,7 @@ export function TestPlayerView({
             currentIndex={currentExerciseIndex}
             exerciseAnswers={exerciseAnswers}
             exerciseResults={exerciseResults}
-            onContinueAfterExercise={playerState.moveToNextStep}
+            onContinueAfterExercise={continueAfterTest}
             onIndexChange={setCurrentExerciseIndex}
             onSubmitExercise={submitSingleExercise}
             onUpdateExerciseAnswer={updateExerciseAnswer}
@@ -250,7 +269,7 @@ export function TestPlayerView({
               exerciseAnswers={exerciseAnswers}
               exerciseResults={exerciseResults}
               isTestPassed={isTestPassed}
-              onContinueAfterExercise={playerState.moveToNextStep}
+              onContinueAfterExercise={continueAfterTest}
               onSubmitExercise={submitExercise}
               onUpdateExerciseAnswer={updateExerciseAnswer}
               printAnswerStyle={printOptions.answerStyle}

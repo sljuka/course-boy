@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import type { CourseLesson, CourseSectionTest } from "@/lib/course-package";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { buildLessonPath, buildLessonTestPath, introStepId } from "@/lib/course-utils";
+import { recordCourseOpened } from "@/lib/course-progress-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 // A step in the player's overall sequence is either a document (a lesson,
@@ -113,6 +114,13 @@ export function useCoursePlayer({
   useEffect(() => {
     setIsCourseComplete(false);
   }, [courseId, lessonId, locale]);
+
+  // Opening one of its lessons or tests starts the course (the first time)
+  // and marks it last opened (SLJ-50).
+  const isOpenStep = Boolean(activeStepEntry);
+  useEffect(() => {
+    if (isOpenStep) recordCourseOpened(courseId);
+  }, [courseId, isOpenStep, lessonId]);
 
   function pathForStep(step: CoursePlayerStep) {
     return step.kind === "lesson"

@@ -325,8 +325,6 @@
   },
   "coursesSubtitle": "Odaberi kurs za nastavak. Vremenom će ovde biti dodato još kurseva.",
   "coursesTitle": "Izaberi kurs",
-  "favoriteCourse": "Omiljeni kurs",
-  "removeFavoriteCourse": "Ukloni omiljeni kurs",
   "inDevelopment": {
     "description": "Ovaj deo Matka se još razvija. Nastavnički radni prostor još nije spreman, ali je ruta postavljena i uskoro će biti dostupna.",
     "title": "U izradi"
@@ -482,7 +480,8 @@
     "myCourses": "Moji kursevi",
     "teaching": "Nastava",
     "home": "Početna",
-    "title": "Nastavnički radni prostor"
+    "title": "Nastavnički radni prostor",
+    "favorites": "Omiljeni"
   },
   "testEditor": {
     "tagsTooltip": "Oznake su korisne za obeležavanje zadataka. Koriste se za nasumičan izbor zadataka. Oznake se podešavaju u korenskom folderu kursa.",
@@ -690,7 +689,9 @@
   "home": {
     "groups": {
       "downloading": "Preuzimanje",
-      "imported": "Uvezeni"
+      "imported": "Uvezeni",
+      "started": "Započeti",
+      "finished": "Završeni"
     },
     "newCourse": "Novi kurs",
     "importFailed": "Uvoz nije uspeo",
@@ -871,5 +872,14 @@
     "enlarge": "Uvećaj sliku",
     "printVideo": "Video: pogledajte ga u Matku",
     "printDecorative": "Ukrasne slike i video snimci"
+  },
+  "courseProgress": {
+    "favorite": "Dodaj u omiljene",
+    "unfavorite": "Ukloni iz omiljenih",
+    "finished": "Završeno",
+    "doneOf": "Urađeno {{done}} od {{total}}",
+    "done": "Urađeno",
+    "score": "{{correct}}/{{total}}",
+    "scoreDetails": "Najbolji rezultat · najduži niz {{streak}} · pokušaji: {{attempts}}"
   }
 }

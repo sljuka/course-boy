@@ -69,6 +69,10 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
   const [exerciseResults, setExerciseResults] = useState<ExerciseResult[]>([]);
   const [testFeedback, setTestFeedback] = useState<string | null>(null);
   const [isTestPassed, setIsTestPassed] = useState(false);
+  // Each exercise's first graded answer: right, wrong, or not answered yet
+  // (null). The score kept for the student (SLJ-50) counts first tries only;
+  // a fresh set of exercises (Refresh) starts a new attempt.
+  const [firstTryCorrect, setFirstTryCorrect] = useState<(boolean | null)[]>([]);
   const [isPrintHintVisible, setIsPrintHintVisible] = useState(true);
   const [isInteractiveHintVisible, setIsInteractiveHintVisible] =
     useState(true);
@@ -79,6 +83,7 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     setActiveTestInstances([]);
     setExerciseAnswers([]);
     setExerciseResults([]);
+    setFirstTryCorrect([]);
     setTestFeedback(null);
     setIsTestPassed(false);
     setIsInteractiveMode(false);
@@ -91,6 +96,13 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     );
     setExerciseAnswers(exercises.map(() => ""));
     setExerciseResults(createEmptyResults(exercises));
+    setFirstTryCorrect(exercises.map(() => null));
+  }
+
+  function recordFirstTries(results: { index: number; isCorrect: boolean }[]) {
+    setFirstTryCorrect((current) =>
+      current.map((firstTry, index) => firstTry ?? results.find((result) => result.index === index)?.isCorrect ?? null),
+    );
   }
 
   useEffect(() => {
@@ -146,6 +158,7 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     );
     const allCorrect = nextResults.every((result) => result.isCorrect);
 
+    recordFirstTries(nextResults.map((result, index) => ({ index, isCorrect: result.isCorrect })));
     setExerciseResults(nextResults);
     setIsTestPassed(allCorrect);
     setTestFeedback(
@@ -173,6 +186,7 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
 
     const result = deriveExerciseResult(exercise, instance, exerciseAnswers[index] ?? "", t);
 
+    recordFirstTries([{ index, isCorrect: result.isCorrect }]);
     setExerciseResults((currentResults) => {
       const nextResults = currentResults.map((currentResult, resultIndex) =>
         resultIndex === index ? result : currentResult,
@@ -192,6 +206,7 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     activeTestInstances,
     exerciseAnswers,
     exerciseResults,
+    firstTryCorrect,
     isInteractiveHintVisible,
     isInteractiveMode,
     isPrintHintVisible,

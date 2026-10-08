@@ -57,6 +57,7 @@ describe('launch', () => {
       courses: Object.keys(window.courses ?? {}).sort(),
       preferences: Object.keys(window.preferences ?? {}).sort(),
       profiles: Object.keys(window.profiles ?? {}).sort(),
+      progress: Object.keys(window.progress ?? {}).sort(),
       sharing: Object.keys(window.sharing ?? {}).sort(),
     }))
 
@@ -98,6 +99,7 @@ describe('launch', () => {
       'uploadAssetBytes',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
+    expect(surface.progress).toEqual(['get', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite'])
     expect(surface.profiles).toEqual(['create', 'getRemovalSummary', 'getState', 'open', 'openCoursesFolder', 'removeCurrent', 'switchProfile'])
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',
@@ -1633,6 +1635,8 @@ describe('exercise media', () => {
     await page.locator('[data-testid="exercise-more-options"]:visible').last().click()
     await pickFile(path.join(import.meta.dirname, 'fixtures', 'test-video.mp4'))
     await page.locator('[data-testid="exercise-media-add-video"]').first().click()
+    // Once the video is in, both exercises have the checkbox: the second is the video's.
+    await expect.poll(() => page.locator('[data-testid="exercise-media-decorative"]').count(), { timeout: 15_000 }).toBe(2)
     await page.locator('[data-testid="exercise-media-decorative"]').last().click()
 
     await expect
@@ -1677,6 +1681,117 @@ describe('exercise media', () => {
     await page.evaluate(() => {
       location.hash = '#/'
     })
+  })
+})
+
+// SLJ-50: a student's progress, kept per profile in course-progress.json
+// (never in the course's folder). Going through a course marks its lesson
+// done and keeps the test's first-try score and streak; the course page shows
+// both, and a starred course shows under Favorites on Home.
+describe('course progress', () => {
+  it('records a lesson done and a first-try test score, and shows them on the course page and Home', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Progress Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Progress lesson' })
+      await window.courses.saveLessonTest({
+        courseId,
+        lessonId,
+        sectionId,
+        test: {
+          exercises: [
+            { kind: 'numeric', locales: { en: { prompt: 'Two plus two' } }, solution: { formula: '4', precision: 0 }, tags: [], variables: {} },
+            { kind: 'numeric', locales: { en: { prompt: 'Three plus three' } }, solution: { formula: '6', precision: 0 }, tags: [], variables: {} },
+          ],
+          template: '',
+        },
+      })
+      return { courseId, lessonId }
+    })
+    const progressFile = path.join(DATA_DIR, 'course-progress.json')
+    const courseProgress = () => JSON.parse(fs.readFileSync(progressFile, 'utf8')).courses[ids.courseId]
+    const testStepId = ids.lessonId.replace(/^lesson-/, 'test-')
+
+    // Opening the lesson starts the course; Continue marks it done.
+    await page.evaluate(({ courseId, lessonId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${lessonId}`
+    }, ids)
+    await page.click('[data-testid="lesson-continue"]')
+    await expect.poll(() => courseProgress()?.steps?.[ids.lessonId]?.doneAt, { timeout: 15_000 }).toBeTruthy()
+    expect(courseProgress().startedAt).toBeTruthy()
+
+    // The test, all at once: the first answer right, the second wrong on the
+    // first try and then fixed. The score counts first tries only.
+    // The test page's only inputs are its answers.
+    const answers = page.locator('input:visible')
+    await answers.first().waitFor({ timeout: 15_000 })
+    await answers.nth(0).fill('4')
+    await answers.nth(1).fill('5')
+    await page.click('[data-testid="test-primary-action"]')
+    await answers.nth(1).fill('6')
+    await page.click('[data-testid="test-primary-action"]')
+    await page.click('[data-testid="test-primary-action"]')
+    await expect
+      .poll(() => courseProgress()?.steps?.[testStepId]?.test, { timeout: 15_000 })
+      .toMatchObject({ attempts: 1, best: { correct: 1, longestStreak: 1, total: 2 } })
+
+    // Nothing of it is in the course's own folder.
+    const courseDir = path.join(DATA_DIR, 'courses', ids.courseId)
+    const courseTexts = fs
+      .readdirSync(courseDir, { recursive: true })
+      .map(String)
+      .filter((file) => /\.(json|md)$/.test(file))
+      .map((file) => fs.readFileSync(path.join(courseDir, file), 'utf8'))
+    expect(courseTexts.some((text) => text.includes('longestStreak') || text.includes('startedAt'))).toBe(false)
+
+    // The course page: finished, the lesson done, the test's best score.
+    await page.evaluate((courseId) => {
+      location.hash = `#/courses/${courseId}`
+    }, ids.courseId)
+    await page.locator('[data-testid="course-progress-label"]').waitFor({ timeout: 15_000 })
+    expect(await page.locator('[data-testid="step-progress-done"]').count()).toBe(1)
+    expect((await page.locator('[data-testid="step-progress-score"]').innerText()).trim()).toBe('1/2')
+
+    // Starring a course from its page saves it; it stays in its own group on
+    // Home, and the :favorites search filter shows only starred courses.
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    const bundledId = await page.evaluate(async () => (await window.courses.list()).find((course) => course.distribution === 'bundled')?.id)
+    await page.evaluate((id) => {
+      location.hash = `#/courses/${id}`
+    }, bundledId)
+    await page.locator('[data-testid="course-favorite"]').first().click()
+    await expect.poll(() => JSON.parse(fs.readFileSync(progressFile, 'utf8')).courses[bundledId]?.favorite, { timeout: 15_000 }).toBe(true)
+    // The sidebar's Favorites appears, with the course in it.
+    await page.locator(`[data-testid="sidebar-favorites"] a[href$="/courses/${bundledId}"]`).waitFor({ timeout: 15_000 })
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    // In Home's table view (the star sits above the row's link, so it toggles).
+    await page.evaluate(() => window.preferences.set({ homeView: 'table' }))
+    await page.reload()
+    const starred = page.locator('[data-testid="course-favorite"][aria-pressed="true"]')
+    await starred.first().waitFor({ timeout: 15_000 })
+    expect(await page.locator('[data-testid="home-group-favorites"]').count()).toBe(0)
+    const search = page.locator('[data-testid="course-search"]')
+    await search.fill(':favorites')
+    await expect.poll(() => page.locator('[data-testid="course-favorite"]').count(), { timeout: 15_000 }).toBe(1)
+    await search.fill('')
+    await starred.first().click()
+    await expect.poll(() => JSON.parse(fs.readFileSync(progressFile, 'utf8')).courses[bundledId]?.favorite, { timeout: 15_000 }).toBe(false)
+    // With nothing starred, the sidebar has no Favorites.
+    await expect.poll(() => page.locator('[data-testid="sidebar-favorites"]').count(), { timeout: 15_000 }).toBe(0)
+    expect(page.url()).toMatch(/#\/$/)
+
+    // Removing a course removes its progress.
+    await page.evaluate((courseId) => window.courses.remove(courseId), ids.courseId)
+    expect(JSON.parse(fs.readFileSync(progressFile, 'utf8')).courses[ids.courseId]).toBeUndefined()
   })
 })
 

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { BookOpen } from "lucide-react";
 
 import { PreviewTile } from "@/components/course-preview-tile";
@@ -6,9 +7,10 @@ import type { CoursePreviewStripItem } from "@/components/course-preview-strip-i
 type LessonItemProps = {
   item: CoursePreviewStripItem;
   onSelect?: (item: CoursePreviewStripItem) => void;
+  status?: ReactNode;
 };
 
-export function LessonItem({ item, onSelect }: LessonItemProps) {
+export function LessonItem({ item, onSelect, status }: LessonItemProps) {
   const content = item.iconUrl ? (
     <img
       alt=""
@@ -20,7 +22,7 @@ export function LessonItem({ item, onSelect }: LessonItemProps) {
   );
 
   return (
-    <PreviewTile item={item} label={item.title} onSelect={onSelect}>
+    <PreviewTile item={item} label={item.title} onSelect={onSelect} status={status}>
       {content}
     </PreviewTile>
   );

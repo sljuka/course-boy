@@ -179,6 +179,7 @@ export const CourseTestContent = ({
         )}
         <div className="flex justify-end gap-3 print:hidden">
           <Button
+            data-testid="test-primary-action"
             onClick={handlePrimaryAction}
             size="lg"
           >

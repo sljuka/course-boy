@@ -28,18 +28,30 @@ This avoids a second "convert draft to files" phase later and keeps export, publ
 
 The local database should store app-level and user-level state such as:
 
-- favorites
+- favorites (implemented, SLJ-50: `course-progress.json`, below)
 - bookmarks
 - bookmark folders
-- started courses
-- finished courses
-- progress
+- started courses (implemented, SLJ-50)
+- finished courses (implemented, SLJ-50: worked out, not stored; below)
+- progress (implemented, SLJ-50: lessons done, test scores)
 - recent activity
 - last opened course (implemented as the title bar's "recently viewed" list: `recentlyViewed` in the electron-store preferences, validated by `parseRecentlyViewedEntries` in `src/lib/recently-viewed.ts`)
 - draft metadata
 - local indexing metadata
 
 The database should reference courses by stable identifiers such as `courseId`, not duplicate the full course content structure.
+
+**A student's progress (SLJ-50)** is the first of these to exist: `course-progress.json` in
+the profile's folder (an `electron-store` file, like `config.json` and `course-sharing.json`),
+read and written only by `electron/course-progress.ts` and reached from the renderer through
+`window.progress`. Per course: started and last-opened times, the favorite star, and per step
+(a lesson, or a test by its own id) when it was done and, for a test, the latest and best
+first-try score with its longest streak and the number of attempts. "Finished" is never
+stored: `summarizeCourseProgress` (`src/lib/course-progress.ts`) works it out against the
+course's current `stepIds`, so an update that adds lessons reopens a finished course. A JSON
+file rather than a database for now (a few KB, rare writes; SQLite would be a native module
+rebuilt per Electron version and OS); the module's narrow API is the seam for swapping it.
+Removing a course removes its progress. Never in a course's folder, never in Chromium storage.
 
 ## Drafts
 

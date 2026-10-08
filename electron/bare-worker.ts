@@ -157,6 +157,9 @@ export async function publishCourse(
 }
 
 export type ImportedCourseSource = {
+  // The course was here already (imported before, and followed): nothing was
+  // downloaded, and `publisherId` is empty.
+  alreadyImported: boolean
   courseId: string
   driveKey: string
   // Claimed by the course's source.json; unverified until SLJ-18.
@@ -173,6 +176,7 @@ export async function importCourse(driveKey: string, transferId?: string): Promi
   })
 
   return {
+    alreadyImported: result.alreadyImported === true,
     courseId: result.courseId ?? '',
     driveKey: result.driveKey ?? '',
     publisherId: result.publisherId ?? '',

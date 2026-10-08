@@ -19,7 +19,7 @@ export const CourseLessonContent = ({
     <>
       <LessonBlocks courseId={courseId} source={activeLesson.body} />
       <div className="flex justify-end print:hidden">
-        <Button onClick={() => onContinueFromLesson(activeLesson)} size="lg">
+        <Button data-testid="lesson-continue" onClick={() => onContinueFromLesson(activeLesson)} size="lg">
           {t("continue")}
         </Button>
       </div>

@@ -8,6 +8,8 @@ type PreviewTileProps = {
   item: CoursePreviewStripItem;
   label: string;
   onSelect?: (item: CoursePreviewStripItem) => void;
+  // Under the label: the student's progress on it (SLJ-50).
+  status?: ReactNode;
 };
 
 export function PreviewTile({
@@ -15,6 +17,7 @@ export function PreviewTile({
   item,
   label,
   onSelect,
+  status,
 }: PreviewTileProps) {
   return (
     <div className="flex flex-col items-center gap-2">
@@ -29,6 +32,7 @@ export function PreviewTile({
       <span className="max-w-32 text-center text-sm font-semibold text-foreground">
         {label}
       </span>
+      {status}
     </div>
   );
 }

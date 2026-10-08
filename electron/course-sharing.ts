@@ -158,7 +158,10 @@ export type CourseSharingWorker = {
   ): Promise<{ changedFiles: { key: string; op: string }[] }>
   followCourse(driveKey: string): Promise<void>
   getPeers(target: { courseId: string } | { driveKey: string }): Promise<number | null>
-  importCourse(code: string, transferId?: string): Promise<{ courseId: string; driveKey: string; publisherId: string }>
+  importCourse(
+    code: string,
+    transferId?: string,
+  ): Promise<{ alreadyImported?: boolean; courseId: string; driveKey: string; publisherId: string }>
   publishCourse(courseId: string): Promise<string>
   stopSharing(target: { courseId: string } | { driveKey: string }): Promise<void>
 }
@@ -513,6 +516,10 @@ export function createCourseSharing(deps: CourseSharingDeps) {
       } catch (error) {
         if (isCancelled(error)) return { cancelled: true }
         throw error
+      }
+      // A course already here keeps its record (and its import date).
+      if (result.alreadyImported && deps.store.read().followed[result.courseId]) {
+        return { courseId: result.courseId }
       }
       updateState((state) => ({
         ...state,

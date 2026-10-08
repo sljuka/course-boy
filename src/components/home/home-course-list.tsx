@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CourseLoadingCard } from "@/components/course-loading-card";
+import { CourseFavoriteToggle } from "@/components/course-progress/course-favorite-toggle";
 import { CourseCard } from "@/components/course-search/course-card";
 import { HomeCourseRow } from "@/components/home/home-course-row";
 import { PendingImportCard } from "@/components/home/pending-import-card";
@@ -13,16 +14,31 @@ import type { CourseListView } from "@/lib/course-list-view";
 import type { CourseSummary } from "@/lib/course-package";
 import { useCoursesQuery } from "@/lib/course-queries";
 import { useCourseUpdatesQuery, usePendingImports } from "@/lib/sharing-queries";
+import { summarizeCourseProgress } from "@/lib/course-progress";
+import { useCourseProgressQuery } from "@/lib/course-progress-queries";
+import { parseCourseSearchQuery } from "@/lib/course-search-query";
 import { useAppState } from "@/lib/use-app-state";
+
+type CourseGroupId = "finished" | "imported" | "started";
+
+// Home's course groups, in order, with their header icon.
+const COURSE_GROUPS = [
+  { icon: "changed", id: "started", titleKey: "home.groups.started" },
+  { icon: "published", id: "imported", titleKey: "home.groups.imported" },
+  { icon: "done", id: "finished", titleKey: "home.groups.finished" },
+] as const satisfies { icon: string; id: CourseGroupId; titleKey: string }[];
 
 // The courses a student learns from, grouped Linear-style (SLJ-49):
 // - Downloading: imports still running (progress, Cancel) or failed (Dismiss);
 //   a course moves to Imported as soon as it has landed;
-// - Imported: courses imported with a code, plus the bundled tutorial (badged
-//   "Built in"), unless it's hidden in Settings.
-// Search filters the course groups. `view` only changes how each one is drawn:
+// - then, from the student's progress (SLJ-50), each course in one group:
+//   Started (most recently opened first), Imported (not started yet),
+//   Finished (most recently finished first). Starring doesn't move a course:
+//   `:favorites` in the search shows only starred ones, in whatever group.
+// The course groups hold courses imported with a code, plus the bundled
+// tutorial (badged "Built in") unless it's hidden in Settings.
+// Search (course-search-query.ts) filters the course groups. `view` only changes how each one is drawn:
 // compact rows ("table") or cards ("list").
-// Later: Started and Finished groups, from the student's progress.
 export function HomeCourseList({
   query,
   showBundledCourses,
@@ -39,18 +55,44 @@ export function HomeCourseList({
   // only show on the course's own page.
   const { data: updates = {} } = useCourseUpdatesQuery();
   const pendingImports = usePendingImports();
+  const { data: progress } = useCourseProgressQuery();
 
   const imported = useMemo<CourseSummary[]>(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const { favoritesOnly, text } = parseCourseSearchQuery(query);
     return courses.filter(
       (course) =>
         (course.distribution === "imported" || (showBundledCourses && course.distribution === "bundled")) &&
-        (!normalizedQuery ||
+        (!favoritesOnly || progress?.courses[course.id]?.favorite === true) &&
+        (!text ||
           [course.title, course.description, course.id].some((value) =>
-            value.toLowerCase().includes(normalizedQuery),
+            value.toLowerCase().includes(text),
           )),
     );
-  }, [courses, query, showBundledCourses]);
+  }, [courses, progress, query, showBundledCourses]);
+
+  const groups = useMemo(() => {
+    const byGroup: Record<CourseGroupId, CourseSummary[]> = { finished: [], imported: [], started: [] };
+    const summaries = new Map(
+      imported.map((course) => [course.id, summarizeCourseProgress(course.stepIds, progress?.courses[course.id])]),
+    );
+
+    for (const course of imported) {
+      const courseProgress = progress?.courses[course.id];
+      const group: CourseGroupId = summaries.get(course.id)?.completedAt
+        ? "finished"
+        : courseProgress?.startedAt
+          ? "started"
+          : "imported";
+      byGroup[group].push(course);
+    }
+
+    const newestFirst = (date: (course: CourseSummary) => string | null | undefined) => (left: CourseSummary, right: CourseSummary) =>
+      (date(right) ?? "").localeCompare(date(left) ?? "");
+    byGroup.started.sort(newestFirst((course) => progress?.courses[course.id]?.lastOpenedAt));
+    byGroup.finished.sort(newestFirst((course) => summaries.get(course.id)?.completedAt));
+
+    return byGroup;
+  }, [imported, progress]);
 
   if (isLoading) {
     return <CourseLoadingCard message={t("courseSearch.loading")} />;
@@ -88,24 +130,38 @@ export function HomeCourseList({
           </ListGroupContent>
         </ListGroup>
       )}
-      {imported.length > 0 && (
-        <ListGroup data-testid="home-group-imported">
-          <ListGroupHeader
-            count={imported.length}
-            icon={<StatusIcon status="published" />}
-            title={t("home.groups.imported")}
-          />
-          <ListGroupContent className={contentClassName}>
-            {imported.map((course) => {
-              const update = updates[course.id]?.visibility === "prominent" ? updates[course.id] : undefined;
-              return view === "list" ? (
-                <CourseCard course={course} href={`/courses/${course.id}`} key={course.id} update={update} />
-              ) : (
-                <HomeCourseRow course={course} key={course.id} update={update} />
-              );
-            })}
-          </ListGroupContent>
-        </ListGroup>
+      {COURSE_GROUPS.map(
+        ({ icon, id, titleKey }) =>
+          groups[id].length > 0 && (
+            <ListGroup data-testid={`home-group-${id}`} key={id}>
+              <ListGroupHeader count={groups[id].length} icon={<StatusIcon status={icon} />} title={t(titleKey)} />
+              <ListGroupContent className={contentClassName}>
+                {groups[id].map((course) => {
+                  const update = updates[course.id]?.visibility === "prominent" ? updates[course.id] : undefined;
+                  const courseProgress = progress?.courses[course.id];
+                  const summary = summarizeCourseProgress(course.stepIds, courseProgress);
+                  return view === "list" ? (
+                    <CourseCard
+                      course={course}
+                      href={`/courses/${course.id}`}
+                      key={course.id}
+                      leading={<CourseFavoriteToggle courseId={course.id} />}
+                      progress={{ isStarted: Boolean(courseProgress?.startedAt), summary }}
+                      update={update}
+                    />
+                  ) : (
+                    <HomeCourseRow
+                      course={course}
+                      isStarted={Boolean(courseProgress?.startedAt)}
+                      key={course.id}
+                      summary={summary}
+                      update={update}
+                    />
+                  );
+                })}
+              </ListGroupContent>
+            </ListGroup>
+          ),
       )}
     </div>
   );

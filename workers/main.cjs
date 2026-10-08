@@ -393,7 +393,9 @@ async function start() {
       return
     }
 
-    const drive = new Hyperdrive(store, driveKey)
+    // A session, not `store`: unfollowing (a removed course) closes this drive,
+    // and a Hyperdrive closes the Corestore it was given (see importCourse).
+    const drive = new Hyperdrive(store.session(), driveKey)
     await drive.ready()
     // Server + client, the same "leech becomes a seed" default as importCourse. Not
     // awaiting `flushed()`: offline, the announce only completes later, and nothing
@@ -672,9 +674,32 @@ async function start() {
   }
 
   async function importCourse(driveKey, coursesRoot, transferId) {
+    // Already here (imported, so followed): that course, at once. A second
+    // drive on the same key would never open (a Hyperdrive holds its core
+    // exclusively), and the import would wait forever, looking like nobody
+    // was online.
+    const alreadyFollowed = followedDrives.get(IdEncoding.decode(driveKey).toString('hex'))
+    if (alreadyFollowed) {
+      const manifest = JSON.parse(await alreadyFollowed.drive.get('/course.json'))
+      return { alreadyImported: true, courseId: manifest.id, driveKey: alreadyFollowed.drive.key, publisherId: '' }
+    }
+
     const transfer = createTransfer(transferId)
-    const drive = new Hyperdrive(store, driveKey)
-    await drive.ready()
+    // A session, never `store` itself: closing a Hyperdrive closes the
+    // Corestore it was given, and this drive is closed when an import fails
+    // or is cancelled. Given `store`, that closed it for every later import
+    // ("Corestore is closed") until the app restarted.
+    const drive = new Hyperdrive(store.session(), driveKey)
+    // Closing the drive aborts any read still waiting for a peer; Cancel works
+    // from here on, opening included.
+    transfer.onCancel.add(() => drive.close().catch(() => {}))
+    try {
+      await untilCancelled(transfer, drive.ready())
+    } catch (error) {
+      finishTransfer(transferId, transfer, transfer.isCancelled ? 'cancelled' : 'error')
+      await drive.close().catch(() => {})
+      throw transfer.isCancelled ? new TransferCancelled() : error
+    }
     transfer.drive = drive
     const keyHex = drive.key.toString('hex')
     let stagingPath = null
@@ -684,8 +709,6 @@ async function start() {
     // after download — the same "leech becomes a seed" convention that keeps the
     // swarm alive.
     const discovery = swarm.join(drive.discoveryKey)
-    // Closing the drive aborts any read still waiting for a peer.
-    transfer.onCancel.add(() => drive.close().catch(() => {}))
 
     try {
       // Nobody with the course online: keep looking (the UI says so) until
@@ -966,6 +989,7 @@ async function start() {
         const result = await importCourse(driveKey, coursesRoot, transferId)
         req.reply(
           JSON.stringify({
+            alreadyImported: result.alreadyImported === true,
             courseId: result.courseId,
             driveKey: IdEncoding.normalize(result.driveKey),
             publisherId: result.publisherId,

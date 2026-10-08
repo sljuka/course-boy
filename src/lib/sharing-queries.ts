@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useMutation, useMutationState, useQuery, type Mutation } from "@tanstack/react-query";
 
 import type {
@@ -119,7 +120,12 @@ export function discardImport(transferId: string) {
 }
 
 export function usePendingImports(): PendingImport[] {
-  return useMutationState({
+  // Plain data only: useMutationState re-renders whenever the selected result
+  // differs (compared deeply), and a function made here (like `dismiss`)
+  // always differs. Every mutation-cache event (any mutation's options
+  // changing on a render, say) then re-rendered Home, looping until React gave
+  // up ("Maximum update depth exceeded") while an import was listed.
+  const pending = useMutationState({
     filters: {
       mutationKey: importMutationKey,
       predicate: (mutation) => mutation.state.status === "pending" || mutation.state.status === "error",
@@ -129,10 +135,23 @@ export function usePendingImports(): PendingImport[] {
       const input = typed.state.variables;
       return {
         code: input?.code ?? "",
-        dismiss: () => queryClient.getMutationCache().remove(mutation),
         error: typed.state.error,
+        mutationId: mutation.mutationId,
         transferId: input?.transferId ?? String(mutation.mutationId),
       };
     },
   });
+
+  return useMemo(
+    () =>
+      pending.map(({ mutationId, ...entry }) => ({
+        ...entry,
+        dismiss: () => {
+          const cache = queryClient.getMutationCache();
+          const mutation = cache.getAll().find((candidate) => candidate.mutationId === mutationId);
+          if (mutation) cache.remove(mutation);
+        },
+      })),
+    [pending],
+  );
 }

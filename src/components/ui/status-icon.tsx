@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 // the same amber as the "Unpublished changes" badge). `downloading` is a ring
 // that fills like a pie as `progress` (0–1) grows, and spins slowly while
 // there's no progress to show yet (still looking for someone sharing it).
+// `done`: a green circle with a check (finished).
 const statusIconVariants = cva("size-3.5 shrink-0", {
   variants: {
     status: {
@@ -17,6 +18,7 @@ const statusIconVariants = cva("size-3.5 shrink-0", {
       local: "text-muted-foreground",
       changed: "text-warning",
       downloading: "text-info",
+      done: "text-success",
     },
   },
   defaultVariants: { status: "local" },
@@ -79,6 +81,11 @@ function StatusIcon({ className, progress, status, ...props }: StatusIconProps) 
         <>
           <circle cx="7" cy="7" fill="none" r="6" stroke="currentColor" strokeWidth="1.5" />
           <path d="M7 3.5a3.5 3.5 0 0 1 0 7Z" fill="currentColor" />
+        </>
+      ) : status === "done" ? (
+        <>
+          <circle cx="7" cy="7" fill="currentColor" r="6.5" />
+          <path d="M4.2 7.2 6.2 9.1 9.9 5.1" fill="none" stroke="var(--background)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
         </>
       ) : status === "published" ? (
         <>

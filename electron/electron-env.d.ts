@@ -123,6 +123,13 @@ interface Window {
       preferences: Partial<import('../src/lib/preferences').UserPreferences>,
     ) => Promise<import('../src/lib/preferences').UserPreferences>
   }
+  progress: {
+    get: () => Promise<import('../src/lib/course-progress').CourseProgressState>
+    recordOpened: (courseId: string) => Promise<void>
+    recordStepDone: (input: { courseId: string; stepId: string }) => Promise<void>
+    recordTestResult: (input: import('../src/lib/course-progress').RecordTestResultInput) => Promise<void>
+    setFavorite: (input: { courseId: string; favorite: boolean }) => Promise<void>
+  }
   profiles: {
     getState: () => Promise<import('../src/lib/profiles').ProfilesState>
     create: (input: { locale?: string; name: string }) => Promise<void>

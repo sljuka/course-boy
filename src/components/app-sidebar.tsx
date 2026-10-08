@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { AppMenu } from "@/components/app-menu";
+import { AppSidebarFavorites } from "@/components/app-sidebar-favorites";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -116,6 +117,8 @@ function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+        {/* After the role's groups (below Teaching for a teacher). */}
+        <AppSidebarFavorites />
       </SidebarContent>
     </Sidebar>
   );

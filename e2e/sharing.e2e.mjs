@@ -731,6 +731,31 @@ describe('sharing across restarts', () => {
       expect(fs.readdirSync(coursesRoot).filter((name) => name.startsWith('.import-staging'))).toEqual([])
       expect((await student.evaluate(() => window.courses.list('en'))).length).toBe(coursesBefore)
     })
+
+    // A cancelled (or failed) import used to close the worker's whole store
+    // along with its drive, so every later import failed with "Corestore is
+    // closed" until the app restarted. Same student, no restart: once the
+    // teacher is back, the import works.
+    it('after a cancelled import, the same app imports again without a restart', async () => {
+      await launch('teacher', { fresh: false })
+      const student = apps.student3.page
+      const offlineCourse = (await apps.teacher.page.evaluate(() => window.courses.list('en'))).find(
+        (course) => course.title === 'E2E Offline Course',
+      )
+      const code = (await waitForSharing(apps.teacher.page, offlineCourse.id, (info) => info.status === 'shared')).code
+
+      const result = await student.evaluate((importCode) => window.sharing.importCourse({ code: importCode }), code)
+
+      expect(result).toEqual({ courseId: offlineCourse.id })
+
+      // The same code again: the course is here already, so it comes back at
+      // once. A second drive on a followed course never opened, and the import
+      // used to wait forever ("nobody online"), Cancel included.
+      const startedAt = Date.now()
+      const again = await student.evaluate((importCode) => window.sharing.importCourse({ code: importCode }), code)
+      expect(again).toEqual({ courseId: offlineCourse.id })
+      expect(Date.now() - startedAt).toBeLessThan(5_000)
+    })
   })
 })
 
