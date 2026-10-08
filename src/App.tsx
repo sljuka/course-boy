@@ -25,6 +25,10 @@ import { DraftDetailPage } from "@/pages/draft-detail-page";
 import { DraftLessonPreviewPage } from "@/pages/draft-lesson-preview-page";
 import { DraftTestPreviewPage } from "@/pages/draft-test-preview-page";
 import { HomePage } from "@/pages/home-page";
+import { MyProgramsPage } from "@/pages/my-programs-page";
+import { ProgramEditorPage } from "@/pages/program-editor-page";
+import { ProgramPage } from "@/pages/program-page";
+import { ProgramThemeScope } from "@/components/programs/program-theme-scope";
 import { MyCoursesPage } from "@/pages/my-courses-page";
 import { PersonaPage } from "@/pages/persona-page";
 import { ProfilesPage } from "@/pages/profiles-page";
@@ -54,52 +58,58 @@ const AppRoutes = () => {
   }
 
   return (
-    <Routes>
-      <Route element={<SidebarLayout />}>
-        <Route element={<HomePage />} path="/" />
-        <Route element={<SettingsPage />} path="/settings" />
-        <Route element={<CourseDetailPage />} path="/courses/:courseId" />
-        {/* Teacher-only pages; see RoleRoute. */}
+    // A program recolors the app on its page and in its courses (SLJ-32).
+    <ProgramThemeScope>
+      <Routes>
+        <Route element={<SidebarLayout />}>
+          <Route element={<HomePage />} path="/" />
+          <Route element={<SettingsPage />} path="/settings" />
+          <Route element={<CourseDetailPage />} path="/courses/:courseId" />
+          <Route element={<ProgramPage />} path="/programs/:programId" />
+          {/* Teacher-only pages; see RoleRoute. */}
+          <Route element={<RoleRoute roles="teacher" />}>
+            <Route element={<MyCoursesPage />} path="/my-courses" />
+            <Route element={<MyProgramsPage />} path="/my-programs" />
+            <Route element={<ProgramEditorPage />} path="/my-programs/:programId" />
+            <Route element={<CourseCreatePage />} path="/courses/new" />
+            <Route
+              element={<CourseStructurePrototypePage />}
+              path="/courses/prototype-2"
+            />
+          </Route>
+        </Route>
         <Route element={<RoleRoute roles="teacher" />}>
-          <Route element={<MyCoursesPage />} path="/my-courses" />
-          <Route element={<CourseCreatePage />} path="/courses/new" />
+          <Route element={<CourseLayout />}>
+            <Route element={<DraftDetailPage />} path="/drafts/:courseId" />
+          </Route>
+        </Route>
+        <Route
+          element={
+            <OnboardingGuard>
+              <BlankLayout />
+            </OnboardingGuard>
+          }
+        >
           <Route
-            element={<CourseStructurePrototypePage />}
-            path="/courses/prototype-2"
+            element={<CourseLessonPlayerPage />}
+            path="/courses/:courseId/lessons/:lessonId"
           />
+          <Route
+            element={<CourseTestPlayerPage />}
+            path="/courses/:courseId/lessons/:lessonId/test"
+          />
+          <Route element={<RoleRoute roles="teacher" />}>
+            <Route element={<DraftTestPreviewPage />} path="/drafts/:courseId/preview-test" />
+            <Route element={<DraftLessonPreviewPage />} path="/drafts/:courseId/preview-lesson" />
+          </Route>
         </Route>
-      </Route>
-      <Route element={<RoleRoute roles="teacher" />}>
-        <Route element={<CourseLayout />}>
-          <Route element={<DraftDetailPage />} path="/drafts/:courseId" />
+        <Route element={<OnboardingLayout />}>
+          <Route element={<WelcomePage />} path="/onboarding" />
+          <Route element={<PersonaPage />} path="/onboarding/persona" />
+          <Route element={<RolePage />} path="/onboarding/role" />
         </Route>
-      </Route>
-      <Route
-        element={
-          <OnboardingGuard>
-            <BlankLayout />
-          </OnboardingGuard>
-        }
-      >
-        <Route
-          element={<CourseLessonPlayerPage />}
-          path="/courses/:courseId/lessons/:lessonId"
-        />
-        <Route
-          element={<CourseTestPlayerPage />}
-          path="/courses/:courseId/lessons/:lessonId/test"
-        />
-        <Route element={<RoleRoute roles="teacher" />}>
-          <Route element={<DraftTestPreviewPage />} path="/drafts/:courseId/preview-test" />
-          <Route element={<DraftLessonPreviewPage />} path="/drafts/:courseId/preview-lesson" />
-        </Route>
-      </Route>
-      <Route element={<OnboardingLayout />}>
-        <Route element={<WelcomePage />} path="/onboarding" />
-        <Route element={<PersonaPage />} path="/onboarding/persona" />
-        <Route element={<RolePage />} path="/onboarding/role" />
-      </Route>
-    </Routes>
+      </Routes>
+    </ProgramThemeScope>
   );
 };
 

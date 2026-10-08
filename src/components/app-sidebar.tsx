@@ -1,4 +1,4 @@
-import { BookOpen, Home } from "lucide-react";
+import { BookOpen, Home, Library } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -34,7 +34,10 @@ const sidebarGroups: readonly {
     label: "learning",
   },
   {
-    items: [{ href: "/my-courses", icon: BookOpen, id: "myCourses" }],
+    items: [
+      { href: "/my-courses", icon: BookOpen, id: "myCourses" },
+      { href: "/my-programs", icon: Library, id: "myPrograms" },
+    ],
     label: "teaching",
     roles: ["teacher"],
   },
@@ -45,6 +48,10 @@ const sidebarGroups: readonly {
 function isSidebarItemActive(href: string, pathname: string): boolean {
   if (href === "/my-courses") {
     return pathname === href || pathname.startsWith("/drafts/") || pathname === "/courses/new";
+  }
+
+  if (href === "/my-programs") {
+    return pathname === href || pathname.startsWith("/my-programs/");
   }
 
   return pathname === href;

@@ -20,6 +20,7 @@ import { SettingsSection } from "@/components/ui/settings-section";
 import { usePreviousVersionsToKeep } from "@/lib/previous-versions-queries";
 import { PERSONAS } from "@/lib/personas";
 import type { Persona, Theme, UserRole } from "@/lib/preferences";
+import { useProgramThemesPreference } from "@/lib/program-themes-preference";
 import { useShowBundledCourses } from "@/lib/show-bundled-courses-queries";
 import { useAppState } from "@/lib/use-app-state";
 
@@ -29,7 +30,8 @@ const themeOptions: Theme[] = ["light", "dark"];
 // Must match MAX_PREVIOUS_VERSIONS_TO_KEEP in electron/course-paths.ts.
 const previousVersionsOptions = Array.from({ length: 11 }, (_, count) => count);
 
-// Settings: General (profile name, role, Getting Started), Interface (avatar, theme), Sharing
+// Settings: General (profile name, role, Getting Started), Interface (avatar, theme,
+// program colors), Sharing
 // (versions kept of imported courses, the publishing identity), and last the
 // danger zone (removing the profile). Each section is its title above a card
 // of its settings.
@@ -37,6 +39,7 @@ export const SettingsPage = () => {
   const { t } = useTranslation();
   const { persona, role, setPersona, setRole, setTheme, theme } = useAppState();
   const [showBundledCourses, setShowBundledCourses] = useShowBundledCourses();
+  const [useProgramThemes, setUseProgramThemes] = useProgramThemesPreference();
   const [previousVersionsToKeep, setPreviousVersionsToKeep] = usePreviousVersionsToKeep();
 
   return (
@@ -124,6 +127,19 @@ export const SettingsPage = () => {
             ))}
           </RadioGroup>
         </Field>
+        <FieldLabel htmlFor="settings-use-program-themes">
+          <Field orientation="horizontal">
+            <Checkbox
+              checked={useProgramThemes}
+              id="settings-use-program-themes"
+              onCheckedChange={(checked) => setUseProgramThemes(checked === true)}
+            />
+            <FieldContent>
+              <FieldTitle>{t("settings.interface.useProgramThemes")}</FieldTitle>
+              <FieldDescription>{t("settings.interface.useProgramThemesDescription")}</FieldDescription>
+            </FieldContent>
+          </Field>
+        </FieldLabel>
       </SettingsSection>
       {/* Courses from others (versions kept) and yours online: the publishing
           identity (SLJ-55): set up, its file, restore. */}

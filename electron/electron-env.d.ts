@@ -123,6 +123,14 @@ interface Window {
       preferences: Partial<import('../src/lib/preferences').UserPreferences>,
     ) => Promise<import('../src/lib/preferences').UserPreferences>
   }
+  programs: {
+    list: (locale: string) => Promise<import('../src/lib/program-package').ProgramSummary[]>
+    get: (programId: string) => Promise<import('../src/lib/program-package').ProgramManifest>
+    create: (input: { locale: string; title: string }) => Promise<{ programId: string }>
+    update: (manifest: import('../src/lib/program-package').ProgramManifest) => Promise<void>
+    uploadImage: (programId: string) => Promise<{ filename: string } | null>
+    remove: (programId: string) => Promise<void>
+  }
   progress: {
     get: () => Promise<import('../src/lib/course-progress').CourseProgressState>
     recordOpened: (courseId: string) => Promise<void>

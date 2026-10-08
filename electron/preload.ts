@@ -1,5 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
+import type { ProgramManifest, ProgramSummary } from '../src/lib/program-package'
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import type {
   ChooseIdentityFileResult,
@@ -175,6 +176,28 @@ contextBridge.exposeInMainWorld('courses', {
 
 // Profiles (SLJ-57): create, open and switch restart the app into the chosen
 // profile, so their promises never settle in this window.
+// Programs (SLJ-32): ordered sets of courses with their own page.
+contextBridge.exposeInMainWorld('programs', {
+  list(locale: string) {
+    return ipcRenderer.invoke('programs:list', locale) as Promise<ProgramSummary[]>
+  },
+  get(programId: string) {
+    return ipcRenderer.invoke('programs:get', programId) as Promise<ProgramManifest>
+  },
+  create(input: { locale: string; title: string }) {
+    return ipcRenderer.invoke('programs:create', input) as Promise<{ programId: string }>
+  },
+  update(manifest: ProgramManifest) {
+    return ipcRenderer.invoke('programs:update', manifest) as Promise<void>
+  },
+  uploadImage(programId: string) {
+    return ipcRenderer.invoke('programs:upload-image', programId) as Promise<{ filename: string } | null>
+  },
+  remove(programId: string) {
+    return ipcRenderer.invoke('programs:remove', programId) as Promise<void>
+  },
+})
+
 // The student's own progress through their courses (SLJ-50).
 contextBridge.exposeInMainWorld('progress', {
   get() {

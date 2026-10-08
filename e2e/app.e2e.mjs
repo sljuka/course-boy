@@ -57,6 +57,7 @@ describe('launch', () => {
       courses: Object.keys(window.courses ?? {}).sort(),
       preferences: Object.keys(window.preferences ?? {}).sort(),
       profiles: Object.keys(window.profiles ?? {}).sort(),
+      programs: Object.keys(window.programs ?? {}).sort(),
       progress: Object.keys(window.progress ?? {}).sort(),
       sharing: Object.keys(window.sharing ?? {}).sort(),
     }))
@@ -99,6 +100,7 @@ describe('launch', () => {
       'uploadAssetBytes',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
+    expect(surface.programs).toEqual(['create', 'get', 'list', 'remove', 'update', 'uploadImage'])
     expect(surface.progress).toEqual(['get', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite'])
     expect(surface.profiles).toEqual(['create', 'getRemovalSummary', 'getState', 'open', 'openCoursesFolder', 'removeCurrent', 'switchProfile'])
     expect(surface.sharing).toEqual([
@@ -223,7 +225,7 @@ describe('sidebar by role', () => {
     await waitFor(harness.page, () => Boolean(document.querySelector('#settings-role-teacher')))
     await harness.page.click('label[for="settings-role-teacher"]')
     await waitFor(harness.page, () => document.querySelectorAll('[data-sidebar=menu-button]').length > 1)
-    expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses'])
+    expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses', 'My programs'])
     const prefs = await harness.page.evaluate(() => window.preferences.get())
     expect(prefs.role).toBe('teacher')
 
@@ -1800,6 +1802,149 @@ describe('course progress', () => {
     // Removing a course removes its progress.
     await page.evaluate((courseId) => window.courses.remove(courseId), ids.courseId)
     expect(JSON.parse(fs.readFileSync(progressFile, 'utf8')).courses[ids.courseId]).toBeUndefined()
+  })
+})
+
+// SLJ-32 phase 1: a teacher makes a program (an ordered set of courses with
+// its own page) in My programs: title, description, logo, colors, one of their
+// courses. program.json lands in the profile's programs/ folder, and Preview
+// shows the program's page, the course linking to its own page.
+describe('programs', () => {
+  it('makes a program in My programs and previews its page', async () => {
+    const { app, page } = harness
+    const courseId = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: 'Caesar to Enigma.', title: 'E2E Classical ciphers' } },
+        supportedLocales: ['en'],
+      })
+      return courseId
+    })
+    const logoPath = path.join(USER_DATA, 'program-logo.png')
+    fs.writeFileSync(
+      logoPath,
+      Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64'),
+    )
+    await app.evaluate(({ dialog }, picked) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [picked] })
+    }, logoPath)
+    // The course was made over IPC, behind the app's cached course list.
+    await page.reload()
+    await waitFor(page, () => (document.getElementById('root')?.childElementCount ?? 0) > 0)
+
+    await page.evaluate(() => {
+      location.hash = '#/my-programs'
+    })
+    await page.click('[data-testid="new-program"]')
+    await page.fill('#new-program-title', 'E2E Cypherpunks')
+    await page.click('[data-testid="create-program"]')
+    // In the app's language (an earlier test may have left it in Serbian).
+    await page.locator('[data-testid^="program-title-"]').waitFor({ timeout: 15_000 })
+    const programId = page.url().split('/my-programs/')[1]
+
+    await page.locator('[id^="program-description-"]').fill('From the mailing list to Bitcoin.')
+    await page.click('[data-testid="program-pick-logo"]')
+    await page.click('[data-testid="program-add-course"]')
+    await page.getByRole('option', { name: 'E2E Classical ciphers' }).click()
+    await page.locator('[data-testid="program-courses"] li').first().waitFor()
+
+    const programFile = path.join(DATA_DIR, 'programs', programId, 'program.json')
+    const readProgram = () => (fs.existsSync(programFile) ? JSON.parse(fs.readFileSync(programFile, 'utf8')) : null)
+    await expect
+      .poll(() => {
+        const program = readProgram()
+        return program && [program.locales[program.defaultLocale].description, Boolean(program.logo), program.courses.map((course) => course.courseId)]
+      }, { timeout: 15_000 })
+      .toEqual(['From the mailing list to Bitcoin.', true, [courseId]])
+    expect(readProgram().courses[0].snapshot.locales.en.title).toBe('E2E Classical ciphers')
+    expect(fs.existsSync(path.join(DATA_DIR, 'programs', programId, 'assets', readProgram().logo))).toBe(true)
+
+    // Preview: the program's page, as students will see it.
+    await page.click('[data-testid="program-preview"]')
+    await page.locator('[data-testid="program-page"]').waitFor({ timeout: 15_000 })
+    expect((await page.locator('[data-testid="program-title"]').innerText()).trim()).toBe('E2E Cypherpunks')
+    const logo = page.locator('[data-testid="program-page"] [data-slot="cover-logo"] img')
+    await expect.poll(() => logo.evaluate((image) => image.naturalWidth), { timeout: 15_000 }).toBe(1)
+    // Back from the preview to the editor.
+    await page.click('[data-testid="program-edit"]')
+    await page.locator('[data-testid^="program-title-"]').waitFor({ timeout: 15_000 })
+    // The theme's main colors are up front, not only under More colors.
+    await page.click('[data-testid="program-add-theme"]')
+    for (const name of ['background', 'foreground', 'primary', 'secondary', 'sidebar']) {
+      await page.locator(`[data-testid="program-color-${name}"]`).waitFor()
+    }
+    await page.click('[data-testid="program-preview"]')
+    await page.locator('[data-testid="program-page"]').waitFor({ timeout: 15_000 })
+    await page.getByRole('link', { name: 'E2E Classical ciphers' }).click()
+    await waitForUrl(page, `#/courses/${courseId}`)
+  })
+
+  // A program's theme recolors the whole app on its page and in its courses,
+  // never elsewhere, and not at all with "Use program colors" off. The editor
+  // shows a color live, before it's saved.
+  it("recolors the app with a program's theme on its page and in its courses", async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Themed course' } },
+        supportedLocales: ['en'],
+      })
+      const { programId } = await window.programs.create({ locale: 'en', title: 'E2E Terminal' })
+      const program = await window.programs.get(programId)
+      await window.programs.update({
+        ...program,
+        courses: [{ code: null, courseId, snapshot: { locales: { en: { description: '', title: 'E2E Themed course' } }, publisherId: null, supportedLocales: ['en'], version: null } }],
+        theme: { background: '#0b0f0c', foreground: '#d1fae5', primary: '#22c55e' },
+      })
+      await window.preferences.set({ theme: 'light' })
+      return { courseId, programId }
+    })
+    await page.reload()
+    await waitFor(page, () => (document.getElementById('root')?.childElementCount ?? 0) > 0)
+    const rootTheme = () =>
+      page.evaluate(() => ({
+        background: document.documentElement.style.getPropertyValue('--background'),
+        dark: document.documentElement.classList.contains('dark'),
+      }))
+
+    await page.evaluate((id) => {
+      location.hash = `#/programs/${id}`
+    }, ids.programId)
+    await page.locator('[data-testid="program-page"]').waitFor({ timeout: 15_000 })
+    await expect.poll(rootTheme, { timeout: 10_000 }).toEqual({ background: '#0b0f0c', dark: true })
+
+    // Into one of its courses: still the program's theme.
+    await page.getByRole('link', { name: 'E2E Themed course' }).click()
+    await waitForUrl(page, `#/courses/${ids.courseId}`)
+    await expect.poll(rootTheme, { timeout: 10_000 }).toEqual({ background: '#0b0f0c', dark: true })
+
+    // Anywhere else: the app's own colors (light, as set).
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    await expect.poll(rootTheme, { timeout: 10_000 }).toEqual({ background: '', dark: false })
+
+    // The editor previews a change at once, before it's saved.
+    await page.evaluate((id) => {
+      location.hash = `#/my-programs/${id}`
+    }, ids.programId)
+    await page.locator('[data-testid="program-color-background"]').waitFor({ timeout: 15_000 })
+    await page.locator('[data-testid="program-color-background"]').fill('#101820')
+    await expect.poll(rootTheme, { timeout: 10_000 }).toEqual({ background: '#101820', dark: true })
+
+    // "Use program colors" off: the program's page keeps the app's colors.
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await page.click('label[for="settings-use-program-themes"]')
+    await page.evaluate((id) => {
+      location.hash = `#/programs/${id}`
+    }, ids.programId)
+    await page.locator('[data-testid="program-page"]').waitFor({ timeout: 15_000 })
+    await page.waitForTimeout(500)
+    expect(await rootTheme()).toEqual({ background: '', dark: false })
+    await page.evaluate(() => window.preferences.set({ useProgramThemes: true }))
   })
 })
 

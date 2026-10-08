@@ -1,0 +1,272 @@
+import { Ellipsis, Eye, ImagePlus, Library, Trash2, X } from "lucide-react";
+import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link, useNavigate, useParams } from "react-router-dom";
+
+import { AppStatusBarEnd } from "@/components/app-frame/app-status-bar-end";
+import { LocalesTabs } from "@/components/locales-tabs";
+import { Page } from "@/components/page/page";
+import { ProgramCoursesEditor } from "@/components/programs/program-courses-editor";
+import { ProgramThemeEditor } from "@/components/programs/program-theme-editor";
+import { Button, ButtonLabel } from "@/components/ui/button";
+import { CardDescription } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CoverBanner, CoverLogo } from "@/components/ui/cover-banner";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { EditorStatusBar } from "@/components/ui/editor-status-bar";
+import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { locales as appLocales, type Locale } from "@/lib/i18n";
+import { getLocaleFlag } from "@/lib/locale-flags";
+import type { ProgramManifest } from "@/lib/program-package";
+import {
+  programAssetUrl,
+  useProgramQuery,
+  useRemoveProgramMutation,
+  useUpdateProgramMutation,
+} from "@/lib/program-queries";
+import { useEntityAutosave } from "@/lib/use-entity-autosave";
+
+// The editor for one of your programs (SLJ-32): its header (banner, logo),
+// languages, title and description per language, colors and courses. Saves
+// itself a few seconds after each change, like the course editor.
+export function ProgramEditorPage() {
+  const { programId } = useParams();
+  const { data: program, error } = useProgramQuery(programId);
+  const { t } = useTranslation();
+
+  if (error) {
+    return (
+      <Page breadcrumbs={[{ icon: Library, label: t("sidebar.myPrograms"), to: "/my-programs" }]}>
+        <CardDescription>{t("programs.loadError")}</CardDescription>
+      </Page>
+    );
+  }
+  if (!program) return null;
+
+  // Remounted per program, so its state starts from that program.
+  return <ProgramEditor initial={program} key={program.id} />;
+}
+
+function ProgramEditor({ initial }: { initial: ProgramManifest }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [seed] = useState(initial);
+  const [program, setProgram] = useState(initial);
+  const [activeLocale, setActiveLocale] = useState<Locale>(initial.defaultLocale);
+  const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
+  const updateMutation = useUpdateProgramMutation();
+  const removeMutation = useRemoveProgramMutation();
+
+  const buildInput = useCallback((value: ProgramManifest) => value, []);
+  const autosave = useEntityAutosave({ buildInput, initialValue: seed, mutation: updateMutation, value: program });
+  const update = (change: Partial<ProgramManifest>) => setProgram((current) => ({ ...current, ...change }));
+
+  async function pickImage(field: "banner" | "logo") {
+    const result = await window.programs.uploadImage(program.id);
+    if (result) update({ [field]: result.filename });
+  }
+
+  function setLanguage(locale: Locale, enabled: boolean) {
+    setProgram((current) => {
+      const supportedLocales = enabled
+        ? appLocales.filter((candidate) => candidate === locale || current.supportedLocales.includes(candidate))
+        : current.supportedLocales.filter((candidate) => candidate !== locale);
+      if (supportedLocales.length === 0) return current;
+      const programLocales = { ...current.locales };
+      if (enabled) programLocales[locale] ??= { description: "", title: "" };
+      else delete programLocales[locale];
+      const defaultLocale = supportedLocales.includes(current.defaultLocale) ? current.defaultLocale : supportedLocales[0];
+      programLocales[defaultLocale] ??= { description: "", title: "" };
+      return { ...current, defaultLocale, locales: programLocales, supportedLocales };
+    });
+    if (!enabled && activeLocale === locale) setActiveLocale(program.defaultLocale);
+  }
+
+  function setLocalized(locale: Locale, field: "description" | "title", value: string) {
+    setProgram((current) => ({
+      ...current,
+      locales: {
+        ...current.locales,
+        [locale]: { description: "", title: "", ...current.locales[locale], [field]: value },
+      },
+    }));
+  }
+
+  const title = program.locales[program.defaultLocale]?.title || t("programs.untitled");
+
+  return (
+    <Page
+      actions={
+        <>
+          <Button
+            data-testid="program-preview"
+            nativeButton={false}
+            render={<Link to={`/programs/${program.id}`} />}
+            size="sm"
+            title={t("programs.preview")}
+            variant="secondary"
+          >
+            <Eye aria-hidden="true" />
+            <ButtonLabel>{t("programs.preview")}</ButtonLabel>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button aria-label={t("programs.actions")} shape="circle" size="icon-sm" variant="subtle" />
+              }
+            >
+              <Ellipsis aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setIsConfirmingRemove(true)} variant="destructive">
+                <Trash2 aria-hidden="true" />
+                {t("programs.remove")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      }
+      breadcrumbs={[
+        { icon: Library, label: t("sidebar.myPrograms"), to: "/my-programs" },
+        { icon: Library, label: title },
+      ]}
+    >
+      <div className="flex flex-col gap-8" data-testid="program-editor">
+        {/* The header as students see it: banner, and the logo over its edge. */}
+        <div className="flex flex-col">
+          <CoverBanner src={program.banner ? programAssetUrl(program.id, program.banner) : null} />
+          <div className="flex flex-wrap items-end gap-4 px-6">
+            <CoverLogo className="-mt-12">
+              {program.logo ? (
+                <img alt="" src={programAssetUrl(program.id, program.logo)} />
+              ) : (
+                <Library aria-hidden="true" className="size-10!" />
+              )}
+            </CoverLogo>
+            <div className="flex flex-wrap gap-2 pb-1">
+              <Button data-testid="program-pick-banner" onClick={() => void pickImage("banner")} size="sm" variant="secondary">
+                <ImagePlus aria-hidden="true" />
+                {program.banner ? t("programs.changeBanner") : t("programs.addBanner")}
+              </Button>
+              {program.banner && (
+                <Button onClick={() => update({ banner: null })} size="sm" variant="ghost">
+                  <X aria-hidden="true" />
+                  {t("programs.removeBanner")}
+                </Button>
+              )}
+              <Button data-testid="program-pick-logo" onClick={() => void pickImage("logo")} size="sm" variant="secondary">
+                <ImagePlus aria-hidden="true" />
+                {program.logo ? t("programs.changeLogo") : t("programs.addLogo")}
+              </Button>
+              {program.logo && (
+                <Button onClick={() => update({ logo: null })} size="sm" variant="ghost">
+                  <X aria-hidden="true" />
+                  {t("programs.removeLogo")}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <FieldSet>
+          <FieldLegend>{t("programs.languages")}</FieldLegend>
+          <div className="flex flex-wrap gap-4">
+            {appLocales.map((locale) => (
+              <Label key={locale}>
+                <Checkbox
+                  checked={program.supportedLocales.includes(locale)}
+                  disabled={program.supportedLocales.length === 1 && program.supportedLocales.includes(locale)}
+                  onCheckedChange={(checked) => setLanguage(locale, checked === true)}
+                />
+                {getLocaleFlag(locale)} {t(`programs.language.${locale}`)}
+              </Label>
+            ))}
+          </div>
+        </FieldSet>
+
+        <LocalesTabs
+          activeLocale={program.supportedLocales.includes(activeLocale) ? activeLocale : program.defaultLocale}
+          locales={program.supportedLocales}
+          onActiveLocaleChange={setActiveLocale}
+          renderContent={(locale) => (
+            <FieldGroup className="pt-2">
+              <Field>
+                <FieldLabel htmlFor={`program-title-${locale}`}>{t("programs.title")}</FieldLabel>
+                <Input
+                  data-testid={`program-title-${locale}`}
+                  id={`program-title-${locale}`}
+                  onChange={(event) => setLocalized(locale, "title", event.target.value)}
+                  placeholder={t("programs.titlePlaceholder")}
+                  value={program.locales[locale]?.title ?? ""}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor={`program-description-${locale}`}>{t("programs.description")}</FieldLabel>
+                <Textarea
+                  id={`program-description-${locale}`}
+                  onChange={(event) => setLocalized(locale, "description", event.target.value)}
+                  placeholder={t("programs.descriptionPlaceholder")}
+                  rows={3}
+                  value={program.locales[locale]?.description ?? ""}
+                />
+              </Field>
+            </FieldGroup>
+          )}
+        />
+
+        <ProgramThemeEditor onChange={(theme) => update({ theme })} theme={program.theme} />
+
+        <ProgramCoursesEditor
+          courses={program.courses}
+          locale={activeLocale}
+          onChange={(courses) => update({ courses })}
+        />
+      </div>
+
+      <AppStatusBarEnd>
+        <EditorStatusBar
+          message={
+            autosave.status === "error"
+              ? (autosave.errorMessage ?? t("editorStatus.saveFailed"))
+              : autosave.status === "saving"
+                ? t("editorStatus.saving")
+                : autosave.status === "dirty"
+                  ? t("editorStatus.savingSoon")
+                  : t("editorStatus.saved")
+          }
+          onRetry={autosave.saveNow}
+          retryLabel={t("editorStatus.retry")}
+          status={autosave.status}
+        />
+      </AppStatusBarEnd>
+
+      <Dialog onOpenChange={(open) => !open && setIsConfirmingRemove(false)} open={isConfirmingRemove}>
+        <DialogContent className="w-[min(28rem,calc(100vw-2rem))]">
+          <DialogHeader>
+            <DialogTitle>{t("programs.removeTitle", { title })}</DialogTitle>
+            <DialogDescription>{t("programs.removeDescription")}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setIsConfirmingRemove(false)} variant="secondary">
+              {t("programs.cancel")}
+            </Button>
+            <Button
+              data-testid="confirm-remove-program"
+              disabled={removeMutation.isPending}
+              onClick={() =>
+                removeMutation.mutate(program.id, { onSuccess: () => navigate("/my-programs") })
+              }
+              variant="destructive"
+            >
+              {t("programs.remove")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Page>
+  );
+}

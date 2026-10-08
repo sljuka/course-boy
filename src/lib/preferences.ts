@@ -36,6 +36,9 @@ export type UserPreferences = {
   showBundledCourses?: boolean
   // Course mnemonics in lessons (and tests that allow them); on when unset.
   showMnemonics?: boolean
+  // Programs recolor the app with their theme on their page and in their
+  // courses (SLJ-32); on when unset.
+  useProgramThemes?: boolean
   // The course editor's right panel (Versions): open or closed.
   versionsPanel?: ExplorerPanelPreference
   theme?: Theme

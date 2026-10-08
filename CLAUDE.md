@@ -106,7 +106,7 @@ adding a case to the e2e suite over one-off manual checking.
 
 Each person on a computer has a profile (SLJ-57): `<data folder>/profiles/<slug>-<16 chars>/`
 holds everything the app keeps for them (courses, the P2P stores, preferences, sharing
-state, their progress through courses). Code that stores something per person gets its folder from `getProfileDataDir()`
+state, their progress through courses, their programs). Code that stores something per person gets its folder from `getProfileDataDir()`
 ([electron/profile-context.ts](electron/profile-context.ts:1)), never from
 `app.getPath('userData')`, which is Chromium's own folder (`browser/`), shared by every
 profile.

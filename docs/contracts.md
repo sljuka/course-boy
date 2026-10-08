@@ -432,6 +432,45 @@ none. Each language has its own list, because terms are words of that language.
 - **Versions:** changing mnemonics is a course change since the last cut
   (`field: "mnemonics"`).
 
+### Programs (SLJ-32)
+
+A **program** is an ordered set of courses with its own page, kept beside courses in the
+profile, never inside one: course packages don't change.
+
+```
+programs/<program-id>/program.json     # the program (src/lib/program-package.ts)
+programs/<program-id>/assets/<file>    # its logo and banner, content-addressed like course assets
+```
+
+- `program.json`: `formatVersion` (1), `id` (same shape as a course id), `defaultLocale`,
+  `supportedLocales`, `locales[<lang>] { title, description }`, `logo` / `banner` (asset
+  filenames or null), `theme` (below, or null), and `courses`: in
+  order, each `{ code, courseId, snapshot }`. `code` is the course's share code (null
+  for one of your own not published yet); the `snapshot` (titles and descriptions per
+  language, languages, version, publisher) lets the program's page show the course before
+  it's imported. `isProgramManifest` checks every field on read and save; a newer
+  `formatVersion` is told apart (`isNewerProgramFormat`).
+- **`theme`:** one palette named after the app's own color variables
+  (`PROGRAM_THEME_COLORS`: `background`, `foreground`, `primary`, `card`, `sidebar`, …),
+  `#rrggbb` only; `background`, `foreground` and `primary` are required, the rest optional.
+  `resolveProgramTheme` (`src/lib/program-theme.ts`) derives what's missing (real colors,
+  so every pair can be contrast-checked). Its readability check (refusing a theme whose
+  text doesn't read on its background, replacing any other pair that doesn't) is behind
+  `enforceReadability`, **off for now** (2026-10-08) while the colors are explored. `ProgramThemeScope` sets it
+  on the whole window (`:root` variables, and the `dark` class by the background's
+  lightness) on the program's page and in its courses, and the editor's unsaved theme as
+  a live preview; leaving restores the app's. Settings → Interface → "Use program
+  colors" (`useProgramThemes`, on by default) turns it off.
+- **No versions and no draft:** a program is its latest list. Writes are atomic
+  (`writeFileAtomic`); `electron/program-paths.ts` is the only writer.
+- **Images** are served as `matko-asset://program-<id>/<file>` (a course id can't start
+  with `program-`). Unused ones are not removed on save (a just-picked image could be
+  deleted before the program points at it); cleanup belongs to publishing, like a course's
+  unused assets at a cut.
+- Phase 1 is local (My programs, the editor, the program page). Sharing a program (its
+  own drive and code, derived from the publishing identity with its own counter),
+  importing it and restoring it are phases 2–3.
+
 ## 6. Design-system tier direction
 
 `src/components/ui` is the bottom layer. It may import `@/lib/*`, `@/hooks/*`, and other

@@ -397,7 +397,8 @@ function resolveCourseRootPath(localCoursesRoot: string, courseId: string): stri
   return resolvedCourseRootPath;
 }
 
-async function writeFileAtomic(targetPath: string, contents: string): Promise<void> {
+// Also used for programs (program-paths.ts).
+export async function writeFileAtomic(targetPath: string, contents: string): Promise<void> {
   const tmpPath = `${targetPath}.tmp-${process.pid}-${Date.now()}`;
 
   await fs.writeFile(tmpPath, contents);
@@ -2120,7 +2121,8 @@ export async function updateLocalCourseDraftMetadata(
 // discarded in favour of the existing file. Either way the returned name is
 // complete on disk: the rename is atomic, and a same-hash overwrite from a
 // concurrent upload replaces identical bytes.
-async function storeCourseAsset(
+// Also stores a program's logo and banner (program-paths.ts).
+export async function storeCourseAsset(
   assetsDirectoryPath: string,
   originalFilename: string,
   writeTempFile: (tmpPath: string) => Promise<void>,

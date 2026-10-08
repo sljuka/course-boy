@@ -26,6 +26,16 @@ import {
   stopSharing,
 } from './bare-worker'
 import { createCourseProgress } from './course-progress'
+import {
+  createProgram,
+  listPrograms,
+  readProgram,
+  removeProgram,
+  resolveProgramAsset,
+  updateProgram,
+  uploadProgramImage,
+} from './program-paths'
+import { isProgramManifest } from '../src/lib/program-package'
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import { createIdentityRestoreService, type IdentityRestoreState } from './identity-restore'
@@ -116,7 +126,7 @@ import type {
   UnlockIdentityResult,
 } from '../src/lib/publisher-identity'
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
-import type { Locale } from '../src/lib/i18n'
+import { isLocale, type Locale } from '../src/lib/i18n'
 import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
@@ -180,6 +190,7 @@ type UserPreferences = {
   versionsPanel?: ExplorerPanelPreference
   courseInfoPanel?: ExplorerPanelPreference
   showBundledCourses?: boolean
+  useProgramThemes?: boolean
   showMnemonics?: boolean
   locale?: Locale
   nickname?: string
@@ -465,6 +476,9 @@ ipcMain.handle(
       profile.preferencesStore.set('showMnemonics', preferences.showMnemonics)
     }
 
+    if (typeof preferences.useProgramThemes === 'boolean') {
+      profile.preferencesStore.set('useProgramThemes', preferences.useProgramThemes)
+    }
     if (typeof preferences.showBundledCourses === 'boolean') {
       profile.preferencesStore.set('showBundledCourses', preferences.showBundledCourses)
     }
@@ -674,6 +688,38 @@ ipcMain.handle('courses:remove', async (_event, courseId: string) => {
   profile.courseProgress.forgetCourse(courseId)
 })
 
+// ─── Programs (SLJ-32) ──────────────────────────────────────────────────────
+// Phase 1: your own programs, on this device (electron/program-paths.ts).
+
+ipcMain.handle('programs:list', (_event, locale: unknown) => listPrograms(isLocale(locale) ? locale : 'en'))
+
+ipcMain.handle('programs:get', (_event, programId: unknown) => {
+  if (typeof programId !== 'string') throw new Error('Invalid program id')
+  return readProgram(programId)
+})
+
+ipcMain.handle('programs:create', (_event, input: { locale?: unknown; title?: unknown }) => {
+  if (!isLocale(input?.locale) || typeof input.title !== 'string' || input.title.trim().length === 0) {
+    throw new Error('Invalid program')
+  }
+  return createProgram({ locale: input.locale, title: input.title.trim() })
+})
+
+ipcMain.handle('programs:update', (_event, manifest: unknown) => {
+  if (!isProgramManifest(manifest)) throw new Error('Program data is invalid')
+  return updateProgram(manifest)
+})
+
+ipcMain.handle('programs:upload-image', (_event, programId: unknown) => {
+  if (typeof programId !== 'string') throw new Error('Invalid program id')
+  return uploadProgramImage(programId)
+})
+
+ipcMain.handle('programs:remove', (_event, programId: unknown) => {
+  if (typeof programId !== 'string') throw new Error('Invalid program id')
+  return removeProgram(programId)
+})
+
 // ─── Progress (SLJ-50) ──────────────────────────────────────────────────────
 // The student's own progress, per profile: see electron/course-progress.ts.
 
@@ -871,9 +917,30 @@ ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput)
   return { courseId: result.courseId } satisfies ImportCourseResult
 })
 
+// A program's logo or banner (SLJ-32): `matko-asset://program-<id>/<file>`.
+// "program-" can't begin a course id (16 base32 characters), so the two never
+// clash.
+const PROGRAM_ASSET_HOST_PREFIX = 'program-'
+
+async function handleProgramAssetRequest(requestUrl: URL): Promise<Response> {
+  const asset = await resolveProgramAsset(
+    requestUrl.hostname.slice(PROGRAM_ASSET_HOST_PREFIX.length),
+    decodeURIComponent(requestUrl.pathname.replace(/^\//, '')),
+  )
+  if (!asset) return new Response(null, { status: 404 })
+
+  const fileResponse = await net.fetch(pathToFileURL(asset.filePath).toString())
+  const headers = new Headers(fileResponse.headers)
+  headers.set('Content-Type', asset.mimeType)
+  return new Response(fileResponse.body, { headers, status: fileResponse.status })
+}
+
 async function handleCourseAssetRequest(request: Request): Promise<Response> {
   try {
     const requestUrl = new URL(request.url)
+    if (requestUrl.hostname.startsWith(PROGRAM_ASSET_HOST_PREFIX)) {
+      return await handleProgramAssetRequest(requestUrl)
+    }
     const courseId = requestUrl.hostname
     const filename = resolveAssetFilename(
       decodeURIComponent(requestUrl.pathname.replace(/^\//, '')),
