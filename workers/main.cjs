@@ -14,7 +14,7 @@ const BlindPairing = require('blind-pairing')
 const fsp = require('bare-fs/promises')
 const path = require('bare-path')
 const { isValidCourseId } = require('./course-id.cjs')
-const { verifySource } = require('./course-source.cjs')
+const { movedToKey, unchangedFileKeys, verifySource } = require('./course-source.cjs')
 const { createIdentityBackup, IdentityBackupError, openIdentityBackup, readIdentityBackup } = require('./identity-backup.cjs')
 const { courseKeyPair, creatorKeyPair, programKeyPair, publicCourseId, publicProgramId } = require('./identity-keys.cjs')
 
@@ -64,6 +64,8 @@ const FINISHED_TRANSFER_TTL_MS = 60_000
 // the version itself, so its hashes stay valid): where the course is shared from.
 // See "source.json" in docs/contracts.md §5.
 const SOURCE_FILE_KEY = '/source.json'
+// How many "this course moved" notices an import follows (SLJ-11).
+const MAX_MOVED_HOPS = 3
 
 // Hyperdrive's own options for its file list (its "db" core, a Hyperbee).
 const DRIVE_DB_OPTIONS = { keyEncoding: 'utf-8', valueEncoding: 'json', metadata: { contentFeed: null } }
@@ -427,6 +429,8 @@ async function start() {
     return {
       changelog: Array.isArray(changelog) ? changelog : [],
       courseId: manifest?.id ?? null,
+      // The drive it continues in, if the course moved (SLJ-11).
+      movedTo: source ? movedToKey(JSON.stringify(source), drive.key) : null,
       source,
       version: manifest?.version ?? null,
     }
@@ -450,7 +454,15 @@ async function start() {
 
     try {
       await untilCancelled(transfer, drive.update())
-      const changedFiles = await mirrorWithProgress(drive, new Localdrive(targetPath, { atomic: true }), transfer)
+      // Files the installed version already has (same hash in both versions'
+      // version-meta.json) are left as they are, never compared by streaming:
+      // on a drive this device never downloaded (a moved course's new one),
+      // comparing would fetch every unchanged file.
+      const remoteMeta = await untilCancelled(transfer, drive.get('/version-meta.json'))
+      const localMeta = await fsp.readFile(path.join(targetPath, 'version-meta.json'), 'utf8').catch(() => null)
+      const unchanged = unchangedFileKeys(remoteMeta ? remoteMeta.toString() : null, localMeta)
+      const filter = unchanged.size > 0 ? (key) => !unchanged.has(key) : null
+      const changedFiles = await mirrorWithProgress(drive, new Localdrive(targetPath, { atomic: true }), transfer, filter)
       finishTransfer(transferId, transfer, 'done')
       return { changedFiles }
     } catch (error) {
@@ -632,9 +644,10 @@ async function start() {
   // Mirrors `drive` onto `local`, tracking progress on `transfer`, cancellable.
   // The total counts only what will be written: every file for an import, the
   // added and changed files for an update.
-  async function mirrorWithProgress(drive, local, transfer) {
+  // `filter`: drive paths to leave alone (see unchangedFileKeys).
+  async function mirrorWithProgress(drive, local, transfer, filter = null) {
     let total = 0
-    const plan = drive.mirror(local, { dryRun: true })
+    const plan = drive.mirror(local, { dryRun: true, filter })
     for await (const diff of plan) {
       if (transfer.isCancelled) throw new TransferCancelled()
       if (diff.op === 'add' || diff.op === 'change') total += await blobSize(drive, diff.key)
@@ -642,7 +655,7 @@ async function start() {
     transfer.bytesTotal = total
     transfer.phase = 'downloading'
 
-    const mirror = drive.mirror(local, { progress: true })
+    const mirror = drive.mirror(local, { filter, progress: true })
     transfer.mirror = mirror
     const changedFiles = []
     const iterator = mirror[Symbol.asyncIterator]()
@@ -780,7 +793,9 @@ async function start() {
 
   // `programsRoot`: where a program lands (SLJ-32): the code may be a
   // program's, told apart by the program.json its drive holds.
-  async function importCourse(driveKey, coursesRoot, transferId, programsRoot) {
+  // `hops`: "moved" notices followed so far (a moved course's old code leads
+  // to its new one, SLJ-11).
+  async function importCourse(driveKey, coursesRoot, transferId, programsRoot, hops = 0) {
     // Already here (imported, so followed): that course, at once. A second
     // drive on the same key would never open (a Hyperdrive holds its core
     // exclusively), and the import would wait forever, looking like nobody
@@ -826,6 +841,18 @@ async function start() {
       // Nobody with the course online: keep looking (the UI says so) until
       // someone is, or the student cancels.
       await waitForDriveData(drive, transfer)
+
+      // A course that moved (now shared by several maintainers): import it
+      // from where it continues, before downloading anything here.
+      const sourceBuffer = await untilCancelled(transfer, drive.get(SOURCE_FILE_KEY))
+      const movedTo = sourceBuffer ? movedToKey(sourceBuffer.toString(), drive.key) : null
+      if (movedTo) {
+        if (hops >= MAX_MOVED_HOPS) throw new Error('This course moved too many times to follow')
+        await swarm.leave(drive.discoveryKey).catch(() => {})
+        await drive.close().catch(() => {})
+        return importCourse(movedTo, coursesRoot, transferId, programsRoot, hops + 1)
+      }
+
       const isProgram = programsRoot && Boolean(await untilCancelled(transfer, drive.entry('/program.json')))
       transfer.course = await readCourseTitles(drive, transfer, isProgram ? '/program.json' : '/course.json')
 

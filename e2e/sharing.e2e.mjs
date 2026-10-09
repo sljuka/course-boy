@@ -778,6 +778,10 @@ describe('restoring the publisher identity on a new computer', () => {
   let programCode
 
   it('the old computer publishes, its identity file is copied away, and a student imports', async () => {
+    // The earlier groups' apps aren't needed again: closed, so the restore's
+    // lookups don't compete with them on the small test network (with them
+    // all running, the course was sometimes not found in time).
+    for (const name of Object.keys(apps)) await close(name)
     const page = await launch('oldComputer')
     await finishOnboarding(page, 'teacher')
     await setUpIdentity(page)

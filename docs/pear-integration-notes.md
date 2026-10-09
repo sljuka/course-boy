@@ -936,3 +936,13 @@ It isn't wired to the worker's RPC yet.
   (`openProposalForReview` returns them as `changes`), and only those are fetched, when
   opened for review. A 2 GB course with one edited lesson costs about that lesson and the
   file index. The test checks that an unchanged asset's blocks are never downloaded.
+
+**Milestone 2 (moving a course):** `writeMovedNotice` puts `movedTo` into the old drive's
+`source.json`. Students' apps follow it to the new code and keep the old one shared. An
+import from the old code is redirected before anything downloads, following at most 3
+notices. Updates skip files whose `version-meta.json` hashes match the installed version:
+`mirror-drive` otherwise streams both copies of every same-size file to compare them,
+which on a moved course's new drive means downloading all of them. The module test moves
+a course to a 1-of-1 shared course and checks that a 200 kB unchanged asset never crosses
+the network. Starting a move from the app comes with inviting a maintainer (milestone 3).
+

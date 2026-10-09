@@ -377,6 +377,49 @@ describe('course sharing: updates', () => {
     expect(state().followed['course-b']).toMatchObject({ finishOnVersion: false, pendingUpdate: null })
   })
 
+  // SLJ-11: the course became a shared one, with a new code.
+  it('follows a course that moved to its new code, keeps the old one shared, and takes updates from the new', async () => {
+    const checkUpdate = vi.fn(async (driveKey: string) =>
+      driveKey === 'drive-b'
+        ? remote('0.1', { movedTo: 'drive-shared' })
+        : remote('0.3', { source: { driveKey: 'drive-shared', publisher: { id: 'teacher' } } }),
+    )
+    const { sharing, state, worker } = setup({ initial: imported, worker: { checkUpdate } })
+
+    sharing.onDriveChanged('drive-b')
+    await flush()
+    await flush()
+
+    expect(worker.followCourse).toHaveBeenCalledWith('drive-shared')
+    expect(state().followed['course-b']).toMatchObject({ driveKey: 'drive-shared', previousDriveKeys: ['drive-b'] })
+    expect(checkUpdate).toHaveBeenLastCalledWith('drive-shared')
+    expect(sharing.getInfo('course-b')).toMatchObject({ code: 'drive-shared', update: { version: '0.3' } })
+
+    // The old drive's events are no longer read; at startup it's shared again.
+    sharing.onDriveChanged('drive-b')
+    await flush()
+    expect(checkUpdate).toHaveBeenLastCalledWith('drive-shared')
+    await sharing.start()
+    expect(worker.followCourse).toHaveBeenCalledWith('drive-b')
+  })
+
+  it("doesn't follow a move back to a code the course already left", async () => {
+    const checkUpdate = vi.fn(async () => remote('0.1', { movedTo: 'drive-b' }))
+    const { sharing, state } = setup({
+      initial: {
+        followed: {
+          'course-b': { driveKey: 'drive-shared', followedSince: '', previousDriveKeys: ['drive-b'], publisherId: 'teacher' },
+        },
+        published: {},
+      },
+      worker: { checkUpdate },
+    })
+
+    sharing.onDriveChanged('drive-shared')
+    await flush()
+    expect(state().followed['course-b'].driveKey).toBe('drive-shared')
+  })
+
   it('reports a cancelled update or import as cancelled, not as an error, and changes nothing', async () => {
     const cancelled = Object.assign(new Error('Cancelled'), { code: 'CANCELLED' })
     const { sharing, state } = setup({

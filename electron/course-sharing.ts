@@ -52,11 +52,18 @@ export type FollowedCourse = {
   // The update the student dismissed with "Finish on this version"; a newer
   // recommended one is shown again.
   dismissedUpdateVersion?: string | null
+  // Codes the course had before it moved (SLJ-11: it became a course shared by
+  // several maintainers). Still shared, so classmates who were offline learn
+  // where it went; their updates are no longer read.
+  previousDriveKeys?: string[]
 }
 
 export type RemoteCourseVersion = {
   changelog: CourseChangelogEntry[]
   courseId: string | null
+  // Where the course continues, if its drive says it moved (the worker checks
+  // the notice is the drive's own).
+  movedTo?: string | null
   source: { driveKey?: unknown; publisher?: { id?: unknown } } | null
   version: string | null
 }
@@ -309,6 +316,12 @@ export function createCourseSharing(deps: CourseSharingDeps) {
 
     for (const [courseId, course] of Object.entries(followed)) {
       await followOne(courseId, course.driveKey)
+      // A moved course's old codes, so classmates still find the notice there.
+      for (const previous of course.previousDriveKeys ?? []) {
+        await deps.worker.followCourse(previous).catch((error) => {
+          console.error(`[course-sharing] sharing the old code of ${courseId} failed:`, error)
+        })
+      }
     }
   }
 
@@ -358,6 +371,22 @@ export function createCourseSharing(deps: CourseSharingDeps) {
 
     try {
       const remote = await deps.worker.checkUpdate(followed.driveKey)
+
+      // It moved: follow it to its new code (keeping the old one shared), and
+      // look there for its version (run again by checkForUpdate).
+      const movedTo = remote.movedTo
+      if (movedTo && movedTo !== followed.driveKey && !(followed.previousDriveKeys ?? []).includes(movedTo)) {
+        await deps.worker.followCourse(movedTo)
+        updateFollowed(courseId, {
+          driveKey: movedTo,
+          pendingUpdate: null,
+          previousDriveKeys: [...(followed.previousDriveKeys ?? []), followed.driveKey],
+          refusedUpdate: null,
+        })
+        recheckRequested.add(courseId)
+        return
+      }
+
       const verdict = evaluateRemoteVersion(courseId, followed, remote, installedVersion)
 
       if (verdict.kind === 'update') {

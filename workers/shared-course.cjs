@@ -306,6 +306,18 @@ async function commitProposal({ first = false, proposal, request, responses, spe
     .done()
 }
 
+// The course moved (it's now the shared course `sharedKey`): its old drive's
+// source.json says so, keeping everything else it said. Students' apps that
+// follow the old drive read it and follow the shared course from then on, and
+// an import from the old code goes there directly (course-source.cjs:
+// movedToKey). `drive` is the old, writable drive.
+async function writeMovedNotice(drive, sharedKey) {
+  const current = await drive.get(SOURCE_FILE_KEY)
+  const source = current ? JSON.parse(current) : { driveKey: IdEncoding.normalize(drive.key) }
+  const next = { ...source, movedTo: { driveKey: IdEncoding.normalize(sharedKey) } }
+  await drive.put(SOURCE_FILE_KEY, Buffer.from(JSON.stringify(next, null, 2)))
+}
+
 // hyper-multisig joins topics on the swarm it's given; the worker announces
 // the drives itself, so a no-op stands in.
 const nullSwarm = { join: () => ({ flushed: () => Promise.resolve(), destroy: () => Promise.resolve() }) }
@@ -321,4 +333,5 @@ module.exports = {
   sharedCourseKey,
   sharedCourseSpec,
   signRequest,
+  writeMovedNotice,
 }

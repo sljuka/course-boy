@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import IdEncoding from 'hypercore-id-encoding'
-import { verifySource } from './course-source.cjs'
+import { movedToKey, unchangedFileKeys, verifySource } from './course-source.cjs'
 
 const driveKey = crypto.randomBytes(32)
 const otherDriveKey = crypto.randomBytes(32)
@@ -28,5 +28,40 @@ describe('verifySource', () => {
 
   it('returns an empty publisher id when none is claimed', () => {
     expect(verifySource(JSON.stringify({ driveKey: IdEncoding.normalize(driveKey) }), driveKey)).toBe('')
+  })
+})
+
+describe('movedToKey', () => {
+  const moved = (key, target) => JSON.stringify({ driveKey: IdEncoding.normalize(key), movedTo: { driveKey: target } })
+
+  it("returns the new drive named by the drive's own source.json", () => {
+    expect(movedToKey(moved(driveKey, IdEncoding.normalize(otherDriveKey)), driveKey)).toBe(IdEncoding.normalize(otherDriveKey))
+    expect(movedToKey(moved(driveKey, otherDriveKey.toString('hex')), driveKey)).toBe(IdEncoding.normalize(otherDriveKey))
+  })
+
+  it("ignores a notice that isn't this drive's, points to itself, or isn't a key", () => {
+    expect(movedToKey(moved(otherDriveKey, IdEncoding.normalize(crypto.randomBytes(32))), driveKey)).toBeNull()
+    expect(movedToKey(moved(driveKey, IdEncoding.normalize(driveKey)), driveKey)).toBeNull()
+    expect(movedToKey(moved(driveKey, 'not a key'), driveKey)).toBeNull()
+    expect(movedToKey(source(driveKey), driveKey)).toBeNull()
+    expect(movedToKey('{', driveKey)).toBeNull()
+    expect(movedToKey(null, driveKey)).toBeNull()
+  })
+})
+
+describe('unchangedFileKeys', () => {
+  const hash = (text) => crypto.createHash('sha256').update(text).digest('hex')
+  const meta = (fileHashes) => JSON.stringify({ cutAt: '', fileHashes, releaseType: 'minor' })
+
+  it('lists the files whose hashes match, as drive paths', () => {
+    const remote = meta({ 'assets/pic.png': hash('pic'), 'course.json': hash('new'), 'section\\lesson.json': hash('l') })
+    const local = meta({ 'assets/pic.png': hash('pic'), 'course.json': hash('old'), 'section\\lesson.json': hash('l') })
+    expect([...unchangedFileKeys(remote, local)].sort()).toEqual(['/assets/pic.png', '/section/lesson.json'])
+  })
+
+  it('skips nothing when either version-meta.json is missing or damaged', () => {
+    expect(unchangedFileKeys(null, meta({ a: hash('a') })).size).toBe(0)
+    expect(unchangedFileKeys(meta({ a: hash('a') }), '{').size).toBe(0)
+    expect(unchangedFileKeys(meta({ a: 'not-a-hash' }), meta({ a: 'not-a-hash' })).size).toBe(0)
   })
 })

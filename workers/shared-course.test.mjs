@@ -17,7 +17,10 @@ import {
   sharedCourseKey,
   sharedCourseSpec,
   signRequest,
+  writeMovedNotice,
 } from './shared-course.cjs'
+import { movedToKey, unchangedFileKeys } from './course-source.cjs'
+import Localdrive from 'localdrive'
 
 // SLJ-11, milestone 1: two maintainers and a student, each with their own
 // store and swarm, on a local DHT testnet (never the public network).
@@ -228,5 +231,99 @@ describe('shared courses (multisig)', () => {
     await expect(
       openProposalForReview({ proposalKey: IdEncoding.normalize(proposal.key), request, spec, store: marko.store }),
     ).rejects.toMatchObject({ code: 'NOT_LATEST' })
+  }, 60_000)
+})
+
+// SLJ-11, milestone 2: a published course moves to a shared one (here 1 of 1,
+// the owner alone, the first step before inviting anyone).
+describe('moving a course', () => {
+  it("the old drive points to the shared course, and the student's update from it skips unchanged files", async () => {
+    const teacher = await makePeer('move-teacher')
+    const pupil = await makePeer('move-student')
+    const movePublicId = 'movemovemovemove'
+    const asset = crypto.randomBytes(200_000)
+    const hash = (data) => crypto.createHash('sha256').update(data).digest('hex')
+    const v1 = {
+      'assets/big.bin': asset,
+      'course.json': JSON.stringify({ id: 'course-m', version: '0.2' }),
+      'lesson.md': '# One',
+    }
+    const withMeta = (files) => ({
+      ...files,
+      'version-meta.json': JSON.stringify({ cutAt: '', fileHashes: Object.fromEntries(Object.entries(files).map(([file, data]) => [file, hash(data)])) }),
+    })
+
+    // The course as published today: a drive of the teacher's own.
+    const old = new Hyperdrive(teacher.store.namespace('old-course'))
+    await old.ready()
+    await new Localdrive(versionFolder(withMeta(v1))).mirror(old).done()
+    await old.put('/source.json', Buffer.from(JSON.stringify({ driveKey: IdEncoding.normalize(old.key) })))
+    await announce(teacher, old)
+
+    // The student has version 0.2 installed (a local copy) and follows the old drive.
+    const installed = versionFolder(withMeta(v1))
+    const followedOld = new Hyperdrive(pupil.store.session(), old.key)
+    await followedOld.ready()
+    await find(pupil, followedOld)
+    await followedOld.core.update({ wait: true })
+
+    // The teacher moves it: the shared course gets version 0.3 (one lesson
+    // edited), then the old drive says where it went.
+    const moveSpec = sharedCourseSpec({ publicId: movePublicId, quorum: 1, signers: [maintainerPublicKey(teacher.identity, movePublicId)] })
+    const v2 = { ...v1, 'course.json': JSON.stringify({ id: 'course-m', version: '0.3' }), 'lesson.md': '# One, edited' }
+    const sharedKey = sharedCourseKey(moveSpec)
+    const { drive: proposal, request } = await createProposal({
+      identity: teacher.identity,
+      index: 0,
+      source: { driveKey: IdEncoding.normalize(sharedKey), publicId: movePublicId },
+      spec: moveSpec,
+      store: teacher.store,
+      versionPath: versionFolder(withMeta(v2)),
+    })
+    await commitProposal({
+      first: true,
+      proposal,
+      request,
+      responses: [signRequest({ identity: teacher.identity, publicId: movePublicId, request })],
+      spec: moveSpec,
+      store: teacher.store,
+    })
+    const shared = await openSharedDrive(teacher.store, moveSpec)
+    await announce(teacher, shared)
+    await writeMovedNotice(old, sharedKey)
+
+    // The student's app reads the notice on the old drive.
+    const deadline = Date.now() + 20_000
+    let moved = null
+    while (!moved && Date.now() < deadline) {
+      await followedOld.core.update().catch(() => {})
+      const text = await followedOld.get('/source.json')
+      moved = text ? movedToKey(text.toString(), followedOld.key) : null
+      if (!moved) await new Promise((resolve) => setTimeout(resolve, 200))
+    }
+    expect(moved).toBe(IdEncoding.normalize(sharedKey))
+
+    // Its update from the shared course, as the worker applies it: files with
+    // the same hash in both version-meta.json are left alone.
+    const followedShared = new Hyperdrive(pupil.store.session(), IdEncoding.decode(moved))
+    await followedShared.ready()
+    await find(pupil, followedShared)
+    await followedShared.core.update({ wait: true })
+    const unchanged = unchangedFileKeys(
+      (await followedShared.get('/version-meta.json')).toString(),
+      fs.readFileSync(path.join(installed, 'version-meta.json'), 'utf8'),
+    )
+    expect([...unchanged]).toEqual(['/assets/big.bin'])
+    await followedShared.mirror(new Localdrive(installed, { atomic: true }), { filter: (key) => !unchanged.has(key) }).done()
+
+    expect(fs.readFileSync(path.join(installed, 'lesson.md'), 'utf8')).toBe('# One, edited')
+    expect(fs.readFileSync(path.join(installed, 'assets/big.bin')).equals(asset)).toBe(true)
+    // None of the asset's blocks came over the network.
+    const blobs = (await followedShared.getBlobs()).core
+    const { blockOffset, blockLength } = (await followedShared.entry('/assets/big.bin')).value.blob
+    for (let index = blockOffset; index < blockOffset + blockLength; index++) {
+      expect(await blobs.has(index)).toBe(false)
+    }
+    await Promise.all([followedOld.close(), followedShared.close(), proposal.close(), shared.close(), old.close()])
   }, 60_000)
 })

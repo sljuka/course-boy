@@ -326,6 +326,24 @@ course comes from *on this device* (the code used at import) is app state, kept 
 main-process-only `course-sharing.json` electron-store file, never re-read from
 `source.json` (see `electron/course-sharing.ts`).
 
+**"This course moved" (SLJ-11).** A course's drive can say where it continues:
+`source.json` gains `"movedTo": { "driveKey": "<z32>" }`, written into the *old* drive
+(`writeMovedNotice` in `workers/shared-course.cjs`) when the course becomes one shared by
+several maintainers, with a new code. The notice counts only if it's the drive's own
+(`driveKey` names that drive) and points elsewhere (`movedToKey` in
+`workers/course-source.cjs`), so it's as trustworthy as whoever signs the old drive.
+Students' apps then follow the new code (`course-sharing.ts`: `followed.driveKey` changes,
+and the old code goes to `previousDriveKeys`, still shared so offline classmates find the
+notice). An import from the old code goes to the new one before downloading anything.
+The shared course's `source.json` keeps the original `publisher.id`, so updates from it
+pass the same check.
+
+**Updates skip files the installed version already has.** The worker compares the
+drive's `version-meta.json` file hashes with the installed version's
+(`unchangedFileKeys`) and leaves matching files alone, instead of comparing them by
+streaming both copies. That matters most after a move, when this device holds none of
+the new drive's blocks.
+
 **Imported courses are kept as `versions/<v>/` + `release.json` (SLJ-40)**, the teacher's
 layout minus the draft. `release.json`'s `publishedVersion` is the version in use, and
 `resolvePackageDirectoryCandidates` in
