@@ -42,7 +42,7 @@ function setup({
           driveKey: `drive-${index}`,
           publicId: `public-${index}`,
           publisherId: course.publisherId ?? 'publisher-ana',
-          version: '0.2.0',
+          version: '0.2',
         }
       }),
       openIdentity: vi.fn(async (_text: string, password: string) => {
@@ -109,7 +109,7 @@ describe('identity restore', () => {
     expect(deps.landCourse).toHaveBeenCalledWith({
       courseId: 'bbbbbbbbbbbbbbbb',
       stagingPath: expect.stringContaining('.recover-staging-'),
-      version: '0.2.0',
+      version: '0.2',
     })
     // Shared again only once it has landed, with its number and code.
     expect(deps.onCourseFound).toHaveBeenCalledWith({

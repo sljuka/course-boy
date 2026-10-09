@@ -113,17 +113,17 @@ describe("copyDirectoryWithDedup", () => {
 });
 
 describe("cutLocalCourseVersion", () => {
-  it("cuts patch, minor, and major versions", async () => {
+  it("cuts updates and new editions", async () => {
     const courseId = await seedDraftCourse();
 
-    const patchResult = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
-    expect(patchResult.version).toBe("0.1.1");
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    expect(first.version).toBe("0.2");
 
-    const minorResult = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
-    expect(minorResult.version).toBe("0.2.0");
+    const second = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    expect(second.version).toBe("0.3");
 
     const majorResult = await cutLocalCourseVersion({ courseId, releaseType: "major" });
-    expect(majorResult.version).toBe("1.0.0");
+    expect(majorResult.version).toBe("1.0");
   });
 
   // version-meta.json's hashes are the version's integrity record (planned: a
@@ -132,7 +132,7 @@ describe("cutLocalCourseVersion", () => {
   it("records a hash in version-meta.json for exactly the files in the version", async () => {
     const courseId = await seedDraftCourse();
     const localCoursesRoot = await ensureLocalCoursesRoot();
-    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     const versionDir = path.join(localCoursesRoot, courseId, "versions", cut.version);
 
     const meta = JSON.parse(await fs.readFile(path.join(versionDir, "version-meta.json"), "utf8"));
@@ -159,8 +159,8 @@ describe("cutLocalCourseVersion", () => {
   it("never changes an older version's version-meta.json when cutting after a revert", async () => {
     const courseId = await seedDraftCourse();
     const localCoursesRoot = await ensureLocalCoursesRoot();
-    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
-    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     const firstMetaPath = path.join(localCoursesRoot, courseId, "versions", first.version, "version-meta.json");
     const firstMetaBefore = await fs.readFile(firstMetaPath, "utf8");
 
@@ -173,7 +173,7 @@ describe("cutLocalCourseVersion", () => {
       locales: { en: { description: "A test course", title: "After revert" } },
       supportedLocales: ["en"],
     });
-    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     expect(await fs.readFile(firstMetaPath, "utf8")).toBe(firstMetaBefore);
     expect(
@@ -186,15 +186,15 @@ describe("cutLocalCourseVersion", () => {
 
   it("cuts past the newest version after reverting to an older one", async () => {
     const courseId = await seedDraftCourse();
-    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
-    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
-    const third = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    const third = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     await revertLocalCourseDraftToVersion({ courseId, version: first.version });
-    const afterRevert = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const afterRevert = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
-    expect(third.version).toBe("0.1.3");
-    expect(afterRevert.version).toBe("0.1.4");
+    expect(third.version).toBe("0.4");
+    expect(afterRevert.version).toBe("0.5");
   });
 
   // SLJ-27: each version carries the whole history, newest first, as data.
@@ -202,7 +202,7 @@ describe("cutLocalCourseVersion", () => {
     const courseId = await seedDraftCourse();
     const localCoursesRoot = await ensureLocalCoursesRoot();
     const versionDir = (version: string) => path.join(localCoursesRoot, courseId, "versions", version);
-    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     await updateLocalCourseDraftMetadata({
       contentRating: "all-ages",
@@ -216,7 +216,7 @@ describe("cutLocalCourseVersion", () => {
       courseId,
       notes: "  Fixed the title.  ",
       recommended: true,
-      releaseType: "patch",
+      releaseType: "minor",
     });
 
     const changelog = JSON.parse(await fs.readFile(path.join(versionDir(second.version), "changelog.json"), "utf8"));
@@ -245,8 +245,8 @@ describe("cutLocalCourseVersion", () => {
     const localCoursesRoot = await ensureLocalCoursesRoot();
     const versionsDir = path.join(localCoursesRoot, courseId, "versions");
 
-    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
-    const second = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    const second = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     const firstVersionEntries = await fs.readdir(path.join(versionsDir, first.version));
     const sectionDirName = firstVersionEntries.find((name) => name.startsWith("section-"));
@@ -270,11 +270,11 @@ describe("cutLocalCourseVersion", () => {
       supportedLocales: ["en"],
     });
 
-    await expect(cutLocalCourseVersion({ courseId, releaseType: "patch" })).rejects.toThrow();
+    await expect(cutLocalCourseVersion({ courseId, releaseType: "minor" })).rejects.toThrow();
 
     const localCoursesRoot = await ensureLocalCoursesRoot();
     const targetSnapshotExists = await fs
-      .access(path.join(localCoursesRoot, courseId, "versions", "0.1.1"))
+      .access(path.join(localCoursesRoot, courseId, "versions", "0.2"))
       .then(
         () => true,
         () => false,
@@ -285,7 +285,7 @@ describe("cutLocalCourseVersion", () => {
 
   it("never re-cuts an existing version, even when the draft's number is rewound", async () => {
     const courseId = await seedDraftCourse();
-    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     const localCoursesRoot = await ensureLocalCoursesRoot();
     const manifestPath = path.join(localCoursesRoot, courseId, "draft", "course.json");
@@ -296,20 +296,20 @@ describe("cutLocalCourseVersion", () => {
 
     // Rewind the draft's version; before SLJ-23 the next cut recomputed an
     // already-cut target (0.1.1) and failed.
-    manifest.version = "0.1.0";
-    manifest.versionInfo = { major: 0, minor: 1, patch: 0, releaseType: "initial" };
+    manifest.version = "0.1";
+    manifest.versionInfo = { major: 0, minor: 1, releaseType: "initial" };
     await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 
-    const next = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const next = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
-    expect(next.version).toBe("0.1.2");
+    expect(next.version).toBe("0.3");
   });
 });
 
 describe("revertLocalCourseDraftToVersion", () => {
   it("restores draft content and resets its version", async () => {
     const courseId = await seedDraftCourse();
-    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     await createLocalCourseSection({ courseId, title: "Section Two" });
 
@@ -332,7 +332,7 @@ describe("revertLocalCourseDraftToVersion", () => {
     const courseId = await seedDraftCourse();
 
     await expect(
-      revertLocalCourseDraftToVersion({ courseId, version: "9.9.9" }),
+      revertLocalCourseDraftToVersion({ courseId, version: "9.18" }),
     ).rejects.toThrow();
   });
 
@@ -387,8 +387,8 @@ describe("revertLocalCourseDraftToVersion", () => {
 describe("publishLocalCourseVersion", () => {
   it("publishes a version and lets a later publish supersede it", async () => {
     const courseId = await seedDraftCourse();
-    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
-    const second = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
+    const second = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     await publishLocalCourseVersion({ courseId, version: first.version });
     await publishLocalCourseVersion({ courseId, version: second.version });
@@ -404,7 +404,7 @@ describe("publishLocalCourseVersion", () => {
 
   it("rejects publishing a version that was already published", async () => {
     const courseId = await seedDraftCourse();
-    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     await publishLocalCourseVersion({ courseId, version: cut.version });
 
@@ -424,7 +424,7 @@ describe("publishLocalCourseVersion", () => {
     expect((await summary(courseId))?.lastCutAt).toBeNull();
     expect(Number.isNaN(Date.parse((await summary(courseId))?.updatedAt ?? ""))).toBe(false);
 
-    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     await publishLocalCourseVersion({ courseId, version: cut.version });
 
     expect((await summary(courseId))?.publishedVersion).toBe(cut.version);
@@ -436,7 +436,7 @@ describe("publishLocalCourseVersion", () => {
     const courseId = await seedDraftCourse();
 
     await expect(
-      publishLocalCourseVersion({ courseId, version: "9.9.9" }),
+      publishLocalCourseVersion({ courseId, version: "9.18" }),
     ).rejects.toThrow();
   });
 });
@@ -451,7 +451,7 @@ describe("getCourseVersionHistory", () => {
 
     expect((await history())?.draftMatchesCurrentVersion).toBe(false);
 
-    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     expect((await history())?.draftMatchesCurrentVersion).toBe(true);
 
     await updateLocalCourseDraftMetadata({
@@ -464,7 +464,7 @@ describe("getCourseVersionHistory", () => {
     });
     expect((await history())?.draftMatchesCurrentVersion).toBe(false);
 
-    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     await revertLocalCourseDraftToVersion({ courseId, version: first.version });
 
     expect((await history())?.currentDraftVersion).toBe(first.version);
@@ -475,7 +475,7 @@ describe("getCourseVersionHistory", () => {
     const courseId = await seedDraftCourse();
     const localCoursesRoot = await ensureLocalCoursesRoot();
 
-    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     const second = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     await publishLocalCourseVersion({ courseId, version: first.version });
 
@@ -653,7 +653,7 @@ describe("cut and revert with course assets", () => {
 
   it("puts only referenced assets into the cut version, hardlinked from the draft", async () => {
     const { courseId, draftDir, unusedAsset, usedAsset } = await seedCourseWithAssets();
-    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     const versionDir = path.join(path.dirname(draftDir), "versions", cut.version);
 
     expect(await fs.readdir(path.join(versionDir, "assets"))).toEqual([usedAsset]);
@@ -678,11 +678,11 @@ describe("cut and revert with course assets", () => {
   it("never breaks an older version that still uses a file the draft dropped", async () => {
     const { courseId, draftDir, usedAsset } = await seedCourseWithAssets();
     const lessonPath = await findLessonMarkdown(draftDir);
-    const first = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const first = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     // Stop referencing the image, then cut again: the draft drops it…
     await replaceFile(lessonPath, (await fs.readFile(lessonPath, "utf8")).replace(usedAsset, ""));
-    const second = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const second = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
 
     expect(second.removedAssets).toEqual([usedAsset]);
     expect(await fs.readdir(path.join(draftDir, "assets"))).toEqual([]);
@@ -699,7 +699,7 @@ describe("cut and revert with course assets", () => {
 
   it("does not report an unused asset as a change since the last cut", async () => {
     const { courseId } = await seedCourseWithAssets();
-    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     const localCoursesRoot = await ensureLocalCoursesRoot();
 
     const course = (await listCourses(localCoursesRoot)).find((entry) => entry.id === courseId);
@@ -711,7 +711,7 @@ describe("cut and revert with course assets", () => {
   // only them must count as a change since the last cut.
   it("reports a course.json-only metadata edit as a change since the last cut", async () => {
     const courseId = await seedDraftCourse();
-    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     const localCoursesRoot = await ensureLocalCoursesRoot();
     const badge = async () =>
       (await listCourses(localCoursesRoot)).find((entry) => entry.id === courseId)?.versionBadge;
@@ -732,7 +732,7 @@ describe("cut and revert with course assets", () => {
 
   it("hardlinks files back into the draft on revert", async () => {
     const { courseId, draftDir, usedAsset } = await seedCourseWithAssets();
-    const cut = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    const cut = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     const versionDir = path.join(path.dirname(draftDir), "versions", cut.version);
 
     await revertLocalCourseDraftToVersion({ courseId, version: cut.version });
@@ -851,7 +851,7 @@ describe("course ids", () => {
 
   it("rejects malformed ids before touching the filesystem", async () => {
     await expect(
-      cutLocalCourseVersion({ courseId: "../../escape", releaseType: "patch" }),
+      cutLocalCourseVersion({ courseId: "../../escape", releaseType: "minor" }),
     ).rejects.toThrow(/Invalid course id/);
   });
 });
@@ -931,9 +931,9 @@ describe("imported courses", () => {
     await migrateImportedCourse(courseId);
 
     expect((await fs.readdir(path.join(root, courseId))).sort()).toEqual(["release.json", "versions"]);
-    expect(await readImportedCourseVersion(courseId)).toBe("0.2.0");
+    expect(await readImportedCourseVersion(courseId)).toBe("0.2");
     const course = (await listCourses(root)).find((entry) => entry.id === courseId);
-    expect(course).toMatchObject({ distribution: "imported", version: "0.2.0" });
+    expect(course).toMatchObject({ distribution: "imported", version: "0.2" });
   });
 
   it("finishes a migration interrupted before course.json moved", async () => {
@@ -941,16 +941,16 @@ describe("imported courses", () => {
     const root = await ensureLocalCoursesRoot();
     const courseRoot = path.join(root, courseId);
     // As a crash would leave it: release.json written, some entries moved.
-    await fs.mkdir(path.join(courseRoot, "versions", "0.2.0"), { recursive: true });
-    await fs.writeFile(path.join(courseRoot, "release.json"), JSON.stringify({ publishedVersion: "0.2.0" }));
-    await fs.rename(path.join(courseRoot, "source.json"), path.join(courseRoot, "versions", "0.2.0", "source.json"));
+    await fs.mkdir(path.join(courseRoot, "versions", "0.2"), { recursive: true });
+    await fs.writeFile(path.join(courseRoot, "release.json"), JSON.stringify({ publishedVersion: "0.2" }));
+    await fs.rename(path.join(courseRoot, "source.json"), path.join(courseRoot, "versions", "0.2", "source.json"));
 
     forgetLocalCoursesRootSetupForTests();
     await ensureLocalCoursesRoot();
 
     expect((await fs.readdir(courseRoot)).sort()).toEqual(["release.json", "versions"]);
-    expect(await listFiles(path.join(courseRoot, "versions", "0.2.0"))).toContain("source.json");
-    expect((await listCourses(root)).find((entry) => entry.id === courseId)?.version).toBe("0.2.0");
+    expect(await listFiles(path.join(courseRoot, "versions", "0.2"))).toContain("source.json");
+    expect((await listCourses(root)).find((entry) => entry.id === courseId)?.version).toBe("0.2");
   });
 
   it("updates into a new versions/<v>, sharing unchanged files with the previous version", async () => {
@@ -958,7 +958,7 @@ describe("imported courses", () => {
     const root = await ensureLocalCoursesRoot();
     await migrateImportedCourse(courseId);
 
-    const result = await applyImportedCourseUpdate(expectation(courseId, "0.3.0"), mirrorFrom(drive["0.3.0"]));
+    const result = await applyImportedCourseUpdate(expectation(courseId, "0.3"), mirrorFrom(drive["0.3"]));
 
     // Only what differs is written: the edited lesson and the version's own files.
     const changed = result?.changedFiles.map((file) => file.key) ?? [];
@@ -966,20 +966,20 @@ describe("imported courses", () => {
     expect(changed).toEqual(
       expect.arrayContaining(["changelog.json", "course.json", "version-meta.json", expect.stringMatching(/\.md$/)]),
     );
-    expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.3.0", versions: ["0.3.0", "0.2.0"] });
-    expect((await listCourses(root)).find((entry) => entry.id === courseId)?.version).toBe("0.3.0");
+    expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.3", versions: ["0.3", "0.2"] });
+    expect((await listCourses(root)).find((entry) => entry.id === courseId)?.version).toBe("0.3");
 
     const versions = path.join(root, courseId, "versions");
-    const lesson = (await listFiles(path.join(versions, "0.2.0"))).find((file) => file.endsWith(".md"))!;
-    expect(await fs.readFile(path.join(versions, "0.2.0", lesson), "utf8")).not.toBe("Second version.");
-    expect(await fs.readFile(path.join(versions, "0.3.0", lesson), "utf8")).toBe("Second version.");
+    const lesson = (await listFiles(path.join(versions, "0.2"))).find((file) => file.endsWith(".md"))!;
+    expect(await fs.readFile(path.join(versions, "0.2", lesson), "utf8")).not.toBe("Second version.");
+    expect(await fs.readFile(path.join(versions, "0.3", lesson), "utf8")).toBe("Second version.");
 
-    const sectionFile = (await listFiles(path.join(versions, "0.2.0"))).find(
+    const sectionFile = (await listFiles(path.join(versions, "0.2"))).find(
       (file) => file.startsWith("section-") && file.endsWith(".json"),
     )!;
     const [previous, next] = await Promise.all([
-      fs.stat(path.join(versions, "0.2.0", sectionFile)),
-      fs.stat(path.join(versions, "0.3.0", sectionFile)),
+      fs.stat(path.join(versions, "0.2", sectionFile)),
+      fs.stat(path.join(versions, "0.3", sectionFile)),
     ]);
     expect(next.ino).toBe(previous.ino);
   });
@@ -993,7 +993,7 @@ describe("imported courses", () => {
     const before = await getCourseDiskUsage(root, courseId);
     expect(before!.sizeBytes).toBeGreaterThan(0);
 
-    await applyImportedCourseUpdate(expectation(courseId, "0.3.0"), mirrorFrom(drive["0.3.0"]));
+    await applyImportedCourseUpdate(expectation(courseId, "0.3"), mirrorFrom(drive["0.3"]));
     const after = await getCourseDiskUsage(root, courseId);
     const versions = path.join(root, courseId, "versions");
     const sumOf = async (dir: string) =>
@@ -1002,38 +1002,38 @@ describe("imported courses", () => {
         0,
       );
 
-    expect(after!.sizeBytes).toBe(await sumOf(path.join(versions, "0.3.0")));
+    expect(after!.sizeBytes).toBe(await sumOf(path.join(versions, "0.3")));
     // More than one version, but far less than two full copies: unchanged files are shared.
     expect(after!.onDeviceBytes).toBeGreaterThan(after!.sizeBytes);
-    expect(after!.onDeviceBytes).toBeLessThan((await sumOf(path.join(versions, "0.2.0"))) + after!.sizeBytes);
+    expect(after!.onDeviceBytes).toBeLessThan((await sumOf(path.join(versions, "0.2"))) + after!.sizeBytes);
     expect(await getCourseDiskUsage(root, "missing0course00")).toBeNull();
   });
 
   it("goes back without downloading, and returns to a kept version without downloading either", async () => {
     const { courseId, drive } = await seedImportedCourse();
     await migrateImportedCourse(courseId);
-    await applyImportedCourseUpdate(expectation(courseId, "0.3.0"), mirrorFrom(drive["0.3.0"]));
+    await applyImportedCourseUpdate(expectation(courseId, "0.3"), mirrorFrom(drive["0.3"]));
 
-    await switchImportedCourseVersion(courseId, "0.2.0");
-    expect(await readImportedCourseVersion(courseId)).toBe("0.2.0");
+    await switchImportedCourseVersion(courseId, "0.2");
+    expect(await readImportedCourseVersion(courseId)).toBe("0.2");
 
     const download = vi.fn();
-    await expect(applyImportedCourseUpdate(expectation(courseId, "0.3.0"), download)).resolves.toBeNull();
+    await expect(applyImportedCourseUpdate(expectation(courseId, "0.3"), download)).resolves.toBeNull();
     expect(download).not.toHaveBeenCalled();
-    expect(await readImportedCourseVersion(courseId)).toBe("0.3.0");
+    expect(await readImportedCourseVersion(courseId)).toBe("0.3");
 
-    await expect(switchImportedCourseVersion(courseId, "9.9.9")).rejects.toThrow(/isn't on this device/);
+    await expect(switchImportedCourseVersion(courseId, "9.18")).rejects.toThrow(/isn't on this device/);
   });
 
   it("keeps only as many previous versions as the setting allows", async () => {
     const { courseId, drive } = await seedImportedCourse();
     await migrateImportedCourse(courseId);
 
-    await applyImportedCourseUpdate(expectation(courseId, "0.3.0"), mirrorFrom(drive["0.3.0"]), {
+    await applyImportedCourseUpdate(expectation(courseId, "0.3"), mirrorFrom(drive["0.3"]), {
       previousToKeep: 0,
     });
 
-    expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.3.0", versions: ["0.3.0"] });
+    expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.3", versions: ["0.3"] });
   });
 
   it("leaves the course as it was when the download or validation fails", async () => {
@@ -1042,15 +1042,15 @@ describe("imported courses", () => {
     await migrateImportedCourse(courseId);
 
     await expect(
-      applyImportedCourseUpdate(expectation(courseId, "0.3.0"), async () => {
+      applyImportedCourseUpdate(expectation(courseId, "0.3"), async () => {
         throw new Error("offline");
       }),
     ).rejects.toThrow("offline");
     await expect(
-      applyImportedCourseUpdate({ ...expectation(courseId, "0.3.0"), publisherId: "someone-else" }, mirrorFrom(drive["0.3.0"])),
+      applyImportedCourseUpdate({ ...expectation(courseId, "0.3"), publisherId: "someone-else" }, mirrorFrom(drive["0.3"])),
     ).rejects.toThrow(/different source/);
 
-    expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.2.0", versions: ["0.2.0"] });
+    expect(await listImportedCourseVersions(courseId)).toEqual({ current: "0.2", versions: ["0.2"] });
     expect((await fs.readdir(path.join(root, courseId, "versions"))).filter((name) => name.startsWith("."))).toEqual([]);
   });
 
@@ -1065,7 +1065,7 @@ describe("imported courses", () => {
 
     expect(vi.mocked(shell.openPath).mock.calls.map(([target]) => target)).toEqual([
       path.join(root, ownCourseId, "draft"),
-      path.join(root, courseId, "versions", "0.2.0"),
+      path.join(root, courseId, "versions", "0.2"),
     ]);
   });
 
@@ -1139,7 +1139,7 @@ describe("courses brought back with a restored identity", () => {
   it("refuses a download that isn't the version expected", async () => {
     const { courseId, stagingPath } = await seedRecoveredDownload();
 
-    await expect(landRecoveredCourse({ courseId, stagingPath, version: "9.9.9" })).rejects.toThrow(/isn't the one expected/);
+    await expect(landRecoveredCourse({ courseId, stagingPath, version: "9.18" })).rejects.toThrow(/isn't the one expected/);
     await expect(landRecoveredCourse({ courseId, stagingPath, version: "../x" })).rejects.toThrow();
   });
 
@@ -1219,7 +1219,7 @@ describe("section intro", () => {
       body,
     );
 
-    await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+    await cutLocalCourseVersion({ courseId, releaseType: "minor" });
     expect((await section()).introInCommittedVersion).toBe(true);
 
     await removeLocalCourseSectionIntro({ courseId, sectionId });
@@ -1231,7 +1231,7 @@ describe("section intro", () => {
 
     await updateLocalCourseSectionIntro({ courseId, locales: { en: { body: "Welcome." } }, sectionId });
 
-    await expect(cutLocalCourseVersion({ courseId, releaseType: "patch" })).rejects.toThrow(/does not contain any/);
+    await expect(cutLocalCourseVersion({ courseId, releaseType: "minor" })).rejects.toThrow(/does not contain any/);
   });
 
   it("counts a file used only in an intro as used", async () => {

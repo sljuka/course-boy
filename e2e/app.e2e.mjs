@@ -376,9 +376,9 @@ describe('course assets', () => {
   it("serves a byte range of an imported course's video from its current version", async () => {
     const importedId = 'e2erangetestaaaa'
     const courseRoot = path.join(DATA_DIR, 'courses', importedId)
-    const assetsDir = path.join(courseRoot, 'versions', '1.0.0', 'assets')
+    const assetsDir = path.join(courseRoot, 'versions', '1.0', 'assets')
     fs.mkdirSync(assetsDir, { recursive: true })
-    fs.writeFileSync(path.join(courseRoot, 'release.json'), JSON.stringify({ publishedVersion: '1.0.0' }))
+    fs.writeFileSync(path.join(courseRoot, 'release.json'), JSON.stringify({ publishedVersion: '1.0' }))
     fs.writeFileSync(path.join(assetsDir, 'clip.mov'), Buffer.from('0123456789'))
 
     const result = await harness.page.evaluate(
@@ -425,12 +425,12 @@ describe('course version badge', () => {
       (id) => window.courses.cutVersion({ courseId: id, releaseType: 'minor' }),
       probeCourseId,
     )
-    expect(result.version).toBe('0.2.0')
+    expect(result.version).toBe('0.2')
 
     const courses = await harness.page.evaluate(() => window.courses.list('en'))
     const course = courses.find((c) => c.id === probeCourseId)
 
-    expect(course.versionBadge).toEqual({ kind: 'version', version: '0.2.0' })
+    expect(course.versionBadge).toEqual({ kind: 'version', version: '0.2' })
   })
 
   it('shows "draft" again once real content changes past the last cut', async () => {
@@ -1139,9 +1139,9 @@ describe('revert confirmation', () => {
       })
       const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
       await window.courses.createLesson({ courseId, sectionId, title: 'First' })
-      const first = await window.courses.cutVersion({ courseId, releaseType: 'patch' })
+      const first = await window.courses.cutVersion({ courseId, releaseType: 'minor' })
       await window.courses.createLesson({ courseId, sectionId, title: 'Second' })
-      const second = await window.courses.cutVersion({ courseId, releaseType: 'patch' })
+      const second = await window.courses.cutVersion({ courseId, releaseType: 'minor' })
       // An uncommitted change on top of the second version.
       await window.courses.updateDraftMetadata({
         contentRating: 'all-ages',
@@ -1236,7 +1236,7 @@ describe('release notes', () => {
       })
       const { sectionId } = await window.courses.createSection({ courseId, title: 'Numbers' })
       const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Addition' })
-      const first = await window.courses.cutVersion({ courseId, releaseType: 'patch' })
+      const first = await window.courses.cutVersion({ courseId, releaseType: 'minor' })
       await window.courses.createLesson({ courseId, sectionId, title: 'Subtraction' })
       // A lesson that refers to a file that doesn't exist.
       await window.courses.updateLessonContent({
@@ -1302,7 +1302,7 @@ describe('discard changes', () => {
       })
       const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
       await window.courses.createLesson({ courseId, sectionId, title: 'Kept' })
-      const cut = await window.courses.cutVersion({ courseId, releaseType: 'patch' })
+      const cut = await window.courses.cutVersion({ courseId, releaseType: 'minor' })
       await window.courses.createLesson({ courseId, sectionId, title: 'Thrown away' })
       return { courseId, version: cut.version }
     })

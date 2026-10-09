@@ -13,7 +13,7 @@ function setup({
   published = [] as string[],
   initial = { followed: {}, published: {} } as CourseSharingState,
   worker: workerOverrides = {} as Partial<CourseSharingWorker>,
-  installedVersion = '0.1.0',
+  installedVersion = '0.1',
 } = {}) {
   let state = initial
   let hasConsent = consent
@@ -277,9 +277,9 @@ describe('course sharing: removing a course', () => {
 const followed = { driveKey: 'drive-b', followedSince: '', publisherId: 'teacher' }
 const remote = (version: string, overrides = {}) => ({
   changelog: [
-    { changes: [], cutAt: '', recommended: true, version: '0.2.0' },
-    { changes: [], cutAt: '', version: '0.3.0' },
-    { changes: [], cutAt: '', version: '1.0.0' },
+    { changes: [], cutAt: '', recommended: true, version: '0.2' },
+    { changes: [], cutAt: '', version: '0.3' },
+    { changes: [], cutAt: '', version: '1.0' },
   ].filter((entry) => entry.version <= version).reverse(),
   courseId: 'course-b',
   source: { driveKey: 'drive-b', publisher: { id: 'teacher' } },
@@ -289,42 +289,42 @@ const remote = (version: string, overrides = {}) => ({
 
 describe('evaluateRemoteVersion', () => {
   it('offers a newer version with the release notes of every version the student would skip', () => {
-    const verdict = evaluateRemoteVersion('course-b', followed, remote('0.3.0'), '0.1.0')
+    const verdict = evaluateRemoteVersion('course-b', followed, remote('0.3'), '0.1')
 
-    expect(verdict).toMatchObject({ kind: 'update', update: { isMajor: false, version: '0.3.0' } })
-    expect(verdict.kind === 'update' && verdict.update.changelog.map((entry) => entry.version)).toEqual(['0.3.0', '0.2.0'])
+    expect(verdict).toMatchObject({ kind: 'update', update: { isMajor: false, version: '0.3' } })
+    expect(verdict.kind === 'update' && verdict.update.changelog.map((entry) => entry.version)).toEqual(['0.3', '0.2'])
   })
 
   it('is recommended if any skipped version fixes mistakes, not only the newest', () => {
-    expect(evaluateRemoteVersion('course-b', followed, remote('0.3.0'), '0.1.0')).toMatchObject({
+    expect(evaluateRemoteVersion('course-b', followed, remote('0.3'), '0.1')).toMatchObject({
       update: { recommended: true },
     })
-    expect(evaluateRemoteVersion('course-b', followed, remote('0.3.0'), '0.2.0')).toMatchObject({
+    expect(evaluateRemoteVersion('course-b', followed, remote('0.3'), '0.2')).toMatchObject({
       update: { recommended: false },
     })
   })
 
   it('marks a major version bump as a big update', () => {
-    expect(evaluateRemoteVersion('course-b', followed, remote('1.0.0'), '0.3.0')).toMatchObject({
+    expect(evaluateRemoteVersion('course-b', followed, remote('1.0'), '0.3')).toMatchObject({
       update: { isMajor: true },
     })
   })
 
   it('ignores the same or an older version, another course, or a version it cannot read', () => {
-    expect(evaluateRemoteVersion('course-b', followed, remote('0.2.0'), '0.2.0')).toEqual({ kind: 'none' })
-    expect(evaluateRemoteVersion('course-b', followed, remote('0.2.0'), '0.3.0')).toEqual({ kind: 'none' })
-    expect(evaluateRemoteVersion('course-b', followed, remote('0.3.0', { courseId: 'other' }), '0.1.0')).toEqual({
+    expect(evaluateRemoteVersion('course-b', followed, remote('0.2'), '0.2')).toEqual({ kind: 'none' })
+    expect(evaluateRemoteVersion('course-b', followed, remote('0.2'), '0.3')).toEqual({ kind: 'none' })
+    expect(evaluateRemoteVersion('course-b', followed, remote('0.3', { courseId: 'other' }), '0.1')).toEqual({
       kind: 'none',
     })
-    expect(evaluateRemoteVersion('course-b', followed, remote('latest'), '0.1.0')).toEqual({ kind: 'none' })
+    expect(evaluateRemoteVersion('course-b', followed, remote('latest'), '0.1')).toEqual({ kind: 'none' })
   })
 
   it('refuses a newer version that names another source than the one recorded at import', () => {
-    const otherDrive = remote('0.3.0', { source: { driveKey: 'drive-x', publisher: { id: 'teacher' } } })
-    const otherPublisher = remote('0.3.0', { source: { driveKey: 'drive-b', publisher: { id: 'someone' } } })
+    const otherDrive = remote('0.3', { source: { driveKey: 'drive-x', publisher: { id: 'teacher' } } })
+    const otherPublisher = remote('0.3', { source: { driveKey: 'drive-b', publisher: { id: 'someone' } } })
 
-    expect(evaluateRemoteVersion('course-b', followed, otherDrive, '0.1.0')).toEqual({ kind: 'refused', version: '0.3.0' })
-    expect(evaluateRemoteVersion('course-b', followed, otherPublisher, '0.1.0')).toEqual({ kind: 'refused', version: '0.3.0' })
+    expect(evaluateRemoteVersion('course-b', followed, otherDrive, '0.1')).toEqual({ kind: 'refused', version: '0.3' })
+    expect(evaluateRemoteVersion('course-b', followed, otherPublisher, '0.1')).toEqual({ kind: 'refused', version: '0.3' })
   })
 })
 
@@ -335,17 +335,17 @@ describe('describeUpdate: "Finish on this version"', () => {
   })
 
   it('shows an update prominently until the student finishes on their version', () => {
-    expect(describeUpdate(pending('0.3.0', false))?.visibility).toBe('prominent')
+    expect(describeUpdate(pending('0.3', false))?.visibility).toBe('prominent')
     expect(
-      describeUpdate({ ...pending('0.3.0', false), dismissedUpdateVersion: '0.3.0', finishOnVersion: true })?.visibility,
+      describeUpdate({ ...pending('0.3', false), dismissedUpdateVersion: '0.3', finishOnVersion: true })?.visibility,
     ).toBe('quiet')
   })
 
   it('still shows a recommended update once more, and a newer recommended one again', () => {
-    const finished = { dismissedUpdateVersion: '0.2.0', finishOnVersion: true }
+    const finished = { dismissedUpdateVersion: '0.2', finishOnVersion: true }
 
-    expect(describeUpdate({ ...pending('0.3.0', true), ...finished })?.visibility).toBe('prominent')
-    expect(describeUpdate({ ...pending('0.3.0', true), ...finished, dismissedUpdateVersion: '0.3.0' })?.visibility).toBe(
+    expect(describeUpdate({ ...pending('0.3', true), ...finished })?.visibility).toBe('prominent')
+    expect(describeUpdate({ ...pending('0.3', true), ...finished, dismissedUpdateVersion: '0.3' })?.visibility).toBe(
       'quiet',
     )
   })
@@ -361,17 +361,17 @@ describe('course sharing: updates', () => {
     const downloadUpdate = vi.fn(async () => ({ changedFiles: [{ key: '/section/lesson.md', op: 'change' }] }))
     const { sharing, state } = setup({
       initial: imported,
-      worker: { checkUpdate: vi.fn(async () => remote('0.3.0')), downloadUpdate },
+      worker: { checkUpdate: vi.fn(async () => remote('0.3')), downloadUpdate },
     })
 
     sharing.onDriveChanged('drive-b')
     await flush()
-    expect(sharing.getInfo('course-b').update).toMatchObject({ kind: 'recommended', version: '0.3.0' })
+    expect(sharing.getInfo('course-b').update).toMatchObject({ kind: 'recommended', version: '0.3' })
 
     sharing.finishOnVersion('course-b')
     await expect(sharing.applyUpdate('course-b', 'transfer-1')).resolves.toEqual({
       changedFiles: ['/section/lesson.md'],
-      version: '0.3.0',
+      version: '0.3',
     })
     expect(downloadUpdate).toHaveBeenCalledWith('drive-b', '/staging', 'transfer-1')
     expect(state().followed['course-b']).toMatchObject({ finishOnVersion: false, pendingUpdate: null })
@@ -382,7 +382,7 @@ describe('course sharing: updates', () => {
     const { sharing, state } = setup({
       initial: imported,
       worker: {
-        checkUpdate: vi.fn(async () => remote('0.3.0')),
+        checkUpdate: vi.fn(async () => remote('0.3')),
         downloadUpdate: vi.fn(async () => {
           throw cancelled
         }),
@@ -393,7 +393,7 @@ describe('course sharing: updates', () => {
     })
 
     await expect(sharing.applyUpdate('course-b', 'transfer-1')).resolves.toEqual({ cancelled: true })
-    expect(state().followed['course-b'].pendingUpdate).toMatchObject({ version: '0.3.0' })
+    expect(state().followed['course-b'].pendingUpdate).toMatchObject({ version: '0.3' })
 
     await expect(sharing.importCourse('drive-x', 'transfer-2')).resolves.toEqual({ cancelled: true })
     expect(Object.keys(state().followed)).toEqual(['course-b'])
@@ -403,13 +403,13 @@ describe('course sharing: updates', () => {
     const { sharing } = setup({
       initial: imported,
       worker: {
-        checkUpdate: vi.fn(async () => remote('0.3.0', { source: { driveKey: 'drive-x', publisher: { id: 'x' } } })),
+        checkUpdate: vi.fn(async () => remote('0.3', { source: { driveKey: 'drive-x', publisher: { id: 'x' } } })),
       },
     })
 
     await sharing.checkForUpdate('course-b')
 
-    expect(sharing.getInfo('course-b')).toMatchObject({ refusedUpdate: { version: '0.3.0' }, update: null })
+    expect(sharing.getInfo('course-b')).toMatchObject({ refusedUpdate: { version: '0.3' }, update: null })
     await expect(sharing.applyUpdate('course-b')).rejects.toThrow(/no update/)
   })
 
@@ -419,26 +419,26 @@ describe('course sharing: updates', () => {
       .fn()
       // The startup check: started before the teacher was connected, answers "nothing new".
       .mockImplementationOnce(() => new Promise((resolve) => (finishFirst = resolve)))
-      .mockResolvedValue(remote('0.3.0'))
+      .mockResolvedValue(remote('0.3'))
     const { sharing } = setup({ initial: imported, worker: { checkUpdate } })
 
     const startupCheck = sharing.checkForUpdate('course-b')
     sharing.onDriveChanged('drive-b') // arrives while that check is running
     await flush() // let the first check reach the worker
-    finishFirst(remote('0.1.0'))
+    finishFirst(remote('0.1'))
     await startupCheck
 
     expect(checkUpdate).toHaveBeenCalledTimes(2)
-    expect(sharing.getInfo('course-b').update?.version).toBe('0.3.0')
+    expect(sharing.getInfo('course-b').update?.version).toBe('0.3')
   })
 
   it('looks for updates to imported courses at startup', async () => {
-    const checkUpdate = vi.fn(async () => remote('0.2.0'))
+    const checkUpdate = vi.fn(async () => remote('0.2'))
     const { sharing } = setup({ initial: imported, worker: { checkUpdate } })
 
     await sharing.start()
 
     expect(checkUpdate).toHaveBeenCalledWith('drive-b')
-    expect(sharing.listUpdates()).toMatchObject({ 'course-b': { version: '0.2.0' } })
+    expect(sharing.listUpdates()).toMatchObject({ 'course-b': { version: '0.2' } })
   })
 })

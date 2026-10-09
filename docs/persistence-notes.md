@@ -262,7 +262,7 @@ see `CourseVersionBadge` in `src/lib/course-package.ts` and
 This is a real content comparison, not a flag someone remembers to set: it
 hashes every file under `draft/` (minus assets nothing in the draft references, which
 a cut leaves out of the version too) and compares against the file hashes already
-stored in the latest `versions/<x.y.z>/version-meta.json` (written by
+stored in the latest `versions/<x.y>/version-meta.json` (written by
 `cutLocalCourseVersion` for its own hardlink-dedup optimization — reused here
 for a second purpose). `version-meta.json` and `changelog.json` are excluded (they only
 ever exist inside a `versions/` snapshot, never in `draft/`; see contracts §5). `course.json` is compared
@@ -286,7 +286,7 @@ To make file-backed drafts safe:
 1. Use atomic writes.
 2. Validate content before replacing files.
 3. Add autosave.
-4. Keep local snapshots or revision history for drafts. **Implemented**: `courses/<id>/versions/<major.minor.patch>/` holds immutable snapshots created by "cutting a version" (`electron/course-paths.ts`'s `cutLocalCourseVersion`); a draft can revert to a previous cut (`revertLocalCourseDraftToVersion`; the next cut still counts up from the newest version, so reverting 0.1.3 to 0.1.1 and cutting a patch gives 0.1.4), and one cut version can be marked the published one via a `release.json` pointer (`publishLocalCourseVersion`) — see the version-history UI on the course details page. Files are hardlinked rather than duplicated (`copyDirectoryWithDedup`): a cut links each file from the previous version when unchanged since then, otherwise from the draft, and a revert links from the version back into the draft. A cut version holds only the assets its content references, and the cut then deletes the unused ones from the draft (see docs/contracts.md §5); the cut dialog warns about them first.
+4. Keep local snapshots or revision history for drafts. **Implemented**: `courses/<id>/versions/<major.minor>/` holds immutable snapshots created by "cutting a version" (`electron/course-paths.ts`'s `cutLocalCourseVersion`). A version is two numbers (`src/lib/course-versioning.ts`, since 2026-10-09; packages with the earlier three-number versions no longer load): an update counts up the second, a new edition the first. A draft can revert to a previous cut (`revertLocalCourseDraftToVersion`; the next cut still counts up from the newest version, so reverting 0.4 to 0.2 and cutting an update gives 0.5), and one cut version can be marked the published one via a `release.json` pointer (`publishLocalCourseVersion`) — see the version-history UI on the course details page. Files are hardlinked rather than duplicated (`copyDirectoryWithDedup`): a cut links each file from the previous version when unchanged since then, otherwise from the draft, and a revert links from the version back into the draft. A cut version holds only the assets its content references, and the cut then deletes the unused ones from the draft (see docs/contracts.md §5); the cut dialog warns about them first.
 5. Store recovery metadata in the database.
 
 ## Write safety guidelines

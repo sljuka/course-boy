@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// Shows a course's code: after Publish ("Published 0.0.2") and from the course
+// Shows a course's code: after Publish ("Published 0.2") and from the course
 // page ("Share"), which also says which version the code gives (`version`).
 export function CourseCodeDialog({
   courseId,

@@ -1,18 +1,31 @@
-export type CourseVersionReleaseType = "initial" | "major" | "minor" | "patch";
+// A course version is two numbers, `major.minor` (2026-10-09; earlier builds
+// wrote a third, patch number, which no longer loads):
+// - an update counts up the second number (1.3 → 1.4);
+// - a new edition counts up the first (1.3 → 2.0). Students are shown it as a
+//   big change, with its notes (course-sharing.ts: `isMajor`).
+// Whether a version fixes mistakes is its own flag (`recommended` in the
+// changelog), not part of the number.
+export type CourseVersionReleaseType = "initial" | "major" | "minor";
 
 export type CourseVersionInfo = {
   major: number;
   minor: number;
-  patch: number;
   releaseType: CourseVersionReleaseType;
 };
 
-export function formatCourseVersion(versionInfo: CourseVersionInfo) {
-  return `${versionInfo.major}.${versionInfo.minor}.${versionInfo.patch}`;
+const COURSE_VERSION_PATTERN = /^(\d+)\.(\d+)$/;
+
+export function formatCourseVersion(versionInfo: Pick<CourseVersionInfo, "major" | "minor">) {
+  return `${versionInfo.major}.${versionInfo.minor}`;
+}
+
+// Whether `value` is a version number (it can become a folder name).
+export function isCourseVersion(value: unknown): value is string {
+  return typeof value === "string" && COURSE_VERSION_PATTERN.test(value);
 }
 
 export function parseCourseVersion(version: string): CourseVersionInfo {
-  const match = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
+  const match = version.match(COURSE_VERSION_PATTERN);
 
   if (!match) {
     throw new Error(`Invalid course version "${version}"`);
@@ -21,7 +34,6 @@ export function parseCourseVersion(version: string): CourseVersionInfo {
   return {
     major: Number.parseInt(match[1], 10),
     minor: Number.parseInt(match[2], 10),
-    patch: Number.parseInt(match[3], 10),
     releaseType: "initial",
   };
 }
@@ -32,47 +44,21 @@ export function bumpCourseVersion(
 ): CourseVersionInfo {
   switch (releaseType) {
     case "major":
-      return {
-        major: versionInfo.major + 1,
-        minor: 0,
-        patch: 0,
-        releaseType,
-      };
+      return { major: versionInfo.major + 1, minor: 0, releaseType };
     case "minor":
-      return {
-        major: versionInfo.major,
-        minor: versionInfo.minor + 1,
-        patch: 0,
-        releaseType,
-      };
-    case "patch":
-      return {
-        major: versionInfo.major,
-        minor: versionInfo.minor,
-        patch: versionInfo.patch + 1,
-        releaseType,
-      };
+      return { major: versionInfo.major, minor: versionInfo.minor + 1, releaseType };
   }
 }
 
 export function createInitialCourseVersion(): CourseVersionInfo {
-  return {
-    major: 0,
-    minor: 1,
-    patch: 0,
-    releaseType: "initial",
-  };
+  return { major: 0, minor: 1, releaseType: "initial" };
 }
 
 export function compareCourseVersions(
-  left: CourseVersionInfo,
-  right: CourseVersionInfo,
+  left: Pick<CourseVersionInfo, "major" | "minor">,
+  right: Pick<CourseVersionInfo, "major" | "minor">,
 ): number {
-  return (
-    left.major - right.major ||
-    left.minor - right.minor ||
-    left.patch - right.patch
-  );
+  return left.major - right.major || left.minor - right.minor;
 }
 
 // The version a cut with `releaseType` creates: counted up from the newer of

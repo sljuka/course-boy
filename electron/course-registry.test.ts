@@ -631,7 +631,7 @@ describe("course distribution (derived from the folder layout, not course.json)"
       slug: id,
       status,
       supportedLocales: ["en"],
-      version: "0.1.0",
+      version: "0.1",
     };
   }
 

@@ -48,7 +48,7 @@ async function seedCutCourse() {
   });
   const { sectionId } = await createLocalCourseSection({ courseId, title: "Basics" });
   const { lessonId } = await createLocalCourseLesson({ courseId, sectionId, title: "Addition" });
-  const { version } = await cutLocalCourseVersion({ courseId, releaseType: "patch" });
+  const { version } = await cutLocalCourseVersion({ courseId, releaseType: "minor" });
   const courseRoot = path.join(await ensureLocalCoursesRoot(), courseId);
 
   return {
@@ -122,7 +122,7 @@ describe("computeCourseChanges", () => {
       { kind: "added", section: "Basics", target: "test", title: "Final quiz" },
     ]);
 
-    await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "patch" });
+    await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "minor" });
     const courseRoot = path.dirname(course.draftDir);
     const testFile = path.join(course.draftDir, (await fs.readdir(course.draftDir)).find((name) => name.startsWith("section-"))!, `${testId}.json`);
     const test = JSON.parse(await fs.readFile(testFile, "utf8"));
@@ -238,15 +238,15 @@ describe("section intro changes (SLJ-45)", () => {
     expect(await course.changes()).toEqual([{ kind: "added", section: "Basics", target: "section-intro" }]);
 
     // Committed, then edited.
-    await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "patch" });
+    await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "minor" });
     const courseRoot = path.join(await ensureLocalCoursesRoot(), course.courseId);
     const changesSince = (version: string) =>
       computeCourseChanges(path.join(courseRoot, "draft"), path.join(courseRoot, "versions", version));
     await writeIntro("[matko-block]: <> (markdown)\nWelcome back.");
-    expect(await changesSince("0.1.2")).toEqual([{ kind: "edited", section: "Basics", target: "section-intro" }]);
+    expect(await changesSince("0.3")).toEqual([{ kind: "edited", section: "Basics", target: "section-intro" }]);
 
     await removeLocalCourseSectionIntro({ courseId: course.courseId, sectionId: course.sectionId });
-    expect(await changesSince("0.1.2")).toEqual([{ kind: "removed", section: "Basics", target: "section-intro" }]);
+    expect(await changesSince("0.3")).toEqual([{ kind: "removed", section: "Basics", target: "section-intro" }]);
   });
 
   it("says a missing file is used in the section's intro", async () => {
@@ -321,7 +321,7 @@ describe("exercise media", () => {
       sectionId: course.sectionId,
       test: testWithMedia(filename),
     });
-    const { version } = await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "patch" });
+    const { version } = await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "minor" });
 
     await expect(fs.access(path.join(path.dirname(course.draftDir), "versions", version, "assets", filename))).resolves.toBeUndefined();
     await expect(fs.access(path.join(course.draftDir, "assets", filename))).resolves.toBeUndefined();

@@ -30,6 +30,7 @@ import { isSerbianScriptSetting } from "../src/lib/serbian-script";
 import {
   compareCourseVersions,
   formatCourseVersion,
+  isCourseVersion,
   parseCourseVersion,
   type CourseVersionInfo,
   type CourseVersionReleaseType,
@@ -120,8 +121,7 @@ function isCourseVersionReleaseType(
   return (
     value === "initial" ||
     value === "major" ||
-    value === "minor" ||
-    value === "patch"
+    value === "minor"
   );
 }
 
@@ -139,9 +139,8 @@ function isCourseVersionInfo(value: unknown): value is CourseVersionInfo {
     typeof versionInfo.minor === "number" &&
     Number.isInteger(versionInfo.minor) &&
     versionInfo.minor >= 0 &&
-    typeof versionInfo.patch === "number" &&
-    Number.isInteger(versionInfo.patch) &&
-    versionInfo.patch >= 0 &&
+    // Written by builds that had a third (patch) number: not loaded.
+    !("patch" in versionInfo) &&
     isCourseVersionReleaseType(versionInfo.releaseType)
   );
 }
@@ -155,7 +154,7 @@ function isRawCourseManifest(value: unknown): value is RawCourseManifest {
 
   return (
     typeof manifest.id === "string" &&
-    typeof manifest.version === "string" &&
+    isCourseVersion(manifest.version) &&
     (typeof manifest.versionInfo === "undefined" ||
       isCourseVersionInfo(manifest.versionInfo)) &&
     typeof manifest.builtin === "boolean" &&
@@ -438,9 +437,9 @@ export function resolveCourseDistribution(
 // - the root (the bundled seed, and an imported course not migrated yet).
 export async function resolvePackageDirectoryCandidates(courseRootPath: string): Promise<string[]> {
   const { publishedVersion } = await readCourseReleaseState(courseRootPath);
-  // Only a plain x.y.z becomes a path segment.
+  // Only a real version number becomes a path segment.
   const versionPath =
-    publishedVersion && /^\d+\.\d+\.\d+$/.test(publishedVersion)
+    isCourseVersion(publishedVersion)
       ? [path.join(courseRootPath, "versions", publishedVersion)]
       : [];
 
@@ -1124,7 +1123,7 @@ async function hashDirectoryContents(
 
 // Excluded from the draft-vs-cut-version file-hash comparison:
 // `version-meta.json` and `changelog.json` only exist inside
-// `versions/<x.y.z>/`, never in `draft/`; `course.json` is compared separately by
+// `versions/<x.y>/`, never in `draft/`; `course.json` is compared separately by
 // `areManifestContentsEqual`, because it mixes content (titles, languages,
 // tags) with bookkeeping every draft write or cut changes.
 const VERSION_BADGE_COMPARISON_EXCLUDED_FILES = new Set([
@@ -1420,10 +1419,10 @@ async function readCourseVersionMeta(
       cutAt: typeof parsed.cutAt === "string" ? parsed.cutAt : "",
       releaseType: isCourseVersionReleaseType(parsed.releaseType)
         ? parsed.releaseType
-        : "patch",
+        : "minor",
     };
   } catch {
-    return { cutAt: "", releaseType: "patch" };
+    return { cutAt: "", releaseType: "minor" };
   }
 }
 

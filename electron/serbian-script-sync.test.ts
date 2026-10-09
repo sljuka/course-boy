@@ -136,7 +136,7 @@ describe("generating one Serbian script from the other (SLJ-17)", () => {
     );
 
     // Both scripts are on disk, so a cut version needs no generator.
-    const { version } = await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "patch" });
+    const { version } = await cutLocalCourseVersion({ courseId: course.courseId, releaseType: "minor" });
     const versionBody = await fs.readFile(
       path.join(
         path.dirname(course.draftDir),

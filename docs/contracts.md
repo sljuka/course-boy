@@ -170,6 +170,15 @@ courses/<course-id>/draft/<section>/...
 courses/<course-id>/draft/assets/<filename>
 ```
 
+**Version numbers are two numbers, `major.minor` (2026-10-09).** `course.json`'s
+`version` (and `versionInfo` `{ major, minor, releaseType }`), the `versions/<x.y>/`
+folder names, `release.json`'s `publishedVersion` and changelog entries all use it
+(`src/lib/course-versioning.ts`). An update counts up the second number, a new edition
+the first, which students are shown as a big change (`isMajor` in `course-sharing.ts`).
+"Fixes mistakes" is the changelog's `recommended` flag, not a number. Packages written
+before this with three numbers (`1.2.3`, or a `versionInfo.patch`) are refused as invalid,
+with no migration: there were no users to migrate.
+
 **Section summary and intro (SLJ-45).** A section's `section.json` `locales[<lang>].description`
 is its **summary**: one line, at most 128 characters counted as people see them
 (`countCharacters` in [src/lib/section-summary.ts](../src/lib/section-summary.ts:1)),

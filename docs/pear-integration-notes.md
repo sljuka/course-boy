@@ -372,7 +372,7 @@ only publishers ever touch, not an onboarding step every user sees.
    **Sources from a specific published version, not the live draft** — the course
    versioning feature (cut/revert/publish, commit `7979537`) landed shortly before this
    phase and gives a course a real immutable snapshot to share instead. `publishCourse`/
-   `publishGatedCourse` resolve `courses/<id>/versions/<x.y.z>/` via a new
+   `publishGatedCourse` resolve `courses/<id>/versions/<x.y>/` via a new
    `getPublishedCoursePackagePath` (defaults to `release.json`'s `publishedVersion`) or a
    specific version the Share dialog's picker requests — the publisher can share any
    version that was ever published, defaulting to latest, exactly as asked. Nothing else
@@ -806,3 +806,91 @@ both:
   - Passing a key pair when a core is *created* silently stores the secret again. Add
     a regression test that publishes and then scans the store directory for the secret,
     as this spike did.
+
+## Courses owned by two publishers (SLJ-11 spike, 2026-10-09)
+
+Can two publishers own one course together, so that a version goes online only when
+both sign it? **Verdict: yes, with the libraries already installed** (Hypercore 11,
+Hyperdrive 13, Corestore 7). Proven with throwaway Node scripts, not in the app.
+
+### How it works
+
+- A Hypercore's **manifest** can list several signers and a **quorum** (how many must
+  sign). The core's key is a hash of the manifest, so the course's code comes from the
+  publishers' public keys, their order, and the quorum alone. Each publisher works it out
+  independently, with no secret and no message exchange.
+- Hyperdrive derives its blobs core's manifest from the main core's (same signers, own
+  namespaces: `Hyperdrive.getContentManifest`). A drive with several signers needs no
+  special handling.
+- **Publishing a version:**
+  1. One publisher writes the version into a *source* drive of their own (an ordinary
+     single-key drive).
+  2. The others replicate it, review it, and each sign the source cores' tree hash at
+     the agreed lengths, bound to the shared cores' keys (`caps.treeSignable(sharedKey,
+     treeHash, length, fork)`). That is two 64-byte signatures per publisher: one for the
+     main core, one for blobs.
+  3. Whoever holds the blocks copies them into a named (draft) session of each shared
+     core and commits it with the assembled signatures
+     (`core.commit(draft, { signature })`).
+- **Students** follow the shared drive by its code like any other. They don't need to
+  know it's co-published. They can see it from the manifest (signers, quorum).
+
+### What the spike proved (2 of 2)
+
+- Both publishers derive the same code. A different quorum or signer order gives a
+  different code.
+- Neither publisher's key alone can write the shared core.
+- A commit with one signature of two is refused (`INVALID_SIGNATURE`), and so is a
+  forged second signature.
+- With both signatures the version lands. A student reads it: `course.json` and a 200 kB
+  asset.
+- A second version, signed only for the new lengths, reaches the student as a normal
+  update (the `append` event the worker already listens for).
+- The other publisher gets the shared drive by replication too, so either one can commit.
+
+### What it found against "either can publish alone" (1 of 2)
+
+- With several signers, a plain `core.append(…, keyPair)` signs in the single-signer
+  format. Peers can't verify it and silently ignore the block. Even a one-signature
+  publish has to go through the draft + assembled signature path.
+- **A fork is fatal.** Both publishers published a different version 1 while apart, and
+  both are valid. The student kept the first it saw. When one publisher then published
+  version 2 on top of their own, Hypercore detected the conflict and **closed the core
+  on every copy: both publishers' and the student's.** The course is gone for everyone.
+  So 1 of 2 only works if the publishers never publish at the same time. For "either
+  teacher can publish whenever", use Autobase (several writers merged into one view)
+  instead.
+
+### Library: `hyper-multisig`
+
+Holepunch publishes `hyper-multisig` (2.4.0, updated 2026-07). It's "Multisig hypercore
+and hyperdrive", built on the same Hypercore and Hyperdrive versions, and Bare-compatible
+(`bare-events`). It does the flow above:
+
+- `createDrive(publicKeys, namespace, { quorum })`;
+- `requestDrive(…, srcDrive, length)` → a portable signing request
+  (`hypercore-signing-request`), which can travel over the swarm or as text;
+- signers answer with `hypercore-sign`;
+- `commitDrive(…, request, responses)`.
+
+It adds the checks a hand-rolled version would need: a conflict check before committing,
+and refusing to commit until enough peers (`minFullCopies`, default 2) hold the full
+version. The spike's hand-rolled path reaches into Hypercore internals
+(`hypercore/lib/caps`, `core.core.verifier.assemble`, marked "TODO: better api" upstream).
+**Use the library if this is built.** Adding it is a new dependency: ask first.
+
+### Open questions for the feature
+
+- **Membership is fixed.** Adding or removing a publisher, or changing the quorum,
+  changes the code. Students would need a "this course moved" step. SLJ-59 (move courses
+  to a new identity) needs the same.
+- **Losing a key under 2 of 2 freezes the course.** 2 of 3 survives one lost identity.
+- **Key derivation:** each publisher's key for a shared course would come from their
+  identity, as per-course keys do today (`course-<publicId>`). Restoring on a new computer
+  would also need the other members' public keys (record them in `source.json`).
+- **The publish flow gains a waiting state:** "signed by you, waiting for <co-publisher>".
+  The request has to reach the other app, and their signature has to come back.
+- **`hyper-multisig` refuses to commit until 2 peers hold the full version.** Two
+  publishers both online would satisfy it.
+- **Not run under Bare** (the worker) yet. It uses the same libraries the worker already
+  loads.

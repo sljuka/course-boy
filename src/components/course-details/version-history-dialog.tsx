@@ -52,7 +52,7 @@ export function VersionHistoryDialog({
   mode,
 }: VersionHistoryDialogProps) {
   const { t } = useTranslation();
-  const [releaseType, setReleaseType] = useState<ReleaseType>("patch");
+  const [releaseType, setReleaseType] = useState<ReleaseType>("minor");
   const [notes, setNotes] = useState("");
   const [recommended, setRecommended] = useState(false);
   const { data: history } = useCourseVersionHistoryQuery(open ? courseId : undefined);
@@ -61,7 +61,8 @@ export function VersionHistoryDialog({
   const commitBlocker = useCommitBlockerMessage(courseId);
   const { confirmationDialog, requestRevert, revertMutation } = useRevertWithConfirmation(courseId);
   const canCut = mode === "editor";
-  // The version each bump type would create, as the cut computes it.
+  // The version an update (1.3 → 1.4) or a new edition (1.3 → 2.0) would
+  // create, as the cut computes it.
   const nextVersionFor = (type: ReleaseType) =>
     history ? nextCourseVersion(history.currentDraftVersion, history.versions[0]?.version ?? null, type) : null;
   const releaseTypeLabel = (type: ReleaseType) => {
@@ -128,7 +129,7 @@ export function VersionHistoryDialog({
                   <SelectValue>{releaseTypeLabel(releaseType)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {(["patch", "minor", "major"] as const).map((type) => (
+                  {(["minor", "major"] as const).map((type) => (
                     <SelectItem key={type} value={type}>
                       {releaseTypeLabel(type)}
                     </SelectItem>

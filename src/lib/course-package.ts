@@ -48,7 +48,7 @@ export type CourseManifest = {
 /**
  * Whether a personal (distribution: "local") course's current draft has
  * changes beyond its most recently cut version. Computed by comparing the
- * draft's file hashes against the latest `versions/<x.y.z>/` snapshot's
+ * draft's file hashes against the latest `versions/<x.y>/` snapshot's
  * stored hashes — see `computeCourseVersionBadge` in
  * electron/course-registry.ts. A bundled course (no draft/ to diverge) is
  * always `{ kind: "version" }`.

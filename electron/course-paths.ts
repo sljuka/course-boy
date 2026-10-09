@@ -601,7 +601,7 @@ type CourseVersionMeta = {
 };
 
 function isCourseVersionReleaseTypeValue(value: unknown): value is CourseVersionReleaseType {
-  return value === "initial" || value === "major" || value === "minor" || value === "patch";
+  return value === "initial" || value === "major" || value === "minor";
 }
 
 // Files only a cut version has (written by the cut itself), never part of a
@@ -633,7 +633,7 @@ async function readCourseVersionMeta(
           : {},
       releaseType: isCourseVersionReleaseTypeValue(parsedMeta.releaseType)
         ? parsedMeta.releaseType
-        : "patch",
+        : "minor",
     };
   } catch {
     return null;

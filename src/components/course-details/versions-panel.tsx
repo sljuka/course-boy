@@ -24,7 +24,7 @@ import { ReleaseNotesDialog } from "./release-notes-dialog";
 import { VersionHistoryDialog } from "./version-history-dialog";
 
 // The course editor's right panel. A Draft row first while there are
-// uncommitted changes (like Git's working copy: "Changes since 0.1.3", or "Not
+// uncommitted changes (like Git's working copy: "Changes since 0.4", or "Not
 // committed yet" before the first version), then every cut version, newest
 // first. The version the draft is based on is highlighted and marked Current —
 // after a revert that's an older one; the published one has its own badge.
