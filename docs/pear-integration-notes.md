@@ -894,3 +894,45 @@ version. The spike's hand-rolled path reaches into Hypercore internals
   publishers both online would satisfy it.
 - **Not run under Bare** (the worker) yet. It uses the same libraries the worker already
   loads.
+
+### Building it (2026-10-09): approval on `hyper-multisig`
+
+Decided: co-maintained courses use **approval** (a version goes online only when more
+than half of the maintainers sign it), built on `hyper-multisig`, now a runtime
+dependency. Milestone 1 is `workers/shared-course.cjs`, tested in
+`workers/shared-course.test.mjs` with two maintainers and a student on a local testnet.
+It isn't wired to the worker's RPC yet.
+
+- **Keys:** each maintainer's key for a course is `maintainerKeyPair(identity,
+  publicId)`, from the course's original public id. Each proposal gets its own drive,
+  `proposalKeyPair(identity, publicId, n)`. Both are derived like the other keys
+  (`identity-keys.cjs`), so restore can find them.
+- **The rule:** `sharedCourseSpec` refuses any rule that isn't more than half, so two
+  groups that can approve always share a member. Signers are sorted, so every maintainer
+  derives the same code.
+- **A proposal starts with a verbatim copy of the shared course's blocks.** What's
+  signed covers the proposal's whole history, and the shared course's history must be
+  an exact beginning of it. A fresh proposal drive per proposal avoids cutting a drive
+  back: a truncated core has a new fork number, and the signatures wouldn't match.
+- **Review** (`openProposalForReview`) refuses a proposal that isn't for this course,
+  isn't what the request describes, or doesn't continue the course's latest version
+  (`NOT_LATEST`).
+- **Signing** uses the request format's public helpers (`signable`,
+  `encodeResponse`) with the derived key in memory. `hypercore-sign-lib`'s
+  password-encrypted key files aren't used.
+- **Commit** relaxes the library's "2 other computers must hold it" checks
+  (`minPeers: 0`, `minFullCopies: 0`). With two teachers they'd block forever: the
+  library's post-commit check loops until enough copies exist. Its fork checks (tree hash
+  and target compatibility) stay on. The app seeds the course itself.
+- **Gotchas met:**
+  - On a shared course with no version yet, `Hyperdrive.getBlobs()` waits forever, so
+    the proposal copies from the cores `hyper-multisig` opens.
+  - A second Hyperdrive on a key already open never becomes ready, so review reads
+    the shared course's core only.
+- **Review downloads almost nothing.** `core.treeHash(length)` fetches only the block at
+  that length and its Merkle proof. So the proposal's beginning is checked against the
+  shared course (file index and file data) without downloading it. Unchanged files point
+  into that verified part; only files whose data lies past it are new
+  (`openProposalForReview` returns them as `changes`), and only those are fetched, when
+  opened for review. A 2 GB course with one edited lesson costs about that lesson and the
+  file index. The test checks that an unchanged asset's blocks are never downloaded.

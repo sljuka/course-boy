@@ -120,4 +120,29 @@ function programKeyPair(identity, publicId) {
   return deriveKeyPair(identity, namespace, 'db')
 }
 
-module.exports = { courseKeyPair, creatorKeyPair, programKeyPair, publicCourseId, publicProgramId }
+// A maintainer's key for a course shared by several publishers (SLJ-11), from
+// the course's original public id: the shared course's signers are these keys,
+// one per maintainer, so each is found again from the identity alone.
+function maintainerKeyPair(identity, publicId) {
+  const namespace = generichash([DEFAULT_NAMESPACE, Buffer.from(`maintainer-${publicId}`)])
+  return deriveKeyPair(identity, namespace, 'db')
+}
+
+// The drive one proposed version of a shared course is put into for review
+// (SLJ-11): a fresh one per proposal (`index`), so it never has to be cut
+// back (a truncated core's signatures wouldn't match the shared course's).
+function proposalKeyPair(identity, publicId, index) {
+  if (!Number.isInteger(index) || index < 0) throw new Error('A proposal number must be a whole number from 0')
+  const namespace = generichash([DEFAULT_NAMESPACE, Buffer.from(`proposal-${publicId}-${index}`)])
+  return deriveKeyPair(identity, namespace, 'db')
+}
+
+module.exports = {
+  courseKeyPair,
+  creatorKeyPair,
+  maintainerKeyPair,
+  programKeyPair,
+  proposalKeyPair,
+  publicCourseId,
+  publicProgramId,
+}

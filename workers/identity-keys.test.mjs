@@ -4,7 +4,15 @@ import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import Corestore from 'corestore'
-import { courseKeyPair, creatorKeyPair, programKeyPair, publicCourseId, publicProgramId } from './identity-keys.cjs'
+import {
+  courseKeyPair,
+  creatorKeyPair,
+  maintainerKeyPair,
+  programKeyPair,
+  proposalKeyPair,
+  publicCourseId,
+  publicProgramId,
+} from './identity-keys.cjs'
 import { isValidCourseId } from './course-id.cjs'
 
 // The codes of courses published before SLJ-55 came from Corestore's own
@@ -57,5 +65,32 @@ describe('program codes (SLJ-32)', () => {
     expect(programId).not.toBe(publicCourseId(identity, 0))
     expect(publicProgramId(identity, 0)).toBe(programId)
     expect(programKeyPair(identity, programId).publicKey.equals(courseKeyPair(identity, programId).publicKey)).toBe(false)
+  })
+
+  // SLJ-11: a maintainer's key for a shared course, and one per proposal.
+  it('derives maintainer and proposal keys like Corestore, distinct per course and proposal', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'matko-identity-keys-'))
+    const identity = crypto.randomBytes(32)
+    const store = new Corestore(dir, { primaryKey: identity, unsafe: true })
+
+    try {
+      await store.ready()
+      const maintainer = maintainerKeyPair(identity, 'abcdefghijklmn23')
+      const expected = await store.namespace('maintainer-abcdefghijklmn23').createKeyPair('db')
+      expect(Buffer.from(maintainer.publicKey).equals(expected.publicKey)).toBe(true)
+
+      const keys = [
+        maintainer.publicKey,
+        maintainerKeyPair(identity, 'zzzzzzzzzzzzzzzz').publicKey,
+        courseKeyPair(identity, 'abcdefghijklmn23').publicKey,
+        proposalKeyPair(identity, 'abcdefghijklmn23', 0).publicKey,
+        proposalKeyPair(identity, 'abcdefghijklmn23', 1).publicKey,
+      ].map((key) => Buffer.from(key).toString('hex'))
+      expect(new Set(keys).size).toBe(keys.length)
+      expect(() => proposalKeyPair(identity, 'abcdefghijklmn23', -1)).toThrow()
+    } finally {
+      await store.close()
+      fs.rmSync(dir, { force: true, recursive: true })
+    }
   })
 })
