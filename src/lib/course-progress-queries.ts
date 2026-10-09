@@ -44,3 +44,13 @@ export function useSetFavoriteMutation() {
     onSuccess: refresh,
   });
 }
+
+const setProgramFavorite = (input: { favorite: boolean; programId: string }) => window.progress.setProgramFavorite(input);
+
+// A program's star (SLJ-32), kept with the courses' in the progress store.
+export function useSetProgramFavoriteMutation() {
+  return useMutation<void, Error, { favorite: boolean; programId: string }>({
+    mutationFn: setProgramFavorite,
+    onSuccess: refresh,
+  });
+}

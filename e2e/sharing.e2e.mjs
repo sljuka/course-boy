@@ -1159,5 +1159,15 @@ describe('programs online', () => {
     })
     await student.locator('[data-testid="home-program"]').waitFor()
     await expect.poll(() => student.locator('[data-testid="home-program-new"]').count(), { timeout: 10_000 }).toBe(0)
+
+    // Starred from its Home row: in the sidebar's Favorites, and kept by `:favorites`.
+    await student.locator('[data-testid="home-program"] [data-testid="program-favorite"]').click()
+    await waitFor(student, () => document.querySelector('[data-testid="sidebar-favorites"]')?.textContent?.includes('E2E Program'))
+    await student.fill('[data-testid="course-search"]', ':favorites')
+    await student.locator('[data-testid="home-program"]').waitFor()
+    // Unstarred by its crumb on its page: gone from the sidebar again.
+    await openProgramPage(student)
+    await student.locator('[data-testid="program-favorite"]').click()
+    await waitFor(student, () => document.querySelector('[data-testid="sidebar-favorites"]') === null)
   })
 })

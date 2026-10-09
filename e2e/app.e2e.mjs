@@ -101,7 +101,7 @@ describe('launch', () => {
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
     expect(surface.programs).toEqual(['create', 'get', 'getSharing', 'list', 'markSeen', 'peekCourse', 'publish', 'remove', 'update', 'uploadImage'])
-    expect(surface.progress).toEqual(['get', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite'])
+    expect(surface.progress).toEqual(['get', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite', 'setProgramFavorite'])
     expect(surface.profiles).toEqual(['create', 'getRemovalSummary', 'getState', 'open', 'openCoursesFolder', 'removeCurrent', 'switchProfile'])
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',

@@ -227,6 +227,9 @@ contextBridge.exposeInMainWorld('progress', {
   setFavorite(input: { courseId: string; favorite: boolean }) {
     return ipcRenderer.invoke('progress:set-favorite', input) as Promise<void>
   },
+  setProgramFavorite(input: { favorite: boolean; programId: string }) {
+    return ipcRenderer.invoke('progress:set-program-favorite', input) as Promise<void>
+  },
 })
 
 contextBridge.exposeInMainWorld('profiles', {

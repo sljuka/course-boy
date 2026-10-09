@@ -61,6 +61,20 @@ describe('course progress (SLJ-50)', () => {
     })
   })
 
+  it('stars a program beside the courses, and forgets a removed one', () => {
+    const { progress, state } = setup()
+
+    progress.setProgramFavorite('p1', true)
+    expect(state().programs?.p1).toEqual({ favorite: true, favoritedAt: '2026-10-07T10:00:00.000Z' })
+    expect(state().courses).toEqual({})
+
+    progress.setProgramFavorite('p1', false)
+    expect(state().programs?.p1).toEqual({ favorite: false })
+
+    progress.forgetProgram('p1')
+    expect(state().programs).toEqual({})
+  })
+
   it('sets a favorite, and forgets a removed course', () => {
     const { progress, state } = setup()
 

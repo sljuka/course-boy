@@ -768,6 +768,7 @@ ipcMain.handle('programs:upload-image', (_event, programId: unknown) => {
 ipcMain.handle('programs:remove', async (_event, programId: unknown) => {
   if (typeof programId !== 'string') throw new Error('Invalid program id')
   await profile.programSharing.forget(programId)
+  profile.courseProgress.forgetProgram(programId)
   return removeProgram(programId)
 })
 
@@ -857,6 +858,11 @@ ipcMain.handle('progress:record-test-result', (_event, input: RecordTestResultIn
 ipcMain.handle('progress:set-favorite', (_event, input: { courseId?: unknown; favorite?: unknown }) => {
   if (!isId(input?.courseId) || typeof input.favorite !== 'boolean') throw new Error('Invalid favorite')
   profile.courseProgress.setFavorite(input.courseId, input.favorite)
+})
+
+ipcMain.handle('progress:set-program-favorite', (_event, input: { favorite?: unknown; programId?: unknown }) => {
+  if (!isId(input?.programId) || typeof input.favorite !== 'boolean') throw new Error('Invalid favorite')
+  profile.courseProgress.setProgramFavorite(input.programId, input.favorite)
 })
 
 ipcMain.handle('courses:open-in-file-system', (_event, courseId: string) => {

@@ -6,6 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import { Page } from "@/components/page/page";
 import { ProgramCodeDialog } from "@/components/programs/program-code";
 import { ProgramCourseRow } from "@/components/programs/program-course-row";
+import { ProgramFavoriteToggle } from "@/components/programs/program-favorite-toggle";
 import { Button, ButtonLabel } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { CoverBanner, CoverLogo } from "@/components/ui/cover-banner";
@@ -122,6 +123,8 @@ export function ProgramPage() {
           )}
         </>
       }
+      // By its crumb, like a course's star.
+      crumbActions={<ProgramFavoriteToggle programId={program.id} />}
       breadcrumbs={[
         // Your own program: back to My programs (and its editor, from Edit).
         ...(isOwn

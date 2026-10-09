@@ -1,4 +1,4 @@
-import { BookOpen } from "lucide-react";
+import { BookOpen, Library } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
@@ -12,11 +12,12 @@ import {
 } from "@/components/ui/sidebar";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { useCoursesQuery } from "@/lib/course-queries";
+import { useProgramsQuery } from "@/lib/program-queries";
 import { useAppState } from "@/lib/use-app-state";
 
-// A starred thing in the sidebar. Only courses can be starred today; programs
-// (SLJ-32) will join with their own kind, icon and page.
+// A starred course or program (SLJ-32) in the sidebar.
 type FavoriteItem = {
+  favoritedAt: string;
   href: string;
   icon: typeof BookOpen;
   id: string;
@@ -32,13 +33,28 @@ export function AppSidebarFavorites() {
   const { locale } = useAppState();
   const { data: progress } = useCourseProgressQuery();
   const { data: courses = [] } = useCoursesQuery(locale);
+  const { data: programs = [] } = useProgramsQuery(locale);
 
-  const items: FavoriteItem[] = courses
-    .filter((course) => progress?.courses[course.id]?.favorite === true)
-    .sort((left, right) =>
-      (progress?.courses[left.id]?.favoritedAt ?? "").localeCompare(progress?.courses[right.id]?.favoritedAt ?? ""),
-    )
-    .map((course) => ({ href: `/courses/${course.id}`, icon: BookOpen, id: course.id, title: course.title }));
+  const items: FavoriteItem[] = [
+    ...courses
+      .filter((course) => progress?.courses[course.id]?.favorite === true)
+      .map((course) => ({
+        favoritedAt: progress?.courses[course.id]?.favoritedAt ?? "",
+        href: `/courses/${course.id}`,
+        icon: BookOpen,
+        id: course.id,
+        title: course.title,
+      })),
+    ...programs
+      .filter((program) => progress?.programs?.[program.id]?.favorite === true)
+      .map((program) => ({
+        favoritedAt: progress?.programs?.[program.id]?.favoritedAt ?? "",
+        href: `/programs/${program.id}`,
+        icon: Library,
+        id: program.id,
+        title: program.title || t("programs.untitled"),
+      })),
+  ].sort((left, right) => left.favoritedAt.localeCompare(right.favoritedAt));
 
   if (items.length === 0) {
     return null;

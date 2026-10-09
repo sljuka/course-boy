@@ -45,8 +45,16 @@ export type CourseProgress = {
   steps: Record<string, StepProgress>;
 };
 
+// A program the student starred (SLJ-32), kept beside their courses.
+export type ProgramFavorite = {
+  favorite?: boolean;
+  favoritedAt?: string;
+};
+
 export type CourseProgressState = {
   courses: Record<string, CourseProgress>;
+  // Missing in files written before programs could be starred.
+  programs?: Record<string, ProgramFavorite>;
 };
 
 export type RecordTestResultInput = {

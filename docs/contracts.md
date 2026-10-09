@@ -494,7 +494,10 @@ programs/<program-id>/assets/<file>    # its logo and banner, content-addressed 
 - **Restoring (phase 3).** "Restore from a file…" finds your programs too, on their own
   numbers, once the courses' search is done (`identity-restore.ts`). Each lands as your own
   program without the drive's `source.json` (`landRestoredProgram`) and is shared again by
-  its code. Starring programs is still to come.
+  its code.
+- **Stars.** A starred program is kept in the student's progress store, beside the courses
+  (`course-progress.json` `programs`, `progress:set-program-favorite`). It shows in the
+  sidebar's Favorites and under Home's `:favorites`.
 
 ## 6. Design-system tier direction
 

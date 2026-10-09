@@ -83,6 +83,26 @@ export function createCourseProgress({ now = () => new Date(), store }: { now?: 
       )
     },
 
+    // A program starred (SLJ-32), with when, so the sidebar lists it among
+    // the starred courses in the order they were starred. Or unstarred.
+    setProgramFavorite(programId: string, favorite: boolean) {
+      const state = store.read()
+      const { favoritedAt, ...program } = state.programs?.[programId] ?? {}
+      const next = favorite
+        ? { ...program, favorite, favoritedAt: favoritedAt ?? now().toISOString() }
+        : { ...program, favorite }
+      store.write({ ...state, programs: { ...state.programs, [programId]: next } })
+    },
+
+    // The program was removed: its star goes with it.
+    forgetProgram(programId: string) {
+      const state = store.read()
+      if (!state.programs || !(programId in state.programs)) return
+      const programs = { ...state.programs }
+      delete programs[programId]
+      store.write({ ...state, programs })
+    },
+
     // The course was removed: its progress goes with it.
     forgetCourse(courseId: string) {
       const state = store.read()
