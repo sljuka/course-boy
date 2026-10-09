@@ -100,7 +100,7 @@ describe('launch', () => {
       'uploadAssetBytes',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
-    expect(surface.programs).toEqual(['create', 'get', 'list', 'remove', 'update', 'uploadImage'])
+    expect(surface.programs).toEqual(['create', 'get', 'getSharing', 'list', 'markSeen', 'peekCourse', 'publish', 'remove', 'update', 'uploadImage'])
     expect(surface.progress).toEqual(['get', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite'])
     expect(surface.profiles).toEqual(['create', 'getRemovalSummary', 'getState', 'open', 'openCoursesFolder', 'removeCurrent', 'switchProfile'])
     expect(surface.sharing).toEqual([

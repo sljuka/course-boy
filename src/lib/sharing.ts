@@ -77,4 +77,5 @@ export type ImportCourseInput = {
   transferId?: string
 }
 
-export type ImportCourseResult = { courseId: string } | Cancelled
+// A code is a course's or a program's (SLJ-32).
+export type ImportCourseResult = { courseId: string } | { programId: string } | Cancelled

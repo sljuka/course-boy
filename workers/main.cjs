@@ -16,7 +16,7 @@ const path = require('bare-path')
 const { isValidCourseId } = require('./course-id.cjs')
 const { verifySource } = require('./course-source.cjs')
 const { createIdentityBackup, IdentityBackupError, openIdentityBackup, readIdentityBackup } = require('./identity-backup.cjs')
-const { courseKeyPair, creatorKeyPair, publicCourseId } = require('./identity-keys.cjs')
+const { courseKeyPair, creatorKeyPair, programKeyPair, publicCourseId, publicProgramId } = require('./identity-keys.cjs')
 
 const CMD_GET_CREATOR_KEY = 1 // must match electron/bare-worker.ts
 const CMD_PUBLISH_COURSE = 2 // must match electron/bare-worker.ts
@@ -37,6 +37,15 @@ const CMD_FIND_COURSE = 17 // must match electron/bare-worker.ts
 const CMD_SET_IDENTITY = 18 // must match electron/bare-worker.ts
 const CMD_SEAL_IDENTITY = 19 // must match electron/bare-worker.ts
 const CMD_SEED_COURSE = 20 // must match electron/bare-worker.ts
+const CMD_PUBLISH_PROGRAM = 21 // must match electron/bare-worker.ts
+const CMD_SEED_PROGRAM = 22 // must match electron/bare-worker.ts
+const CMD_PEEK_COURSE = 23 // must match electron/bare-worker.ts
+
+// Programs (SLJ-32) share `publishedDrives` with courses under this prefix, so
+// a program's id can never collide with a course's.
+const PROGRAM_ENTRY_PREFIX = 'program:'
+// Peeking at a course (its course.json only) waits this long for a peer.
+const PEEK_TIMEOUT_MS = 20_000
 // Worker → main: an imported course's drive may hold a newer version. Main
 // decides what that means (electron/course-sharing.ts).
 const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
@@ -200,7 +209,9 @@ async function start() {
 
   // `courseId` is the course's own (local) id; `publicId` the one its code is
   // derived from (identity-keys.cjs).
-  async function openPublishedDrive(courseId, publicId) {
+  // `makeKeyPair`: courseKeyPair, or programKeyPair for a program (SLJ-32),
+  // whose entry id is PROGRAM_ENTRY_PREFIX + its id.
+  async function openPublishedDrive(courseId, publicId, makeKeyPair = courseKeyPair) {
     const existing = publishedDrives.get(courseId)
     if (existing?.writable) {
       return existing
@@ -209,7 +220,7 @@ async function start() {
     // Each course has its own key pair, derived from the identity (never the
     // identity's own key, reused across independent logs). Per course, not per
     // version, so the drive key (the code students use) never changes.
-    const keyPair = courseKeyPair(requireIdentity(), publicId)
+    const keyPair = makeKeyPair(requireIdentity(), publicId)
     const cores = await openCourseCores(keyPair.publicKey)
     if (existing) await closePublishedDrive(courseId)
 
@@ -251,12 +262,14 @@ async function start() {
     }
   }
 
-  async function writeSourceFile(drive, publicId) {
+  // `kind`: "program" for a program's drive (SLJ-32); a course's says nothing.
+  async function writeSourceFile(drive, publicId, kind) {
     const creator = creatorKeyPair(requireIdentity())
     const source = Buffer.from(
       JSON.stringify(
         {
           driveKey: IdEncoding.normalize(drive.key),
+          ...(kind ? { kind } : {}),
           publicId,
           publisher: { id: IdEncoding.normalize(creator.publicKey) },
         },
@@ -282,6 +295,67 @@ async function start() {
     await discovery.flushed()
 
     return { drive, publicId }
+  }
+
+  // A program (SLJ-32): its folder (program.json and its images) into its own
+  // drive, signed by a key pair from the identity and its program number, so
+  // its code never changes.
+  async function publishProgram(programId, programPath, publicIndex) {
+    const publicId = publicProgramId(requireIdentity(), publicIndex)
+    const { discovery, drive } = await openPublishedDrive(PROGRAM_ENTRY_PREFIX + programId, publicId, programKeyPair)
+
+    await mirrorVersionIntoDrive(programPath, drive)
+    await writeSourceFile(drive, publicId, 'program')
+    // Announced in the background: offline, it only completes later, and the
+    // curator gets the code at once.
+    discovery.flushed().catch(() => {})
+
+    return { drive, publicId }
+  }
+
+  // A course's course.json and source.json by its code, without importing it
+  // (a program's curator adding someone else's course, SLJ-32). From a drive
+  // already open here when there is one: a second drive on the same key never
+  // opens.
+  async function peekCourse(driveKey) {
+    const keyHex = IdEncoding.decode(driveKey).toString('hex')
+    const open =
+      followedDrives.get(keyHex)?.drive ??
+      [...publishedDrives.values()].find((entry) => entry.drive.key.toString('hex') === keyHex)?.drive
+    const drive = open ?? new Hyperdrive(store.session(), driveKey)
+
+    try {
+      await drive.ready()
+      if (!open) {
+        const done = drive.findingPeers()
+        swarm.join(drive.discoveryKey, { client: true, server: false })
+        swarm.flush().then(done, done)
+      }
+      // Nothing to read until a peer has sent the drive's first blocks.
+      const deadline = Date.now() + PEEK_TIMEOUT_MS
+      while (drive.core.length === 0 && Date.now() < deadline) {
+        if (drive.core.peers.length > 0) {
+          await withTimeout(drive.update({ wait: true }), Math.max(deadline - Date.now(), 1), 'NOT_FOUND').catch(() => {})
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 250))
+        }
+      }
+      if (drive.core.length === 0) throw Object.assign(new Error('Not found'), { code: 'NOT_FOUND' })
+
+      const read = (key) => withTimeout(drive.get(key), Math.max(deadline - Date.now(), 1_000), 'NOT_FOUND')
+      const manifestBuffer = await read('/course.json')
+      if (!manifestBuffer) throw new Error('This code is not a course')
+      const manifest = JSON.parse(manifestBuffer.toString())
+      const sourceBuffer = await read(SOURCE_FILE_KEY).catch(() => null)
+      const source = sourceBuffer ? JSON.parse(sourceBuffer.toString()) : null
+      if (!isValidCourseId(manifest.id)) throw new Error('This code is not a course')
+      return { manifest, publisherId: typeof source?.publisher?.id === 'string' ? source.publisher.id : null }
+    } finally {
+      if (!open) {
+        await swarm.leave(drive.discoveryKey).catch(() => {})
+        await drive.close().catch(() => {})
+      }
+    }
   }
 
   function notifyDriveChanged(drive) {
@@ -640,6 +714,36 @@ async function start() {
     return { courseId, publisherId }
   }
 
+  // A program fetched into `stagingPath` lands as programs/<id>/ (SLJ-32).
+  // Main validates program.json in full afterwards; here only what decides
+  // where it goes: its id (a directory name from a remote peer) and format.
+  async function finalizeImportedProgram(stagingPath, programsRoot, driveKey) {
+    let programId
+    let publisherId
+    try {
+      publisherId = await readVerifiedSource(stagingPath, driveKey)
+      const manifest = JSON.parse(await fsp.readFile(path.join(stagingPath, 'program.json'), 'utf8'))
+      if (typeof manifest.formatVersion !== 'number' || manifest.formatVersion > 1) {
+        const error = new Error('This program was made with a newer version of Matko')
+        error.code = 'NEWER_FORMAT'
+        throw error
+      }
+      if (!isValidCourseId(manifest.id)) throw new Error('program.json has an invalid id')
+      programId = manifest.id
+    } catch (error) {
+      await fsp.rm(stagingPath, { recursive: true, force: true }).catch(() => {})
+      throw error
+    }
+
+    const finalPath = path.join(programsRoot, programId)
+    if (await fsp.stat(finalPath).then(() => true, () => false)) {
+      await fsp.rm(stagingPath, { recursive: true, force: true }).catch(() => {})
+      throw new Error(`Program "${programId}" is already here`)
+    }
+    await fsp.rename(stagingPath, finalPath)
+    return { programId, publisherId }
+  }
+
   // See workers/course-source.cjs. Returns the claimed publisher id.
   async function readVerifiedSource(stagingPath, driveKey) {
     const sourceText = await fsp
@@ -656,9 +760,9 @@ async function start() {
   // The course's titles from the drive's course.json, for the download's
   // label. Remote data: only strings, capped. Null if it can't be read; the
   // import itself validates the manifest later.
-  async function readCourseTitles(drive, transfer) {
+  async function readCourseTitles(drive, transfer, manifestKey = '/course.json') {
     try {
-      const manifest = JSON.parse(await untilCancelled(transfer, drive.get('/course.json')))
+      const manifest = JSON.parse(await untilCancelled(transfer, drive.get(manifestKey)))
       const titles = {}
       for (const [locale, entry] of Object.entries(manifest.locales || {})) {
         if (entry && typeof entry.title === 'string') titles[locale] = entry.title.slice(0, 200)
@@ -673,13 +777,20 @@ async function start() {
     }
   }
 
-  async function importCourse(driveKey, coursesRoot, transferId) {
+  // `programsRoot`: where a program lands (SLJ-32): the code may be a
+  // program's, told apart by the program.json its drive holds.
+  async function importCourse(driveKey, coursesRoot, transferId, programsRoot) {
     // Already here (imported, so followed): that course, at once. A second
     // drive on the same key would never open (a Hyperdrive holds its core
     // exclusively), and the import would wait forever, looking like nobody
     // was online.
     const alreadyFollowed = followedDrives.get(IdEncoding.decode(driveKey).toString('hex'))
     if (alreadyFollowed) {
+      const program = await alreadyFollowed.drive.get('/program.json')
+      if (program) {
+        const manifest = JSON.parse(program)
+        return { alreadyImported: true, driveKey: alreadyFollowed.drive.key, kind: 'program', programId: manifest.id, publisherId: '' }
+      }
       const manifest = JSON.parse(await alreadyFollowed.drive.get('/course.json'))
       return { alreadyImported: true, courseId: manifest.id, driveKey: alreadyFollowed.drive.key, publisherId: '' }
     }
@@ -714,7 +825,19 @@ async function start() {
       // Nobody with the course online: keep looking (the UI says so) until
       // someone is, or the student cancels.
       await waitForDriveData(drive, transfer)
-      transfer.course = await readCourseTitles(drive, transfer)
+      const isProgram = programsRoot && Boolean(await untilCancelled(transfer, drive.entry('/program.json')))
+      transfer.course = await readCourseTitles(drive, transfer, isProgram ? '/program.json' : '/course.json')
+
+      if (isProgram) {
+        await fsp.mkdir(programsRoot, { recursive: true })
+        stagingPath = stagingPathFor(programsRoot)
+        await mirrorWithProgress(drive, new Localdrive(stagingPath), transfer)
+        const { programId, publisherId } = await finalizeImportedProgram(stagingPath, programsRoot, drive.key)
+        followedDrives.set(keyHex, { discovery, drive })
+        watchFollowedDrive(drive)
+        finishTransfer(transferId, transfer, 'done')
+        return { driveKey: drive.key, kind: 'program', programId, publisherId }
+      }
 
       stagingPath = stagingPathFor(coursesRoot)
       await mirrorWithProgress(drive, new Localdrive(stagingPath), transfer)
@@ -969,6 +1092,43 @@ async function start() {
       return
     }
 
+    if (req.command === CMD_PUBLISH_PROGRAM) {
+      const { programId, programPath, publicIndex } = JSON.parse(req.data.toString())
+      try {
+        if (!isValidCourseId(programId)) throw new Error('Invalid program id')
+        const { drive, publicId } = await publishProgram(programId, programPath, publicIndex)
+        req.reply(JSON.stringify({ driveKey: IdEncoding.normalize(drive.key), publicId }))
+      } catch (error) {
+        if (error.code !== 'LOCKED') console.error('[worker] failed to publish program:', error)
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_SEED_PROGRAM) {
+      try {
+        const { programId, driveKey } = JSON.parse(req.data.toString())
+        if (!isValidCourseId(programId)) throw new Error('Invalid program id')
+        const { discovery } = await seedPublishedDrive(PROGRAM_ENTRY_PREFIX + programId, driveKey)
+        await discovery.flushed()
+        req.reply(JSON.stringify({}))
+      } catch (error) {
+        req.reply(JSON.stringify({ error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_PEEK_COURSE) {
+      try {
+        const { driveKey } = JSON.parse(req.data.toString())
+        req.reply(JSON.stringify(await peekCourse(driveKey)))
+      } catch (error) {
+        const notFound = error.code === 'NOT_FOUND' || error.message === 'NOT_FOUND'
+        req.reply(JSON.stringify({ code: notFound ? 'NOT_FOUND' : 'ERROR', error: error.message }))
+      }
+      return
+    }
+
     if (req.command === CMD_PUBLISH_COURSE) {
       const { courseId, coursePath, publicIndex } = JSON.parse(req.data.toString())
 
@@ -983,14 +1143,16 @@ async function start() {
     }
 
     if (req.command === CMD_IMPORT_COURSE) {
-      const { driveKey, coursesRoot, transferId } = JSON.parse(req.data.toString())
+      const { driveKey, coursesRoot, programsRoot, transferId } = JSON.parse(req.data.toString())
 
       try {
-        const result = await importCourse(driveKey, coursesRoot, transferId)
+        const result = await importCourse(driveKey, coursesRoot, transferId, programsRoot)
         req.reply(
           JSON.stringify({
             alreadyImported: result.alreadyImported === true,
             courseId: result.courseId,
+            kind: result.kind ?? 'course',
+            programId: result.programId,
             driveKey: IdEncoding.normalize(result.driveKey),
             publisherId: result.publisherId,
           }),

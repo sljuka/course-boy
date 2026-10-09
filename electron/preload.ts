@@ -1,6 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
-import type { ProgramManifest, ProgramSummary } from '../src/lib/program-package'
+import type { PeekCourseResult, ProgramManifest, ProgramSharingInfo, ProgramSummary } from '../src/lib/program-package'
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import type {
   ChooseIdentityFileResult,
@@ -195,6 +195,18 @@ contextBridge.exposeInMainWorld('programs', {
   },
   remove(programId: string) {
     return ipcRenderer.invoke('programs:remove', programId) as Promise<void>
+  },
+  publish(programId: string) {
+    return ipcRenderer.invoke('programs:publish', programId) as Promise<{ code: string }>
+  },
+  getSharing(programId: string) {
+    return ipcRenderer.invoke('programs:get-sharing', programId) as Promise<ProgramSharingInfo>
+  },
+  markSeen(programId: string) {
+    return ipcRenderer.invoke('programs:mark-seen', programId) as Promise<void>
+  },
+  peekCourse(code: string) {
+    return ipcRenderer.invoke('programs:peek-course', code) as Promise<PeekCourseResult>
   },
 })
 

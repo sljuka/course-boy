@@ -467,9 +467,22 @@ programs/<program-id>/assets/<file>    # its logo and banner, content-addressed 
   with `program-`). Unused ones are not removed on save (a just-picked image could be
   deleted before the program points at it); cleanup belongs to publishing, like a course's
   unused assets at a cut.
-- Phase 1 is local (My programs, the editor, the program page). Sharing a program (its
-  own drive and code, derived from the publishing identity with its own counter),
-  importing it and restoring it are phases 2–3.
+- **Online (phase 2).** Publish in the program's editor mirrors `programs/<id>/` (unused
+  images removed first, and the code filled in for your own courses published since they
+  were added) into the program's own drive, with a `source.json` of `kind: "program"`.
+  Its code comes from the publishing identity and the program's own number
+  (`publicProgramId`, namespace `program-<publicId>`; `nextPublicIndex` in the
+  `program-sharing` store, separate from courses', never reused), so it never changes.
+  `electron/program-sharing.ts` reshares published programs and follows imported ones at
+  every start. A program's code goes in the same Import box as a course's: the worker
+  tells them apart by `/program.json` in the drive and lands it under `programs/`. An
+  imported program follows its publisher on its own (no versions to offer): a changed
+  drive is mirrored into a copy, validated, and swapped in (`applyProgramUpdate`).
+  The courses a student has seen of it (`seenCourseIds`, in the `program-sharing` store)
+  make the rest "New" until they open its page. `programs:peek-course` reads another
+  publisher's `course.json` by its code, without importing it, to add the course to a
+  program.
+- Restoring programs from the identity and starring them are phase 3.
 
 ## 6. Design-system tier direction
 

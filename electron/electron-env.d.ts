@@ -130,6 +130,10 @@ interface Window {
     update: (manifest: import('../src/lib/program-package').ProgramManifest) => Promise<void>
     uploadImage: (programId: string) => Promise<{ filename: string } | null>
     remove: (programId: string) => Promise<void>
+    publish: (programId: string) => Promise<{ code: string }>
+    getSharing: (programId: string) => Promise<import('../src/lib/program-package').ProgramSharingInfo>
+    markSeen: (programId: string) => Promise<void>
+    peekCourse: (code: string) => Promise<import('../src/lib/program-package').PeekCourseResult>
   }
   progress: {
     get: () => Promise<import('../src/lib/course-progress').CourseProgressState>

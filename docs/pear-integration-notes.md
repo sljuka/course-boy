@@ -647,6 +647,11 @@ and an optional second password, and the identity sat in the OS keychain.
   stay unlisted. The course's key pair (and code) is derived from the public id with
   Corestore's scheme (`namespace('course-<publicId>').createKeyPair('db')`). The public
   id is written into the drive's `source.json`; n itself is never published.
+- **Programs** (SLJ-32) are numbered the same way but on their own counter
+  (`nextPublicIndex` in the `program-sharing` store): `publicProgramId(identity, n)`,
+  a keyed hash under a different context, and the key pair from
+  `namespace('program-<publicId>')`. A program's and a course's numbers never collide.
+  Finding programs again on a new computer from these is not built yet (SLJ-32 phase 3).
 
 ### Restoring it on a new computer
 

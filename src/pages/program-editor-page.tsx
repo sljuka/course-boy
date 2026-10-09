@@ -1,5 +1,5 @@
-import { Ellipsis, Eye, ImagePlus, Library, Trash2, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { Ellipsis, Eye, Globe, ImagePlus, Library, Share2, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -7,7 +7,10 @@ import { AppStatusBarEnd } from "@/components/app-frame/app-status-bar-end";
 import { LocalesTabs } from "@/components/locales-tabs";
 import { Page } from "@/components/page/page";
 import { ProgramCoursesEditor } from "@/components/programs/program-courses-editor";
+import { ProgramCodeDialog } from "@/components/programs/program-code";
 import { ProgramThemeEditor } from "@/components/programs/program-theme-editor";
+import { usePublishProgram } from "@/components/programs/use-publish-program";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button, ButtonLabel } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,6 +28,7 @@ import type { ProgramManifest } from "@/lib/program-package";
 import {
   programAssetUrl,
   useProgramQuery,
+  useProgramSharingQuery,
   useRemoveProgramMutation,
   useUpdateProgramMutation,
 } from "@/lib/program-queries";
@@ -64,6 +68,27 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
   const buildInput = useCallback((value: ProgramManifest) => value, []);
   const autosave = useEntityAutosave({ buildInput, initialValue: seed, mutation: updateMutation, value: program });
   const update = (change: Partial<ProgramManifest>) => setProgram((current) => ({ ...current, ...change }));
+  const { data: sharing } = useProgramSharingQuery(program.id);
+  const publishing = usePublishProgram(program.id);
+  const [isSharing, setIsSharing] = useState(false);
+  // Publish goes out once the latest edit is saved, so what goes online is
+  // what's on screen.
+  const [isPublishRequested, setIsPublishRequested] = useState(false);
+
+  useEffect(() => {
+    if (!isPublishRequested) return;
+    if (autosave.status === "saved") {
+      setIsPublishRequested(false);
+      publishing.requestPublish();
+    } else if (autosave.status === "error") {
+      setIsPublishRequested(false);
+    }
+  }, [autosave.status, isPublishRequested, publishing]);
+
+  function handlePublish() {
+    autosave.saveNow();
+    setIsPublishRequested(true);
+  }
 
   async function pickImage(field: "banner" | "logo") {
     const result = await window.programs.uploadImage(program.id);
@@ -113,6 +138,16 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
             <Eye aria-hidden="true" />
             <ButtonLabel>{t("programs.preview")}</ButtonLabel>
           </Button>
+          <Button
+            data-testid="program-publish"
+            disabled={isPublishRequested || publishing.isPublishing}
+            onClick={handlePublish}
+            size="sm"
+            title={t("programSharing.publishHint")}
+          >
+            <Globe aria-hidden="true" />
+            <ButtonLabel>{t("programSharing.publish")}</ButtonLabel>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
@@ -122,6 +157,12 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
               <Ellipsis aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {sharing?.code && (
+                <DropdownMenuItem data-testid="program-share" onClick={() => setIsSharing(true)}>
+                  <Share2 aria-hidden="true" />
+                  {t("programSharing.share")}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => setIsConfirmingRemove(true)} variant="destructive">
                 <Trash2 aria-hidden="true" />
                 {t("programs.remove")}
@@ -136,6 +177,12 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
       ]}
     >
       <div className="flex flex-col gap-8" data-testid="program-editor">
+        {publishing.error && (
+          <Alert variant="destructive">
+            <AlertTitle>{t("programSharing.publishFailed")}</AlertTitle>
+            <AlertDescription>{publishing.error.message}</AlertDescription>
+          </Alert>
+        )}
         {/* The header as students see it: banner, and the logo over its edge. */}
         <div className="flex flex-col">
           <CoverBanner src={program.banner ? programAssetUrl(program.id, program.banner) : null} />
@@ -243,6 +290,15 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
           status={autosave.status}
         />
       </AppStatusBarEnd>
+
+      {publishing.dialogs}
+      <ProgramCodeDialog
+        description={t("programSharing.shareDescription")}
+        onClose={() => setIsSharing(false)}
+        open={isSharing}
+        programId={program.id}
+        title={t("programSharing.share")}
+      />
 
       <Dialog onOpenChange={(open) => !open && setIsConfirmingRemove(false)} open={isConfirmingRemove}>
         <DialogContent className="w-[min(28rem,calc(100vw-2rem))]">

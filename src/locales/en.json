@@ -207,10 +207,10 @@
     "sharedVersion": "Shared version: {{version}}"
   },
   "importCourse": {
-    "codeLabel": "Course code",
-    "codePlaceholder": "Paste a course code",
-    "description": "Paste the course code you got from your teacher or a classmate.",
-    "errorTitle": "Couldn't import this course",
+    "codeLabel": "Course or program code",
+    "codePlaceholder": "Paste a course or program code",
+    "description": "Paste the code of a course or a program you got from your teacher or a classmate.",
+    "errorTitle": "Couldn't import",
     "importButton": "Import",
     "importing": "Importing...",
     "openButton": "Import course",
@@ -694,7 +694,8 @@
       "downloading": "Downloading",
       "imported": "Imported",
       "started": "Started",
-      "finished": "Finished"
+      "finished": "Finished",
+      "programs": "Programs"
     },
     "newCourse": "New course",
     "importFailed": "Import failed",
@@ -925,7 +926,6 @@
     "removeCourse": "Remove from program",
     "addCourse": "Add one of your courses",
     "program": "Program",
-    "notOnDevice": "Not on this device yet",
     "theme": "Theme",
     "themeHint": "Recolors the whole app while students are on this program's page or in its courses (unless they turn program colors off in Settings). Background, text and main color are needed; the others follow from them until you pick your own, here or under More colors.",
     "addTheme": "Add a theme",
@@ -960,5 +960,33 @@
       "sidebar-ring": "Sidebar focus ring"
     },
     "edit": "Edit program"
+  },
+  "programSharing": {
+    "publish": "Publish",
+    "publishHint": "Put the program online as it is now. Students who have it get the change on their own.",
+    "publishFailed": "Couldn't publish the program",
+    "publishedTitle": "Program published",
+    "publishedDescription": "Students can get this program with this code. It never changes: publish again after an edit and students who have the program get the change on their own.",
+    "share": "Share",
+    "shareDescription": "Students can get this program with this code. It's the same every time you publish.",
+    "shareDescriptionImported": "Classmates can get this program with this code.",
+    "codeLabel": "Program code",
+    "copyCode": "Copy code",
+    "peersOnline": "Peers online: {{count}}",
+    "notPublished": "Publish the program so students can get it.",
+    "done": "Done",
+    "newCourses": "New courses: {{count}}",
+    "newBadge": "New",
+    "importCourse": "Import",
+    "importAll": "Import all",
+    "notShared": "Not shared yet",
+    "finishedCount": "Finished courses: {{finished}}/{{count}}",
+    "addByCode": "Add a course by its code",
+    "add": "Add",
+    "lookingUp": "Looking it up…",
+    "invalidCode": "That doesn't look like a course code.",
+    "courseNotFound": "Couldn't find this course: nobody sharing it is online right now. Try again later.",
+    "courseAlreadyAdded": "This course is already in the program.",
+    "courseNotPublished": "Not published yet"
   }
 }

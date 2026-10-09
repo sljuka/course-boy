@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import Corestore from 'corestore'
-import { courseKeyPair, creatorKeyPair, publicCourseId } from './identity-keys.cjs'
+import { courseKeyPair, creatorKeyPair, programKeyPair, publicCourseId, publicProgramId } from './identity-keys.cjs'
 import { isValidCourseId } from './course-id.cjs'
 
 // The codes of courses published before SLJ-55 came from Corestore's own
@@ -45,5 +45,17 @@ describe('identity keys', () => {
 
   it('refuses a key that is not 32 bytes', () => {
     expect(() => creatorKeyPair(Buffer.alloc(16))).toThrow(/32 bytes/)
+  })
+})
+
+describe('program codes (SLJ-32)', () => {
+  it('count separately from courses, and sign with their own key pair', () => {
+    const identity = crypto.randomBytes(32)
+    const programId = publicProgramId(identity, 0)
+
+    expect(programId).toMatch(/^[a-z2-7]{16}$/)
+    expect(programId).not.toBe(publicCourseId(identity, 0))
+    expect(publicProgramId(identity, 0)).toBe(programId)
+    expect(programKeyPair(identity, programId).publicKey.equals(courseKeyPair(identity, programId).publicKey)).toBe(false)
   })
 })

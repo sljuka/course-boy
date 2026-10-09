@@ -47,6 +47,9 @@ const CMD_FIND_COURSE = 17
 const CMD_SET_IDENTITY = 18
 const CMD_SEAL_IDENTITY = 19
 const CMD_SEED_COURSE = 20
+const CMD_PUBLISH_PROGRAM = 21
+const CMD_SEED_PROGRAM = 22
+const CMD_PEEK_COURSE = 23
 // Sent by the worker to main (the only worker → main message).
 const EVENT_DRIVE_CHANGED = 100
 
@@ -161,6 +164,9 @@ export type ImportedCourseSource = {
   // downloaded, and `publisherId` is empty.
   alreadyImported: boolean
   courseId: string
+  // A code can be a program's (SLJ-32): it then landed under programs/.
+  kind: 'course' | 'program'
+  programId: string
   driveKey: string
   // Claimed by the course's source.json; unverified until SLJ-18.
   publisherId: string
@@ -169,9 +175,11 @@ export type ImportedCourseSource = {
 // `transferId`: to poll progress (getTransfer) and cancel (cancelTransfer).
 export async function importCourse(driveKey: string, transferId?: string): Promise<ImportedCourseSource> {
   const coursesRoot = path.join(getProfileDataDir(), 'courses')
+  const programsRoot = path.join(getProfileDataDir(), 'programs')
   const result = await sendCommand<Partial<ImportedCourseSource>>(CMD_IMPORT_COURSE, {
     coursesRoot,
     driveKey,
+    programsRoot,
     transferId,
   })
 
@@ -179,8 +187,35 @@ export async function importCourse(driveKey: string, transferId?: string): Promi
     alreadyImported: result.alreadyImported === true,
     courseId: result.courseId ?? '',
     driveKey: result.driveKey ?? '',
+    kind: result.kind === 'program' ? 'program' : 'course',
+    programId: result.programId ?? '',
     publisherId: result.publisherId ?? '',
   }
+}
+
+// ─── Programs (SLJ-32) ──────────────────────────────────────────────────────
+
+// Mirrors a program's folder (program.json and its images) into its drive and
+// announces it. `publicIndex`: the program's number among the publisher's
+// programs (its own counter); its code follows from it and the identity.
+// Fails with `code` LOCKED without the identity.
+export async function publishProgram(
+  programId: string,
+  programPath: string,
+  publicIndex: number,
+): Promise<{ driveKey: string; publicId: string }> {
+  return sendCommand(CMD_PUBLISH_PROGRAM, { programId, programPath, publicIndex })
+}
+
+// Shares a published program by its code while the identity is locked.
+export async function seedProgram(programId: string, driveKey: string): Promise<void> {
+  await sendCommand(CMD_SEED_PROGRAM, { driveKey, programId })
+}
+
+// A course's course.json and claimed publisher by its code, without importing
+// it. Fails with `code` NOT_FOUND when nobody sharing it is online.
+export async function peekCourse(driveKey: string): Promise<{ manifest: unknown; publisherId: string | null }> {
+  return sendCommand(CMD_PEEK_COURSE, { driveKey })
 }
 
 // Reopens an imported course's drive and announces it again (after a restart).

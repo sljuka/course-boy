@@ -35,7 +35,8 @@ export type ProgramCourseSnapshot = {
 
 export type ProgramCourse = {
   // The course's share code (its drive key): what a student imports. Null
-  // for a course of your own not published yet (phase 1, local programs).
+  // for a course of your own not published yet; filled in when the program
+  // is published, if the course has a code by then.
   code: string | null;
   courseId: string;
   snapshot: ProgramCourseSnapshot;
@@ -100,6 +101,9 @@ export type ProgramSummary = {
   description: string;
   distribution: "imported" | "local";
   id: string;
+  logo: string | null;
+  // An imported program's courses added since the student last opened it.
+  newCourseCount: number;
   title: string;
   updatedAt: string;
 };
@@ -216,3 +220,60 @@ export function localizeProgram(
     written(manifest.locales[manifest.defaultLocale]) ?? { description: "", title: "" }
   );
 }
+
+export type PeekCourseResult = { course: ProgramCourse } | { notFound: true };
+
+// A course's entry in a program from its course.json, fetched by its code from
+// someone else's computer (a curator adding another publisher's course): only
+// well-formed fields are kept, texts capped. Null when it isn't a course.
+export function programCourseFromManifest(
+  code: string,
+  manifest: unknown,
+  publisherId: string | null,
+): ProgramCourse | null {
+  const raw = manifest as {
+    id?: unknown;
+    locales?: Record<string, { description?: unknown; title?: unknown }>;
+    supportedLocales?: unknown;
+    version?: unknown;
+  } | null;
+  if (!raw || !isValidCourseId(raw.id)) return null;
+
+  const supportedLocales = Array.isArray(raw.supportedLocales)
+    ? [...new Set(raw.supportedLocales.filter(isLocale))]
+    : [];
+  const locales: Partial<Record<Locale, LocalizedProgramMetadata>> = {};
+  for (const locale of supportedLocales) {
+    const entry = raw.locales?.[locale];
+    if (entry && typeof entry.title === "string") {
+      locales[locale] = {
+        description: typeof entry.description === "string" ? entry.description.slice(0, MAX_DESCRIPTION_LENGTH) : "",
+        title: entry.title.slice(0, MAX_TITLE_LENGTH),
+      };
+    }
+  }
+  if (supportedLocales.length === 0 || Object.keys(locales).length === 0) return null;
+
+  return {
+    code,
+    courseId: raw.id,
+    snapshot: {
+      locales,
+      publisherId: typeof publisherId === "string" ? publisherId.slice(0, 128) : null,
+      supportedLocales,
+      version: typeof raw.version === "string" ? raw.version.slice(0, 32) : null,
+    },
+  };
+}
+
+// A program online (SLJ-32 phase 2): its code (yours once published, or the
+// one it was imported with), whether it's yours or imported, and how many
+// peers this device is connected to for it.
+export type ProgramSharingInfo = {
+  code: string | null;
+  kind: "imported" | "local";
+  // An imported program's courses added since the student last opened it.
+  newCourseIds: string[];
+  peers: number | null;
+  publishedAt: string | null;
+};

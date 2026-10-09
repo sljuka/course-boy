@@ -65,7 +65,12 @@ async function isImported(programId: string): Promise<boolean> {
 // Every readable program, in the reader's language, newest change first. A
 // damaged folder (or one from a newer Matko) is left out rather than failing
 // the whole list.
-export async function listPrograms(locale: Locale): Promise<ProgramSummary[]> {
+// `newCourseIds`: an imported program's courses the student hasn't seen yet
+// (program-sharing.ts).
+export async function listPrograms(
+  locale: Locale,
+  newCourseIds: (programId: string, courseIds: string[]) => string[] = () => [],
+): Promise<ProgramSummary[]> {
   let entries;
   try {
     entries = await fs.readdir(getProgramsRoot(), { withFileTypes: true });
@@ -86,6 +91,11 @@ export async function listPrograms(locale: Locale): Promise<ProgramSummary[]> {
             description,
             distribution: (await isImported(entry.name)) ? "imported" : "local",
             id: manifest.id,
+            logo: manifest.logo,
+            newCourseCount: newCourseIds(
+              manifest.id,
+              manifest.courses.map((course) => course.courseId),
+            ).length,
             title,
             updatedAt: manifest.updatedAt,
           };
@@ -183,4 +193,64 @@ export async function resolveProgramAsset(
     .access(filePath)
     .then(() => ({ filePath, mimeType }))
     .catch(() => null);
+}
+
+// ─── Sharing (SLJ-32 phase 2) ───────────────────────────────────────────────
+
+// Before a Publish: images the program no longer uses are removed (a replaced
+// logo), so they don't go online. Safe here, unlike on every save: the
+// program has just been saved, and nothing is being picked.
+//
+// Your own courses added before you published them get their code now (one
+// added unpublished has none, and students couldn't get it), from `codeFor`.
+export async function prepareProgramForPublish(
+  programId: string,
+  codeFor: (courseId: string) => string | null = () => null,
+): Promise<string> {
+  let manifest = await readProgram(programId);
+  const courses = manifest.courses.map((course) =>
+    course.code ? course : { ...course, code: codeFor(course.courseId) },
+  );
+  if (courses.some((course, index) => course.code !== manifest.courses[index].code)) {
+    manifest = { ...manifest, courses, updatedAt: new Date().toISOString() };
+    await writeProgram(manifest);
+  }
+  const directory = programDirectory(programId);
+  const assetsDirectory = path.join(directory, ASSETS_DIRECTORY);
+  const used = new Set([manifest.logo, manifest.banner].filter(Boolean));
+  const filenames = await fs.readdir(assetsDirectory).catch(() => [] as string[]);
+
+  await Promise.all(
+    filenames
+      .filter((filename) => !filename.startsWith(".") && !used.has(filename))
+      .map((filename) => fs.rm(path.join(assetsDirectory, filename), { force: true })),
+  );
+  return directory;
+}
+
+// An imported program replaced with its publisher's latest: `download`
+// mirrors the drive into a copy of the program's folder (only what changed is
+// written), which must hold a valid program.json with the same id before it's
+// swapped in. A failed or damaged download leaves the program as it was.
+export async function applyProgramUpdate(
+  programId: string,
+  download: (stagingPath: string) => Promise<unknown>,
+): Promise<void> {
+  const directory = programDirectory(programId);
+  const stagingPath = path.join(getProgramsRoot(), `.update-${programId}-${Date.now()}`);
+  const retiredPath = path.join(getProgramsRoot(), `.retired-${programId}-${Date.now()}`);
+
+  try {
+    await fs.cp(directory, stagingPath, { recursive: true });
+    await download(stagingPath);
+    const manifest: unknown = JSON.parse(await fs.readFile(path.join(stagingPath, PROGRAM_FILENAME), "utf8"));
+    if (!isProgramManifest(manifest) || manifest.id !== programId) {
+      throw new Error(`The update of program "${programId}" is damaged`);
+    }
+    await fs.rename(directory, retiredPath);
+    await fs.rename(stagingPath, directory);
+  } finally {
+    await fs.rm(stagingPath, { force: true, recursive: true }).catch(() => {});
+    await fs.rm(retiredPath, { force: true, recursive: true }).catch(() => {});
+  }
 }

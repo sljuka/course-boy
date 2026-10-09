@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  programCourseFromManifest,
   isNewerProgramFormat,
   isProgramManifest,
   localizeProgram,
@@ -72,5 +73,38 @@ describe("localizeProgram", () => {
     })
     expect(localizeProgram(manifest, "sr").title).toBe("Cypherpunks")
     expect(localizeProgram(manifest, "en").title).toBe("Cypherpunks")
+  })
+})
+
+describe("programCourseFromManifest", () => {
+  const code = "55cgbt6rwrz5zzzy6i4rb9sn8i13api9trbba5ke1uuxg8s5ngpo"
+
+  it("keeps a course's titles and descriptions in its languages", () => {
+    expect(
+      programCourseFromManifest(
+        code,
+        {
+          id: "cnp2svlf5w2xxdl3",
+          locales: { en: { description: "Caesar to Enigma.", title: "Classical ciphers" }, xx: { title: "?" } },
+          supportedLocales: ["en", "xx"],
+          version: "0.3.0",
+        },
+        "pxxzcf3g",
+      ),
+    ).toEqual({
+      code,
+      courseId: "cnp2svlf5w2xxdl3",
+      snapshot: {
+        locales: { en: { description: "Caesar to Enigma.", title: "Classical ciphers" } },
+        publisherId: "pxxzcf3g",
+        supportedLocales: ["en"],
+        version: "0.3.0",
+      },
+    })
+  })
+
+  it("refuses what isn't a course", () => {
+    expect(programCourseFromManifest(code, { id: "../x", locales: {}, supportedLocales: ["en"] }, null)).toBeNull()
+    expect(programCourseFromManifest(code, null, null)).toBeNull()
   })
 })

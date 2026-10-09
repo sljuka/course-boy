@@ -207,10 +207,10 @@
     "sharedVersion": "Deljena verzija: {{version}}"
   },
   "importCourse": {
-    "codeLabel": "Kod kursa",
-    "codePlaceholder": "Nalepi kod kursa",
-    "description": "Nalepite kod kursa koji ste dobili od nastavnika ili nekog iz razreda.",
-    "errorTitle": "Uvoz kursa nije uspeo",
+    "codeLabel": "Kod kursa ili programa",
+    "codePlaceholder": "Nalepi kod kursa ili programa",
+    "description": "Nalepite kod kursa ili programa koji ste dobili od nastavnika ili nekog iz razreda.",
+    "errorTitle": "Uvoz nije uspeo",
     "importButton": "Uvezi",
     "importing": "Uvoženje...",
     "openButton": "Uvezi kurs",
@@ -694,7 +694,8 @@
       "downloading": "Preuzimanje",
       "imported": "Uvezeni",
       "started": "Započeti",
-      "finished": "Završeni"
+      "finished": "Završeni",
+      "programs": "Programi"
     },
     "newCourse": "Novi kurs",
     "importFailed": "Uvoz nije uspeo",
@@ -925,7 +926,6 @@
     "removeCourse": "Ukloni iz programa",
     "addCourse": "Dodaj neki od svojih kurseva",
     "program": "Program",
-    "notOnDevice": "Još nije na ovom uređaju",
     "theme": "Tema",
     "themeHint": "Boji celu aplikaciju dok su učenici na stranici ovog programa ili u njegovim kursevima (osim ako isključe boje programa u Podešavanjima). Pozadina, tekst i glavna boja su potrebni; ostale proizlaze iz njih dok ne izabereš svoje, ovde ili pod Još boja.",
     "addTheme": "Dodaj temu",
@@ -960,5 +960,33 @@
       "sidebar-ring": "Okvir fokusa u bočnoj traci"
     },
     "edit": "Uredi program"
+  },
+  "programSharing": {
+    "publish": "Objavi",
+    "publishHint": "Postavite program na mrežu onakav kakav je sada. Učenici koji ga imaju dobiće izmenu sami od sebe.",
+    "publishFailed": "Objavljivanje programa nije uspelo",
+    "publishedTitle": "Program je objavljen",
+    "publishedDescription": "Učenici mogu da preuzmu ovaj program pomoću ovog koda. Kod se nikad ne menja: objavite ponovo posle izmene i učenici koji imaju program dobiće izmenu sami od sebe.",
+    "share": "Podeli",
+    "shareDescription": "Učenici mogu da preuzmu ovaj program pomoću ovog koda. Isti je svaki put kad objavite.",
+    "shareDescriptionImported": "Drugovi iz razreda mogu da preuzmu ovaj program ovim kodom.",
+    "codeLabel": "Kod programa",
+    "copyCode": "Kopiraj kod",
+    "peersOnline": "Korisnika na mreži: {{count}}",
+    "notPublished": "Objavite program da bi učenici mogli da ga preuzmu.",
+    "done": "Gotovo",
+    "newCourses": "Novih kurseva: {{count}}",
+    "newBadge": "Novo",
+    "importCourse": "Uvezi",
+    "importAll": "Uvezi sve",
+    "notShared": "Još nije podeljen",
+    "finishedCount": "Završeni kursevi: {{finished}}/{{count}}",
+    "addByCode": "Dodaj kurs pomoću koda",
+    "add": "Dodaj",
+    "lookingUp": "Traži se…",
+    "invalidCode": "Ovo ne liči na kod kursa.",
+    "courseNotFound": "Kurs nije pronađen: niko ko ga deli trenutno nije na mreži. Pokušajte kasnije.",
+    "courseAlreadyAdded": "Ovaj kurs je već u programu.",
+    "courseNotPublished": "Još nije objavljen"
   }
 }

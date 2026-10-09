@@ -16,10 +16,13 @@ import {
   importCourse,
   onDriveChanged,
   openIdentity,
+  peekCourse,
   publishCourse,
+  publishProgram,
   readIdentityBackup,
   sealIdentity,
   seedCourse,
+  seedProgram,
   setIdentity,
   spawnBareWorker,
   stopBareWorker,
@@ -27,15 +30,18 @@ import {
 } from './bare-worker'
 import { createCourseProgress } from './course-progress'
 import {
+  applyProgramUpdate,
   createProgram,
   listPrograms,
+  prepareProgramForPublish,
   readProgram,
   removeProgram,
   resolveProgramAsset,
   updateProgram,
   uploadProgramImage,
 } from './program-paths'
-import { isProgramManifest } from '../src/lib/program-package'
+import { createProgramSharing, type ProgramSharingState } from './program-sharing'
+import { isProgramManifest, programCourseFromManifest, type PeekCourseResult } from '../src/lib/program-package'
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import { createIdentityRestoreService, type IdentityRestoreState } from './identity-restore'
@@ -263,6 +269,32 @@ function openProfileServices(dataDir: string) {
     },
   })
 
+  // Programs online (SLJ-32): yours published, imported ones followed.
+  const programSharingStore = new Store<ProgramSharingState>({
+    cwd: dataDir,
+    defaults: { followed: {}, published: {} },
+    name: 'program-sharing',
+  })
+  const programSharing = createProgramSharing({
+    applyUpdate: (programId, driveKey) =>
+      applyProgramUpdate(programId, (stagingPath) => whileOpen(downloadUpdate)(driveKey, stagingPath)),
+    prepareForPublish: (programId) =>
+      prepareProgramForPublish(programId, (courseId) => courseSharing.getInfo(courseId).code),
+    store: {
+      read: () => programSharingStore.store,
+      write: (state) => {
+        programSharingStore.store = state
+      },
+    },
+    worker: {
+      followCourse: whileOpen(followCourse),
+      getPeers: whileOpen(getPeers),
+      publishProgram: whileOpen(publishProgram),
+      seedProgram: whileOpen(seedProgram),
+      stopSharing: whileOpen(stopSharing),
+    },
+  })
+
   const courseSharingStore = new Store<CourseSharingState & { nextPublicIndex?: number }>({
     cwd: dataDir,
     defaults: { followed: {}, published: {} },
@@ -394,6 +426,7 @@ function openProfileServices(dataDir: string) {
     courseProgress,
     courseSharing,
     courseSharingStore,
+    programSharing,
     identityFilePath,
     identityRestore,
     identityRestoreStore,
@@ -406,7 +439,10 @@ function openProfileServices(dataDir: string) {
 // read through `profile.` at call time.
 let profile = openProfileServices(getProfileDataDir())
 
-onDriveChanged((driveKey) => profile.courseSharing.onDriveChanged(driveKey))
+onDriveChanged((driveKey) => {
+  profile.courseSharing.onDriveChanged(driveKey)
+  profile.programSharing.onDriveChanged(driveKey)
+})
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -691,7 +727,11 @@ ipcMain.handle('courses:remove', async (_event, courseId: string) => {
 // ─── Programs (SLJ-32) ──────────────────────────────────────────────────────
 // Phase 1: your own programs, on this device (electron/program-paths.ts).
 
-ipcMain.handle('programs:list', (_event, locale: unknown) => listPrograms(isLocale(locale) ? locale : 'en'))
+ipcMain.handle('programs:list', (_event, locale: unknown) =>
+  listPrograms(isLocale(locale) ? locale : 'en', (programId, courseIds) =>
+    profile.programSharing.newCourseIds(programId, courseIds),
+  ),
+)
 
 ipcMain.handle('programs:get', (_event, programId: unknown) => {
   if (typeof programId !== 'string') throw new Error('Invalid program id')
@@ -715,9 +755,55 @@ ipcMain.handle('programs:upload-image', (_event, programId: unknown) => {
   return uploadProgramImage(programId)
 })
 
-ipcMain.handle('programs:remove', (_event, programId: unknown) => {
+ipcMain.handle('programs:remove', async (_event, programId: unknown) => {
   if (typeof programId !== 'string') throw new Error('Invalid program id')
+  await profile.programSharing.forget(programId)
   return removeProgram(programId)
+})
+
+// Phase 2: Publish puts the program online (signed, so the identity must be
+// unlocked: the renderer asks for it first), and returns its code.
+ipcMain.handle('programs:publish', async (_event, programId: unknown) => {
+  if (typeof programId !== 'string') throw new Error('Invalid program id')
+  if (profile.publisherIdentity.isLocked()) {
+    throw new Error('The publisher identity is locked: unlock it to publish')
+  }
+  await readProgram(programId)
+  return profile.programSharing.publish(programId)
+})
+
+ipcMain.handle('programs:get-sharing', async (_event, programId: unknown) => {
+  if (typeof programId !== 'string') throw new Error('Invalid program id')
+  const program = await readProgram(programId)
+  return profile.programSharing.getInfo(
+    programId,
+    program.courses.map((course) => course.courseId),
+  )
+})
+
+// The student opened an imported program's page: its courses aren't new any more.
+ipcMain.handle('programs:mark-seen', async (_event, programId: unknown) => {
+  if (typeof programId !== 'string') throw new Error('Invalid program id')
+  const program = await readProgram(programId)
+  profile.programSharing.markSeen(
+    programId,
+    program.courses.map((course) => course.courseId),
+  )
+})
+
+// Someone else's course for a program, by its code: its titles and
+// descriptions, without importing it.
+ipcMain.handle('programs:peek-course', async (_event, code: unknown) => {
+  if (typeof code !== 'string' || !/^[a-z0-9]{52,64}$/i.test(code.trim())) throw new Error('Invalid code')
+  try {
+    const { manifest, publisherId } = await peekCourse(code.trim())
+    const course = programCourseFromManifest(code.trim(), manifest, publisherId)
+    if (!course) throw new Error('This code is not a course')
+    return { course } satisfies PeekCourseResult
+  } catch (error) {
+    if ((error as { code?: string }).code === 'NOT_FOUND') return { notFound: true } satisfies PeekCourseResult
+    throw error
+  }
 })
 
 // ─── Progress (SLJ-50) ──────────────────────────────────────────────────────
@@ -911,6 +997,15 @@ ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput)
   )
   if ('cancelled' in result) {
     return result satisfies ImportCourseResult
+  }
+  // A program's code (SLJ-32): it landed under programs/, followed from now on.
+  if ('programId' in result) {
+    const program = await readProgram(result.programId)
+    profile.programSharing.recordImport(
+      result,
+      program.courses.map((course) => course.courseId),
+    )
+    return { programId: result.programId } satisfies ImportCourseResult
   }
   // The worker lands an import root-only; move it into versions/<v>/ (SLJ-40).
   await migrateImportedCourse(result.courseId)
@@ -1144,7 +1239,9 @@ function startProfile(): void {
   // courses are shared by their code until the password is given.)
   void cleanUpInterruptedCourseUpdates()
     .catch((error) => console.error('[course-sharing] cleanup failed:', error))
-    .then(() => (profile === opened ? opened.courseSharing.start() : undefined))
+    .then(() =>
+      profile === opened ? Promise.all([opened.courseSharing.start(), opened.programSharing.start()]) : undefined,
+    )
 }
 
 // Opens another profile (or the launcher, with null) in the running app

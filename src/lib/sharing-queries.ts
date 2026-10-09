@@ -88,10 +88,12 @@ export function useImportCourseMutation() {
     // Kept until dismissed: a failed import stays on Home (SLJ-49), even
     // after the dialog that started it is gone.
     gcTime: Infinity,
+    // A code can be a course's or a program's.
     onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["courses", "list"],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["courses", "list"] }),
+        queryClient.invalidateQueries({ queryKey: ["programs"] }),
+      ]);
     },
   });
 }

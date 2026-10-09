@@ -134,6 +134,8 @@ export function describeUpdate(followed: FollowedCourse): CourseUpdateInfo | nul
   }
 }
 
+export type ImportedProgram = { driveKey: string; programId: string; publisherId: string }
+
 export type CourseSharingState = {
   // The teacher's published courses, by course id. The code is the drive key; it
   // never changes for a course, so it's kept once known. `publicIndex` is the
@@ -161,7 +163,14 @@ export type CourseSharingWorker = {
   importCourse(
     code: string,
     transferId?: string,
-  ): Promise<{ alreadyImported?: boolean; courseId: string; driveKey: string; publisherId: string }>
+  ): Promise<{
+    alreadyImported?: boolean
+    courseId: string
+    driveKey: string
+    kind?: 'course' | 'program'
+    programId?: string
+    publisherId: string
+  }>
   publishCourse(courseId: string): Promise<string>
   stopSharing(target: { courseId: string } | { driveKey: string }): Promise<void>
 }
@@ -509,13 +518,21 @@ export function createCourseSharing(deps: CourseSharingDeps) {
 
     // Imports a course by its code and records where it came from. The recorded
     // drive key is the code actually used, never re-read from the course's files.
-    async importCourse(code: string, transferId?: string): Promise<{ courseId: string } | Cancelled> {
+    // A code can be a program's (SLJ-32): its result is handed back as it is,
+    // for program-sharing.ts to record.
+    async importCourse(
+      code: string,
+      transferId?: string,
+    ): Promise<{ courseId: string } | ImportedProgram | Cancelled> {
       let result: Awaited<ReturnType<CourseSharingWorker['importCourse']>>
       try {
         result = await deps.worker.importCourse(code, transferId)
       } catch (error) {
         if (isCancelled(error)) return { cancelled: true }
         throw error
+      }
+      if (result.kind === 'program' && result.programId) {
+        return { driveKey: result.driveKey, programId: result.programId, publisherId: result.publisherId }
       }
       // A course already here keeps its record (and its import date).
       if (result.alreadyImported && deps.store.read().followed[result.courseId]) {

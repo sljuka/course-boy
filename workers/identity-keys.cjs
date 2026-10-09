@@ -61,17 +61,30 @@ function deriveKeyPair(identity, namespace, name) {
 // names its place online.
 const PUBLIC_ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz234567'
 const PUBLIC_ID_CONTEXT = Buffer.from('matko-public-course-id')
+// Programs (SLJ-32) count separately, under their own context, so a
+// program's public id never equals a course's.
+const PUBLIC_PROGRAM_ID_CONTEXT = Buffer.from('matko-public-program-id')
 
 function publicCourseId(identity, index) {
+  return publicId(identity, index, PUBLIC_ID_CONTEXT)
+}
+
+// A program's public id: the same scheme as a course's, with the program's
+// own counter (n = 0, 1, 2… among this publisher's programs).
+function publicProgramId(identity, index) {
+  return publicId(identity, index, PUBLIC_PROGRAM_ID_CONTEXT)
+}
+
+function publicId(identity, index, context) {
   if (!Number.isInteger(index) || index < 0 || index > 0xffffffff) {
-    throw new Error('A public course number must be a whole number from 0')
+    throw new Error('A public number must be a whole number from 0')
   }
   if (!Buffer.isBuffer(identity) || identity.length !== 32) {
     throw new Error('The identity key must be 32 bytes')
   }
   const counter = Buffer.alloc(4)
   counter.writeUInt32BE(index)
-  const digest = generichash([PUBLIC_ID_CONTEXT, counter], identity)
+  const digest = generichash([context, counter], identity)
 
   // The first 80 bits, 5 per character.
   let bits = 0
@@ -100,4 +113,11 @@ function creatorKeyPair(identity) {
   return deriveKeyPair(identity, DEFAULT_NAMESPACE, 'creator')
 }
 
-module.exports = { courseKeyPair, creatorKeyPair, publicCourseId }
+// The key pair that signs a program's drive (SLJ-32), from its public id.
+// (Corestore: `namespace('program-<id>').createKeyPair('db')`.)
+function programKeyPair(identity, publicId) {
+  const namespace = generichash([DEFAULT_NAMESPACE, Buffer.from(`program-${publicId}`)])
+  return deriveKeyPair(identity, namespace, 'db')
+}
+
+module.exports = { courseKeyPair, creatorKeyPair, programKeyPair, publicCourseId, publicProgramId }
