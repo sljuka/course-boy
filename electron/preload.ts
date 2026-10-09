@@ -1,5 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
+import type { ApprovalItem, MaintainersInfo, ProposalReview } from '../src/lib/maintainers'
 import type { PeekCourseResult, ProgramManifest, ProgramSharingInfo, ProgramSummary } from '../src/lib/program-package'
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import type {
@@ -229,6 +230,34 @@ contextBridge.exposeInMainWorld('progress', {
   },
   setProgramFavorite(input: { favorite: boolean; programId: string }) {
     return ipcRenderer.invoke('progress:set-program-favorite', input) as Promise<void>
+  },
+})
+
+// Courses maintained by several publishers (SLJ-11).
+contextBridge.exposeInMainWorld('maintainers', {
+  invite(input: { courseId: string; quorum: number }) {
+    return ipcRenderer.invoke('maintainers:invite', input) as Promise<{ code: string }>
+  },
+  accept(code: string) {
+    return ipcRenderer.invoke('maintainers:accept', code) as Promise<{ publicId: string }>
+  },
+  startSharing(courseId: string) {
+    return ipcRenderer.invoke('maintainers:start-sharing', courseId) as Promise<void>
+  },
+  get(courseId: string) {
+    return ipcRenderer.invoke('maintainers:get', courseId) as Promise<MaintainersInfo | null>
+  },
+  listApprovals() {
+    return ipcRenderer.invoke('maintainers:list-approvals') as Promise<ApprovalItem[]>
+  },
+  review(input: { hash: string; publicId: string }) {
+    return ipcRenderer.invoke('maintainers:review', input) as Promise<ProposalReview>
+  },
+  approve(input: { hash: string; publicId: string }) {
+    return ipcRenderer.invoke('maintainers:approve', input) as Promise<void>
+  },
+  requestChanges(input: { hash: string; note: string; publicId: string }) {
+    return ipcRenderer.invoke('maintainers:request-changes', input) as Promise<void>
   },
 })
 

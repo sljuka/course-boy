@@ -137,8 +137,17 @@ function proposalKeyPair(identity, publicId, index) {
   return deriveKeyPair(identity, namespace, 'db')
 }
 
+// A maintainer's mailbox for a shared course (SLJ-11): a small drive where
+// their app writes what the other maintainers need (membership, proposals,
+// approvals), followed by the others' apps.
+function mailboxKeyPair(identity, publicId) {
+  const namespace = generichash([DEFAULT_NAMESPACE, Buffer.from(`mailbox-${publicId}`)])
+  return deriveKeyPair(identity, namespace, 'db')
+}
+
 module.exports = {
   courseKeyPair,
+  mailboxKeyPair,
   creatorKeyPair,
   maintainerKeyPair,
   programKeyPair,

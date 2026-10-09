@@ -100,6 +100,11 @@ adding a case to the e2e suite over one-off manual checking.
   A program (an ordered set of courses, SLJ-32) is published the same way with its own
   code, imported through the same box, and followed: students get its changes on their
   own (`electron/program-sharing.ts`).
+  A course can have several maintainers (SLJ-11): its drive is signed by their keys
+  together (`hyper-multisig`), and a version goes online only when more than half of
+  them approve it (`electron/maintainers.ts`, `workers/shared-course.cjs`,
+  `workers/maintainers.cjs`). Students follow a course that moved to a shared code on
+  their own.
   `source.json` in the drive records where a course is shared from. Students are offered newer versions of imported
   courses and apply them from the course page (SLJ-39); imported courses keep previous versions as `versions/<v>/` +
   `release.json`, and the student can go back (SLJ-40). No `pear-runtime`, no OTA

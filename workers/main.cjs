@@ -15,6 +15,17 @@ const fsp = require('bare-fs/promises')
 const path = require('bare-path')
 const { isValidCourseId } = require('./course-id.cjs')
 const { movedToKey, unchangedFileKeys, verifySource } = require('./course-source.cjs')
+const { createMaintainers, requestHash } = require('./maintainers.cjs')
+const {
+  commitProposal,
+  createProposal,
+  openProposalForReview,
+  openSharedDrive,
+  sharedCourseKey,
+  sharedCourseSpec,
+  signRequest,
+  writeMovedNotice,
+} = require('./shared-course.cjs')
 const { createIdentityBackup, IdentityBackupError, openIdentityBackup, readIdentityBackup } = require('./identity-backup.cjs')
 const { courseKeyPair, creatorKeyPair, programKeyPair, publicCourseId, publicProgramId } = require('./identity-keys.cjs')
 
@@ -41,6 +52,9 @@ const CMD_PUBLISH_PROGRAM = 21 // must match electron/bare-worker.ts
 const CMD_SEED_PROGRAM = 22 // must match electron/bare-worker.ts
 const CMD_PEEK_COURSE = 23 // must match electron/bare-worker.ts
 const CMD_FIND_PROGRAM = 24 // must match electron/bare-worker.ts
+// Courses shared by several maintainers (SLJ-11): one command, the operation
+// named by `op` (see sharedCourseOp below).
+const CMD_SHARED_COURSE = 25 // must match electron/bare-worker.ts
 
 // Programs (SLJ-32) share `publishedDrives` with courses under this prefix, so
 // a program's id can never collide with a course's.
@@ -50,6 +64,8 @@ const PEEK_TIMEOUT_MS = 20_000
 // Worker → main: an imported course's drive may hold a newer version. Main
 // decides what that means (electron/course-sharing.ts).
 const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
+// Worker → main: someone joined as a maintainer with one of our invites.
+const EVENT_MAINTAINER_JOINED = 101 // must match electron/bare-worker.ts
 
 // How often followed drives are checked for a new version even without an
 // 'append' event (e.g. after being offline). Main ignores repeats.
@@ -1099,6 +1115,138 @@ async function start() {
     }
   }
 
+  // ─── Courses shared by several maintainers (SLJ-11) ──────────────────────
+  // workers/shared-course.cjs (the shared course: propose, review, sign,
+  // commit) and workers/maintainers.cjs (invites and mailboxes). Main decides
+  // when (electron/maintainers.ts); this only carries the operations out.
+
+  function notifyMain(event, payload) {
+    if (!rpc) return
+    const request = rpc.request(event)
+    request.send(JSON.stringify(payload))
+    request.reply().catch(() => {})
+  }
+
+  const maintainers = createMaintainers({
+    identity: () => identity,
+    onJoined: (joined) => notifyMain(EVENT_MAINTAINER_JOINED, joined),
+    onMailboxChanged: (key) => notifyMain(EVENT_DRIVE_CHANGED, { driveKey: key }),
+    pairing,
+    store,
+    swarm,
+  })
+  const proposalDrives = new Map() // hex proposal key -> our proposal drive
+  const sharedDrives = new Map() // hex shared key -> the shared course's drive
+
+  // The shared course's drive, opened once: announced, and reported to main
+  // when a new version lands (like a followed course).
+  async function ensureSharedDrive(spec) {
+    const hex = sharedCourseKey(spec).toString('hex')
+    const existing = sharedDrives.get(hex)
+    if (existing) return existing
+    const drive = await openSharedDrive(store, spec)
+    swarm.join(drive.discoveryKey, { client: true, server: true })
+    watchFollowedDrive(drive)
+    sharedDrives.set(hex, drive)
+    return drive
+  }
+
+  async function closeSharedDrive(spec) {
+    const hex = sharedCourseKey(spec).toString('hex')
+    const drive = sharedDrives.get(hex)
+    if (!drive) return
+    sharedDrives.delete(hex)
+    await drive.close().catch(() => {})
+  }
+
+  async function sharedCourseOp(args) {
+    const spec = args.spec ? sharedCourseSpec(args.spec) : null
+    switch (args.op) {
+      case 'self':
+        return maintainers.self(args.publicId)
+      case 'createInvite':
+        return { code: await maintainers.createInvite(args.publicId) }
+      case 'acceptInvite':
+        return maintainers.acceptInvite(args.code)
+      case 'writeMailbox':
+        await maintainers.writeMailbox(args.publicId, args.file, args.value)
+        return {}
+      case 'followMailbox':
+        await maintainers.followMailbox(args.key)
+        return {}
+      case 'readMailbox':
+        return maintainers.readMailbox(args.key)
+      case 'seedShared': {
+        const drive = await ensureSharedDrive(spec)
+        await drive.core.update().catch(() => {})
+        const manifest = drive.core.length > 0 ? await readRemoteJson(drive, '/course.json').catch(() => null) : null
+        return { courseId: manifest?.id ?? null, sharedKey: IdEncoding.normalize(drive.key), version: manifest?.version ?? null }
+      }
+      case 'propose': {
+        const { drive, length, request } = await createProposal({
+          identity: requireIdentity(),
+          index: args.index,
+          source: args.source,
+          spec,
+          store,
+          versionPath: args.versionPath,
+        })
+        swarm.join(drive.discoveryKey, { client: true, server: true })
+        proposalDrives.set(drive.key.toString('hex'), drive)
+        return { hash: requestHash(request), length, proposalKey: IdEncoding.normalize(drive.key), request }
+      }
+      case 'review': {
+        await ensureSharedDrive(spec)
+        const { changes, length, proposal, sharedLength } = await openProposalForReview({
+          proposalKey: args.proposalKey,
+          request: args.request,
+          spec,
+          store,
+        })
+        await proposal.close()
+        return { changes, length, sharedLength }
+      }
+      case 'sign':
+        return { response: signRequest({ identity: requireIdentity(), publicId: spec.publicId, request: args.request }) }
+      case 'commit': {
+        const proposal = proposalDrives.get(IdEncoding.decode(args.proposalKey).toString('hex'))
+        if (!proposal) throw new Error('This proposal is not on this device')
+        // The shared drive is reopened after: committing writes its cores.
+        await closeSharedDrive(spec)
+        try {
+          await commitProposal({ first: args.first, proposal, request: args.request, responses: args.responses, spec, store })
+        } finally {
+          await ensureSharedDrive(spec)
+        }
+        return { sharedKey: IdEncoding.normalize(sharedCourseKey(spec)) }
+      }
+      case 'dropProposal': {
+        const hex = IdEncoding.decode(args.proposalKey).toString('hex')
+        const proposal = proposalDrives.get(hex)
+        if (proposal) {
+          proposalDrives.delete(hex)
+          await swarm.leave(proposal.discoveryKey).catch(() => {})
+          await proposal.close().catch(() => {})
+        }
+        return {}
+      }
+      case 'moveNotice': {
+        const { drive } = await openPublishedDrive(args.courseId, args.publicId)
+        await writeMovedNotice(drive, args.sharedKey)
+        return {}
+      }
+      case 'downloadShared': {
+        const drive = await ensureSharedDrive(spec)
+        await drive.core.update({ wait: true })
+        await drive.mirror(new Localdrive(args.stagingPath)).done()
+        const manifest = JSON.parse(await fsp.readFile(path.join(args.stagingPath, 'course.json'), 'utf8'))
+        return { courseId: manifest.id, version: manifest.version }
+      }
+      default:
+        throw new Error(`Unknown shared course operation "${args.op}"`)
+    }
+  }
+
   rpc = new RPC(new Pipe(3), async (req) => {
     // The publisher id while the identity is unlocked here, else ''. Main asks
     // it once at start to know the worker answers (scripts/check-packaged.mjs).
@@ -1370,6 +1518,18 @@ async function start() {
         )
       } catch (error) {
         if (error.code !== 'CANCELLED' && error.code !== 'NOT_FOUND') console.error('[worker] failed to find a course:', error)
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_SHARED_COURSE) {
+      let args = {}
+      try {
+        args = JSON.parse(req.data.toString())
+        req.reply(JSON.stringify((await sharedCourseOp(args)) ?? {}))
+      } catch (error) {
+        if (error.code !== 'LOCKED') console.error(`[worker] shared course "${args.op}" failed:`, error)
         req.reply(JSON.stringify({ code: error.code, error: error.message }))
       }
       return

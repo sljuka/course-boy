@@ -946,3 +946,31 @@ which on a moved course's new drive means downloading all of them. The module te
 a course to a 1-of-1 shared course and checks that a 200 kB unchanged asset never crosses
 the network. Starting a move from the app comes with inviting a maintainer (milestone 3).
 
+**Milestone 3 (maintainers in the app):**
+- **Invite:** a `blind-pairing` code. The invited maintainer's app answers with its
+  publisher id, maintainer key and mailbox; the owner's app confirms with its own mailbox.
+- **Mailboxes:** everything else travels through per-course mailbox drives
+  (`workers/maintainers.cjs`).
+- **Decisions:** `electron/maintainers.ts` reads the mailboxes on every change and acts:
+  - it takes members and the rule from the owner's mailbox;
+  - it lists other maintainers' proposals for review;
+  - it commits your own proposal once enough approvals have arrived;
+  - after the first commit it writes the moved notice;
+  - it lands the shared course on a newly joined maintainer's computer.
+- **The shared course's key:** each app records it as soon as the members are known.
+  Otherwise its first version (a change to the shared drive, not to a mailbox) wouldn't
+  reach a maintainer who hasn't landed the course yet.
+- **Publish:** a Publish of a shared course is a proposal (`publishShared`). With the
+  identity locked it only seeds.
+- **e2e:** `e2e/sharing.e2e.mjs` "a course maintained by two teachers" (about 50 s): two
+  teachers and two students.
+  - Marko approves the first shared version; students follow the course to the new code.
+  - Marko's version goes online only after Ana approves it.
+  - A student with only the old code gets the shared course.
+- **Not built yet:**
+  - adding or removing maintainers after the course is shared (another move, approved
+    under the current rule);
+  - the UI (milestone 4);
+  - deleting committed proposals' drives (disk space on the proposer's side);
+  - restore (milestone 5).
+

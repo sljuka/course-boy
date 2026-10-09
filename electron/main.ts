@@ -16,6 +16,7 @@ import {
   getTransfer,
   importCourse,
   onDriveChanged,
+  onMaintainerJoined,
   openIdentity,
   peekCourse,
   publishCourse,
@@ -25,6 +26,7 @@ import {
   seedCourse,
   seedProgram,
   setIdentity,
+  sharedCourseOp,
   spawnBareWorker,
   stopBareWorker,
   stopSharing,
@@ -48,6 +50,7 @@ import { isProgramManifest, programCourseFromManifest, type PeekCourseResult } f
 import { createCourseSharing, type CourseSharingState } from './course-sharing'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import { createIdentityRestoreService, type IdentityRestoreState } from './identity-restore'
+import { createMaintainers, type MaintainersState } from './maintainers'
 import { createPublisherIdentity, IDENTITY_FILE_NAME } from './publisher-identity'
 import { createProfile, listProfiles, removeProfile, updateProfile } from './profiles'
 import { getActiveProfile, getBaseDataDir, getProfileDataDir, initProfiles, setActiveProfile } from './profile-context'
@@ -71,6 +74,7 @@ import {
   clampPreviousVersionsToKeep,
   cleanUpInterruptedCourseUpdates,
   createRecoveryStagingPath,
+  getPublishedCoursePackagePath,
   landRecoveredCourse,
   listImportedCourseVersions,
   listPublishedLocalCourseIds,
@@ -319,6 +323,39 @@ function openProfileServices(dataDir: string) {
     return index
   }
 
+  // Courses maintained by several publishers (SLJ-11): who maintains what,
+  // proposals and approvals. Main-process only.
+  const maintainersStore = new Store<MaintainersState>({
+    cwd: dataDir,
+    defaults: { courses: {} },
+    name: 'maintainers',
+  })
+  const maintainers = createMaintainers({
+    courseOnDevice: async (courseId) =>
+      (await listCourses(await ensureLocalCoursesRoot())).some((candidate) => candidate.id === courseId),
+    createStagingPath: createRecoveryStagingPath,
+    landCourse: landRecoveredCourse,
+    // Shared from the shared course from now on (see publishCourse below).
+    onShared: (courseId) => courseSharing.onPublished(courseId),
+    op: whileOpen(sharedCourseOp) as typeof sharedCourseOp,
+    publishedCourse: async (courseId) => {
+      const entry = courseSharingStore.get('published')[courseId]
+      const versionPath = await getPublishedCoursePackagePath(courseId)
+      const version = versionPath
+        ? (JSON.parse(await readFile(path.join(versionPath, 'course.json'), 'utf8')) as { version?: string }).version ?? null
+        : null
+      return { code: entry?.code ?? null, publicId: entry?.publicId ?? null, version, versionPath }
+    },
+    removeStaging: (stagingPath) => rm(stagingPath, { force: true, recursive: true }),
+    seedOldCode: whileOpen(seedCourse),
+    store: {
+      read: () => maintainersStore.store,
+      write: (state) => {
+        maintainersStore.store = state
+      },
+    },
+  })
+
   const courseSharing = createCourseSharing({
     applyUpdateFiles: (expected, download) =>
       applyImportedCourseUpdate(expected, download, {
@@ -351,6 +388,11 @@ function openProfileServices(dataDir: string) {
       // Locked (until the password is given), an already published course is
       // still shared by its code; a new version waits for the password.
       publishCourse: whileOpen(async (courseId: string) => {
+        // A course shared by several maintainers (SLJ-11): Publish proposes
+        // the version for approval; its code is the shared course's.
+        if (maintainers.isShared(courseId)) {
+          return maintainers.publishShared(courseId, { propose: !publisherIdentity.isLocked() })
+        }
         const published = courseSharingStore.get('published')[courseId]
         if (publisherIdentity.isLocked()) {
           if (!published?.code) throw Object.assign(new Error('The publisher identity is locked'), { code: 'LOCKED' })
@@ -436,6 +478,7 @@ function openProfileServices(dataDir: string) {
     courseProgress,
     courseSharing,
     courseSharingStore,
+    maintainers,
     programSharing,
     identityFilePath,
     identityRestore,
@@ -452,6 +495,11 @@ let profile = openProfileServices(getProfileDataDir())
 onDriveChanged((driveKey) => {
   profile.courseSharing.onDriveChanged(driveKey)
   profile.programSharing.onDriveChanged(driveKey)
+  profile.maintainers.onDriveChanged(driveKey)
+})
+
+onMaintainerJoined((joined) => {
+  void profile.maintainers.onJoined(joined).catch((error) => console.error('[maintainers] join failed:', error))
 })
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -860,6 +908,50 @@ ipcMain.handle('progress:set-favorite', (_event, input: { courseId?: unknown; fa
   profile.courseProgress.setFavorite(input.courseId, input.favorite)
 })
 
+// Courses maintained by several publishers (SLJ-11). Signing needs the
+// publishing identity unlocked; the worker refuses otherwise (LOCKED).
+const isPublicId = (value: unknown): value is string => typeof value === 'string' && /^[a-z2-7]{16}$/.test(value)
+const isHash = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
+
+ipcMain.handle('maintainers:invite', (_event, input: { courseId?: unknown; quorum?: unknown }) => {
+  if (!isId(input?.courseId) || typeof input.quorum !== 'number') throw new Error('Invalid invite')
+  return profile.maintainers.invite(input.courseId, input.quorum)
+})
+
+ipcMain.handle('maintainers:accept', (_event, code: unknown) => {
+  if (typeof code !== 'string' || code.length > 1024) throw new Error('Invalid invite code')
+  return profile.maintainers.accept(code)
+})
+
+ipcMain.handle('maintainers:start-sharing', async (_event, courseId: unknown) => {
+  if (!isId(courseId)) throw new Error('Invalid course id')
+  await profile.maintainers.startSharing(courseId)
+})
+
+ipcMain.handle('maintainers:get', (_event, courseId: unknown) => {
+  if (!isId(courseId)) throw new Error('Invalid course id')
+  return profile.maintainers.getInfo(courseId)
+})
+
+ipcMain.handle('maintainers:list-approvals', () => profile.maintainers.listApprovals())
+
+ipcMain.handle('maintainers:review', (_event, input: { hash?: unknown; publicId?: unknown }) => {
+  if (!isPublicId(input?.publicId) || !isHash(input.hash)) throw new Error('Invalid proposal')
+  return profile.maintainers.review(input.publicId, input.hash)
+})
+
+ipcMain.handle('maintainers:approve', (_event, input: { hash?: unknown; publicId?: unknown }) => {
+  if (!isPublicId(input?.publicId) || !isHash(input.hash)) throw new Error('Invalid proposal')
+  return profile.maintainers.approve(input.publicId, input.hash)
+})
+
+ipcMain.handle('maintainers:request-changes', (_event, input: { hash?: unknown; note?: unknown; publicId?: unknown }) => {
+  if (!isPublicId(input?.publicId) || !isHash(input.hash) || typeof input.note !== 'string') {
+    throw new Error('Invalid request')
+  }
+  return profile.maintainers.requestChanges(input.publicId, input.hash, input.note)
+})
+
 ipcMain.handle('progress:set-program-favorite', (_event, input: { favorite?: unknown; programId?: unknown }) => {
   if (!isId(input?.programId) || typeof input.favorite !== 'boolean') throw new Error('Invalid favorite')
   profile.courseProgress.setProgramFavorite(input.programId, input.favorite)
@@ -1256,7 +1348,9 @@ function startProfile(): void {
   void cleanUpInterruptedCourseUpdates()
     .catch((error) => console.error('[course-sharing] cleanup failed:', error))
     .then(() =>
-      profile === opened ? Promise.all([opened.courseSharing.start(), opened.programSharing.start()]) : undefined,
+      profile === opened
+        ? Promise.all([opened.courseSharing.start(), opened.programSharing.start(), opened.maintainers.start()])
+        : undefined,
     )
 }
 

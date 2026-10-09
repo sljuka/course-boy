@@ -51,8 +51,12 @@ const CMD_PUBLISH_PROGRAM = 21
 const CMD_SEED_PROGRAM = 22
 const CMD_PEEK_COURSE = 23
 const CMD_FIND_PROGRAM = 24
+// Courses shared by several maintainers (SLJ-11): one command, `op` names the operation.
+const CMD_SHARED_COURSE = 25
 // Sent by the worker to main (the only worker → main message).
 const EVENT_DRIVE_CHANGED = 100
+// Worker → main: someone joined as a maintainer with one of our invites.
+const EVENT_MAINTAINER_JOINED = 101
 
 declare global {
   // 'spawning' until the worker answers, then 'ready', or 'error: …'
@@ -337,6 +341,67 @@ export async function findProgram(input: {
   return sendCommand<FoundProgram>(CMD_FIND_PROGRAM, input)
 }
 
+// ─── Courses shared by several maintainers (SLJ-11) ────────────────────────
+// The worker carries the operations out (workers/shared-course.cjs and
+// workers/maintainers.cjs); electron/maintainers.ts decides when.
+
+// A shared course: its original public id, its maintainers' keys and how many
+// must approve a version.
+export type SharedCourseSpecInput = { publicId: string; quorum: number; signers: string[] }
+
+// What a maintainer tells the others about themselves for one course.
+export type MaintainerSelf = { mailboxKey: string; maintainerKey: string; publisherId: string }
+
+export type MaintainerJoined = { member: MaintainerSelf; publicId: string }
+
+export type MailboxContents = {
+  approvals: Record<string, { response?: unknown }>
+  changesRequested: Record<string, { note?: unknown }>
+  members: unknown
+  proposal: unknown
+}
+
+export type ProposalChange = { kind: 'added' | 'changed' | 'removed'; path: string }
+
+type SharedCourseOps = {
+  acceptInvite: [{ code: string }, { ownerMailboxKey: string; publicId: string }]
+  commit: [
+    { first: boolean; proposalKey: string; request: string; responses: string[]; spec: SharedCourseSpecInput },
+    { sharedKey: string },
+  ]
+  createInvite: [{ publicId: string }, { code: string }]
+  downloadShared: [{ spec: SharedCourseSpecInput; stagingPath: string }, { courseId: string; version: string }]
+  dropProposal: [{ proposalKey: string }, Record<string, never>]
+  followMailbox: [{ key: string }, Record<string, never>]
+  moveNotice: [{ courseId: string; publicId: string; sharedKey: string }, Record<string, never>]
+  propose: [
+    { index: number; source: unknown; spec: SharedCourseSpecInput; versionPath: string },
+    { hash: string; length: number; proposalKey: string; request: string },
+  ]
+  readMailbox: [{ key: string }, MailboxContents]
+  review: [
+    { proposalKey: string; request: string; spec: SharedCourseSpecInput },
+    { changes: ProposalChange[]; length: number; sharedLength: number },
+  ]
+  seedShared: [{ spec: SharedCourseSpecInput }, { courseId: string | null; sharedKey: string; version: string | null }]
+  self: [{ publicId: string }, MaintainerSelf]
+  sign: [{ request: string; spec: SharedCourseSpecInput }, { response: string }]
+  writeMailbox: [{ file: string; publicId: string; value: unknown }, Record<string, never>]
+}
+
+export async function sharedCourseOp<K extends keyof SharedCourseOps>(
+  op: K,
+  args: SharedCourseOps[K][0],
+): Promise<SharedCourseOps[K][1]> {
+  return sendCommand<SharedCourseOps[K][1]>(CMD_SHARED_COURSE, { ...args, op })
+}
+
+const maintainerJoinedListeners = new Set<(joined: MaintainerJoined) => void>()
+
+export function onMaintainerJoined(listener: (joined: MaintainerJoined) => void): void {
+  maintainerJoinedListeners.add(listener)
+}
+
 // The worker's store: everything P2P for the open profile, and no secret
 // (SLJ-55). The store for chosen-students-only courses is next to it (`p2p-gated`).
 export function getWorkerStoragePath(): string {
@@ -520,6 +585,14 @@ export function spawnBareWorker(): void {
     // (duck-typed) runtime usage. Double-cast through `unknown` for that boundary.
     const controlPipe = worker.stdio[3] as unknown as ConstructorParameters<typeof RPC>[0]
     rpc = new RPC(controlPipe, (req) => {
+      if (req.command === EVENT_MAINTAINER_JOINED) {
+        try {
+          const joined = JSON.parse(req.data?.toString() ?? '{}') as MaintainerJoined
+          for (const listener of maintainerJoinedListeners) listener(joined)
+        } catch (error) {
+          console.error('[bare-worker] bad maintainer-joined event:', error)
+        }
+      }
       if (req.command === EVENT_DRIVE_CHANGED) {
         try {
           const { driveKey } = JSON.parse(req.data?.toString() ?? '{}') as { driveKey?: string }

@@ -136,10 +136,7 @@ async function createProposal({ identity, index, source, spec, store, versionPat
     await Promise.all([db.close(), blobs.close(), shared.core.close(), shared.blobsCore.close()])
   }
 
-  const drive = new Hyperdrive(store.session(), {
-    _db: new Hyperbee(store.get({ exclusive: true, key: dbKey, keyPair }), DRIVE_DB_OPTIONS),
-  })
-  await drive.ready()
+  const drive = await openWritableDrive(store, keyPair)
 
   await mirrorInto(versionPath, drive)
   await drive.put(SOURCE_FILE_KEY, Buffer.from(JSON.stringify(source, null, 2)))
@@ -147,6 +144,25 @@ async function createProposal({ identity, index, source, spec, store, versionPat
   const request = await SignRequest.generateDrive(drive, { manifest: shared.manifest })
 
   return { drive, length: drive.core.length, request: z32.encode(request) }
+}
+
+// A drive of ours, writable with `keyPair` through a session: the cores are
+// created by their public key only, so the store never keeps the secret
+// (SLJ-55).
+async function openWritableDrive(store, keyPair) {
+  const dbManifest = { signers: [{ publicKey: keyPair.publicKey }], version: store.manifestVersion }
+  const db = store.get({ manifest: dbManifest })
+  await db.ready()
+  const blobs = store.get({ manifest: Hyperdrive.getContentManifest(db.manifest, db.key) })
+  await blobs.ready()
+  const dbKey = db.key
+  await Promise.all([db.close(), blobs.close()])
+
+  const drive = new Hyperdrive(store.session(), {
+    _db: new Hyperbee(store.get({ exclusive: true, key: dbKey, keyPair }), DRIVE_DB_OPTIONS),
+  })
+  await drive.ready()
+  return drive
 }
 
 // Makes `drive` hold exactly the files under `versionPath` (source.json is
@@ -329,6 +345,7 @@ module.exports = {
   createProposal,
   maintainerPublicKey,
   openProposalForReview,
+  openWritableDrive,
   openSharedDrive,
   sharedCourseKey,
   sharedCourseSpec,

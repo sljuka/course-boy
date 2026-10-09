@@ -35,6 +35,11 @@ const dirs = {
   // SLJ-32: a curator publishing a program, and a student following it.
   curator: path.join(ROOT, 'curator'),
   programStudent: path.join(ROOT, 'program-student'),
+  // SLJ-11: a course maintained by two teachers, and students following it.
+  coOwner: path.join(ROOT, 'co-owner'),
+  coMaintainer: path.join(ROOT, 'co-maintainer'),
+  coStudent: path.join(ROOT, 'co-student'),
+  coLateStudent: path.join(ROOT, 'co-late-student'),
 }
 
 // Where each instance keeps its data: its e2e profile's folder (SLJ-57).
@@ -1175,3 +1180,122 @@ describe('programs online', () => {
     await waitFor(student, () => document.querySelector('[data-testid="sidebar-favorites"]') === null)
   })
 })
+
+// SLJ-11, milestone 3: Ana invites Marko to maintain her course (both must
+// approve each version). The course moves to a shared code; students follow.
+describe('a course maintained by two teachers', () => {
+  let ids
+  let oldCode
+  let sharedKey
+
+  it('Ana publishes, a student imports, and Marko joins with her invite', async () => {
+    for (const name of Object.keys(apps)) await close(name)
+    const ana = await launch('coOwner')
+    await finishOnboarding(ana, 'teacher')
+    await setUpIdentity(ana)
+    ids = await ana.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Co-maintained Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Lesson' })
+      return { courseId, lessonId, sectionId }
+    })
+    await writeLesson(ana, ids, 'First version.')
+    await cutAndPublish(ana, ids.courseId)
+    oldCode = (await waitForSharing(ana, ids.courseId, (info) => info.status === 'shared')).code
+
+    const student = await launch('coStudent')
+    await finishOnboarding(student, 'student')
+    expect(await importCourse(student, oldCode)).toEqual({ courseId: ids.courseId })
+
+    const marko = await launch('coMaintainer')
+    await finishOnboarding(marko, 'teacher')
+    await setUpIdentity(marko)
+
+    const { code } = await ana.evaluate((courseId) => window.maintainers.invite({ courseId, quorum: 2 }), ids.courseId)
+    await marko.evaluate((code) => window.maintainers.accept(code), code)
+    await expect
+      .poll(() => ana.evaluate((id) => window.maintainers.get(id).then((info) => info?.members.length), ids.courseId), {
+        interval: 500,
+        timeout: 30_000,
+      })
+      .toBe(2)
+  }, 180_000)
+
+  it('Ana starts sharing; Marko reviews and approves; the course moves and students follow', async () => {
+    const ana = apps.coOwner.page
+    const marko = apps.coMaintainer.page
+    const student = apps.coStudent.page
+    await ana.evaluate((courseId) => window.maintainers.startSharing(courseId), ids.courseId)
+
+    const waiting = await expect
+      .poll(() => marko.evaluate(() => window.maintainers.listApprovals()), { interval: 500, timeout: 30_000 })
+      .toHaveLength(1)
+      .then(() => marko.evaluate(() => window.maintainers.listApprovals()))
+    const [item] = waiting
+    const review = await marko.evaluate((input) => window.maintainers.review(input), { hash: item.hash, publicId: item.publicId })
+    expect(review.changes.length).toBeGreaterThan(0)
+    await marko.evaluate((input) => window.maintainers.approve(input), { hash: item.hash, publicId: item.publicId })
+
+    // Ana's app collects the approval and puts the shared course online.
+    await expect
+      .poll(() => ana.evaluate((id) => window.maintainers.get(id).then((info) => info?.sharedKey ?? null), ids.courseId), {
+        interval: 500,
+        timeout: 60_000,
+      })
+      .not.toBeNull()
+    sharedKey = await ana.evaluate((id) => window.maintainers.get(id).then((info) => info.sharedKey), ids.courseId)
+    expect(sharedKey).not.toBe(oldCode)
+
+    // The student's app follows it to the new code.
+    await expect
+      .poll(() => student.evaluate((id) => window.sharing.getCourseSharing(id).then((info) => info.code), ids.courseId), {
+        interval: 500,
+        timeout: 60_000,
+      })
+      .toBe(sharedKey)
+
+    // Marko's app lands the course as his own, shared.
+    await expect
+      .poll(() => marko.evaluate((id) => window.maintainers.get(id).then((info) => info?.sharedKey ?? null), ids.courseId), {
+        interval: 500,
+        timeout: 60_000,
+      })
+      .toBe(sharedKey)
+    const markoCourse = (await marko.evaluate(() => window.courses.list('en'))).find((course) => course.id === ids.courseId)
+    expect(markoCourse).toMatchObject({ distribution: 'local', title: 'E2E Co-maintained Course' })
+  }, 180_000)
+
+  it("Marko publishes a new version; it goes online only after Ana approves, and the student is offered it", async () => {
+    const ana = apps.coOwner.page
+    const marko = apps.coMaintainer.page
+    const student = apps.coStudent.page
+    await writeLesson(marko, ids, 'Second version, by Marko.')
+    const version = await cutAndPublish(marko, ids.courseId)
+
+    const [item] = await expect
+      .poll(() => ana.evaluate(() => window.maintainers.listApprovals()), { interval: 500, timeout: 60_000 })
+      .toHaveLength(1)
+      .then(() => ana.evaluate(() => window.maintainers.listApprovals()))
+    expect(item.version).toBe(version)
+    // Not online before the approval.
+    expect((await student.evaluate((id) => window.sharing.getCourseSharing(id), ids.courseId)).update).toBeNull()
+
+    await ana.evaluate((input) => window.maintainers.approve(input), { hash: item.hash, publicId: item.publicId })
+    await waitForUpdate(student, ids.courseId, (update) => update.version === version, 60_000)
+    expect(await student.evaluate((id) => window.sharing.applyCourseUpdate(id), ids.courseId)).toMatchObject({ version })
+    const lesson = currentVersionFiles(data.coStudent, ids.courseId).find(({ file }) => file.endsWith('.md'))
+    expect(fs.readFileSync(lesson.path, 'utf8')).toContain('Second version, by Marko.')
+  }, 180_000)
+
+  it("a student who only has the old code gets the shared course", async () => {
+    const late = await launch('coLateStudent')
+    await finishOnboarding(late, 'student')
+    expect(await importCourse(late, oldCode)).toEqual({ courseId: ids.courseId })
+    expect((await late.evaluate((id) => window.sharing.getCourseSharing(id), ids.courseId)).code).toBe(sharedKey)
+  }, 120_000)
+})
+

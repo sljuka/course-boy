@@ -55,6 +55,7 @@ describe('launch', () => {
   it('exposes the full preload bridge surface', async () => {
     const surface = await harness.page.evaluate(() => ({
       courses: Object.keys(window.courses ?? {}).sort(),
+      maintainers: Object.keys(window.maintainers ?? {}).sort(),
       preferences: Object.keys(window.preferences ?? {}).sort(),
       profiles: Object.keys(window.profiles ?? {}).sort(),
       programs: Object.keys(window.programs ?? {}).sort(),
@@ -98,6 +99,16 @@ describe('launch', () => {
       'updateSectionTestMetadata',
       'uploadAsset',
       'uploadAssetBytes',
+    ])
+    expect(surface.maintainers).toEqual([
+      'accept',
+      'approve',
+      'get',
+      'invite',
+      'listApprovals',
+      'requestChanges',
+      'review',
+      'startSharing',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
     expect(surface.programs).toEqual(['create', 'get', 'getSharing', 'list', 'markSeen', 'peekCourse', 'publish', 'remove', 'update', 'uploadImage'])

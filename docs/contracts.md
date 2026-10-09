@@ -338,6 +338,28 @@ notice). An import from the old code goes to the new one before downloading anyt
 The shared course's `source.json` keeps the original `publisher.id`, so updates from it
 pass the same check.
 
+**Courses maintained by several publishers (SLJ-11).** A shared course's drive is signed by
+its maintainers' keys together (Hypercore manifests with several signers, via
+`hyper-multisig`). A version goes online only when **more than half** of them approve it.
+Its `source.json` adds
+`"maintainers": { "members": [{ "maintainerKey", "publisherId" }], "quorum": n }` and keeps
+the original owner as `publisher.id`. How it fits together:
+
+- **Code:** `workers/shared-course.cjs` (propose, review, sign, commit) and
+  `workers/maintainers.cjs` (invites and mailboxes) carry it out. The worker command is
+  `CMD_SHARED_COURSE` (25), with `op` naming the operation.
+- **Decisions:** `electron/maintainers.ts` decides when, with its state in the profile's
+  `maintainers.json` electron-store file. The renderer reaches it through
+  `window.maintainers` (`maintainers:*` IPC).
+- **Mailboxes:** each maintainer has a mailbox drive per course (`/members.json` from the
+  owner, `/proposal.json`, `/approvals/<hash>.json`, `/changes-requested/<hash>.json`) that
+  the others follow.
+- **Invites:** `blind-pairing`. The code is the course's public id followed by the
+  invite.
+- **Publishing:** a Publish of a shared course is a proposal.
+- **One approval per spot:** an app never approves two versions for the same spot in
+  the course's history (`approvedAt`).
+
 **Updates skip files the installed version already has.** The worker compares the
 drive's `version-meta.json` file hashes with the installed version's
 (`unchangedFileKeys`) and leaves matching files alone, instead of comparing them by
