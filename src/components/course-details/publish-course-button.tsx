@@ -16,7 +16,7 @@ import { usePublishWithConsent } from "./use-publish-with-consent";
 export function PublishCourseButton({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
   const { data: history } = useCourseVersionHistoryQuery(courseId);
-  const { dialogs, publishMutation, requestPublish } = usePublishWithConsent(courseId);
+  const { dialogs, isShared, publishMutation, requestPublish } = usePublishWithConsent(courseId);
   const newest = history?.versions[0]?.version ?? null;
   const isPublished = newest !== null && history?.publishedVersion === newest;
 
@@ -25,7 +25,9 @@ export function PublishCourseButton({ courseId }: { courseId: string }) {
       ? t("courseVersions.publishNeedsVersion")
       : isPublished
         ? t("courseVersions.alreadyPublished", { version: newest })
-        : t("courseVersions.publishVersion", { version: newest });
+        : isShared
+          ? t("maintainers.askApproval", { version: newest })
+          : t("courseVersions.publishVersion", { version: newest });
 
   return (
     <>

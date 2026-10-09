@@ -30,6 +30,10 @@ const { maintainerPublicKey, openWritableDrive } = require('./shared-course.cjs'
 
 const PUBLIC_ID_PATTERN = /^[a-z2-7]{16}$/
 const MAX_FILE_BYTES = 256 * 1024
+// Reading another maintainer's mailbox waits this long for its data: a
+// mailbox whose owner is offline mustn't hold everything up. What arrives
+// later is read on the next change.
+const READ_TIMEOUT_MS = 10_000
 
 class MaintainersError extends Error {
   constructor(code, message) {
@@ -45,6 +49,7 @@ function createMaintainers(context) {
   const mailboxes = new Map() // publicId -> our writable mailbox drive
   const followed = new Map() // hex key -> others' mailbox drive
   const members = new Map() // publicId -> blind-pairing member (inviting)
+  const invites = new Map() // hex invite id -> { publicId, publicKey }: each code we made
 
   function identity() {
     const key = context.identity()
@@ -105,21 +110,24 @@ function createMaintainers(context) {
     else await drive.core.update().catch(() => {})
 
     const readJson = async (file) => {
-      const entry = await drive.entry(file)
-      if (!entry || (entry.value.blob?.byteLength ?? 0) > MAX_FILE_BYTES) return null
       try {
-        return JSON.parse(await drive.get(file))
+        const entry = await drive.entry(file, { timeout: READ_TIMEOUT_MS })
+        if (!entry || (entry.value.blob?.byteLength ?? 0) > MAX_FILE_BYTES) return null
+        return JSON.parse(await drive.get(file, { timeout: READ_TIMEOUT_MS }))
       } catch {
         return null
       }
     }
     const readFolder = async (folder) => {
       const out = {}
-      for await (const entry of drive.list(folder)) {
-        const name = entry.key.slice(folder.length + 1).replace(/\.json$/, '')
-        const value = await readJson(entry.key)
-        if (value) out[name] = value
+      const list = async () => {
+        for await (const entry of drive.list(folder)) {
+          const name = entry.key.slice(folder.length + 1).replace(/\.json$/, '')
+          const value = await readJson(entry.key)
+          if (value) out[name] = value
+        }
       }
+      await withTimeout(list(), READ_TIMEOUT_MS).catch(() => {})
       return out
     }
 
@@ -143,13 +151,20 @@ function createMaintainers(context) {
   // arrives through `context.onJoined`.
   async function createInvite(publicId) {
     const mailbox = await openMailbox(publicId)
-    const { invite, publicKey } = BlindPairing.createInvite(mailbox.key)
+    const { id, invite, publicKey } = BlindPairing.createInvite(mailbox.key)
+    invites.set(id.toString('hex'), { publicId, publicKey })
 
     if (!members.has(publicId)) {
       const member = context.pairing.addMember({
         discoveryKey: mailbox.discoveryKey,
         onadd: (request) => {
-          request.open(publicKey)
+          // Each request names the invite it uses: one of ours for this course.
+          const record = invites.get(request.inviteId.toString('hex'))
+          if (!record || record.publicId !== publicId) {
+            request.deny({ status: 1 })
+            return
+          }
+          request.open(record.publicKey)
           const joined = parseMember(request.userData)
           if (!joined) {
             request.deny({ status: 1 })
@@ -162,6 +177,10 @@ function createMaintainers(context) {
       })
       members.set(publicId, member)
     }
+    // The code is handed out only once we can be found by it: someone who
+    // looks before our announcement is out finds nobody, and isn't told to
+    // look again for a long while.
+    await context.swarm.flush()
     // The code: the course's public id (16 characters), then the invite.
     return z32.encode(Buffer.concat([Buffer.from(publicId, 'ascii'), invite]))
   }
@@ -207,6 +226,16 @@ function createMaintainers(context) {
   }
 
   return { acceptInvite, close, createInvite, followMailbox, openMailbox, readMailbox, self, writeMailbox }
+}
+
+function withTimeout(promise, ms) {
+  let timer
+  return Promise.race([
+    promise,
+    new Promise((resolve, reject) => {
+      timer = setTimeout(() => reject(new Error('Timed out')), ms)
+    }),
+  ]).finally(() => clearTimeout(timer))
 }
 
 function assertPublicId(publicId) {

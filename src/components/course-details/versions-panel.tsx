@@ -54,7 +54,7 @@ export function VersionsPanel({
   }, [courseUpdatedAt, refetchHistory]);
   const { confirmationDialog, requestDiscard, requestRevert, revertMutation } =
     useRevertWithConfirmation(courseId);
-  const { dialogs: publishDialogs, publishMutation, requestPublish } = usePublishWithConsent(courseId);
+  const { dialogs: publishDialogs, isShared, publishMutation, requestPublish } = usePublishWithConsent(courseId);
   const [isCommitOpen, setIsCommitOpen] = useState(false);
   const error = revertMutation.error ?? publishMutation.error;
   const versions = history?.versions ?? [];
@@ -153,7 +153,7 @@ export function VersionsPanel({
                   onClick={() => requestPublish(entry.version)}
                 >
                   <Upload aria-hidden="true" />
-                  {t("courseVersions.publishButton")}
+                  {isShared ? t("maintainers.askApprovalShort") : t("courseVersions.publishButton")}
                 </ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>

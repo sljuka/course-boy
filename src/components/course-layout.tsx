@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { RegisterTitleBarSidebarToggle } from "@/components/app-title-bar/register-title-bar-sidebar-toggle";
 import { CourseInfoCard } from "@/components/course-details/course-info-panel";
 import { VersionsPanel } from "@/components/course-details/versions-panel";
+import { MaintainersPanel } from "@/components/maintainers/maintainers-panel";
 import { CourseStructurePrototype } from "@/components/course-structure-prototype/course-structure-prototype";
 import {
   courseRootId,
@@ -175,6 +176,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
               <div className="p-2">
                 <PanelCardGroup>
                   <VersionsPanel courseId={courseId ?? ""} variant="section" />
+                  <MaintainersPanel courseId={courseId ?? ""} variant="section" />
                   {courseDetails && <CourseInfoCard course={courseDetails} variant="section" />}
                 </PanelCardGroup>
               </div>

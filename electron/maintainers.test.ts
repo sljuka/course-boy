@@ -129,19 +129,21 @@ describe('maintainers (SLJ-11)', () => {
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
 
-    expect(await ana.service.invite('course-1', 2)).toEqual({ code: 'invite-pubid0000000000a' })
+    expect(await ana.service.invite('course-1')).toEqual({ code: 'invite-pubid0000000000a' })
     await marko.service.accept('invite-pubid0000000000a')
+    // Accepting reads the owner's mailbox in the background: wait for it.
+    await marko.service.refresh('pubid0000000000a')
 
-    // The owner wrote both members and the rule; the maintainer read them.
-    expect(marko.state().courses.pubid0000000000a).toMatchObject({ quorum: 2, role: 'maintainer' })
+    // The owner wrote both members; the maintainer read them.
+    expect(marko.state().courses.pubid0000000000a).toMatchObject({ role: 'maintainer' })
     expect(marko.state().courses.pubid0000000000a.members.map((member) => member.publisherId)).toEqual(['pub-ana', 'pub-marko'])
 
     // The first shared version: proposed (and approved by Ana herself).
-    const proposal = await ana.service.startSharing('course-1')
+    const proposal = await ana.service.startSharing('course-1', 2)
     expect(proposal).toMatchObject({ first: true, version: '0.2' })
     await marko.service.refresh('pubid0000000000a')
     expect(marko.service.listApprovals()).toEqual([
-      { courseId: null, from: 'pub-ana', hash: proposal.hash, publicId: 'pubid0000000000a', version: '0.2' },
+      { courseId: null, from: 'pub-ana', hash: proposal.hash, publicId: 'pubid0000000000a', title: null, version: '0.2' },
     ])
     expect(await marko.service.review('pubid0000000000a', proposal.hash)).toMatchObject({ version: '0.2' })
 
@@ -171,9 +173,11 @@ describe('maintainers (SLJ-11)', () => {
     const world = createWorld()
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
-    await ana.service.invite('course-1', 2)
+    await ana.service.invite('course-1')
     await marko.service.accept('invite-pubid0000000000a')
-    const first = await ana.service.startSharing('course-1')
+    // Accepting reads the owner's mailbox in the background: wait for it.
+    await marko.service.refresh('pubid0000000000a')
+    const first = await ana.service.startSharing('course-1', 2)
     await marko.service.refresh('pubid0000000000a')
     await marko.service.approve('pubid0000000000a', first.hash)
     await ana.service.refresh('pubid0000000000a')
@@ -200,15 +204,17 @@ describe('maintainers (SLJ-11)', () => {
     const world = createWorld()
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
-    await ana.service.invite('course-1', 2)
+    await ana.service.invite('course-1')
     await marko.service.accept('invite-pubid0000000000a')
+    // Accepting reads the owner's mailbox in the background: wait for it.
+    await marko.service.refresh('pubid0000000000a')
 
-    const first = await ana.service.startSharing('course-1')
+    const first = await ana.service.startSharing('course-1', 2)
     await marko.service.refresh('pubid0000000000a')
     await marko.service.approve('pubid0000000000a', first.hash)
 
     // Ana proposes again before it was committed (same spot): Marko's app refuses.
-    const second = await ana.service.startSharing('course-1')
+    const second = await ana.service.startSharing('course-1', 2)
     await marko.service.refresh('pubid0000000000a')
     await expect(marko.service.approve('pubid0000000000a', second.hash)).rejects.toMatchObject({ code: 'ALREADY_APPROVED' })
   })
@@ -217,9 +223,11 @@ describe('maintainers (SLJ-11)', () => {
     const world = createWorld()
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
-    await ana.service.invite('course-1', 1)
+    await ana.service.invite('course-1')
     await marko.service.accept('invite-pubid0000000000a')
+    // Accepting reads the owner's mailbox in the background: wait for it.
+    await marko.service.refresh('pubid0000000000a')
 
-    await expect(ana.service.startSharing('course-1')).rejects.toMatchObject({ code: 'INVALID_QUORUM' })
+    await expect(ana.service.startSharing('course-1', 1)).rejects.toMatchObject({ code: 'INVALID_QUORUM' })
   })
 })

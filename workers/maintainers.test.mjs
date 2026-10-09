@@ -83,6 +83,8 @@ describe('maintainers (SLJ-11)', () => {
     marko = await makePeer('marko')
     anaSelf = await ana.maintainers.self(PUBLIC_ID)
 
+    // An earlier code doesn't get in the way of a newer one.
+    await ana.maintainers.createInvite(PUBLIC_ID)
     const code = await ana.maintainers.createInvite(PUBLIC_ID)
     const accepted = await marko.maintainers.acceptInvite(code)
     markoSelf = await marko.maintainers.self(PUBLIC_ID)

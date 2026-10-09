@@ -28,6 +28,9 @@ export type Member = MaintainerSelf
 
 export type SharedProposal = {
   first: boolean
+  // The course's title in its default language, for others' approval lists
+  // (the course may not be on their computer yet).
+  title?: string
   hash: string
   proposalKey: string
   request: string
@@ -36,6 +39,7 @@ export type SharedProposal = {
 
 export type InboxItem = {
   from: string
+  title?: string
   hash: string
   mailboxKey: string
   proposalKey: string
@@ -110,6 +114,7 @@ export type MaintainersDeps = {
   publishedCourse(courseId: string): Promise<{
     code: string | null
     publicId: string | null
+    title?: string
     version: string | null
     versionPath: string | null
   }>
@@ -210,7 +215,14 @@ export function createMaintainers(deps: MaintainersDeps) {
     })
     if (record.proposal) await deps.op('dropProposal', { proposalKey: record.proposal.proposalKey }).catch(() => {})
 
-    const proposal: SharedProposal = { first, hash, proposalKey, request, version: published.version }
+    const proposal: SharedProposal = {
+      first,
+      hash,
+      proposalKey,
+      request,
+      title: published.title?.slice(0, 200),
+      version: published.version,
+    }
     // The proposer approves their own proposal too.
     const { response } = await deps.op('sign', { request, spec })
     await deps.op('writeMailbox', { file: '/proposal.json', publicId: record.publicId, value: proposal })
@@ -318,9 +330,9 @@ export function createMaintainers(deps: MaintainersDeps) {
   }
 
   return {
-    // The owner: a code that lets one person join as a maintainer.
-    // `quorum`: how many must approve a version once they've joined.
-    async invite(courseId: string, quorum: number): Promise<{ code: string }> {
+    // The owner: a code that lets one person join as a maintainer. The rule
+    // (how many must approve) is chosen when sharing starts.
+    async invite(courseId: string): Promise<{ code: string }> {
       const published = await deps.publishedCourse(courseId)
       if (!published.publicId) throw new MaintainersError('NOT_PUBLISHED', 'Publish the course before inviting maintainers')
       const publicId = published.publicId
@@ -343,7 +355,7 @@ export function createMaintainers(deps: MaintainersDeps) {
           ownerMailboxKey: null,
           proposal: null,
           publicId,
-          quorum,
+          quorum: existing?.quorum ?? 1,
           role: 'owner',
           sharedKey: null,
         })
@@ -385,18 +397,23 @@ export function createMaintainers(deps: MaintainersDeps) {
           sharedKey: null,
         })
       })
-      await serial(publicId, () => refresh(publicId))
+      // The owner's mailbox is read in the background: its data may take a
+      // moment to arrive, and every change to it is read again anyway.
+      void serial(publicId, () => refresh(publicId)).catch(logFailure(publicId))
       return { publicId }
     },
 
     // The owner: proposes the course's current version as the shared
-    // course's first, under the rule.
-    async startSharing(courseId: string): Promise<SharedProposal> {
-      const record = recordFor(courseId)
-      if (!record || record.role !== 'owner') throw new MaintainersError('NOT_OWNER', 'Invite maintainers first')
-      if (record.members.length < 2) throw new MaintainersError('NO_MAINTAINERS', 'Nobody has joined yet')
-      assertRule(record.quorum, record.members.length)
-      return serial(record.publicId, async () => {
+    // course's first, under the rule (`quorum`: how many must approve).
+    async startSharing(courseId: string, quorum: number): Promise<SharedProposal> {
+      const found = recordFor(courseId)
+      if (!found || found.role !== 'owner') throw new MaintainersError('NOT_OWNER', 'Invite maintainers first')
+      if (found.members.length < 2) throw new MaintainersError('NO_MAINTAINERS', 'Nobody has joined yet')
+      if (found.sharedKey) throw new MaintainersError('ALREADY_SHARED', 'This course is shared already')
+      assertRule(quorum, found.members.length)
+      return serial(found.publicId, async () => {
+        const record = { ...records()[found.publicId], quorum }
+        save(record)
         await writeMembers(record)
         return propose(record, { first: true })
       })
@@ -469,6 +486,7 @@ export function createMaintainers(deps: MaintainersDeps) {
           from: item.from,
           hash: item.hash,
           publicId: record.publicId,
+          title: item.title ?? null,
           version: item.version,
         })),
       )
@@ -480,7 +498,10 @@ export function createMaintainers(deps: MaintainersDeps) {
       const item = record?.inbox[hash]
       if (!record || !item) throw new MaintainersError('NO_PROPOSAL', 'This proposal is no longer waiting')
       const { changes } = await deps.op('review', { proposalKey: item.proposalKey, request: item.request, spec: specOf(record) })
-      return { changes, version: item.version }
+      // The version's bookkeeping (its file hashes, its release notes'
+      // history) isn't something to review.
+      const content = changes.filter((change) => !BOOKKEEPING_FILES.has(change.path))
+      return { changes: content, version: item.version }
     },
 
     // Approves a proposal: checked again first (it must build on the
@@ -523,6 +544,8 @@ export function createMaintainers(deps: MaintainersDeps) {
   }
 }
 
+const BOOKKEEPING_FILES = new Set(['/version-meta.json', '/changelog.json'])
+
 function logFailure(publicId: string) {
   return (error: unknown) => console.error(`[maintainers] ${publicId} failed:`, error)
 }
@@ -552,7 +575,13 @@ function parseProposal(value: unknown): Omit<InboxItem, 'from' | 'mailboxKey'> |
   ) {
     return null
   }
-  return { hash: data.hash, proposalKey: data.proposalKey, request: data.request, version: data.version }
+  return {
+    hash: data.hash,
+    proposalKey: data.proposalKey,
+    request: data.request,
+    title: typeof data.title === 'string' ? data.title.slice(0, 200) : undefined,
+    version: data.version,
+  }
 }
 
 export type MaintainersService = ReturnType<typeof createMaintainers>

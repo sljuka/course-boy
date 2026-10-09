@@ -974,3 +974,27 @@ the network. Starting a move from the app comes with inviting a maintainer (mile
   - deleting committed proposals' drives (disk space on the proposer's side);
   - restore (milestone 5).
 
+
+**Milestone 4 (the UI):**
+- **Maintainers panel** in the course editor (`src/components/maintainers/`):
+  - invite one person at a time (each gets a code);
+  - "Start maintaining together", with the rule picked as a consequence ("Both of you",
+    "Any 2 of 3", "All 3 of you"; only rules with more than half are offered);
+  - then the maintainers, the rule, your version waiting for approval, and any notes
+    asking for changes.
+- **"Join as a maintainer"** on My courses.
+- **Approvals:** a Teaching sidebar item, shown with a count while something waits. Its
+  page lists proposals by course title (the proposal carries it, since the course may
+  not be on your computer yet).
+- **Review page:** the changed files, then Approve or Ask for changes with a note.
+- **Publish** of a shared course reads "Ask for approval", and its dialog says the
+  version goes online once enough maintainers approve.
+- **Fixed on the way:**
+  - The owner's app checked every join request against its first invite only, so a
+    second invite could never be used. Requests are now looked up by their invite id.
+  - An invite code is handed out only once the owner's app can be found by it
+    (`swarm.flush()`).
+  - Accepting no longer waits for the owner's mailbox to arrive, and mailbox reads time
+    out after 10 s. Before, a join could appear to hang.
+- **Follow-up:** the review page shows file paths. Showing lessons and sections, and a
+  "Preview as student", is SLJ-67.

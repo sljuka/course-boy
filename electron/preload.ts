@@ -235,14 +235,14 @@ contextBridge.exposeInMainWorld('progress', {
 
 // Courses maintained by several publishers (SLJ-11).
 contextBridge.exposeInMainWorld('maintainers', {
-  invite(input: { courseId: string; quorum: number }) {
-    return ipcRenderer.invoke('maintainers:invite', input) as Promise<{ code: string }>
+  invite(courseId: string) {
+    return ipcRenderer.invoke('maintainers:invite', courseId) as Promise<{ code: string }>
   },
   accept(code: string) {
     return ipcRenderer.invoke('maintainers:accept', code) as Promise<{ publicId: string }>
   },
-  startSharing(courseId: string) {
-    return ipcRenderer.invoke('maintainers:start-sharing', courseId) as Promise<void>
+  startSharing(input: { courseId: string; quorum: number }) {
+    return ipcRenderer.invoke('maintainers:start-sharing', input) as Promise<void>
   },
   get(courseId: string) {
     return ipcRenderer.invoke('maintainers:get', courseId) as Promise<MaintainersInfo | null>

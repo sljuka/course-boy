@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { AppMenu } from "@/components/app-menu";
+import { AppSidebarApprovals } from "@/components/app-sidebar-approvals";
 import { AppSidebarFavorites } from "@/components/app-sidebar-favorites";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -120,6 +121,8 @@ function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+                {/* Under Teaching: versions waiting for your approval (SLJ-11). */}
+                {group.label === "teaching" && <AppSidebarApprovals />}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

@@ -117,9 +117,9 @@ interface Window {
     ) => Promise<void>
   }
   maintainers: {
-    invite: (input: { courseId: string; quorum: number }) => Promise<{ code: string }>
+    invite: (courseId: string) => Promise<{ code: string }>
     accept: (code: string) => Promise<{ publicId: string }>
-    startSharing: (courseId: string) => Promise<void>
+    startSharing: (input: { courseId: string; quorum: number }) => Promise<void>
     get: (courseId: string) => Promise<import('../src/lib/maintainers').MaintainersInfo | null>
     listApprovals: () => Promise<import('../src/lib/maintainers').ApprovalItem[]>
     review: (input: { hash: string; publicId: string }) => Promise<import('../src/lib/maintainers').ProposalReview>

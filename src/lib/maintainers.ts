@@ -23,6 +23,8 @@ export type ApprovalItem = {
   from: string
   hash: string
   publicId: string
+  // The course's title, as the proposal names it.
+  title: string | null
   version: string
 }
 

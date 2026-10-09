@@ -1215,8 +1215,24 @@ describe('a course maintained by two teachers', () => {
     await finishOnboarding(marko, 'teacher')
     await setUpIdentity(marko)
 
-    const { code } = await ana.evaluate((courseId) => window.maintainers.invite({ courseId, quorum: 2 }), ids.courseId)
-    await marko.evaluate((code) => window.maintainers.accept(code), code)
+    // Ana invites from the course editor's Maintainers panel.
+    await ana.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await ana.click('[data-testid="invite-maintainer"]')
+    await waitFor(ana, () => Boolean(document.querySelector('[data-testid="maintainer-invite-code"]')?.value))
+    const code = await ana.inputValue('[data-testid="maintainer-invite-code"]')
+    await ana.getByRole('button', { name: 'Done' }).click()
+
+    // Marko joins from My courses.
+    await marko.evaluate(() => {
+      location.hash = '#/my-courses'
+    })
+    await marko.click('[data-testid="open-join-course"]')
+    await marko.fill('[data-testid="maintainer-join-code"]', code)
+    await marko.click('[data-testid="maintainer-join"]')
+    await waitForText(marko, "You've joined.", { timeout: 30_000 })
+    await marko.getByRole('button', { name: 'Done' }).click()
     await expect
       .poll(() => ana.evaluate((id) => window.maintainers.get(id).then((info) => info?.members.length), ids.courseId), {
         interval: 500,
@@ -1229,16 +1245,23 @@ describe('a course maintained by two teachers', () => {
     const ana = apps.coOwner.page
     const marko = apps.coMaintainer.page
     const student = apps.coStudent.page
-    await ana.evaluate((courseId) => window.maintainers.startSharing(courseId), ids.courseId)
+    // Both maintainers listed; Ana starts, with "Both of you" (the only rule for two).
+    await waitFor(ana, () => document.querySelectorAll('[data-testid="maintainer"]').length === 2, { timeout: 30_000 })
+    await ana.click('[data-testid="open-start-sharing"]')
+    await waitForText(ana, 'Both of you')
+    await ana.click('[data-testid="start-sharing"]')
+    await waitFor(ana, () => document.querySelector('[data-testid="maintainers-waiting"]') !== null, { timeout: 30_000 })
 
-    const waiting = await expect
-      .poll(() => marko.evaluate(() => window.maintainers.listApprovals()), { interval: 500, timeout: 30_000 })
-      .toHaveLength(1)
-      .then(() => marko.evaluate(() => window.maintainers.listApprovals()))
-    const [item] = waiting
-    const review = await marko.evaluate((input) => window.maintainers.review(input), { hash: item.hash, publicId: item.publicId })
-    expect(review.changes.length).toBeGreaterThan(0)
-    await marko.evaluate((input) => window.maintainers.approve(input), { hash: item.hash, publicId: item.publicId })
+    // Marko: Approvals in the sidebar, the review, Approve.
+    await marko.locator('[data-testid="sidebar-approvals"] a').waitFor({ timeout: 30_000 })
+    await marko.locator('[data-testid="sidebar-approvals"] a').click()
+    // Named by the course's title, though the course isn't on Marko's computer yet.
+    await waitForText(marko, 'E2E Co-maintained Course')
+    await marko.locator('[data-testid="approval"] a').first().click()
+    await waitFor(marko, () => document.querySelectorAll('[data-testid="approval-changes"] > *').length > 0, { timeout: 30_000 })
+    expect(await marko.locator('[data-testid="approval-changes"]').innerText()).not.toContain('version-meta.json')
+    await marko.click('[data-testid="approve-version"]')
+    await waitForText(marko, 'Nothing is waiting for your approval.', { timeout: 30_000 })
 
     // Ana's app collects the approval and puts the shared course online.
     await expect
@@ -1274,7 +1297,17 @@ describe('a course maintained by two teachers', () => {
     const marko = apps.coMaintainer.page
     const student = apps.coStudent.page
     await writeLesson(marko, ids, 'Second version, by Marko.')
-    const version = await cutAndPublish(marko, ids.courseId)
+    // Cut, then Publish from the editor: for a shared course it asks for approval.
+    const { version } = await marko.evaluate(
+      (courseId) => window.courses.cutVersion({ courseId, releaseType: 'minor' }),
+      ids.courseId,
+    )
+    await marko.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await marko.click('[data-testid="publish-course"]')
+    await waitForText(marko, `Version ${version} sent for approval`, { timeout: 30_000 })
+    await marko.getByRole('button', { name: 'Done' }).click()
 
     const [item] = await expect
       .poll(() => ana.evaluate(() => window.maintainers.listApprovals()), { interval: 500, timeout: 60_000 })

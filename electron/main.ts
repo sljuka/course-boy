@@ -341,10 +341,21 @@ function openProfileServices(dataDir: string) {
     publishedCourse: async (courseId) => {
       const entry = courseSharingStore.get('published')[courseId]
       const versionPath = await getPublishedCoursePackagePath(courseId)
-      const version = versionPath
-        ? (JSON.parse(await readFile(path.join(versionPath, 'course.json'), 'utf8')) as { version?: string }).version ?? null
+      const manifest = versionPath
+        ? (JSON.parse(await readFile(path.join(versionPath, 'course.json'), 'utf8')) as {
+            defaultLocale?: string
+            locales?: Record<string, { title?: unknown }>
+            version?: string
+          })
         : null
-      return { code: entry?.code ?? null, publicId: entry?.publicId ?? null, version, versionPath }
+      const title = manifest?.locales?.[manifest.defaultLocale ?? '']?.title
+      return {
+        code: entry?.code ?? null,
+        publicId: entry?.publicId ?? null,
+        title: typeof title === 'string' ? title : undefined,
+        version: manifest?.version ?? null,
+        versionPath,
+      }
     },
     removeStaging: (stagingPath) => rm(stagingPath, { force: true, recursive: true }),
     seedOldCode: whileOpen(seedCourse),
@@ -913,9 +924,9 @@ ipcMain.handle('progress:set-favorite', (_event, input: { courseId?: unknown; fa
 const isPublicId = (value: unknown): value is string => typeof value === 'string' && /^[a-z2-7]{16}$/.test(value)
 const isHash = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
 
-ipcMain.handle('maintainers:invite', (_event, input: { courseId?: unknown; quorum?: unknown }) => {
-  if (!isId(input?.courseId) || typeof input.quorum !== 'number') throw new Error('Invalid invite')
-  return profile.maintainers.invite(input.courseId, input.quorum)
+ipcMain.handle('maintainers:invite', (_event, courseId: unknown) => {
+  if (!isId(courseId)) throw new Error('Invalid course id')
+  return profile.maintainers.invite(courseId)
 })
 
 ipcMain.handle('maintainers:accept', (_event, code: unknown) => {
@@ -923,9 +934,9 @@ ipcMain.handle('maintainers:accept', (_event, code: unknown) => {
   return profile.maintainers.accept(code)
 })
 
-ipcMain.handle('maintainers:start-sharing', async (_event, courseId: unknown) => {
-  if (!isId(courseId)) throw new Error('Invalid course id')
-  await profile.maintainers.startSharing(courseId)
+ipcMain.handle('maintainers:start-sharing', async (_event, input: { courseId?: unknown; quorum?: unknown }) => {
+  if (!isId(input?.courseId) || typeof input.quorum !== 'number') throw new Error('Invalid request')
+  await profile.maintainers.startSharing(input.courseId, input.quorum)
 })
 
 ipcMain.handle('maintainers:get', (_event, courseId: unknown) => {

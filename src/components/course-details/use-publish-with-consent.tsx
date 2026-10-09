@@ -5,6 +5,7 @@ import { CourseCodeDialog } from "@/components/course-details/course-code-dialog
 import { SetUpIdentityDialog } from "@/components/identity/set-up-identity-dialog";
 import { UnlockIdentityDialog } from "@/components/identity/unlock-identity-dialog";
 import { usePublishCourseVersionMutation } from "@/lib/course-queries";
+import { useMaintainersQuery } from "@/lib/maintainers-queries";
 import { fetchIdentityStatus } from "@/lib/publisher-identity-queries";
 
 // Publish puts a version online (SLJ-38), signed with the publishing identity,
@@ -16,13 +17,21 @@ import { fetchIdentityStatus } from "@/lib/publisher-identity-queries";
 // publishes once it's done; cancelling it cancels the Publish. With the
 // identity still locked this session ("Open without publishing"), it asks for
 // the password first.
+//
+// A course maintained with others (SLJ-11): Publish asks them for approval.
+// The version goes online once enough of them approve it, so the dialog
+// after it says that, with the course's (shared) code.
 export function usePublishWithConsent(courseId: string): {
   dialogs: ReactNode;
+  // Publish asks the other maintainers for approval.
+  isShared: boolean;
   publishMutation: ReturnType<typeof usePublishCourseVersionMutation>;
   requestPublish: (version: string) => void;
 } {
   const { t } = useTranslation();
   const publishMutation = usePublishCourseVersionMutation();
+  const { data: maintainers } = useMaintainersQuery(courseId);
+  const isShared = Boolean(maintainers?.sharedKey);
   const [publishedVersion, setPublishedVersion] = useState<string | null>(null);
   // The version waiting for the identity to be set up, or unlocked.
   const [setUpForVersion, setSetUpForVersion] = useState<string | null>(null);
@@ -66,13 +75,21 @@ export function usePublishWithConsent(courseId: string): {
       />
       <CourseCodeDialog
         courseId={courseId}
-        description={t("courseSharing.publishedDescription")}
+        description={
+          isShared
+            ? t("maintainers.sentDescription", { count: maintainers?.quorum ?? 0 })
+            : t("courseSharing.publishedDescription")
+        }
         onClose={() => setPublishedVersion(null)}
         open={publishedVersion !== null}
-        title={t("courseSharing.publishedTitle", { version: publishedVersion ?? "" })}
+        title={
+          isShared
+            ? t("maintainers.sentTitle", { version: publishedVersion ?? "" })
+            : t("courseSharing.publishedTitle", { version: publishedVersion ?? "" })
+        }
       />
     </>
   );
 
-  return { dialogs, publishMutation, requestPublish: (version) => void requestPublish(version) };
+  return { dialogs, isShared, publishMutation, requestPublish: (version) => void requestPublish(version) };
 }

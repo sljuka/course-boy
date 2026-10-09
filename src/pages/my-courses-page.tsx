@@ -1,4 +1,4 @@
-import { BookOpen, Plus } from "lucide-react";
+import { BookOpen, Plus, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { CourseErrorCard } from "@/components/course-error-card";
 import { CourseSearchField } from "@/components/course-search/course-search-field";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { JoinCourseDialog } from "@/components/maintainers/join-course-dialog";
 import { MyCoursesList } from "@/components/my-courses/my-courses-list";
 import { ViewOptionsMenu } from "@/components/my-courses/view-options-menu";
 import { Page } from "@/components/page/page";
@@ -33,11 +34,27 @@ export function MyCoursesPage() {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [view, setView] = useMyCoursesView();
+  const [isJoinOpen, setIsJoinOpen] = useState(false);
 
   return (
     <Page
       actionBarStart={<ViewOptionsMenu onViewChange={setView} view={view} />}
-      actions={<CreateCourseAction />}
+      actions={
+        <>
+          {/* Someone's course, as a maintainer, with the code they sent (SLJ-11). */}
+          <Button
+            data-testid="open-join-course"
+            onClick={() => setIsJoinOpen(true)}
+            size="sm"
+            title={t("maintainers.joinTitle")}
+            variant="secondary"
+          >
+            <UserPlus aria-hidden="true" />
+            <ButtonLabel>{t("maintainers.joinTitle")}</ButtonLabel>
+          </Button>
+          <CreateCourseAction />
+        </>
+      }
       breadcrumbs={[{ icon: BookOpen, label: t("sidebar.myCourses") }]}
       header={
         <div className="flex flex-col gap-1">
@@ -55,6 +72,7 @@ export function MyCoursesPage() {
           value={query}
         />
         <MyCoursesList query={query} view={view} />
+        <JoinCourseDialog onOpenChange={setIsJoinOpen} open={isJoinOpen} />
       </ErrorBoundary>
     </Page>
   );
