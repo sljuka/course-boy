@@ -773,6 +773,9 @@ describe('restoring the publisher identity on a new computer', () => {
   let ids
   let code
   let publisherId
+  // SLJ-32: a program published from the old computer, found again too.
+  let programId
+  let programCode
 
   it('the old computer publishes, its identity file is copied away, and a student imports', async () => {
     const page = await launch('oldComputer')
@@ -798,17 +801,35 @@ describe('restoring the publisher identity on a new computer', () => {
     code = (await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')).code
     publisherId = await page.evaluate(() => window.sharing.getCreatorKey())
 
+    programId = (await page.evaluate(() => window.programs.create({ locale: 'en', title: 'E2E Restored Program' }))).programId
+    const program = await page.evaluate((id) => window.programs.get(id), programId)
+    await page.evaluate((manifest) => window.programs.update(manifest), {
+      ...program,
+      courses: [
+        {
+          code,
+          courseId: ids.courseId,
+          snapshot: { locales: { en: { description: '', title: 'E2E Restored Course' } }, publisherId: null, supportedLocales: ['en'], version },
+        },
+      ],
+    })
+    programCode = (await page.evaluate((id) => window.programs.publish(id), programId)).code
+
     const student = await launch('restoreStudent')
     await finishOnboarding(student, 'student')
     expect(await importCourse(student, code)).toEqual({ courseId: ids.courseId })
     expect((await student.evaluate(() => window.courses.list('en'))).find((course) => course.id === ids.courseId)?.version).toBe(version)
+    // The student holds the program too, so it can be found once the old computer is gone.
+    expect(await importCourse(student, programCode)).toEqual({ programId })
 
     await close('oldComputer')
   })
 
   it('the new computer restores the copy from Settings, and finds the course among students', async () => {
-    // A short wait per course number, so the search ends soon after the course.
-    const page = await launch('newComputer', { extraEnv: { MATKO_RESTORE_LOOKUP_MS: '20000' } })
+    // The search ends after 3 numbers in a row aren't found (20 in the app),
+    // so the case stays short. Each number still gets the app's own 30 s:
+    // with 20 s the course was sometimes not found in time.
+    const page = await launch('newComputer', { extraEnv: { MATKO_RESTORE_GAP_LIMIT: '3' } })
     await apps.newComputer.app.evaluate(({ dialog }, filePath) => {
       dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] })
     }, backupPath)
@@ -829,11 +850,14 @@ describe('restoring the publisher identity on a new computer', () => {
     await page.click('[data-testid="restore-identity"]')
     await waitForText(page, 'Your publishing identity is restored', { timeout: 30_000 })
     await waitFor(page, () => document.querySelector('[data-testid="restored-course"]')?.textContent?.includes('E2E Restored Course'), {
-      timeout: 60_000,
+      timeout: 45_000,
     })
-    // The search ends after GAP_LIMIT numbers in a row aren't found (each waits
-    // MATKO_RESTORE_LOOKUP_MS), offering to look again.
-    await dialog.locator('[data-testid="restore-look-again"]').waitFor({ timeout: 90_000 })
+    // Programs are searched once the courses' search has ended.
+    await waitFor(page, () => document.querySelector('[data-testid="restored-program"]')?.textContent?.includes('E2E Restored Program'), {
+      timeout: 120_000,
+    })
+    // Then the search ends, offering to look again.
+    await dialog.locator('[data-testid="restore-look-again"]').waitFor({ timeout: 120_000 })
     await page.getByRole('button', { name: 'Done' }).click()
 
     // The same identity and the same code; the course is the teacher's own again.
@@ -842,9 +866,13 @@ describe('restoring the publisher identity on a new computer', () => {
     expect(course).toMatchObject({ distribution: 'local', title: 'E2E Restored Course' })
     const shared = await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')
     expect(shared.code).toBe(code)
+    // The program too: the teacher's own (editable), shared again by the same code.
+    const programs = await page.evaluate(() => window.programs.list('en'))
+    expect(programs.find((entry) => entry.id === programId)).toMatchObject({ distribution: 'local', title: 'E2E Restored Program' })
+    expect(await page.evaluate((id) => window.programs.getSharing(id), programId)).toMatchObject({ code: programCode, kind: 'local' })
     // It's this profile's identity file now, the copy as it was.
     expect(fs.readFileSync(identityFilePath('newComputer'), 'utf8')).toBe(fs.readFileSync(backupPath, 'utf8'))
-  })
+  }, 180_000)
 
   it('a version published from the new computer reaches the student as a normal update', async () => {
     const page = apps.newComputer.page
@@ -856,6 +884,24 @@ describe('restoring the publisher identity on a new computer', () => {
     expect(await student.evaluate((id) => window.sharing.applyCourseUpdate(id), ids.courseId)).toMatchObject({ version })
     const lesson = currentVersionFiles(data.restoreStudent, ids.courseId).find(({ file }) => file.endsWith('.md'))
     expect(fs.readFileSync(lesson.path, 'utf8')).toContain('Third version, from the new computer.')
+  })
+
+  it('the program published again from the new computer keeps its code and reaches the student', async () => {
+    const page = apps.newComputer.page
+    const student = apps.restoreStudent.page
+    const program = await page.evaluate((id) => window.programs.get(id), programId)
+    await page.evaluate((manifest) => window.programs.update(manifest), {
+      ...program,
+      locales: { ...program.locales, en: { description: 'Edited on the new computer.', title: 'E2E Restored Program' } },
+    })
+    expect(await page.evaluate((id) => window.programs.publish(id), programId)).toEqual({ code: programCode })
+
+    await expect
+      .poll(() => student.evaluate((id) => window.programs.get(id).then((p) => p.locales.en.description), programId), {
+        interval: 500,
+        timeout: 60_000,
+      })
+      .toBe('Edited on the new computer.')
   })
 })
 

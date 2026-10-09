@@ -651,7 +651,7 @@ and an optional second password, and the identity sat in the OS keychain.
   (`nextPublicIndex` in the `program-sharing` store): `publicProgramId(identity, n)`,
   a keyed hash under a different context, and the key pair from
   `namespace('program-<publicId>')`. A program's and a course's numbers never collide.
-  Finding programs again on a new computer from these is not built yet (SLJ-32 phase 3).
+  Restoring finds programs from these too, after the courses (SLJ-32 phase 3).
 
 ### Restoring it on a new computer
 

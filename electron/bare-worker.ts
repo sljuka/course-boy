@@ -50,6 +50,7 @@ const CMD_SEED_COURSE = 20
 const CMD_PUBLISH_PROGRAM = 21
 const CMD_SEED_PROGRAM = 22
 const CMD_PEEK_COURSE = 23
+const CMD_FIND_PROGRAM = 24
 // Sent by the worker to main (the only worker → main message).
 const EVENT_DRIVE_CHANGED = 100
 
@@ -316,6 +317,24 @@ export async function findCourse(input: {
   transferId?: string
 }): Promise<FoundCourse> {
   return sendCommand<FoundCourse>(CMD_FIND_COURSE, input)
+}
+
+export type FoundProgram = {
+  driveKey: string
+  programId: string
+  publicId: string
+  publisherId: string
+}
+
+// Restoring (SLJ-32): this publisher's program number `index`, like
+// findCourse: downloads it into `stagingPath`, or fails with NOT_FOUND.
+export async function findProgram(input: {
+  index: number
+  stagingPath: string
+  timeoutMs: number
+  transferId?: string
+}): Promise<FoundProgram> {
+  return sendCommand<FoundProgram>(CMD_FIND_PROGRAM, input)
 }
 
 // The worker's store: everything P2P for the open profile, and no secret

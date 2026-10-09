@@ -254,3 +254,30 @@ export async function applyProgramUpdate(
     await fs.rm(retiredPath, { force: true, recursive: true }).catch(() => {});
   }
 }
+
+// Restoring (SLJ-32): a program of yours found again among students with the
+// restored identity, downloaded into `stagingPath` by the worker. It lands as
+// your own again: without the drive's `source.json` (which would make it an
+// imported, read-only program). Refused if it's damaged or already here.
+export async function landRestoredProgram(input: { programId: string; stagingPath: string }): Promise<{ title: string }> {
+  const directory = programDirectory(input.programId);
+  const manifest: unknown = JSON.parse(await fs.readFile(path.join(input.stagingPath, PROGRAM_FILENAME), "utf8"));
+  if (!isProgramManifest(manifest) || manifest.id !== input.programId) {
+    throw new Error(`The program "${input.programId}" found is damaged`);
+  }
+  await fs.rm(path.join(input.stagingPath, "source.json"), { force: true });
+  await fs.mkdir(getProgramsRoot(), { recursive: true });
+  await fs.rename(input.stagingPath, directory);
+  return { title: localizeProgram(manifest, manifest.defaultLocale).title };
+}
+
+// The program's title, if it's on this device (restoring the same identity
+// again: it never left).
+export async function programOnDevice(programId: string): Promise<{ title: string } | null> {
+  try {
+    const manifest = await readProgram(programId);
+    return { title: localizeProgram(manifest, manifest.defaultLocale).title };
+  } catch {
+    return null;
+  }
+}

@@ -491,7 +491,10 @@ programs/<program-id>/assets/<file>    # its logo and banner, content-addressed 
   make the rest "New" until they open its page. `programs:peek-course` reads another
   publisher's `course.json` by its code, without importing it, to add the course to a
   program.
-- Restoring programs from the identity and starring them are phase 3.
+- **Restoring (phase 3).** "Restore from a file…" finds your programs too, on their own
+  numbers, once the courses' search is done (`identity-restore.ts`). Each lands as your own
+  program without the drive's `source.json` (`landRestoredProgram`) and is shared again by
+  its code. Starring programs is still to come.
 
 ## 6. Design-system tier direction
 

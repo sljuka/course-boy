@@ -46,6 +46,8 @@ export type RestoredCourse = { id: string; title: string };
 
 export type IdentityRestoreStatus = {
   courses: RestoredCourse[];
+  // Programs found again the same way (SLJ-32).
+  programs: RestoredCourse[];
   publisherId: string;
   restoredAt: string;
   // Still looking for the publisher's courses among students.

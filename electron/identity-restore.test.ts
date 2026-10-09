@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createIdentityRestoreService, GAP_LIMIT, type FoundCourse, type IdentityRestoreState } from './identity-restore'
+import {
+  createIdentityRestoreService,
+  GAP_LIMIT,
+  type FoundCourse,
+  type FoundProgram,
+  type IdentityRestoreState,
+} from './identity-restore'
 
 function workerError(code: string, message = code) {
   return Object.assign(new Error(message), { code })
@@ -15,6 +21,8 @@ function setup({
   filePath = '/backups/ana.matko-identity' as string | null,
   online = { 0: { courseId: 'aaaaaaaaaaaaaaaa', title: 'Fractions' }, 2: { courseId: 'bbbbbbbbbbbbbbbb', title: 'Verbs' } } as Online,
   onDevice = {} as Record<string, string>,
+  // Program numbers online, and the program each one is (SLJ-32).
+  onlinePrograms = {} as Record<number, { programId: string; title: string }>,
 } = {}) {
   let state: IdentityRestoreState = {}
   let staging = 0
@@ -30,6 +38,11 @@ function setup({
     })),
     now: () => new Date('2026-10-07T12:00:00Z'),
     onCourseFound: vi.fn(),
+    landProgram: vi.fn(async (input: { programId: string; stagingPath: string }) => ({
+      title: Object.values(onlinePrograms).find((program) => program.programId === input.programId)?.title ?? '',
+    })),
+    onProgramFound: vi.fn(),
+    programOnDevice: vi.fn(async (programId: string) => (onDevice[programId] ? { title: onDevice[programId] } : null)),
     readFile: vi.fn(async () => '{"format":"matko-identity"}'),
     removeStaging: vi.fn(async () => {}),
     store: { read: () => state, write: (next: IdentityRestoreState) => (state = next) },
@@ -44,6 +57,11 @@ function setup({
           publisherId: course.publisherId ?? 'publisher-ana',
           version: '0.2',
         }
+      }),
+      findProgram: vi.fn(async ({ index }: { index: number }): Promise<FoundProgram> => {
+        const program = onlinePrograms[index]
+        if (!program) throw workerError('NOT_FOUND')
+        return { driveKey: `program-drive-${index}`, programId: program.programId, publicId: `program-public-${index}`, publisherId: 'publisher-ana' }
       }),
       openIdentity: vi.fn(async (_text: string, password: string) => {
         if (password !== 'correct horse') throw workerError('WRONG_PASSWORD')
@@ -123,12 +141,35 @@ describe('identity restore', () => {
         { id: 'aaaaaaaaaaaaaaaa', title: 'Fractions' },
         { id: 'bbbbbbbbbbbbbbbb', title: 'Verbs' },
       ],
+      programs: [],
       publisherId: 'publisher-ana',
       restoredAt: '2026-10-07T12:00:00.000Z',
       searching: false,
     })
-    // Misses leave no staging folder behind.
-    expect(deps.removeStaging).toHaveBeenCalledTimes(GAP_LIMIT + 1)
+    // Misses leave no staging folder behind: the courses' and the programs'
+    // (none online here, so GAP_LIMIT misses from 0).
+    expect(deps.removeStaging).toHaveBeenCalledTimes(GAP_LIMIT + 1 + GAP_LIMIT)
+  })
+
+  it('finds the programs on their own numbers, and shares them again as the teacher\'s', async () => {
+    const { deps, restore, service } = setup({
+      onlinePrograms: { 1: { programId: 'pppppppppppppppp', title: 'Cypherpunks' } },
+    })
+    await restore()
+
+    expect(deps.landProgram).toHaveBeenCalledWith({
+      programId: 'pppppppppppppppp',
+      stagingPath: expect.stringContaining('.recover-staging-'),
+    })
+    expect(deps.onProgramFound).toHaveBeenCalledWith({
+      driveKey: 'program-drive-1',
+      programId: 'pppppppppppppppp',
+      publicId: 'program-public-1',
+      publicIndex: 1,
+    })
+    const looked = deps.worker.findProgram.mock.calls.map(([input]) => input.index).sort((a, b) => a - b)
+    expect(looked).toEqual(Array.from({ length: 1 + GAP_LIMIT + 1 }, (_, index) => index))
+    expect(service.getStatus()?.programs).toEqual([{ id: 'pppppppppppppppp', title: 'Cypherpunks' }])
   })
 
   it('says so on a wrong password, and changes nothing', async () => {

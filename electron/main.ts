@@ -10,6 +10,7 @@ import {
   checkUpdate,
   downloadUpdate,
   findCourse,
+  findProgram,
   followCourse,
   getPeers,
   getTransfer,
@@ -33,7 +34,9 @@ import {
   applyProgramUpdate,
   createProgram,
   listPrograms,
+  landRestoredProgram,
   prepareProgramForPublish,
+  programOnDevice,
   readProgram,
   removeProgram,
   resolveProgramAsset,
@@ -390,11 +393,14 @@ function openProfileServices(dataDir: string) {
     // once shared, and a published course is shared as soon as there's one.
     hasPublishedCourses: async () =>
       Object.keys(courseSharingStore.get('published')).length > 0 ||
+      programSharing.hasPublished() ||
       (publisherIdentity.exists() && (await listPublishedLocalCourseIds()).length > 0),
     installIdentity: (text, key) => publisherIdentity.install(text, key),
     landCourse: landRecoveredCourse,
     // Test-only: a shorter wait per course number (e2e/sharing.e2e.mjs). Unset in the app.
     lookupTimeoutMs: Number(process.env.MATKO_RESTORE_LOOKUP_MS) || undefined,
+    // Test-only too: fewer misses before the search ends. Unset in the app.
+    gapLimit: Number(process.env.MATKO_RESTORE_GAP_LIMIT) || undefined,
     onCourseFound: ({ courseId, driveKey, publicId, publicIndex }) => {
       courseSharingStore.set('published', {
         ...courseSharingStore.get('published'),
@@ -403,6 +409,9 @@ function openProfileServices(dataDir: string) {
       courseSharingStore.set('nextPublicIndex', Math.max(courseSharingStore.get('nextPublicIndex') ?? 0, publicIndex + 1))
       courseSharing.onPublished(courseId)
     },
+    landProgram: landRestoredProgram,
+    onProgramFound: (program) => programSharing.adoptRestored(program),
+    programOnDevice,
     readFile: (filePath) => readFile(filePath, 'utf8'),
     removeStaging: (stagingPath) => rm(stagingPath, { force: true, recursive: true }),
     store: {
@@ -411,6 +420,7 @@ function openProfileServices(dataDir: string) {
     },
     worker: {
       findCourse: whileOpen(findCourse),
+      findProgram: whileOpen(findProgram),
       openIdentity: whileOpen(openIdentity),
       readIdentityBackup: whileOpen(readIdentityBackup),
     },

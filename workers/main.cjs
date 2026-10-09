@@ -40,6 +40,7 @@ const CMD_SEED_COURSE = 20 // must match electron/bare-worker.ts
 const CMD_PUBLISH_PROGRAM = 21 // must match electron/bare-worker.ts
 const CMD_SEED_PROGRAM = 22 // must match electron/bare-worker.ts
 const CMD_PEEK_COURSE = 23 // must match electron/bare-worker.ts
+const CMD_FIND_PROGRAM = 24 // must match electron/bare-worker.ts
 
 // Programs (SLJ-32) share `publishedDrives` with courses under this prefix, so
 // a program's id can never collide with a course's.
@@ -1024,6 +1025,53 @@ async function start() {
     }
   }
 
+  // Restoring (SLJ-32): this publisher's program number `index`, like
+  // findCourse. Downloads the program's folder into `stagingPath`.
+  async function findProgram(index, stagingPath, transferId, timeoutMs) {
+    const transfer = createTransfer(transferId)
+    const publicId = publicProgramId(requireIdentity(), index)
+    const cores = await openCourseCores(programKeyPair(requireIdentity(), publicId).publicKey)
+    const drive = new Hyperdrive(store.session(), cores.key)
+    await drive.ready()
+    await cores.close()
+    transfer.drive = drive
+    const doneFindingPeers = drive.findingPeers()
+    const discovery = swarm.join(drive.discoveryKey, { client: true, server: false })
+    discovery.flushed().then(doneFindingPeers, doneFindingPeers)
+    transfer.onCancel.add(() => drive.close().catch(() => {}))
+    const timer = setTimeout(() => {
+      if (drive.core.length === 0) {
+        transfer.notFound = true
+        transfer.cancel()
+      }
+    }, timeoutMs)
+
+    try {
+      await waitForDriveData(drive, transfer)
+      clearTimeout(timer)
+      await untilCancelled(transfer, drive.update({ wait: true }))
+      transfer.course = await readCourseTitles(drive, transfer, '/program.json')
+      await mirrorWithProgress(drive, new Localdrive(stagingPath), transfer)
+
+      const manifest = JSON.parse(await fsp.readFile(path.join(stagingPath, 'program.json'), 'utf8'))
+      if (!isValidCourseId(manifest.id)) {
+        throw new Error('program.json has an invalid id')
+      }
+      const publisherId = await readVerifiedSource(stagingPath, drive.key)
+
+      finishTransfer(transferId, transfer, 'done')
+      return { driveKey: drive.key, programId: manifest.id, publicId, publisherId }
+    } catch (error) {
+      finishTransfer(transferId, transfer, transfer.isCancelled ? 'cancelled' : 'error')
+      if (transfer.notFound) throw Object.assign(new Error('Not found'), { code: 'NOT_FOUND' })
+      throw transfer.isCancelled ? new TransferCancelled() : error
+    } finally {
+      clearTimeout(timer)
+      await swarm.leave(drive.discoveryKey).catch(() => {})
+      await drive.close().catch(() => {})
+    }
+  }
+
   rpc = new RPC(new Pipe(3), async (req) => {
     // The publisher id while the identity is unlocked here, else ''. Main asks
     // it once at start to know the worker answers (scripts/check-packaged.mjs).
@@ -1295,6 +1343,26 @@ async function start() {
         )
       } catch (error) {
         if (error.code !== 'CANCELLED' && error.code !== 'NOT_FOUND') console.error('[worker] failed to find a course:', error)
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_FIND_PROGRAM) {
+      const { index, stagingPath, timeoutMs, transferId } = JSON.parse(req.data.toString())
+
+      try {
+        const result = await findProgram(index, stagingPath, transferId, timeoutMs)
+        req.reply(
+          JSON.stringify({
+            driveKey: IdEncoding.normalize(result.driveKey),
+            programId: result.programId,
+            publicId: result.publicId,
+            publisherId: result.publisherId,
+          }),
+        )
+      } catch (error) {
+        if (error.code !== 'CANCELLED' && error.code !== 'NOT_FOUND') console.error('[worker] failed to find a program:', error)
         req.reply(JSON.stringify({ code: error.code, error: error.message }))
       }
       return

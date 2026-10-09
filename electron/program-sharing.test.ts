@@ -89,4 +89,15 @@ describe('program sharing (SLJ-32)', () => {
     expect(sharing.newCourseIds('prog-x', ['course-a', 'course-b'])).toEqual([])
     expect(sharing.newCourseIds('my-own', ['course-a'])).toEqual([])
   })
+
+  it('takes a restored program back as published: its number taken, shared again', async () => {
+    const { sharing, state, worker } = setup({ followed: {}, nextPublicIndex: 1, published: {} })
+    sharing.adoptRestored({ driveKey: 'code-4', programId: 'prog-r', publicId: 'public-r', publicIndex: 4 })
+
+    expect(state().published['prog-r']).toEqual({ code: 'code-4', publicId: 'public-r', publicIndex: 4 })
+    expect(state().nextPublicIndex).toBe(5)
+    expect(worker.seedProgram).toHaveBeenCalledWith('prog-r', 'code-4')
+    expect(sharing.hasPublished()).toBe(true)
+    expect(await sharing.publish('prog-new')).toEqual({ code: 'code-5' })
+  })
 })

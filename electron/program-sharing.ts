@@ -126,6 +126,25 @@ export function createProgramSharing(deps: ProgramSharingDeps) {
       ])
     },
 
+    // Restoring (SLJ-32): a program of yours found again with the restored
+    // identity and landed here. Its number stays taken, and it's shared again
+    // by its code (Publish works on top of the history found).
+    adoptRestored({ driveKey, programId, publicId, publicIndex }: { driveKey: string; programId: string; publicId: string; publicIndex: number }) {
+      update((state) => ({
+        ...state,
+        nextPublicIndex: Math.max(state.nextPublicIndex ?? 0, publicIndex + 1),
+        published: { ...state.published, [programId]: { code: driveKey, publicId, publicIndex } },
+      }))
+      void deps.worker.seedProgram(programId, driveKey).catch((error) => {
+        console.error(`[program-sharing] sharing ${programId} failed:`, error)
+      })
+    },
+
+    // Whether any program is online with this profile's identity.
+    hasPublished(): boolean {
+      return Object.values(deps.store.read().published).some((entry) => Boolean(entry.code))
+    },
+
     // A program just imported (the worker landed it under programs/): none of
     // its courses is new yet.
     recordImport(

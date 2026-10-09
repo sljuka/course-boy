@@ -95,7 +95,7 @@ adding a case to the e2e suite over one-off manual checking.
   unlocked, the identity goes to the worker in memory only, and the worker's store holds
   no secret. Each course's code comes from a public id derived from the identity and its
   publish number, so on a new computer "Restore from a file…" (Settings → Sharing) finds
-  the courses among students from the identity alone (SLJ-54). "Import course" on Home takes a code;
+  the courses (and then the programs) among students from the identity alone (SLJ-54). "Import course" on Home takes a code;
   the download runs in the background under Home's Downloading group (SLJ-43, SLJ-49).
   A program (an ordered set of courses, SLJ-32) is published the same way with its own
   code, imported through the same box, and followed: students get its changes on their

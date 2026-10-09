@@ -1,3 +1,4 @@
+import { BookOpen, Library } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -8,8 +9,8 @@ import { StatusIcon } from "@/components/ui/status-icon";
 import type { IdentityRestoreStatus } from "@/lib/publisher-identity";
 import { useSearchRestoredCoursesMutation } from "@/lib/publisher-identity-queries";
 
-// The courses a restored publishing identity found again (SLJ-54, SLJ-55), one
-// row each, while the search among students runs and after it. A course comes
+// The courses and programs (SLJ-32) a restored publishing identity found again
+// (SLJ-54, SLJ-55), one row each, while the search among students runs and after it. A course comes
 // back only while a student who has it is online, so "Look again" searches
 // once more.
 export function RestoredCoursesList({ status }: { status: NonNullable<IdentityRestoreStatus> }) {
@@ -22,8 +23,17 @@ export function RestoredCoursesList({ status }: { status: NonNullable<IdentityRe
         {status.courses.map((course) => (
           <ListRow data-testid="restored-course" key={course.id}>
             <StatusIcon status="published" />
+            <BookOpen aria-hidden="true" className="size-4 shrink-0" />
             <span className="min-w-0 flex-1 truncate">{course.title || course.id}</span>
             <ListRowMeta>{t("identityRestore.courseRestored")}</ListRowMeta>
+          </ListRow>
+        ))}
+        {status.programs.map((program) => (
+          <ListRow data-testid="restored-program" key={program.id}>
+            <StatusIcon status="published" />
+            <Library aria-hidden="true" className="size-4 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{program.title || program.id}</span>
+            <ListRowMeta>{t("identityRestore.programRestored")}</ListRowMeta>
           </ListRow>
         ))}
       </div>
@@ -35,7 +45,7 @@ export function RestoredCoursesList({ status }: { status: NonNullable<IdentityRe
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <FieldDescription>
-            {status.courses.length === 0 ? t("identityRestore.foundNone") : t("identityRestore.foundMore")}
+            {status.courses.length + status.programs.length === 0 ? t("identityRestore.foundNone") : t("identityRestore.foundMore")}
           </FieldDescription>
           <Button
             data-testid="restore-look-again"
