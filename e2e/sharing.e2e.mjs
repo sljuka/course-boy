@@ -40,6 +40,9 @@ const dirs = {
   coMaintainer: path.join(ROOT, 'co-maintainer'),
   coStudent: path.join(ROOT, 'co-student'),
   coLateStudent: path.join(ROOT, 'co-late-student'),
+  // Their new computers (restoring the identity, SLJ-54).
+  coOwnerNew: path.join(ROOT, 'co-owner-new'),
+  coMaintainerNew: path.join(ROOT, 'co-maintainer-new'),
 }
 
 // Where each instance keeps its data: its e2e profile's folder (SLJ-57).
@@ -1193,6 +1196,7 @@ describe('a course maintained by two teachers', () => {
     const ana = await launch('coOwner')
     await finishOnboarding(ana, 'teacher')
     await setUpIdentity(ana)
+    fs.copyFileSync(identityFilePath('coOwner'), path.join(ROOT, 'co-owner.matko-identity'))
     ids = await ana.evaluate(async () => {
       const { courseId } = await window.courses.createDraft({
         defaultLocale: 'en',
@@ -1214,6 +1218,7 @@ describe('a course maintained by two teachers', () => {
     const marko = await launch('coMaintainer')
     await finishOnboarding(marko, 'teacher')
     await setUpIdentity(marko)
+    fs.copyFileSync(identityFilePath('coMaintainer'), path.join(ROOT, 'co-maintainer.matko-identity'))
 
     // Ana invites from the course editor's Maintainers panel.
     await ana.evaluate((id) => {
@@ -1330,5 +1335,46 @@ describe('a course maintained by two teachers', () => {
     expect(await importCourse(late, oldCode)).toEqual({ courseId: ids.courseId })
     expect((await late.evaluate((id) => window.sharing.getCourseSharing(id), ids.courseId)).code).toBe(sharedKey)
   }, 120_000)
+
+  // A teacher's new computer: the identity restored from a copy of its file.
+  async function restoreOn(name, backupFile) {
+    const page = await launch(name, { extraEnv: { MATKO_RESTORE_GAP_LIMIT: '3' } })
+    await apps[name].app.evaluate(({ dialog }, filePath) => {
+      dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [filePath] })
+    }, path.join(ROOT, backupFile))
+    await finishOnboarding(page, 'teacher')
+    await page.evaluate(() => window.sharing.chooseIdentityFile())
+    expect(await page.evaluate((password) => window.sharing.restoreIdentity(password), IDENTITY_PASSWORD)).toEqual({ restored: true })
+    return page
+  }
+
+  it("Ana's new computer finds the course, follows it to the shared course, and takes it up as owner", async () => {
+    await close('coOwner')
+    const ana = await restoreOn('coOwnerNew', 'co-owner.matko-identity')
+    await expect
+      // Finding the course, following its notice and downloading the shared
+      // course each wait for peers: this takes a while.
+      .poll(() => ana.evaluate((id) => window.maintainers.get(id), ids.courseId), { interval: 1000, timeout: 200_000 })
+      .toMatchObject({ quorum: 2, role: 'owner', sharedKey })
+    // Its latest version (Marko's 0.3), as her own course; not the old drive's.
+    const course = (await ana.evaluate(() => window.courses.list('en'))).find((entry) => entry.id === ids.courseId)
+    expect(course).toMatchObject({ distribution: 'local' })
+    expect(course.publishedVersion).toBe((await apps.coMaintainer.page.evaluate((id) => window.courses.list('en').then((list) => list.find((entry) => entry.id === id)?.publishedVersion), ids.courseId)))
+  }, 260_000)
+
+  it("Marko's new computer joins again with a fresh invite from Ana, and gets the course", async () => {
+    await close('coMaintainer')
+    const ana = apps.coOwnerNew.page
+    const marko = await restoreOn('coMaintainerNew', 'co-maintainer.matko-identity')
+    const { code } = await ana.evaluate((courseId) => window.maintainers.invite(courseId), ids.courseId)
+    await marko.evaluate((code) => window.maintainers.accept(code), code)
+    await expect
+      .poll(() => marko.evaluate((id) => window.maintainers.get(id).then((info) => info?.sharedKey ?? null), ids.courseId), {
+        interval: 1000,
+        timeout: 120_000,
+      })
+      .toBe(sharedKey)
+    expect(await marko.evaluate((id) => window.maintainers.get(id).then((info) => info.role), ids.courseId)).toBe('maintainer')
+  }, 180_000)
 })
 

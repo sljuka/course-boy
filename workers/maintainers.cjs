@@ -34,6 +34,14 @@ const MAX_FILE_BYTES = 256 * 1024
 // mailbox whose owner is offline mustn't hold everything up. What arrives
 // later is read on the next change.
 const READ_TIMEOUT_MS = 10_000
+// Opening our own mailbox on a computer that doesn't have it yet (a restored
+// identity): how long to look for its existing history before writing.
+const SYNC_TIMEOUT_MS = 15_000
+// Joining with an invite: if the owner isn't found within one attempt, look
+// again from scratch (a missed lookup isn't retried by the swarm for a long
+// while), this many times.
+const JOIN_ATTEMPT_MS = 10_000
+const JOIN_ATTEMPTS = 6
 
 class MaintainersError extends Error {
   constructor(code, message) {
@@ -73,6 +81,39 @@ function createMaintainers(context) {
     return drive
   }
 
+  // Before our first write to a mailbox this device has nothing of: its key
+  // comes from the identity, so on a new computer (a restored identity) it's
+  // the same mailbox, without its history. Writing then would fork it:
+  // whoever holds the old history would see two different mailboxes under one
+  // key, which Hypercore treats as fatal. So its history is fetched first
+  // from whoever has it (the other maintainers follow it). A truly new
+  // mailbox costs one lookup: nobody is found, and nothing is waited for.
+  const synced = new Set()
+  async function syncBeforeWriting(publicId) {
+    if (synced.has(publicId)) return
+    const drive = mailboxes.get(publicId)
+    if (drive.core.length === 0) {
+      await withTimeout(context.swarm.flush(), SYNC_TIMEOUT_MS).catch(() => {})
+      if (drive.core.peers.length > 0) {
+        const key = drive.key
+        mailboxes.delete(publicId)
+        await drive.close()
+        const reader = new Hyperdrive(context.store.session(), key)
+        try {
+          await reader.ready()
+          await withTimeout(reader.core.update({ wait: true }), SYNC_TIMEOUT_MS).catch(() => {})
+          if (reader.core.length > 0) {
+            await withTimeout(reader.core.download({ start: 0, end: reader.core.length }).done(), SYNC_TIMEOUT_MS)
+          }
+        } finally {
+          await reader.close()
+        }
+        await openMailbox(publicId)
+      }
+    }
+    synced.add(publicId)
+  }
+
   // What we tell the others about ourselves for the course.
   async function self(publicId) {
     const mailbox = await openMailbox(publicId)
@@ -84,6 +125,8 @@ function createMaintainers(context) {
   }
 
   async function writeMailbox(publicId, file, value) {
+    await openMailbox(publicId)
+    await syncBeforeWriting(publicId)
     const mailbox = await openMailbox(publicId)
     await mailbox.put(file, Buffer.from(JSON.stringify(value, null, 2)))
   }
@@ -201,16 +244,25 @@ function createMaintainers(context) {
     }
 
     const userData = Buffer.from(JSON.stringify(await self(publicId)))
-    const candidate = context.pairing.addCandidate({ invite, onadd: () => {}, userData })
-    let result
-    try {
-      result = await new Promise((resolve, reject) => {
-        candidate.request.once('rejected', reject)
-        candidate.pairing.then(resolve, reject)
-      })
-    } finally {
-      await candidate.close()
+    let result = null
+    for (let attempt = 0; attempt < JOIN_ATTEMPTS && !result; attempt++) {
+      const candidate = context.pairing.addCandidate({ invite, onadd: () => {}, userData })
+      try {
+        result = await withTimeout(
+          new Promise((resolve, reject) => {
+            candidate.request.once('rejected', reject)
+            candidate.pairing.then(resolve, reject)
+          }),
+          JOIN_ATTEMPT_MS,
+        )
+      } catch (error) {
+        // Refused (a used or unknown invite): don't keep trying.
+        if (error?.message !== 'Timed out') throw error
+      } finally {
+        await candidate.close()
+      }
     }
+    if (!result) throw new MaintainersError('NOT_FOUND', "The person who sent this invite isn't online")
 
     const ownerMailboxKey = IdEncoding.normalize(result.key)
     await followMailbox(ownerMailboxKey)

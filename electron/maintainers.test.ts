@@ -19,7 +19,8 @@ type World = {
   moved: string[]
   // Whose invite is being accepted.
   owner: { self: Self; service: MaintainersService } | null
-  shared: { length: number; version: string | null }
+  shared: { length: number; source: unknown; version: string | null }
+  sources: Map<string, unknown> // request -> its source.json
   versions: Map<string, string> // request -> version
 }
 
@@ -29,7 +30,8 @@ function createWorld(): World {
     mailboxes: new Map(),
     moved: [],
     owner: null,
-    shared: { length: 0, version: null },
+    shared: { length: 0, source: null, version: null },
+    sources: new Map(),
     versions: new Map(),
   }
 }
@@ -77,6 +79,7 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
       case 'propose': {
         const request = `req-${name}-${proposals++}`
         world.versions.set(request, published.version)
+        world.sources.set(request, args.source)
         return { hash: `h-${request}`, length: world.shared.length + 1, proposalKey: `prop-${request}`, request }
       }
       case 'sign':
@@ -85,11 +88,17 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
         return { changes: [{ kind: 'changed', path: '/lesson.md' }], length: world.shared.length + 1, sharedLength: world.shared.length }
       case 'commit':
         world.commits.push({ first: args.first as boolean, request: args.request as string, responses: args.responses as string[] })
-        world.shared = { length: world.shared.length + 1, version: world.versions.get(args.request as string)! }
+        world.shared = {
+          length: world.shared.length + 1,
+          source: world.sources.get(args.request as string),
+          version: world.versions.get(args.request as string)!,
+        }
         return { sharedKey: 'shared-key' }
       case 'moveNotice':
         world.moved.push(args.courseId as string)
         return {}
+      case 'readSharedSource':
+        return { courseId: 'course-1', source: world.shared.source, title: 'Fractions', version: world.shared.version }
       case 'downloadShared':
         return { courseId: 'course-1', version: world.shared.version }
       default:
@@ -229,5 +238,51 @@ describe('maintainers (SLJ-11)', () => {
     await marko.service.refresh('pubid0000000000a')
 
     await expect(ana.service.startSharing('course-1', 1)).rejects.toMatchObject({ code: 'INVALID_QUORUM' })
+  })
+
+  // Restoring on a new computer (SLJ-54): the owner's course moved to a shared
+  // one; she takes it up again from what the shared course says.
+  it("restores the owner's shared course from its source.json, with the others' mailboxes", async () => {
+    const world = createWorld()
+    const ana = createPeer(world, 'ana', { courseId: 'course-1' })
+    const marko = createPeer(world, 'marko')
+    await ana.service.invite('course-1')
+    await marko.service.accept('invite-pubid0000000000a')
+    await marko.service.refresh('pubid0000000000a')
+    const first = await ana.service.startSharing('course-1', 2)
+    await marko.service.refresh('pubid0000000000a')
+    await marko.service.approve('pubid0000000000a', first.hash)
+    await ana.service.refresh('pubid0000000000a')
+
+    // Ana's new computer: same identity (same keys), nothing else.
+    const restored = createPeer(world, 'ana')
+    expect(
+      await restored.service.restoreSharedCourse({ oldCode: 'old-code', publicId: 'pubid0000000000a', sharedKey: 'shared-key' }),
+    ).toEqual({ courseId: 'course-1', title: 'Fractions' })
+    expect(restored.landCourse).toHaveBeenCalledWith({ courseId: 'course-1', stagingPath: '/staging', version: '0.2' })
+    expect(restored.service.getInfo('course-1')).toMatchObject({ quorum: 2, role: 'owner', sharedKey: 'shared-key' })
+    expect(restored.state().courses.pubid0000000000a.members.map((member) => member.mailboxKey)).toEqual(['mb-ana', 'mb-marko'])
+  })
+
+  it('lets a maintainer back in with a new invite after the course is shared', async () => {
+    const world = createWorld()
+    const ana = createPeer(world, 'ana', { courseId: 'course-1' })
+    const marko = createPeer(world, 'marko')
+    await ana.service.invite('course-1')
+    await marko.service.accept('invite-pubid0000000000a')
+    await marko.service.refresh('pubid0000000000a')
+    const first = await ana.service.startSharing('course-1', 2)
+    await marko.service.refresh('pubid0000000000a')
+    await marko.service.approve('pubid0000000000a', first.hash)
+    await ana.service.refresh('pubid0000000000a')
+
+    // Marko's new computer joins again with a fresh code, and gets the course.
+    const markoAgain = createPeer(world, 'marko')
+    await ana.service.invite('course-1')
+    await markoAgain.service.accept('invite-pubid0000000000a')
+    await markoAgain.service.refresh('pubid0000000000a')
+    expect(markoAgain.landCourse).toHaveBeenCalledWith({ courseId: 'course-1', stagingPath: '/staging', version: '0.2' })
+    expect(markoAgain.service.isShared('course-1')).toBe(true)
+    expect(ana.state().courses.pubid0000000000a.members).toHaveLength(2)
   })
 })

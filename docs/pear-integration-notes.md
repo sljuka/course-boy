@@ -998,3 +998,29 @@ the network. Starting a move from the app comes with inviting a maintainer (mile
     out after 10 s. Before, a join could appear to hang.
 - **Follow-up:** the review page shows file paths. Showing lessons and sections, and a
   "Preview as student", is SLJ-67.
+
+**Milestone 5 (restoring shared courses):**
+- **The owner:** "Restore from a file…" counts through your course numbers as before. A
+  course found with a "moved" notice is followed to its shared course
+  (`landSharedCourse`, `restoreSharedCourse`). The app reads its maintainers, with their
+  mailbox keys (now in the shared course's `source.json`), and its rule, then lands
+  the latest shared version and takes it up again as owner.
+- **Other maintainers:** a shared course isn't numbered under their identity. They ask
+  the owner for a new invite and join again: their keys come from their identity, so
+  they come back as the same maintainer and the course lands again. An invite on a
+  shared course only lets existing maintainers back in; adding new maintainers to a
+  shared course comes later.
+- **No forked mailboxes:** a mailbox's key comes from the identity, so a new computer
+  has the same mailbox without its history. Before its first write there, the app
+  fetches the history from whoever has it (`syncBeforeWriting`; one quick lookup if
+  nobody does).
+- **Proposal drives** are numbered by time, so a restored computer never reuses one
+  the old computer wrote to.
+- **Joining retries:** if the owner isn't found within 10 s, the app looks again from
+  scratch, up to 6 times. A missed lookup isn't retried by the swarm for a long while;
+  this caused intermittent "joining hangs".
+- **e2e:** "a course maintained by two teachers" now also covers Ana restoring on a new
+  computer and Marko rejoining from his (about 90 s for the group).
+- **Open:** a rare worker crash ("Cannot read properties of null (reading
+  'byteLength')") was seen once during these runs. The worker now logs the stack of an
+  uncaught error before exiting, so the next occurrence can be traced.

@@ -44,6 +44,8 @@ export type IdentityRestoreState = {
 export type FoundCourse = {
   courseId: string
   driveKey: string
+  // It moved to a course shared by several maintainers (SLJ-11).
+  movedTo?: string | null
   publicId: string
   publisherId: string
   version: string
@@ -82,6 +84,13 @@ export type IdentityRestoreDeps = {
   landCourse(input: { courseId: string; stagingPath: string; version: string }): Promise<{ title: string }>
   // The course is the teacher's (again): record its number and code, and share it.
   onCourseFound(course: { courseId: string; driveKey: string; publicId: string; publicIndex: number }): void
+  // A course that moved to a shared one (SLJ-11): lands the shared course's
+  // latest version and takes up maintaining it again (the old drive only
+  // holds the version from before the move).
+  landSharedCourse(input: { oldCode: string; publicId: string; publicIndex: number; sharedKey: string }): Promise<{
+    courseId: string
+    title: string
+  }>
   // The same for programs.
   programOnDevice(programId: string): Promise<{ title: string } | null>
   landProgram(input: { programId: string; stagingPath: string }): Promise<{ title: string }>
@@ -134,6 +143,15 @@ export function createIdentityRestoreService(deps: IdentityRestoreDeps) {
     if (kind === 'course') {
       const found = await deps.worker.findCourse({ index, stagingPath, timeoutMs, transferId })
       assertOwn(found.publisherId, 'course')
+      if (found.movedTo) {
+        const shared = await deps.landSharedCourse({
+          oldCode: found.driveKey,
+          publicId: found.publicId,
+          publicIndex: index,
+          sharedKey: found.movedTo,
+        })
+        return { consumed: false, id: shared.courseId, title: shared.title }
+      }
       // The same identity restored again: the course never left.
       const onDevice = await deps.courseOnDevice(found.courseId)
       const title = onDevice?.title ?? (await deps.landCourse({ courseId: found.courseId, stagingPath, version: found.version })).title

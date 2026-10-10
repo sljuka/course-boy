@@ -995,6 +995,7 @@
     "intro": "Maintain this course together with other teachers: each new version goes online only once enough of you approve it. Invite someone to start.",
     "publishFirst": "Publish a version before inviting others to maintain this course with you.",
     "invite": "Invite a maintainer",
+    "inviteBack": "Invite a maintainer back (on a new computer)",
     "inviteTitle": "Invite a maintainer",
     "inviteDescription": "Send this code to one person, privately: it's all they need to join. They enter it under My courses → Join as a maintainer.",
     "inviteCodeLabel": "Invite code",

@@ -97,6 +97,10 @@ type Ops = {
     { hash: string; length: number; proposalKey: string; request: string },
   ]
   readMailbox: [{ key: string }, MailboxContents]
+  readSharedSource: [
+    { sharedKey: string },
+    { courseId: string | null; source: unknown; title: string | null; version: string | null },
+  ]
   review: [
     { proposalKey: string; request: string; spec: SharedCourseSpecInput },
     { changes: ProposalChange[]; length: number; sharedLength: number },
@@ -189,7 +193,8 @@ export function createMaintainers(deps: MaintainersDeps) {
     return {
       driveKey: sharedKey,
       maintainers: {
-        members: record.members.map(({ maintainerKey, publisherId }) => ({ maintainerKey, publisherId })),
+        // Mailbox keys too, so restoring on a new computer can reach the others.
+        members: record.members.map(({ mailboxKey, maintainerKey, publisherId }) => ({ mailboxKey, maintainerKey, publisherId })),
         quorum: record.quorum,
       },
       publicId: record.publicId,
@@ -206,7 +211,10 @@ export function createMaintainers(deps: MaintainersDeps) {
 
     const spec = specOf(record)
     const { sharedKey } = await deps.op('seedShared', { spec })
-    const index = record.nextProposalIndex
+    // By time, not a counter kept here: after a restore on a new computer, a
+    // counter would start over and reuse a proposal drive the old computer
+    // already wrote to.
+    const index = Math.max(record.nextProposalIndex, Date.now())
     const { hash, proposalKey, request } = await deps.op('propose', {
       index,
       source: sourceFor(record, sharedKey),
@@ -339,26 +347,27 @@ export function createMaintainers(deps: MaintainersDeps) {
       return serial(publicId, async () => {
         const existing = records()[publicId]
         if (existing && existing.role !== 'owner') throw new MaintainersError('NOT_OWNER', 'Only the course owner invites')
-        if (existing?.sharedKey) {
-          throw new MaintainersError('ALREADY_SHARED', 'Adding maintainers to a shared course comes later')
-        }
         const self = await deps.op('self', { publicId })
-        save({
-          answered: [],
-          approvedAt: {},
-          changesRequested: {},
-          courseId,
-          inbox: {},
-          members: existing?.members ?? [self],
-          nextProposalIndex: existing?.nextProposalIndex ?? 0,
-          oldCode: published.code,
-          ownerMailboxKey: null,
-          proposal: null,
-          publicId,
-          quorum: existing?.quorum ?? 1,
-          role: 'owner',
-          sharedKey: null,
-        })
+        // Already shared: the code lets a maintainer back in on a new
+        // computer (adding new maintainers to a shared course comes later).
+        if (!existing) {
+          save({
+            answered: [],
+            approvedAt: {},
+            changesRequested: {},
+            courseId,
+            inbox: {},
+            members: [self],
+            nextProposalIndex: 0,
+            oldCode: published.code,
+            ownerMailboxKey: null,
+            proposal: null,
+            publicId,
+            quorum: 1,
+            role: 'owner',
+            sharedKey: null,
+          })
+        }
         return deps.op('createInvite', { publicId })
       })
     },
@@ -367,8 +376,13 @@ export function createMaintainers(deps: MaintainersDeps) {
     onJoined({ member, publicId }: { member: Member; publicId: string }): Promise<void> {
       return serial(publicId, async () => {
         const record = records()[publicId]
-        if (!record || record.role !== 'owner' || record.sharedKey) return
+        if (!record || record.role !== 'owner') return
+        // A maintainer back on a new computer: same keys, nothing to change.
         if (record.members.some((existing) => existing.publisherId === member.publisherId)) return
+        if (record.sharedKey) {
+          console.warn(`[maintainers] ${publicId}: adding maintainers to a shared course isn't supported yet`)
+          return
+        }
         const next = { ...record, members: [...record.members, member] }
         save(next)
         await writeMembers(next)
@@ -437,6 +451,47 @@ export function createMaintainers(deps: MaintainersDeps) {
           await propose(current, { first: false })
         }
         return seeded.sharedKey
+      })
+    },
+
+    // Restoring the identity on a new computer (SLJ-54): the owner's course
+    // moved to a shared one. Takes up maintaining it again from what the
+    // shared course says (its maintainers, with their mailboxes, and the
+    // rule), and lands its latest version here.
+    async restoreSharedCourse(input: { oldCode: string; publicId: string; sharedKey: string }): Promise<{
+      courseId: string
+      title: string
+    }> {
+      return serial(input.publicId, async () => {
+        const shared = await deps.op('readSharedSource', { sharedKey: input.sharedKey })
+        const parsed = parseSharedSource(shared.source)
+        if (!parsed || !shared.courseId) throw new MaintainersError('NOT_SHARED', "This shared course can't be read")
+        const self = await deps.op('self', { publicId: input.publicId })
+        const role = parsed.ownerPublisherId === self.publisherId ? 'owner' : 'maintainer'
+        const record: SharedCourseRecord = {
+          answered: [],
+          approvedAt: {},
+          changesRequested: {},
+          courseId: null,
+          inbox: {},
+          members: parsed.members,
+          nextProposalIndex: 0,
+          oldCode: role === 'owner' ? input.oldCode : null,
+          ownerMailboxKey: role === 'owner' ? null : parsed.members[0].mailboxKey,
+          proposal: null,
+          publicId: input.publicId,
+          quorum: parsed.quorum,
+          role,
+          sharedCourseKey: input.sharedKey,
+          sharedKey: input.sharedKey,
+        }
+        save(record)
+        // The owner says again who maintains it and the rule, in her mailbox
+        // (continued from its history, never forked: maintainers.cjs), for
+        // maintainers who join again from a new computer.
+        if (role === 'owner') await writeMembers(record)
+        await land(record, shared.courseId)
+        return { courseId: shared.courseId, title: shared.title ?? '' }
       })
     },
 
@@ -562,6 +617,24 @@ function parseMembers(value: unknown, publicId: string): { members: Member[]; qu
   )
   if (members.length !== data.members.length || members.length === 0) return null
   return { members, quorum: data.quorum }
+}
+
+// The shared course's source.json: its owner, maintainers (with mailboxes)
+// and rule.
+function parseSharedSource(value: unknown): { members: Member[]; ownerPublisherId: string; quorum: number } | null {
+  const data = value as { maintainers?: { members?: unknown; quorum?: unknown }; publisher?: { id?: unknown } } | null
+  const members = data?.maintainers?.members
+  const quorum = data?.maintainers?.quorum
+  const owner = data?.publisher?.id
+  if (!Array.isArray(members) || typeof quorum !== 'number' || typeof owner !== 'string') return null
+  const parsed = members.filter(
+    (member): member is Member =>
+      Boolean(member) &&
+      typeof member.mailboxKey === 'string' &&
+      typeof member.maintainerKey === 'string' &&
+      typeof member.publisherId === 'string',
+  )
+  return parsed.length === members.length && parsed.length > 0 ? { members: parsed, ownerPublisherId: owner, quorum } : null
 }
 
 function parseProposal(value: unknown): Omit<InboxItem, 'from' | 'mailboxKey'> | null {

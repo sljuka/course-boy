@@ -450,6 +450,17 @@ function openProfileServices(dataDir: string) {
       (publisherIdentity.exists() && (await listPublishedLocalCourseIds()).length > 0),
     installIdentity: (text, key) => publisherIdentity.install(text, key),
     landCourse: landRecoveredCourse,
+    // A course that moved to a shared one (SLJ-11): taken up again from the
+    // shared course, and numbered like any found course.
+    landSharedCourse: async ({ oldCode, publicId, publicIndex, sharedKey }) => {
+      const landed = await maintainers.restoreSharedCourse({ oldCode, publicId, sharedKey })
+      courseSharingStore.set('published', {
+        ...courseSharingStore.get('published'),
+        [landed.courseId]: { code: sharedKey, publicId, publicIndex },
+      })
+      courseSharingStore.set('nextPublicIndex', Math.max(courseSharingStore.get('nextPublicIndex') ?? 0, publicIndex + 1))
+      return landed
+    },
     // Test-only: a shorter wait per course number (e2e/sharing.e2e.mjs). Unset in the app.
     lookupTimeoutMs: Number(process.env.MATKO_RESTORE_LOOKUP_MS) || undefined,
     // Test-only too: fewer misses before the search ends. Unset in the app.

@@ -305,6 +305,8 @@ export async function seedCourse(courseId: string, driveKey: string): Promise<vo
 export type FoundCourse = {
   // The course's own (local) id, from its course.json.
   courseId: string
+  // It moved to a course shared by several maintainers (SLJ-11): its key.
+  movedTo?: string | null
   driveKey: string
   publicId: string
   publisherId: string
@@ -379,6 +381,10 @@ type SharedCourseOps = {
     { hash: string; length: number; proposalKey: string; request: string },
   ]
   readMailbox: [{ key: string }, MailboxContents]
+  readSharedSource: [
+    { sharedKey: string },
+    { courseId: string | null; source: unknown; title: string | null; version: string | null },
+  ]
   review: [
     { proposalKey: string; request: string; spec: SharedCourseSpecInput },
     { changes: ProposalChange[]; length: number; sharedLength: number },

@@ -108,6 +108,16 @@ const store = new Corestore(storagePath)
 // are separated by which store a connection gets, not by filtering within one.
 const gatedStore = new Corestore(`${storagePath}-gated`)
 
+// An error nothing caught still ends the worker, as it would anyway, but with
+// its stack in the log first (Bare's own abort prints only the message).
+Bare.on('uncaughtException', (error) => {
+  console.error('[worker] uncaught error:', error?.stack ?? error)
+  Bare.exit(1)
+})
+Bare.on('unhandledRejection', (error) => {
+  console.error('[worker] unhandled rejection:', error?.stack ?? error)
+  Bare.exit(1)
+})
 async function start() {
   // Hyperswarm's peer identity is normally a fresh random keypair every process
   // start. Gating needs it to be stable: the host has to recognize the *same* peer
@@ -1053,9 +1063,13 @@ async function start() {
         throw new Error('course.json has an invalid id')
       }
       const publisherId = await readVerifiedSource(stagingPath, drive.key)
+      // It moved to a course shared by several maintainers (SLJ-11): restore
+      // follows it there.
+      const sourceText = await fsp.readFile(path.join(stagingPath, 'source.json'), 'utf8').catch(() => null)
+      const movedTo = sourceText ? movedToKey(sourceText, drive.key) : null
 
       finishTransfer(transferId, transfer, 'done')
-      return { courseId: manifest.id, driveKey: drive.key, publicId, publisherId, version: manifest.version }
+      return { courseId: manifest.id, driveKey: drive.key, movedTo, publicId, publisherId, version: manifest.version }
     } catch (error) {
       finishTransfer(transferId, transfer, transfer.isCancelled ? 'cancelled' : 'error')
       if (transfer.notFound) throw Object.assign(new Error('Not found'), { code: 'NOT_FOUND' })
@@ -1235,9 +1249,34 @@ async function start() {
         await writeMovedNotice(drive, args.sharedKey)
         return {}
       }
+      // A shared course by its key alone (restoring: its signers and rule are
+      // in its source.json): who maintains it, and its id, title and version.
+      case 'readSharedSource': {
+        // Already open here: a second Hyperdrive on it would never be ready.
+        const open = sharedDrives.get(IdEncoding.decode(args.sharedKey).toString('hex'))
+        const drive = open ?? new Hyperdrive(store.session(), IdEncoding.decode(args.sharedKey))
+        try {
+          await drive.ready()
+          const found = drive.findingPeers()
+          swarm.join(drive.discoveryKey, { client: true, server: false })
+          swarm.flush().then(found, found)
+          await withTimeout(drive.update({ wait: true }), REMOTE_READ_TIMEOUT_MS, 'Nobody sharing this course is online')
+          const source = await readRemoteJson(drive, SOURCE_FILE_KEY)
+          const manifest = await readRemoteJson(drive, '/course.json')
+          const title = manifest?.locales?.[manifest?.defaultLocale]?.title
+          return {
+            courseId: manifest?.id ?? null,
+            source,
+            title: typeof title === 'string' ? title.slice(0, 200) : null,
+            version: manifest?.version ?? null,
+          }
+        } finally {
+          if (!open) await drive.close().catch(() => {})
+        }
+      }
       case 'downloadShared': {
         const drive = await ensureSharedDrive(spec)
-        await drive.core.update({ wait: true })
+        await withTimeout(drive.core.update({ wait: true }), REMOTE_READ_TIMEOUT_MS, 'Nobody sharing this course is online')
         await drive.mirror(new Localdrive(args.stagingPath)).done()
         const manifest = JSON.parse(await fsp.readFile(path.join(args.stagingPath, 'course.json'), 'utf8'))
         return { courseId: manifest.id, version: manifest.version }
@@ -1514,6 +1553,7 @@ async function start() {
             publicId: result.publicId,
             publisherId: result.publisherId,
             version: result.version,
+            movedTo: result.movedTo,
           }),
         )
       } catch (error) {

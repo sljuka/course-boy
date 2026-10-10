@@ -995,6 +995,7 @@
     "intro": "Održavaj ovaj kurs zajedno sa drugim nastavnicima: svaka nova verzija ide na mrežu tek kad je odobri dovoljno vas. Pozovi nekoga da počnete.",
     "publishFirst": "Objavi verziju pre nego što pozoveš druge da održavaju ovaj kurs sa tobom.",
     "invite": "Pozovi osobu da održava kurs",
+    "inviteBack": "Ponovo pozovi osobu koja održava kurs (na novom računaru)",
     "inviteTitle": "Poziv za održavanje kursa",
     "inviteDescription": "Pošalji ovaj kod jednoj osobi, privatno: to je sve što joj treba da se pridruži. Unosi ga u Mojim kursevima → Pridruži se održavanju.",
     "inviteCodeLabel": "Kod poziva",

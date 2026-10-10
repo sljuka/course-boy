@@ -342,7 +342,8 @@ pass the same check.
 its maintainers' keys together (Hypercore manifests with several signers, via
 `hyper-multisig`). A version goes online only when **more than half** of them approve it.
 Its `source.json` adds
-`"maintainers": { "members": [{ "maintainerKey", "publisherId" }], "quorum": n }` and keeps
+`"maintainers": { "members": [{ "mailboxKey", "maintainerKey", "publisherId" }], "quorum": n }`
+(mailbox keys so a restore on a new computer can reach the others) and keeps
 the original owner as `publisher.id`. How it fits together:
 
 - **Code:** `workers/shared-course.cjs` (propose, review, sign, commit) and

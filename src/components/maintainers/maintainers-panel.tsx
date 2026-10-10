@@ -38,7 +38,10 @@ export function MaintainersPanel({ courseId, variant }: { courseId: string; vari
   const members = info?.members ?? [];
   const isOwner = !info || info.role === "owner";
   const isShared = Boolean(info?.sharedKey);
-  const canInvite = isOwner && isPublished && !isShared;
+  // After sharing, an invite only lets a maintainer back in (on a new
+  // computer); adding new maintainers to a shared course comes later.
+  const canInvite = isOwner && isPublished;
+  const inviteLabel = isShared ? t("maintainers.inviteBack") : t("maintainers.invite");
 
   const ruleText = (quorum: number, count: number) =>
     quorum === count
@@ -52,12 +55,12 @@ export function MaintainersPanel({ courseId, variant }: { courseId: string; vari
       action={
         canInvite && (
           <Button
-            aria-label={t("maintainers.invite")}
+            aria-label={inviteLabel}
             data-testid="invite-maintainer"
             disabled={inviteMutation.isPending}
             onClick={() => inviteMutation.mutate(courseId, { onSuccess: ({ code }) => setInviteCode(code) })}
             size="icon-xs"
-            title={t("maintainers.invite")}
+            title={inviteLabel}
             variant="ghost"
           >
             <UserPlus aria-hidden="true" />

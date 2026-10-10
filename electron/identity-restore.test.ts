@@ -38,6 +38,7 @@ function setup({
     })),
     now: () => new Date('2026-10-07T12:00:00Z'),
     onCourseFound: vi.fn(),
+    landSharedCourse: vi.fn(async (input: { publicId: string }) => ({ courseId: `shared-${input.publicId}`, title: 'Shared' })),
     landProgram: vi.fn(async (input: { programId: string; stagingPath: string }) => ({
       title: Object.values(onlinePrograms).find((program) => program.programId === input.programId)?.title ?? '',
     })),
@@ -227,5 +228,19 @@ describe('identity restore', () => {
   it('has no status before anything was restored', () => {
     const { service } = setup()
     expect(service.getStatus()).toBeNull()
+  })
+
+  // SLJ-11: a course that moved to a shared one is taken up from there.
+  it('follows a course that moved, instead of landing its old version', async () => {
+    const { deps, restore, service } = setup({ online: { 0: { courseId: 'aaaaaaaaaaaaaaaa', title: 'Fractions' } } })
+    deps.worker.findCourse.mockImplementation(async ({ index }: { index: number }) => {
+      if (index !== 0) throw Object.assign(new Error('NOT_FOUND'), { code: 'NOT_FOUND' })
+      return { courseId: 'aaaaaaaaaaaaaaaa', driveKey: 'old-drive', movedTo: 'shared-drive', publicId: 'public-0', publisherId: 'publisher-ana', version: '0.2' }
+    })
+    await restore()
+
+    expect(deps.landSharedCourse).toHaveBeenCalledWith({ oldCode: 'old-drive', publicId: 'public-0', publicIndex: 0, sharedKey: 'shared-drive' })
+    expect(deps.landCourse).not.toHaveBeenCalled()
+    expect(service.getStatus()?.courses).toEqual([{ id: 'shared-public-0', title: 'Shared' }])
   })
 })
