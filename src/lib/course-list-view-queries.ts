@@ -8,11 +8,12 @@ import {
   type CourseListView,
 } from "@/lib/course-list-view";
 
-type ViewPreference = "homeView" | "myCoursesView";
+type ViewPreference = "homeView" | "myCoursesView" | "programView";
 
 const defaults: Record<ViewPreference, CourseListView> = {
   homeView: DEFAULT_HOME_VIEW,
   myCoursesView: DEFAULT_COURSE_LIST_VIEW,
+  programView: DEFAULT_COURSE_LIST_VIEW,
 };
 
 // A page's chosen view, remembered across restarts. Applied to the cache
@@ -42,4 +43,9 @@ export function useMyCoursesView() {
 
 export function useHomeView() {
   return useCourseListView("homeView");
+}
+
+// A program's page (SLJ-64): one choice for every program.
+export function useProgramView() {
+  return useCourseListView("programView");
 }

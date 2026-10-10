@@ -465,6 +465,7 @@
     "layout": "Raspored",
     "layoutTable": "Tabela",
     "layoutList": "Lista",
+    "layoutCards": "Kartice",
     "lastCommitted": "Sačuvano {{date}}",
     "status": {
       "changed": "Nesačuvane izmene",

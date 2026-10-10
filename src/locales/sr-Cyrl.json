@@ -465,6 +465,7 @@
     "layout": "Распоред",
     "layoutTable": "Табела",
     "layoutList": "Листа",
+    "layoutCards": "Картице",
     "lastCommitted": "Сачувано {{date}}",
     "status": {
       "changed": "Несачуване измене",

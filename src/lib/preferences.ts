@@ -25,6 +25,8 @@ export type UserPreferences = {
   locale?: Locale
   // My courses: compact rows ("table") or cards ("list").
   myCoursesView?: CourseListView
+  // A program's page (SLJ-64).
+  programView?: CourseListView
   nickname?: string
   persona?: Persona
   // Imported courses: how many versions before the current one are kept on this

@@ -1,18 +1,18 @@
-// How My courses and Home draw their courses: compact rows ("table",
-// Linear-style) or the fuller cards ("list"). Per-device UI state, persisted in
+// How course lists draw their courses (My courses, Home, a program's page):
+// compact rows ("table", Linear-style, the default), full-width cards
+// ("list"), or small cards that wrap, 1-4 per row ("cards", SLJ-64). Per-device UI state, persisted in
 // the preferences store, one choice per page. Kept free of React so the main process can validate what the
 // renderer sends.
 
-export type CourseListView = "list" | "table";
+export type CourseListView = "cards" | "list" | "table";
 
-// My courses defaults to the table; Home keeps its cards until the student
-// switches.
+// Every page starts on the table; a choice already made is kept.
 export const DEFAULT_COURSE_LIST_VIEW: CourseListView = "table";
-export const DEFAULT_HOME_VIEW: CourseListView = "list";
+export const DEFAULT_HOME_VIEW: CourseListView = "table";
 
 export function parseCourseListView(
   value: unknown,
   fallback: CourseListView = DEFAULT_COURSE_LIST_VIEW,
 ): CourseListView {
-  return value === "list" || value === "table" ? value : fallback;
+  return value === "cards" || value === "list" || value === "table" ? value : fallback;
 }

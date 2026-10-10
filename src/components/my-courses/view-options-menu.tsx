@@ -1,4 +1,4 @@
-import { LayoutList, Rows3, SlidersHorizontal } from "lucide-react";
+import { LayoutGrid, LayoutList, Rows3, SlidersHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { CourseListView } from "@/lib/course-list-view";
 
-// A course list's view options (My courses, Home), behind one icon button in
+// A course list's view options (My courses, Home, a program's page), behind one icon button in
 // the action bar. Layout today; sorting and grouping options can join this
 // menu later.
 export function ViewOptionsMenu({
@@ -31,6 +31,7 @@ export function ViewOptionsMenu({
         render={
           <Button
             aria-label={t("myCourses.viewOptions")}
+            data-testid="view-options"
             shape="circle"
             size="icon-sm"
             title={t("myCourses.viewOptions")}
@@ -47,13 +48,17 @@ export function ViewOptionsMenu({
             onValueChange={(value) => onViewChange(value as CourseListView)}
             value={view}
           >
-            <DropdownMenuRadioItem value="table">
+            <DropdownMenuRadioItem data-testid="view-option-table" value="table">
               <Rows3 aria-hidden="true" />
               {t("myCourses.layoutTable")}
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="list">
+            <DropdownMenuRadioItem data-testid="view-option-list" value="list">
               <LayoutList aria-hidden="true" />
               {t("myCourses.layoutList")}
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem data-testid="view-option-cards" value="cards">
+              <LayoutGrid aria-hidden="true" />
+              {t("myCourses.layoutCards")}
             </DropdownMenuRadioItem>
           </DropdownMenuRadioGroup>
         </DropdownMenuGroup>

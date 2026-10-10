@@ -465,6 +465,7 @@
     "layout": "Layout",
     "layoutTable": "Table",
     "layoutList": "List",
+    "layoutCards": "Cards",
     "lastCommitted": "Committed {{date}}",
     "status": {
       "changed": "Uncommitted changes",

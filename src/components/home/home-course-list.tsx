@@ -38,7 +38,8 @@ const COURSE_GROUPS = [
 // The course groups hold courses imported with a code, plus the bundled
 // tutorial (badged "Built in") unless it's hidden in Settings.
 // Search (course-search-query.ts) filters the course groups. `view` only changes how each one is drawn:
-// compact rows ("table") or cards ("list").
+// compact rows ("table"), full-width cards ("list") or small cards in a
+// wrapping grid ("cards").
 export function HomeCourseList({
   query,
   showBundledCourses,
@@ -108,7 +109,13 @@ export function HomeCourseList({
     );
   }
 
-  const contentClassName = view === "list" ? "gap-3 pt-3" : undefined;
+  // Rows stacked, full-width cards, or small cards wrapping 1-4 per row (SLJ-64).
+  const contentClassName =
+    view === "cards"
+      ? "grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      : view === "list"
+        ? "gap-3 pt-3"
+        : undefined;
 
   return (
     <div className="flex flex-col gap-2">
@@ -121,7 +128,7 @@ export function HomeCourseList({
           />
           <ListGroupContent className={contentClassName}>
             {pendingImports.map((pendingImport) =>
-              view === "list" ? (
+              view !== "table" ? (
                 <PendingImportCard key={pendingImport.transferId} pendingImport={pendingImport} />
               ) : (
                 <PendingImportRow key={pendingImport.transferId} pendingImport={pendingImport} />
@@ -140,8 +147,9 @@ export function HomeCourseList({
                   const update = updates[course.id]?.visibility === "prominent" ? updates[course.id] : undefined;
                   const courseProgress = progress?.courses[course.id];
                   const summary = summarizeCourseProgress(course.stepIds, courseProgress);
-                  return view === "list" ? (
+                  return view !== "table" ? (
                     <CourseCard
+                      compact={view === "cards"}
                       course={course}
                       href={`/courses/${course.id}`}
                       key={course.id}

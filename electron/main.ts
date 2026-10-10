@@ -200,6 +200,7 @@ type UserPreferences = {
   explorerPanel?: ExplorerPanelPreference
   homeView?: CourseListView
   myCoursesView?: CourseListView
+  programView?: CourseListView
   versionsPanel?: ExplorerPanelPreference
   courseInfoPanel?: ExplorerPanelPreference
   showBundledCourses?: boolean
@@ -611,6 +612,10 @@ ipcMain.handle(
 
     if (typeof preferences.myCoursesView === 'string') {
       profile.preferencesStore.set('myCoursesView', parseCourseListView(preferences.myCoursesView))
+    }
+
+    if (typeof preferences.programView === 'string') {
+      profile.preferencesStore.set('programView', parseCourseListView(preferences.programView))
     }
 
     if (typeof preferences.courseInfoPanel === 'object' && preferences.courseInfoPanel !== null) {

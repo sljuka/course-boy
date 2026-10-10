@@ -6,6 +6,7 @@ describe("parseCourseListView", () => {
   it("keeps a known view and falls back for anything else", () => {
     expect(parseCourseListView("list")).toBe("list");
     expect(parseCourseListView("table")).toBe("table");
+    expect(parseCourseListView("cards")).toBe("cards");
     expect(parseCourseListView("board")).toBe(DEFAULT_COURSE_LIST_VIEW);
     expect(parseCourseListView(undefined)).toBe(DEFAULT_COURSE_LIST_VIEW);
   });

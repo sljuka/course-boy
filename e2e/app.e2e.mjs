@@ -2003,3 +2003,56 @@ describe('document full screen', () => {
     expect(await chromeShown()).toBe(true)
   })
 })
+
+// SLJ-64: course lists have three views (table, list, cards) on Home, My
+// courses and a program's page; each page remembers its own.
+describe('course list views', () => {
+  async function chooseView(page, view) {
+    await page.click('[data-testid="view-options"]')
+    await page.click(`[data-testid="view-option-${view}"]`)
+  }
+
+  it('switches Home, My courses and a program page between views, and each keeps its choice', async () => {
+    const { page } = harness
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    await chooseView(page, 'cards')
+    await page.locator('[data-testid="course-card-compact"]').first().waitFor({ timeout: 15_000 })
+
+    await page.evaluate(() => {
+      location.hash = '#/my-courses'
+    })
+    await chooseView(page, 'list')
+    await page.locator('[data-testid="course-card"]').first().waitFor({ timeout: 15_000 })
+    expect(await page.locator('[data-testid="course-card-compact"]').count()).toBe(0)
+
+    const programId = await page.evaluate(async () => (await window.programs.list('en'))[0]?.id)
+    expect(programId).toBeTruthy()
+    await page.evaluate((id) => {
+      location.hash = `#/programs/${id}`
+    }, programId)
+    await page.locator('[data-testid="program-page"]').waitFor()
+    await chooseView(page, 'cards')
+    await page.locator('[data-testid="program-course"] [data-slot="card"]').first().waitFor({ timeout: 15_000 })
+
+    // After a reload (preferences read again from the main process), each page
+    // shows the view chosen for it.
+    await page.reload()
+    await page.locator('[data-testid="program-course"] [data-slot="card"]').first().waitFor({ timeout: 15_000 })
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    await page.locator('[data-testid="course-card-compact"]').first().waitFor({ timeout: 15_000 })
+    await page.evaluate(() => {
+      location.hash = '#/my-courses'
+    })
+    await page.locator('[data-testid="course-card"]').first().waitFor({ timeout: 15_000 })
+    const prefs = await page.evaluate(() => window.preferences.get())
+    expect(prefs).toMatchObject({ homeView: 'cards', myCoursesView: 'list', programView: 'cards' })
+
+    // Back to the table everywhere for the tests after this one.
+    await page.evaluate(() => window.preferences.set({ homeView: 'table', myCoursesView: 'table', programView: 'table' }))
+  })
+})
+

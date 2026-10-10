@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
+import { ViewOptionsMenu } from "@/components/my-courses/view-options-menu";
 import { Page } from "@/components/page/page";
 import { ProgramCodeDialog } from "@/components/programs/program-code";
 import { ProgramCourseRow } from "@/components/programs/program-course-row";
@@ -10,6 +11,7 @@ import { ProgramFavoriteToggle } from "@/components/programs/program-favorite-to
 import { Button, ButtonLabel } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { CoverBanner, CoverLogo } from "@/components/ui/cover-banner";
+import { useProgramView } from "@/lib/course-list-view-queries";
 import { summarizeCourseProgress } from "@/lib/course-progress";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { useCoursesQuery } from "@/lib/course-queries";
@@ -38,6 +40,7 @@ export function ProgramPage() {
   const pendingImports = usePendingImports();
   const importMutation = useImportCourseMutation();
   const [isSharing, setIsSharing] = useState(false);
+  const [view, setView] = useProgramView();
   // The courses new on arrival (read fresh, not from the cache), kept while
   // the student is here: they're marked seen right away, so they're no
   // longer new next time.
@@ -83,6 +86,7 @@ export function ProgramPage() {
 
   return (
     <Page
+      actionBarStart={<ViewOptionsMenu onViewChange={setView} view={view} />}
       actions={
         <>
           {importable.length > 0 && (
@@ -169,7 +173,7 @@ export function ProgramPage() {
         </div>
         {description && <CardDescription className="max-w-3xl whitespace-pre-line">{description}</CardDescription>}
 
-        <ol className="flex flex-col gap-1" data-testid="program-course-list">
+        <ol className={PROGRAM_COURSES_LAYOUT[view]} data-testid="program-course-list">
           {program.courses.map((entry, index) => (
             <ProgramCourseRow
               course={courseOf(entry.courseId)}
@@ -179,6 +183,7 @@ export function ProgramPage() {
               key={entry.courseId}
               onImport={startImport}
               pendingImport={pendingFor(entry.code)}
+              view={view}
             />
           ))}
         </ol>
@@ -194,3 +199,11 @@ export function ProgramPage() {
     </Page>
   );
 }
+
+// The program's courses, laid out for each view (SLJ-64).
+const PROGRAM_COURSES_LAYOUT = {
+  cards: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+  list: "flex flex-col gap-3",
+  table: "flex flex-col gap-1",
+} as const;
+

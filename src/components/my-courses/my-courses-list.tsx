@@ -60,6 +60,14 @@ export function MyCoursesList({ query, view }: { query: string; view: CourseList
     );
   }
 
+  // Rows stacked, full-width cards, or small cards wrapping 1-4 per row (SLJ-64).
+  const contentClassName =
+    view === "cards"
+      ? "grid grid-cols-1 gap-3 pt-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+      : view === "list"
+        ? "gap-3 pt-3"
+        : undefined;
+
   return (
     <div className="flex flex-col gap-2">
       {groups
@@ -85,10 +93,11 @@ export function MyCoursesList({ query, view }: { query: string; view: CourseList
               icon={<StatusIcon status={group.key} />}
               title={t(`myCourses.groups.${group.key}`)}
             />
-            <ListGroupContent className={view === "list" ? "gap-3 pt-3" : undefined}>
+            <ListGroupContent className={contentClassName}>
               {group.courses.map((course) =>
-                view === "list" ? (
+                view !== "table" ? (
                   <CourseCard
+                    compact={view === "cards"}
                     course={course}
                     href={`/drafts/${course.id}`}
                     key={course.id}
