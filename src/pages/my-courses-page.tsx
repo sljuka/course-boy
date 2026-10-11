@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { CourseErrorCard } from "@/components/course-error-card";
 import { CourseSearchField } from "@/components/course-search/course-search-field";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { RestoringGroup } from "@/components/identity/restoring-group";
 import { JoinCourseDialog } from "@/components/maintainers/join-course-dialog";
 import { MyCoursesList } from "@/components/my-courses/my-courses-list";
 import { ViewOptionsMenu } from "@/components/my-courses/view-options-menu";
@@ -71,6 +72,8 @@ export function MyCoursesPage() {
           placeholder={t("myCourses.searchPlaceholder")}
           value={query}
         />
+        {/* A restored identity's search for its courses, while it runs (SLJ-66). */}
+        <RestoringGroup />
         <MyCoursesList query={query} view={view} />
         <JoinCourseDialog onOpenChange={setIsJoinOpen} open={isJoinOpen} />
       </ErrorBoundary>

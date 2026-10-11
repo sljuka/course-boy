@@ -1,8 +1,8 @@
 import { FileKey } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
-import { RestoredCoursesList } from "@/components/identity/restored-courses-list";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,6 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   useChooseIdentityFileMutation,
-  useIdentityRestoreStatusQuery,
   useRestoreIdentityMutation,
 } from "@/lib/publisher-identity-queries";
 import { useAppState } from "@/lib/use-app-state";
@@ -26,27 +25,30 @@ import { useAppState } from "@/lib/use-app-state";
 type ChosenFile = { createdAt: string; fileName: string };
 
 // Restores the publishing identity on a new computer (SLJ-54, SLJ-55): pick a
-// copy of the identity file, enter its password, and Matko looks for the
-// courses published with it among students, listing them as they're found.
-// Only the published version of each comes back, which the last step says
-// plainly.
+// copy of the identity file and enter its password. Matko then looks for the
+// courses published with it among the people who have them, which can take
+// minutes, so the dialog closes and My courses shows the search (its
+// Restoring group, SLJ-66).
 export function RestoreIdentityDialog({ onClose, open }: { onClose: () => void; open: boolean }) {
   const { t } = useTranslation();
   const { locale } = useAppState();
   const [file, setFile] = useState<ChosenFile | null>(null);
   const [password, setPassword] = useState("");
-  const [isDone, setIsDone] = useState(false);
   const chooseMutation = useChooseIdentityFileMutation();
   const restoreMutation = useRestoreIdentityMutation();
-  const { data: status } = useIdentityRestoreStatusQuery();
+  const navigate = useNavigate();
   const fileError = chooseMutation.data && "error" in chooseMutation.data ? chooseMutation.data.error : null;
   const restoreError = restoreMutation.data && "error" in restoreMutation.data ? restoreMutation.data.error : null;
 
   function close() {
     if (restoreMutation.isPending) return;
+    closeNow();
+  }
+
+  // Forgets the file and password, and closes.
+  function closeNow() {
     setFile(null);
     setPassword("");
-    setIsDone(false);
     chooseMutation.reset();
     restoreMutation.reset();
     onClose();
@@ -60,26 +62,24 @@ export function RestoreIdentityDialog({ onClose, open }: { onClose: () => void; 
   }
 
   function restore() {
-    restoreMutation.mutate({ password }, { onSuccess: (result) => "restored" in result && setIsDone(true) });
+    restoreMutation.mutate(
+      { password },
+      {
+        onSuccess: (result) => {
+          if (!("restored" in result)) return;
+          // The search can take minutes: it's shown on My courses (SLJ-66),
+          // not here.
+          closeNow();
+          navigate("/my-courses");
+        },
+      },
+    );
   }
 
   return (
     <Dialog onOpenChange={(nextOpen) => !nextOpen && close()} open={open}>
       <DialogContent className="w-[min(32rem,calc(100vw-2rem))]" data-testid="restore-identity-dialog">
-        {isDone ? (
-          <>
-            <DialogHeader>
-              <DialogTitle>{t("identityRestore.doneTitle")}</DialogTitle>
-              <DialogDescription>{t("identityRestore.doneDescription")}</DialogDescription>
-            </DialogHeader>
-            {status && <RestoredCoursesList status={status} />}
-            <DialogFooter>
-              <Button autoFocus onClick={close} type="button">
-                {t("identityRestore.done")}
-              </Button>
-            </DialogFooter>
-          </>
-        ) : (
+        {(
           <form
             className="flex flex-col gap-4"
             onSubmit={(event) => {

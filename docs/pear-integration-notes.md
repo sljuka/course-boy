@@ -677,9 +677,12 @@ as a checkbox opening the same dialog after onboarding; it lives in Settings onl
    `landRecoveredCourse` (`course-paths.ts`) makes it the teacher's own course:
    `versions/<v>/` (without `source.json`), `draft/` from it, `release.json`. Only then
    is it shared again, with its number recorded, so the code and identity are the old
-   ones. **"Look again"** searches once more for courses nobody had online the first
-   time. Earlier versions and changes never published stayed on the old computer; the
-   dialog says so.
+   ones. Once the password is accepted the dialog closes and the app goes to My
+   courses, whose **Restoring** group lists courses and programs as they're found while
+   the search runs (SLJ-66). It also says that earlier versions and changes never
+   published stayed on the old computer. Settings keeps the record of what was found,
+   and **"Look again"** there searches once more for courses nobody had online the
+   first time.
 
 **Why the order matters (proven 2026-10-06, then by the e2e).** A core opened with its
 key pair is *writable*, and a writable core never asks peers for a longer history: it

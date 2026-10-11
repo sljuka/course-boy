@@ -806,9 +806,6 @@
     "password": "Password",
     "cancel": "Cancel",
     "restore": "Restore",
-    "doneTitle": "Your publishing identity is restored",
-    "doneDescription": "Matko is looking for your courses among the people who have them, and they appear in My courses as they're found. Only the published version of each course comes back: earlier versions and changes that were never published stayed on the other computer.",
-    "done": "Done",
     "courseRestored": "In My courses",
     "programRestored": "In My programs",
     "searching": "Looking for your courses among the people who have them…",
@@ -824,7 +821,9 @@
       "wrongPassword": "Wrong password.",
       "alreadyPublishing": "This profile already publishes courses with its own publishing identity. To restore another one, create a new profile and restore it there.",
       "noFile": "Choose the identity file first."
-    }
+    },
+    "restoringTitle": "Restoring your courses",
+    "restoringDescription": "Matko is looking for your courses among the people who have them; they appear here as they're found, and you can keep working. Only the published version of each course comes back: earlier versions and changes that were never published stayed on the other computer."
   },
   "removeProfile": {
     "open": "Remove profile",

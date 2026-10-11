@@ -806,9 +806,6 @@
     "password": "Lozinka",
     "cancel": "Otkaži",
     "restore": "Vrati",
-    "doneTitle": "Tvoj identitet izdavača je vraćen",
-    "doneDescription": "Matko traži tvoje kurseve kod onih koji ih imaju, a oni se pojavljuju u Mojim kursevima kako se pronalaze. Vraća se samo objavljena verzija svakog kursa: ranije verzije i izmene koje nisu objavljene ostale su na drugom računaru.",
-    "done": "Gotovo",
     "courseRestored": "U Mojim kursevima",
     "programRestored": "U Mojim programima",
     "searching": "Tražim tvoje kurseve kod onih koji ih imaju…",
@@ -824,7 +821,9 @@
       "wrongPassword": "Pogrešna lozinka.",
       "alreadyPublishing": "Ovaj profil već objavljuje kurseve sa svojim identitetom izdavača. Za vraćanje drugog identiteta napravi novi profil i vrati ga tamo.",
       "noFile": "Prvo izaberi datoteku identiteta."
-    }
+    },
+    "restoringTitle": "Vraćanje tvojih kurseva",
+    "restoringDescription": "Matko traži tvoje kurseve kod onih koji ih imaju; pojavljuju se ovde kako se pronalaze, a ti možeš da nastaviš sa radom. Vraća se samo objavljena verzija svakog kursa: ranije verzije i izmene koje nisu objavljene ostale su na drugom računaru."
   },
   "removeProfile": {
     "open": "Ukloni profil",

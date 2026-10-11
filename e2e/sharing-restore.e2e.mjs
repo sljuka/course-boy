@@ -99,17 +99,26 @@ describe('restoring the publisher identity on a new computer', () => {
 
     await dialog.getByLabel('Password', { exact: true }).fill(IDENTITY_PASSWORD)
     await page.click('[data-testid="restore-identity"]')
-    await waitForText(page, 'Your publishing identity is restored', { timeout: 30_000 })
-    await waitFor(page, () => document.querySelector('[data-testid="restored-course"]')?.textContent?.includes('E2E Restored Course'), {
+    // The dialog closes; My courses shows the search while it runs (SLJ-66).
+    await dialog.waitFor({ state: 'detached', timeout: 30_000 })
+    await waitFor(page, () => location.hash.includes('/my-courses'))
+    await waitFor(page, () => document.querySelector('[data-testid="restoring-group"]') !== null, { timeout: 30_000 })
+    await waitFor(page, () => document.querySelector('[data-testid="restoring-course"]')?.textContent?.includes('E2E Restored Course'), {
       timeout: 45_000,
     })
     // Programs are searched once the courses' search has ended.
-    await waitFor(page, () => document.querySelector('[data-testid="restored-program"]')?.textContent?.includes('E2E Restored Program'), {
+    await waitFor(page, () => document.querySelector('[data-testid="restoring-program"]')?.textContent?.includes('E2E Restored Program'), {
       timeout: 120_000,
     })
-    // Then the search ends, offering to look again.
-    await dialog.locator('[data-testid="restore-look-again"]').waitFor({ timeout: 120_000 })
-    await page.getByRole('button', { name: 'Done' }).click()
+    // Then the search ends: the group goes away, the course is in My courses
+    // like any other, and Settings keeps the record, offering to look again.
+    await waitFor(page, () => document.querySelector('[data-testid="restoring-group"]') === null, { timeout: 120_000 })
+    await waitForText(page, 'E2E Restored Course')
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await waitFor(page, () => document.querySelector('[data-testid="restored-course"]')?.textContent?.includes('E2E Restored Course'))
+    await page.locator('[data-testid="restore-look-again"]').waitFor()
 
     // The same identity and the same code; the course is the teacher's own again.
     expect(await page.evaluate(() => window.sharing.getCreatorKey())).toBe(publisherId)
