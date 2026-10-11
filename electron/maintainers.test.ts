@@ -5,7 +5,7 @@ import { createMaintainers, notesSince, type MaintainersService, type Maintainer
 // A fake of what the worker does (mailboxes, the shared course), shared by
 // two maintainers' services, so the decisions are tested without a network.
 type Mailbox = {
-  approvals: Record<string, { response?: unknown }>
+  approvals: Record<string, { response?: unknown; spot?: unknown }>
   changesRequested: Record<string, { note?: unknown }>
   members: unknown
   proposal: unknown
@@ -19,6 +19,8 @@ type World = {
   moved: string[]
   // Whose invite is being accepted.
   owner: { self: Self; service: MaintainersService } | null
+  // request -> the shared course's length once it's committed
+  lengths: Map<string, number>
   shared: { length: number; source: unknown; version: string | null }
   sources: Map<string, unknown> // request -> its source.json
   versions: Map<string, string> // request -> version
@@ -27,6 +29,7 @@ type World = {
 function createWorld(): World {
   return {
     commits: [],
+    lengths: new Map(),
     mailboxes: new Map(),
     moved: [],
     owner: null,
@@ -80,10 +83,16 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
         const request = `req-${name}-${proposals++}`
         world.versions.set(request, published.version)
         world.sources.set(request, args.source)
+        world.lengths.set(request, world.shared.length + 1)
         return { hash: `h-${request}`, length: world.shared.length + 1, proposalKey: `prop-${request}`, request }
       }
       case 'sign':
         return { response: `sig-${self.maintainerKey}-${args.request}` }
+      case 'proposalState': {
+        const request = args.request as string
+        if (world.commits.some((commit) => commit.request === request)) return { state: 'online' }
+        return { state: world.shared.length >= (world.lengths.get(request) ?? Infinity) ? 'replaced' : 'waiting' }
+      }
       case 'review':
         return {
           changelog: [{ changes: [], cutAt: '', notes: 'Fixed a typo', version: '0.2' }],
@@ -158,9 +167,27 @@ describe('maintainers (SLJ-11)', () => {
     const proposal = await ana.service.startSharing('course-1', 2)
     expect(proposal).toMatchObject({ first: true, version: '0.2' })
     await marko.service.refresh('pubid0000000000a')
-    expect(marko.service.listApprovals()).toEqual([
-      { courseId: null, from: 'pub-ana', hash: proposal.hash, publicId: 'pubid0000000000a', title: null, version: '0.2' },
-    ])
+    expect(marko.service.listApprovals()).toEqual({
+      items: [
+        {
+          approvedBy: ['pub-ana'],
+          changesRequested: [],
+          courseId: null,
+          decidedAt: null,
+          from: 'pub-ana',
+          group: 'waiting-for-you',
+          hash: proposal.hash,
+          mine: false,
+          missing: ['pub-marko'],
+          proposedAt: expect.any(Number),
+          publicId: 'pubid0000000000a',
+          quorum: 2,
+          title: null,
+          version: '0.2',
+        },
+      ],
+      maintained: 1,
+    })
     expect(await marko.service.review('pubid0000000000a', proposal.hash)).toMatchObject({
       releaseNotes: [{ notes: 'Fixed a typo', version: '0.2' }],
       version: '0.2',
@@ -171,8 +198,11 @@ describe('maintainers (SLJ-11)', () => {
     expect(world.commits).toEqual([])
 
     await marko.service.approve('pubid0000000000a', proposal.hash)
-    expect(marko.service.listApprovals()).toEqual([])
+    // It waits for nobody else, but isn't online yet: Ana's app commits it.
+    expect(marko.service.listApprovals().items).toMatchObject([{ approvedBy: ['pub-ana', 'pub-marko'], group: 'waiting-for-others' }])
+    await expect(marko.service.approve('pubid0000000000a', proposal.hash)).rejects.toMatchObject({ code: 'ANSWERED' })
     await ana.service.refresh('pubid0000000000a')
+    expect(ana.service.listApprovals().items).toMatchObject([{ decidedAt: expect.any(Number), group: 'approved', mine: true }])
 
     expect(world.commits).toEqual([
       { first: true, request: proposal.request, responses: [`sig-mk-ana-${proposal.request}`, `sig-mk-marko-${proposal.request}`] },
@@ -186,6 +216,7 @@ describe('maintainers (SLJ-11)', () => {
     expect(marko.landCourse).toHaveBeenCalledWith({ courseId: 'course-1', stagingPath: '/staging', version: '0.2' })
     expect(marko.service.isShared('course-1')).toBe(true)
     expect(marko.onShared).toHaveBeenCalledWith('course-1')
+    expect(marko.service.listApprovals().items).toMatchObject([{ courseId: 'course-1', group: 'approved', missing: [] }])
   })
 
   it("a maintainer's Publish becomes a proposal; the owner approves; it goes online", async () => {
@@ -210,13 +241,140 @@ describe('maintainers (SLJ-11)', () => {
     expect(marko.op.mock.calls.filter(([name]) => name === 'propose')).toHaveLength(1)
 
     await ana.service.refresh('pubid0000000000a')
-    const [waiting] = ana.service.listApprovals()
+    const waiting = ana.service.listApprovals().items.find((item) => item.group === 'waiting-for-you')!
     expect(waiting).toMatchObject({ courseId: 'course-1', from: 'pub-marko', version: '0.3' })
     await ana.service.approve('pubid0000000000a', waiting.hash)
     await marko.service.refresh('pubid0000000000a')
 
     expect(world.commits.at(-1)).toMatchObject({ first: false })
     expect(world.shared.version).toBe('0.3')
+  })
+
+  // SLJ-109: three maintainers, two must approve.
+  async function threeMaintainers() {
+    const world = createWorld()
+    const ana = createPeer(world, 'ana', { courseId: 'course-1' })
+    const marko = createPeer(world, 'marko')
+    const mila = createPeer(world, 'mila')
+    await ana.service.invite('course-1', 'pub-marko')
+    await marko.service.accept('invite-pubid0000000000a')
+    await ana.service.invite('course-1', 'pub-mila')
+    await mila.service.accept('invite-pubid0000000000a')
+    await marko.service.refresh('pubid0000000000a')
+    await mila.service.refresh('pubid0000000000a')
+    return { ana, marko, mila, world }
+  }
+
+  it("a version approved without the third maintainer leaves their 'waiting for you' for Approved", async () => {
+    const { ana, marko, mila } = await threeMaintainers()
+    const first = await ana.service.startSharing('course-1', 2)
+    await mila.service.refresh('pubid0000000000a')
+    expect(mila.service.listApprovals().items).toMatchObject([
+      { group: 'waiting-for-you', missing: ['pub-marko', 'pub-mila'], quorum: 2 },
+    ])
+
+    await marko.service.refresh('pubid0000000000a')
+    await marko.service.approve('pubid0000000000a', first.hash)
+    await ana.service.refresh('pubid0000000000a')
+
+    // Online without Mila: her app sees it in the shared course.
+    await mila.service.refresh('pubid0000000000a')
+    expect(mila.service.listApprovals().items).toMatchObject([
+      { approvedBy: ['pub-ana', 'pub-marko'], group: 'approved', hash: first.hash },
+    ])
+    await expect(mila.service.approve('pubid0000000000a', first.hash)).rejects.toMatchObject({ code: 'NO_PROPOSAL' })
+  })
+
+  it('a version that lost its spot to another is Replaced; asking for changes groups it under Changes requested', async () => {
+    const { ana, marko, mila } = await threeMaintainers()
+    const first = await ana.service.startSharing('course-1', 2)
+    for (const peer of [marko, mila]) {
+      await peer.service.refresh('pubid0000000000a')
+      await peer.service.approve('pubid0000000000a', first.hash)
+    }
+    await ana.service.refresh('pubid0000000000a')
+    await marko.service.refresh('pubid0000000000a')
+    await mila.service.refresh('pubid0000000000a')
+
+    // Ana and Marko both propose a next version, for the same spot.
+    ana.published.version = '0.3'
+    marko.published.version = '0.4'
+    await ana.service.publishShared('course-1')
+    await marko.service.publishShared('course-1')
+    await mila.service.refresh('pubid0000000000a')
+    const waiting = mila.service.listApprovals().items.filter((item) => item.group === 'waiting-for-you')
+    expect(waiting.map((item) => item.version).sort()).toEqual(['0.3', '0.4'])
+    const anas = waiting.find((item) => item.version === '0.3')!
+    const markos = waiting.find((item) => item.version === '0.4')!
+
+    // Mila asks Ana for changes, and approves Marko's: it goes online.
+    await mila.service.requestChanges('pubid0000000000a', anas.hash, 'Shorter, please')
+    expect(mila.service.listApprovals().items.find((item) => item.hash === anas.hash)).toMatchObject({
+      changesRequested: [{ note: 'Shorter, please', publisherId: 'pub-mila' }],
+      group: 'changes-requested',
+    })
+    await mila.service.approve('pubid0000000000a', markos.hash)
+    await marko.service.refresh('pubid0000000000a')
+
+    for (const peer of [ana, mila]) {
+      await peer.service.refresh('pubid0000000000a')
+      const items = peer.service.listApprovals().items
+      expect(items.find((item) => item.hash === markos.hash)).toMatchObject({ group: 'approved' })
+      expect(items.find((item) => item.hash === anas.hash)).toMatchObject({ group: 'replaced', missing: [] })
+    }
+  })
+
+  // A maintainer's new computer (SLJ-54) still never approves a second
+  // version for a spot they approved one for on the old computer.
+  async function restoredAfterApproving({ dropSpot }: { dropSpot: boolean }) {
+    const { ana, marko, mila, world } = await threeMaintainers()
+    const first = await ana.service.startSharing('course-1', 2)
+    await marko.service.refresh('pubid0000000000a')
+    await marko.service.approve('pubid0000000000a', first.hash)
+    for (const peer of [ana, marko, mila]) await peer.service.refresh('pubid0000000000a')
+
+    // Ana proposes 0.3; Mila approves it on her old computer. Not committed
+    // yet (Ana's app hasn't read it).
+    ana.published.version = '0.3'
+    await ana.service.publishShared('course-1')
+    await mila.service.refresh('pubid0000000000a')
+    const anas = mila.service.listApprovals().items.find((item) => item.version === '0.3')!
+    await mila.service.approve('pubid0000000000a', anas.hash)
+    expect(world.mailboxes.get('mb-mila')!.approvals[anas.hash]).toMatchObject({ spot: 1 })
+    // An approval written before spots were recorded.
+    if (dropSpot) delete world.mailboxes.get('mb-mila')!.approvals[anas.hash].spot
+
+    const milaNew = createPeer(world, 'mila')
+    await milaNew.service.restoreSharedCourse({ oldCode: 'old-code', publicId: 'pubid0000000000a', sharedKey: 'shared-key' })
+    // Marko proposes a rival 0.4 for the same spot.
+    marko.published.version = '0.4'
+    await marko.service.publishShared('course-1')
+    await milaNew.service.refresh('pubid0000000000a')
+    return { anas, milaNew }
+  }
+
+  for (const dropSpot of [false, true]) {
+    it(`a restored computer remembers what was approved (${dropSpot ? 'older approval, spot checked again' : 'spot in the approval'})`, async () => {
+      const { anas, milaNew } = await restoredAfterApproving({ dropSpot })
+      const items = milaNew.service.listApprovals().items
+      expect(items.find((item) => item.hash === anas.hash)).toMatchObject({ group: 'waiting-for-others' })
+      const markos = items.find((item) => item.version === '0.4')!
+      expect(markos).toMatchObject({ group: 'waiting-for-you' })
+      await expect(milaNew.service.approve('pubid0000000000a', markos.hash)).rejects.toMatchObject({ code: 'ALREADY_APPROVED' })
+      expect(milaNew.state().courses.pubid0000000000a.approvedAt).toEqual({ 1: anas.hash })
+    })
+  }
+
+  it('a proposal its proposer replaced with a newer one is Replaced', async () => {
+    const { ana, mila } = await threeMaintainers()
+    const first = await ana.service.startSharing('course-1', 2)
+    const second = await ana.service.startSharing('course-1', 2)
+    await mila.service.refresh('pubid0000000000a')
+    const items = mila.service.listApprovals().items
+    expect(items.find((item) => item.hash === second.hash)).toMatchObject({ group: 'waiting-for-you' })
+    // Mila never saw the first one: only proposals seen are listed.
+    expect(items.find((item) => item.hash === first.hash)).toBeUndefined()
+    expect(ana.service.listApprovals().items.find((item) => item.hash === first.hash)).toMatchObject({ group: 'replaced' })
   })
 
   it('never approves two different versions for the same spot', async () => {

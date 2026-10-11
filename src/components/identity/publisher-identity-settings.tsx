@@ -36,7 +36,10 @@ export function PublisherIdentitySettings() {
           <FieldDescription>{t("publisherIdentity.fileNote")}</FieldDescription>
           {/* What another teacher needs to invite you to maintain a course (SLJ-67). */}
           {status.publisherId && (
-            <CopyableCode label={t("publisherIdentity.yourPublisherId")} testId="own-publisher-id" value={status.publisherId} />
+            <div className="flex flex-col gap-1">
+              <CopyableCode label={t("publisherIdentity.yourPublisherId")} testId="own-publisher-id" value={status.publisherId} />
+              <FieldDescription>{t("publisherIdentity.yourPublisherIdHint")}</FieldDescription>
+            </div>
           )}
           <div>
             <Button

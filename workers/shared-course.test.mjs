@@ -14,6 +14,7 @@ import {
   maintainerPublicKey,
   openProposalForReview,
   openSharedDrive,
+  proposalState,
   sharedCourseKey,
   sharedCourseSpec,
   signRequest,
@@ -188,6 +189,24 @@ describe('shared courses (multisig)', () => {
     expect((await review.proposal.get('/section/lessons/1.md')).toString()).toBe('# Lesson one, fixed')
     await review.proposal.close()
 
+    // A rival version Ana proposed on the same version (only course.json
+    // changed, so its history is shorter than Marko's).
+    const rival = await createProposal({
+      identity: ana.identity,
+      index: 2,
+      source,
+      spec,
+      store: ana.store,
+      versionPath: versionFolder({
+        'assets/pic.bin': asset,
+        'course.json': JSON.stringify({ id: 'course-a', version: '0.3' }),
+        'section/lessons/1.md': '# Lesson one',
+      }),
+    })
+    await rival.drive.close()
+    expect(await proposalState({ request, spec, store: marko.store })).toBe('waiting')
+    expect(await proposalState({ request: rival.request, spec, store: marko.store })).toBe('waiting')
+
     await commitProposal({
       proposal,
       request,
@@ -209,6 +228,11 @@ describe('shared courses (multisig)', () => {
     }
     expect((await followed.get('/section/lessons/1.md')).toString()).toBe('# Lesson one, fixed')
     await followed.close()
+
+    // SLJ-109: Marko's is online, and the rival lost its spot, read from the
+    // requests and the shared course alone.
+    expect(await proposalState({ request, spec, store: marko.store })).toBe('online')
+    expect(await proposalState({ request: rival.request, spec, store: marko.store })).toBe('replaced')
   }, 60_000)
 
   it("refuses to review a proposal that doesn't build on the course's latest version", async () => {

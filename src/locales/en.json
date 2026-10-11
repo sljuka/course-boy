@@ -761,7 +761,7 @@
     "signingTitle": "Signing",
     "signingText": "Every course you publish gets your digital signature, like a letter you sign. It tells your students' apps that an update really comes from you, so nobody else can publish in your name.",
     "fileTitle": "Your identity file",
-    "fileText": "Your digital signature is made with your publishing identity: a secret key that Matko keeps in a file, locked with a password you choose. That file is also your backup. Copy it somewhere safe: with it and the password, you can keep publishing from a new computer.",
+    "fileText": "Your digital signature is made with your publishing identity: a secret that Matko keeps in a file, locked with a password you choose. That file is also your backup. Copy it somewhere safe: with it and the password, you can keep publishing from a new computer.",
     "lead": "Let's start with the password.",
     "next": "Choose a password",
     "passwordTitle": "Choose a password",
@@ -796,7 +796,8 @@
     "gateDescription": "This profile publishes courses in your name, so it asks for your password when it opens. Without it you can still learn, make and print courses, and your courses stay online. Only publishing waits.",
     "gateForgotten": "Forgot it? It can't be recovered. Open without publishing to keep learning, making and printing courses.",
     "openWithoutPublishing": "Open without publishing",
-    "yourPublisherId": "Your publisher id (for invites to maintain a course)"
+    "yourPublisherId": "Your Publisher ID",
+    "yourPublisherIdHint": "Like an email address: share it freely. Other teachers use it to invite you to maintain a course. Your publishing identity (the file and its password) is the secret part; never share that."
   },
   "identityRestore": {
     "title": "Restore your publishing identity",
@@ -849,7 +850,7 @@
     "pickerDescription": "Each profile has its own courses and settings on this computer.",
     "newProfile": "New profile",
     "newProfileTitle": "New profile",
-    "newProfileDescription": "A profile keeps its own courses, settings and publisher identity, separate from the others on this computer.",
+    "newProfileDescription": "A profile keeps its own courses, settings and publishing identity, separate from the others on this computer.",
     "nameTooLong": "At most {{max}} characters.",
     "cancel": "Cancel"
   },
@@ -1024,8 +1025,8 @@
     "joined": "You've joined. The course appears in My courses once the first version you maintain together is approved.",
     "newCourse": "A course you were invited to",
     "approvalsTitle": "Approvals",
-    "approvalsDescription": "Versions other maintainers proposed for courses you maintain together. Each goes online only once enough of you approve it.",
-    "approvalsEmpty": "Nothing is waiting for your approval.",
+    "approvalsDescription": "Versions proposed for the courses you maintain together. Each goes online only once enough of you approve it.",
+    "approvalsEmpty": "No versions have been proposed yet.",
     "versionFrom": "{{version}} · from {{name}}",
     "versionTitle": "Version {{version}}",
     "reviewTitle": "Review version {{version}}",
@@ -1051,8 +1052,24 @@
     "previewBannerTitle": "Preview of version {{version}}",
     "previewBannerDescription": "This is the proposed version as students will see it once it's approved. It isn't on this device as a course, and nothing you do here is saved.",
     "previewBack": "Back to the review",
-    "invitePublisherDescription": "Enter the publisher id of the teacher you're inviting: they find it under Settings → Sharing. Only they can use the invite.",
-    "inviteePublisherId": "Their publisher id",
-    "createInvite": "Create invite"
+    "invitePublisherDescription": "Enter the Publisher ID of the teacher you're inviting. They find it under Settings → Sharing; it's like an email address. Only they can use the invite.",
+    "inviteePublisherId": "Their Publisher ID",
+    "createInvite": "Create invite",
+    "versionYours": "{{version}} · yours",
+    "changesAskedBy": "{{names}} asked for changes",
+    "approvedCount": "{{approved}} of {{quorum}} approved",
+    "approvedCountWaiting": "{{approved}} of {{quorum}} approved · waiting for {{names}}",
+    "approvedBy": "Approved by {{names}}",
+    "notYetApprovedBy": "Not approved yet by {{names}}",
+    "replacedDescription": "A newer version took its place, so it won't go online.",
+    "openCourse": "Open the course",
+    "proposalGone": "This version isn't on this computer any more.",
+    "groups": {
+      "waiting-for-you": "Waiting for you",
+      "waiting-for-others": "Waiting for others",
+      "changes-requested": "Changes requested",
+      "approved": "Approved",
+      "replaced": "Replaced"
+    }
   }
 }

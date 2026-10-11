@@ -94,7 +94,12 @@ describe('a course maintained by two teachers', () => {
 
     // Marko: Approvals in the sidebar, the review, Approve.
     await marko.locator('[data-testid="sidebar-approvals"] a').waitFor({ timeout: 30_000 })
+    // The badge counts what waits for him (SLJ-109).
+    await waitFor(marko, () => document.querySelector('[data-testid="sidebar-approvals-count"]')?.textContent === '1', {
+      timeout: 30_000,
+    })
     await marko.locator('[data-testid="sidebar-approvals"] a').click()
+    await marko.locator('[data-testid="approvals-group-waiting-for-you"]').waitFor({ timeout: 30_000 })
     // Named by the course's title, though the course isn't on Marko's computer yet.
     await waitForText(marko, 'E2E Co-maintained Course')
     await marko.locator('[data-testid="approval"] a').first().click()
@@ -124,7 +129,13 @@ describe('a course maintained by two teachers', () => {
     await marko.click('[data-testid="preview-back"]')
     await marko.locator('[data-testid="approve-version"]').waitFor({ timeout: 30_000 })
     await marko.click('[data-testid="approve-version"]')
-    await waitForText(marko, 'Nothing is waiting for your approval.', { timeout: 30_000 })
+    // Back in Approvals, it stays listed (SLJ-109): nothing waits for him any
+    // more, and the badge is gone. It's Approved once it's online.
+    await waitFor(marko, () => document.querySelector('[data-testid="approvals-group-waiting-for-you"]') === null, {
+      timeout: 30_000,
+    })
+    await waitFor(marko, () => document.querySelector('[data-testid="approval"]') !== null)
+    expect(await marko.locator('[data-testid="sidebar-approvals-count"]').count()).toBe(0)
 
     // Ana's app collects the approval and puts the shared course online.
     await expect
@@ -153,6 +164,13 @@ describe('a course maintained by two teachers', () => {
       .toBe(sharedKey)
     const markoCourse = (await marko.evaluate(() => window.courses.list('en'))).find((course) => course.id === ids.courseId)
     expect(markoCourse).toMatchObject({ distribution: 'local', title: 'E2E Co-maintained Course' })
+    await marko.locator('[data-testid="approvals-group-approved"] [data-testid="approval"]').waitFor({ timeout: 30_000 })
+    // Its page now says where it stands, with nothing left to answer.
+    await marko.locator('[data-testid="approval"] a').first().click()
+    await waitFor(marko, () => document.querySelector('[data-testid="approval-status-summary"]')?.getAttribute('data-group') === 'approved', {
+      timeout: 30_000,
+    })
+    expect(await marko.locator('[data-testid="approve-version"]').count()).toBe(0)
   }, 180_000)
 
   it("Marko publishes a new version; it goes online only after Ana approves, and the student is offered it", async () => {
@@ -172,11 +190,15 @@ describe('a course maintained by two teachers', () => {
     await waitForText(marko, `Version ${version} sent for approval`, { timeout: 30_000 })
     await marko.getByRole('button', { name: 'Done' }).click()
 
-    const [item] = await expect
-      .poll(() => ana.evaluate(() => window.maintainers.listApprovals()), { interval: 500, timeout: 60_000 })
-      .toHaveLength(1)
-      .then(() => ana.evaluate(() => window.maintainers.listApprovals()))
-    expect(item.version).toBe(version)
+    const waitingForAna = () =>
+      ana.evaluate(() => window.maintainers.listApprovals().then(({ items }) => items.filter((entry) => entry.group === 'waiting-for-you')))
+    await expect.poll(waitingForAna, { interval: 500, timeout: 60_000 }).toHaveLength(1)
+    const [item] = await waitingForAna()
+    expect(item).toMatchObject({ approvedBy: [await marko.evaluate(() => window.sharing.getCreatorKey())], quorum: 2, version })
+    // Marko's own, waiting for Ana.
+    expect(
+      (await marko.evaluate(() => window.maintainers.listApprovals())).items.find((entry) => entry.hash === item.hash),
+    ).toMatchObject({ group: 'waiting-for-others', mine: true })
     // Not online before the approval.
     expect((await student.evaluate((id) => window.sharing.getCourseSharing(id), ids.courseId)).update).toBeNull()
 
@@ -185,6 +207,15 @@ describe('a course maintained by two teachers', () => {
     expect(await student.evaluate((id) => window.sharing.applyCourseUpdate(id), ids.courseId)).toMatchObject({ version })
     const lesson = currentVersionFiles(data.coStudent, ids.courseId).find(({ file }) => file.endsWith('.md'))
     expect(fs.readFileSync(lesson.path, 'utf8')).toContain('Second version, by Marko.')
+    // Approved, in both maintainers' history.
+    for (const page of [ana, marko]) {
+      await expect
+        .poll(
+          () => page.evaluate((hash) => window.maintainers.listApprovals().then(({ items }) => items.find((entry) => entry.hash === hash)?.group), item.hash),
+          { interval: 500, timeout: 60_000 },
+        )
+        .toBe('approved')
+    }
   }, 180_000)
 
   it("a student who only has the old code gets the shared course", async () => {

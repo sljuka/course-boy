@@ -354,7 +354,8 @@ the original owner as `publisher.id`. How it fits together:
   `window.maintainers` (`maintainers:*` IPC).
 - **Mailboxes:** each maintainer has a mailbox drive per course (`/members.json` from the
   owner, `/proposal.json`, `/approvals/<hash>.json`, `/changes-requested/<hash>.json`) that
-  the others follow.
+  the others follow. An approval is `{ response, spot }` (the spot since SLJ-109; a new
+  computer rebuilds what it approved from it), so keep both when changing the format.
 - **Invites:** `blind-pairing`. The code is the course's public id followed by the
   invite. It's for one publisher id: the joiner signs its answer with the key behind
   that id, and the owner's app refuses anyone else. It works once, for a week (SLJ-67).

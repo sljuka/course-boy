@@ -10,7 +10,10 @@ import { cn } from "@/lib/utils"
 // the same amber as the "Unpublished changes" badge). `downloading` is a ring
 // that fills like a pie as `progress` (0–1) grows, and spins slowly while
 // there's no progress to show yet (still looking for someone sharing it).
-// `done`: a green circle with a check (finished).
+// `done`: a green circle with a check (finished). For proposals (SLJ-109):
+// `pending` is the same pie, never spinning (how many approved so far),
+// `attention` a red circle with "!" (changes asked for), `canceled` a grey
+// circle with a cross (replaced).
 const statusIconVariants = cva("size-3.5 shrink-0", {
   variants: {
     status: {
@@ -19,6 +22,9 @@ const statusIconVariants = cva("size-3.5 shrink-0", {
       changed: "text-warning",
       downloading: "text-info",
       done: "text-success",
+      pending: "text-info",
+      attention: "text-destructive",
+      canceled: "text-muted-foreground",
     },
   },
   defaultVariants: { status: "local" },
@@ -37,6 +43,7 @@ const PIE_CIRCUMFERENCE = 2 * Math.PI * PIE_RADIUS
 
 function StatusIcon({ className, progress, status, ...props }: StatusIconProps) {
   const isWaiting = status === "downloading" && (progress === null || progress === undefined)
+  const isPie = status === "downloading" || status === "pending"
 
   return (
     <svg
@@ -51,7 +58,7 @@ function StatusIcon({ className, progress, status, ...props }: StatusIconProps) 
       viewBox="0 0 14 14"
       {...props}
     >
-      {status === "downloading" ? (
+      {isPie ? (
         isWaiting ? (
           <circle
             cx="7"
@@ -86,6 +93,16 @@ function StatusIcon({ className, progress, status, ...props }: StatusIconProps) 
         <>
           <circle cx="7" cy="7" fill="currentColor" r="6.5" />
           <path d="M4.2 7.2 6.2 9.1 9.9 5.1" fill="none" stroke="var(--background)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+        </>
+      ) : status === "attention" ? (
+        <>
+          <circle cx="7" cy="7" fill="currentColor" r="6.5" />
+          <path d="M7 3.8v3.9M7 9.9v.3" fill="none" stroke="var(--background)" strokeLinecap="round" strokeWidth="1.6" />
+        </>
+      ) : status === "canceled" ? (
+        <>
+          <circle cx="7" cy="7" fill="currentColor" r="6.5" />
+          <path d="m4.9 4.9 4.2 4.2m0-4.2-4.2 4.2" fill="none" stroke="var(--background)" strokeLinecap="round" strokeWidth="1.5" />
         </>
       ) : status === "published" ? (
         <>

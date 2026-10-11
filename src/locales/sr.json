@@ -761,7 +761,7 @@
     "signingTitle": "Potpisivanje",
     "signingText": "Svaki kurs koji objaviš dobija tvoj digitalni potpis, kao pismo koje potpišeš. On govori aplikacijama tvojih učenika da ažuriranje zaista dolazi od tebe, pa niko drugi ne može da objavljuje u tvoje ime.",
     "fileTitle": "Tvoja datoteka identiteta",
-    "fileText": "Tvoj digitalni potpis pravi se tvojim identitetom izdavača: tajnim ključem koji Matko čuva u datoteci, zaključanoj lozinkom koju izabereš. Ta datoteka je i tvoja rezervna kopija. Kopiraj je na sigurno mesto: s njom i lozinkom možeš da nastaviš da objavljuješ sa novog računara.",
+    "fileText": "Tvoj digitalni potpis pravi se tvojim identitetom izdavača: tajnom koju Matko čuva u datoteci, zaključanoj lozinkom koju izabereš. Ta datoteka je i tvoja rezervna kopija. Kopiraj je na sigurno mesto: s njom i lozinkom možeš da nastaviš da objavljuješ sa novog računara.",
     "lead": "Počnimo od lozinke.",
     "next": "Izaberi lozinku",
     "passwordTitle": "Izaberi lozinku",
@@ -796,7 +796,8 @@
     "gateDescription": "Ovaj profil objavljuje kurseve u tvoje ime, pa traži tvoju lozinku kad se otvori. I bez nje možeš da učiš, praviš i štampaš kurseve, a tvoji kursevi ostaju na mreži. Čeka samo objavljivanje.",
     "gateForgotten": "Zaboravljena lozinka? Ne može da se povrati. Otvori bez objavljivanja i nastavi da učiš, praviš i štampaš kurseve.",
     "openWithoutPublishing": "Otvori bez objavljivanja",
-    "yourPublisherId": "Tvoj ID izdavača (za pozive za održavanje kursa)"
+    "yourPublisherId": "Tvoj ID izdavača",
+    "yourPublisherIdHint": "Kao imejl adresa: slobodno ga deli. Drugi nastavnici ga koriste da te pozovu da održavaš kurs. Tvoj identitet izdavača (datoteka i njena lozinka) je tajni deo; njega nikad ne deli."
   },
   "identityRestore": {
     "title": "Vrati svoj identitet izdavača",
@@ -1024,8 +1025,8 @@
     "joined": "Pridruživanje je uspelo. Kurs se pojavljuje u Mojim kursevima kada se odobri prva verzija koju održavate zajedno.",
     "newCourse": "Kurs na koji imaš poziv",
     "approvalsTitle": "Odobrenja",
-    "approvalsDescription": "Verzije koje su drugi predložili za kurseve koje održavate zajedno. Svaka ide na mrežu tek kad je odobri dovoljno vas.",
-    "approvalsEmpty": "Ništa ne čeka tvoje odobrenje.",
+    "approvalsDescription": "Verzije predložene za kurseve koje održavate zajedno. Svaka ide na mrežu tek kad je odobri dovoljno vas.",
+    "approvalsEmpty": "Još nije predložena nijedna verzija.",
     "versionFrom": "{{version}} · predlaže {{name}}",
     "versionTitle": "Verzija {{version}}",
     "reviewTitle": "Pregled verzije {{version}}",
@@ -1051,8 +1052,24 @@
     "previewBannerTitle": "Pregled verzije {{version}}",
     "previewBannerDescription": "Ovako će učenici videti predloženu verziju kada se odobri. Nije na ovom uređaju kao kurs, i ništa što ovde radiš se ne čuva.",
     "previewBack": "Nazad na pregled izmena",
-    "invitePublisherDescription": "Unesi ID izdavača osobe koju pozivaš: nalazi ga u Podešavanja → Deljenje. Samo ta osoba može da iskoristi poziv.",
+    "invitePublisherDescription": "Unesi ID izdavača osobe koju pozivaš. Nalazi ga u Podešavanja → Deljenje; to je kao imejl adresa. Samo ta osoba može da iskoristi poziv.",
     "inviteePublisherId": "Njihov ID izdavača",
-    "createInvite": "Napravi poziv"
+    "createInvite": "Napravi poziv",
+    "versionYours": "{{version}} · tvoja",
+    "changesAskedBy": "Izmene traži: {{names}}",
+    "approvedCount": "Odobrenja: {{approved}} od {{quorum}}",
+    "approvedCountWaiting": "Odobrenja: {{approved}} od {{quorum}} · čeka se: {{names}}",
+    "approvedBy": "Odobrenja od: {{names}}",
+    "notYetApprovedBy": "Odobrenje se još čeka od: {{names}}",
+    "replacedDescription": "Novija verzija je zauzela njeno mesto, pa neće ići na mrežu.",
+    "openCourse": "Otvori kurs",
+    "proposalGone": "Ova verzija više nije na ovom računaru.",
+    "groups": {
+      "waiting-for-you": "Čeka tebe",
+      "waiting-for-others": "Čeka druge",
+      "changes-requested": "Tražene izmene",
+      "approved": "Odobreno",
+      "replaced": "Zamenjeno"
+    }
   }
 }

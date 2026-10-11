@@ -113,6 +113,19 @@ adding a case to the e2e suite over one-off manual checking.
   `release.json`, and the student can go back (SLJ-40). No `pear-runtime`, no OTA
   updates of the app itself.
 
+## Words in the UI
+
+Two terms for the publisher, kept apart (SLJ-67):
+
+- **Publishing identity**: the secret part, the identity file plus its password, which
+  signs everything published. Described as proof that it's you, never to be shared.
+- **Publisher ID**: the public part (its public key). Described as "like an email
+  address: share it freely". Others use it to invite you to maintain a course.
+
+Not "private/public id", and none of these in user-facing copy: key, public key, private
+key, signature (outside the identity explainer), multisig, quorum, maintainer key,
+mailbox. Say "maintainers" and "who must approve" instead.
+
 ## Profiles
 
 Each person on a computer has a profile (SLJ-57): `<data folder>/profiles/<slug>-<16 chars>/`

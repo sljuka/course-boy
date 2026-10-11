@@ -988,7 +988,8 @@ the network. Starting a move from the app comes with inviting a maintainer (mile
 - **"Join as a maintainer"** on My courses.
 - **Approvals:** a Teaching sidebar item, shown with a count while something waits. Its
   page lists proposals by course title (the proposal carries it, since the course may
-  not be on your computer yet).
+  not be on your computer yet). Since SLJ-109 the item is always shown once you
+  maintain a shared course, and the page keeps a history in groups (see below).
 - **Review page:** the changed files, then Approve or Ask for changes with a note.
 - **Publish** of a shared course reads "Ask for approval", and its dialog says the
   version goes online once enough maintainers approve.
@@ -1076,3 +1077,41 @@ by the end. It was also real app bugs, which only showed up there:
     publisher's.
   - A code works once (the same publisher may retry) and for a week.
   - `maintainers:invite` now takes `{ courseId, publisherId }`.
+
+### Approvals history (SLJ-109, 2026-10-11)
+
+- **A record per proposal:** each shared course's record in the maintainers store keeps
+  `proposals` (by request hash): version, proposer, who approved, notes asking for
+  changes, state and dates. Rebuilt on every refresh from every maintainer's mailbox
+  (your own included), so the counts cover anyone's proposal. Decided ones are capped
+  at 100 per course. It replaces the old `inbox`.
+- **States:** `waiting`, `online`, `replaced`. The worker op `proposalState` compares
+  the request's tree hashes with the shared course at the request's length (file index
+  and file data). Same means `online`, whoever committed it; different means another
+  version took the spot (`replaced`). A waiting proposal whose proposer's mailbox now
+  names a newer one is `replaced` too, and so is one whose Approve fails with
+  `NOT_LATEST`.
+- **The 2-of-3 fix:** before, the third maintainer kept a version that went online
+  without them as "waiting for you". Their app now sees it's in the shared course.
+- **Groups** (`groupOf` in `electron/maintainers.ts`): Waiting for you (someone else's,
+  unanswered); Waiting for others (yours, or answered, with "1 of 2 approved · waiting
+  for …"); Changes requested; Approved; Replaced (folded).
+- **Sidebar:** shown once the profile maintains a shared course; the badge counts only
+  Waiting for you.
+- **Version page:** where it stands on top (who approved, who hasn't, notes, "Open the
+  course" once online). Files and Preview only for someone else's version still
+  waiting (yours is open in the worker as your own drive; a decided one's drive may be
+  gone); Approve and Ask for changes only while it waits for you.
+- **Restoring keeps the one-approval-per-spot rule:** the history and what you answered
+  live in the profile, so a new computer starts without them. Each refresh, and each
+  Approve or Ask for changes, rebuilds them from your own mailbox
+  (`recoverOwnAnswers`): every approval or change request there counts as answered.
+  An approval now carries its spot (`/approvals/<hash>.json` = `{ response, spot }`);
+  for an older one without it, of a proposal still waiting, the proposal is checked
+  again to get it. Without this, a restored computer could approve a rival version for
+  a spot it already approved one for, and two versions could both reach the rule (a
+  fork). Proposals replaced before the restore aren't listed again: a mailbox keeps
+  only its current `/proposal.json`.
+- **IPC:** `maintainers:list-approvals` now returns `{ items, maintained }`.
+- **e2e:** `e2e/sharing-maintainers.e2e.mjs` checks the badge, the groups, and the
+  read-only page once approved.

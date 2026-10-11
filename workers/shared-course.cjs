@@ -241,6 +241,35 @@ async function openProposalForReview({ proposalKey, request, spec, store }) {
   }
 }
 
+// Where a proposal stands against the shared course (SLJ-109): 'online' when
+// the course's history holds exactly what it asked to add (the same tree at
+// its length, for the file index and the file data), 'replaced' when the
+// course reached that length with something else, and 'waiting' otherwise.
+// Needs nothing of the proposal drive: the request names the trees. So a
+// maintainer who never answered sees an approved proposal as approved, and
+// one that lost its spot to another version as replaced.
+async function proposalState({ request, spec, store }) {
+  const decoded = decodeRequest(request)
+  if (!decoded.key.equals(sharedCourseKey(spec))) {
+    throw new SharedCourseError('WRONG_COURSE', 'This request is not for this course')
+  }
+  const multisig = new HyperMultisig(store, null)
+  const shared = await multisig.createDrive(spec.signers, spec.namespace, { quorum: spec.quorum })
+  await Promise.all([shared.core.ready(), shared.blobsCore.ready()])
+  try {
+    await Promise.all([shared.core.update().catch(() => {}), shared.blobsCore.update().catch(() => {})])
+    if (shared.core.length < decoded.length) return 'waiting'
+    const contentLength = decoded.content?.length ?? 0
+    if (contentLength > shared.blobsCore.length) return 'replaced'
+    const same =
+      (await shared.core.treeHash(decoded.length)).equals(decoded.treeHash) &&
+      (contentLength === 0 || (await shared.blobsCore.treeHash(contentLength)).equals(decoded.content.treeHash))
+    return same ? 'online' : 'replaced'
+  } finally {
+    await Promise.all([shared.core.close(), shared.blobsCore.close()])
+  }
+}
+
 // What the proposal (at `length`) changes in the shared course (the
 // proposal's own history at `sharedLength`, already proven the same): files
 // added, changed (their data lies past the shared course's blobs) or removed.
@@ -346,6 +375,7 @@ module.exports = {
   maintainerPublicKey,
   openProposalForReview,
   openWritableDrive,
+  proposalState,
   openSharedDrive,
   sharedCourseKey,
   sharedCourseSpec,

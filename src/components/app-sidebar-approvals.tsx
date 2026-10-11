@@ -5,14 +5,15 @@ import { Link, useLocation } from "react-router-dom";
 import { SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { useApprovalsQuery } from "@/lib/maintainers-queries";
 
-// Teaching's Approvals (SLJ-11): versions other maintainers proposed, waiting
-// for you, with how many. Not shown while nothing is waiting.
+// Teaching's Approvals (SLJ-11, SLJ-109): shown once you maintain a course
+// together with others, badged with how many versions wait for you.
 export function AppSidebarApprovals() {
   const { t } = useTranslation();
   const location = useLocation();
-  const { data: approvals = [] } = useApprovalsQuery();
+  const { data } = useApprovalsQuery();
 
-  if (approvals.length === 0) return null;
+  if (!data || data.maintained === 0) return null;
+  const waiting = data.items.filter((item) => item.group === "waiting-for-you").length;
 
   return (
     <SidebarMenuItem data-testid="sidebar-approvals">
@@ -20,7 +21,7 @@ export function AppSidebarApprovals() {
         <CheckCheck aria-hidden="true" className="h-4 w-4 shrink-0" />
         <span>{t("sidebar.approvals")}</span>
       </SidebarMenuButton>
-      <SidebarMenuBadge>{approvals.length}</SidebarMenuBadge>
+      {waiting > 0 && <SidebarMenuBadge data-testid="sidebar-approvals-count">{waiting}</SidebarMenuBadge>}
     </SidebarMenuItem>
   );
 }

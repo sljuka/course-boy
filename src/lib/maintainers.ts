@@ -19,16 +19,43 @@ export type MaintainersInfo = {
   sharedKey: string | null
 }
 
-// A version another maintainer proposed, waiting for this maintainer.
+// The Approvals page's groups (SLJ-109).
+export const APPROVAL_GROUPS = [
+  "waiting-for-you",
+  "waiting-for-others",
+  "changes-requested",
+  "approved",
+  "replaced",
+] as const
+export type ApprovalGroup = (typeof APPROVAL_GROUPS)[number]
+
+// A version proposed for a shared course, anyone's, waiting or decided.
 export type ApprovalItem = {
+  // Publisher ids of the maintainers who approved it (its proposer too).
+  approvedBy: string[]
+  changesRequested: { note: string; publisherId: string }[]
   courseId: string | null
+  // When it went online or was replaced (ms), null while waiting.
+  decidedAt: number | null
+  // Its proposer's publisher id.
   from: string
+  group: ApprovalGroup
   hash: string
+  // Proposed by this profile.
+  mine: boolean
+  // Maintainers who haven't approved it yet, while it waits.
+  missing: string[]
+  proposedAt: number
   publicId: string
+  // How many must approve it.
+  quorum: number
   // The course's title, as the proposal names it.
   title: string | null
   version: string
 }
+
+// Every proposal, and how many shared courses this profile maintains.
+export type ApprovalsList = { items: ApprovalItem[]; maintained: number }
 
 export type ProposalChange = { kind: "added" | "changed" | "removed"; path: string }
 

@@ -1,6 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
-import type { ApprovalItem, MaintainersInfo, ProposalReview } from '../src/lib/maintainers'
+import type { ApprovalsList, MaintainersInfo, ProposalReview } from '../src/lib/maintainers'
 import type { PeekCourseResult, ProgramManifest, ProgramSharingInfo, ProgramSummary } from '../src/lib/program-package'
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import type {
@@ -249,7 +249,7 @@ contextBridge.exposeInMainWorld('maintainers', {
     return ipcRenderer.invoke('maintainers:get', courseId) as Promise<MaintainersInfo | null>
   },
   listApprovals() {
-    return ipcRenderer.invoke('maintainers:list-approvals') as Promise<ApprovalItem[]>
+    return ipcRenderer.invoke('maintainers:list-approvals') as Promise<ApprovalsList>
   },
   review(input: { hash: string; publicId: string }) {
     return ipcRenderer.invoke('maintainers:review', input) as Promise<ProposalReview>

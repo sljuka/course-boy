@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { ApprovalStatus } from "@/components/approvals/approval-status";
 import { VersionNotes } from "@/components/course-details/version-notes";
 import { Page } from "@/components/page/page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,7 +15,9 @@ import { ListRow, ListRowMeta } from "@/components/ui/list-row";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  useApprovalsQuery,
   useApproveMutation,
+  useOwnPublisherIdQuery,
   usePreviewProposalMutation,
   useProposalReviewQuery,
   useRequestChangesMutation,
@@ -29,11 +32,20 @@ const CHANGE_ICONS = { added: FilePlus, changed: FilePen, removed: FileMinus } a
 // app), then Approve, or Ask for changes with a note to the maintainer who
 // proposed it. Approving is checked again: it must build on the course's
 // latest version, and you never approve two versions for the same spot.
+// Where it stands is on top (SLJ-109). Only someone else's version still
+// waiting is reviewed (its files, Preview); Approve and Ask for changes only
+// while it waits for you. Yours, or one already decided, shows its status.
 export function ApprovalReviewPage() {
   const { hash, publicId } = useParams();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: review, error, isLoading } = useProposalReviewQuery(publicId, hash);
+  const { data: approvals, isLoading: isListLoading } = useApprovalsQuery();
+  const { data: ownPublisherId = "" } = useOwnPublisherIdQuery();
+  const item = approvals?.items.find((entry) => entry.publicId === publicId && entry.hash === hash);
+  const isReviewable = Boolean(item && !item.mine && (item.group === "waiting-for-you" || item.group === "waiting-for-others" || item.group === "changes-requested"));
+  const canAnswer = item?.group === "waiting-for-you";
+  const { data: review, error, isLoading } = useProposalReviewQuery(publicId, hash, isReviewable);
+  const version = review?.version ?? item?.version;
   const approveMutation = useApproveMutation();
   const changesMutation = useRequestChangesMutation();
   const previewMutation = usePreviewProposalMutation();
@@ -45,19 +57,25 @@ export function ApprovalReviewPage() {
     <Page
       breadcrumbs={[
         { icon: CheckCheck, label: t("sidebar.approvals"), to: "/approvals" },
-        { icon: CheckCheck, label: review ? t("maintainers.versionTitle", { version: review.version }) : "…" },
+        { icon: CheckCheck, label: version ? t("maintainers.versionTitle", { version }) : "…" },
       ]}
       header={
         <div className="flex flex-col gap-1">
           <CardTitle size="lg">
-            {review ? t("maintainers.reviewTitle", { version: review.version }) : t("maintainers.reviewLoading")}
+            {version ? t("maintainers.reviewTitle", { version }) : t("maintainers.reviewLoading")}
           </CardTitle>
           <CardDescription className="max-w-3xl">{t("maintainers.reviewDescription")}</CardDescription>
         </div>
       }
     >
       <div className="flex max-w-3xl flex-col gap-4" data-testid="approval-review">
-        {isLoading && <Spinner aria-hidden="true" />}
+        {item && <ApprovalStatus item={item} ownPublisherId={ownPublisherId} />}
+        {!isListLoading && !item && (
+          <Alert variant="destructive">
+            <AlertDescription>{t("maintainers.proposalGone")}</AlertDescription>
+          </Alert>
+        )}
+        {(isLoading || isListLoading) && <Spinner aria-hidden="true" />}
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error.message}</AlertDescription>
@@ -119,7 +137,7 @@ export function ApprovalReviewPage() {
             </AlertDescription>
           </Alert>
         )}
-        {review && publicId && hash && (
+        {review && canAnswer && publicId && hash && (
           <>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="approval-note">{t("maintainers.noteLabel")}</Label>

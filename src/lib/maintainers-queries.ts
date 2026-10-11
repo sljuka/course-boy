@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import type { ApprovalItem, MaintainersInfo, ProposalReview } from "@/lib/maintainers";
+import type { ApprovalsList, MaintainersInfo, ProposalReview } from "@/lib/maintainers";
 import { queryClient } from "@/lib/query-client";
 
 // Courses maintained by several publishers (SLJ-11). Polled: invites
@@ -17,7 +17,7 @@ export function useMaintainersQuery(courseId: string | undefined) {
 }
 
 export function useApprovalsQuery() {
-  return useQuery<ApprovalItem[]>({
+  return useQuery<ApprovalsList>({
     queryKey: ["maintainers", "approvals"],
     queryFn: () => window.maintainers.listApprovals(),
     refetchInterval: 10_000,
@@ -25,9 +25,11 @@ export function useApprovalsQuery() {
   });
 }
 
-export function useProposalReviewQuery(publicId: string | undefined, hash: string | undefined) {
+// Only for someone else's proposal still waiting (`enabled`): a decided one's
+// drive may be gone, and ours is open in the worker as our own.
+export function useProposalReviewQuery(publicId: string | undefined, hash: string | undefined, enabled = true) {
   return useQuery<ProposalReview>({
-    enabled: Boolean(publicId && hash),
+    enabled: Boolean(publicId && hash) && enabled,
     queryKey: ["maintainers", "review", publicId, hash],
     queryFn: () => window.maintainers.review({ hash: hash!, publicId: publicId! }),
     retry: false,

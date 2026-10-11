@@ -357,7 +357,7 @@ export type MaintainerSelf = { mailboxKey: string; maintainerKey: string; publis
 export type MaintainerJoined = { member: MaintainerSelf; publicId: string }
 
 export type MailboxContents = {
-  approvals: Record<string, { response?: unknown }>
+  approvals: Record<string, { response?: unknown; spot?: unknown }>
   changesRequested: Record<string, { note?: unknown }>
   members: unknown
   proposal: unknown
@@ -382,6 +382,7 @@ type SharedCourseOps = {
     { hash: string; length: number; proposalKey: string; request: string },
   ]
   readMailbox: [{ key: string }, MailboxContents]
+  proposalState: [{ request: string; spec: SharedCourseSpecInput }, { state: 'online' | 'replaced' | 'waiting' }]
   readSharedSource: [
     { sharedKey: string },
     { courseId: string | null; source: unknown; title: string | null; version: string | null },

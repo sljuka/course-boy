@@ -20,6 +20,7 @@ const {
   commitProposal,
   createProposal,
   openProposalForReview,
+  proposalState,
   openSharedDrive,
   sharedCourseKey,
   sharedCourseSpec,
@@ -1232,6 +1233,10 @@ async function start() {
         }
         await proposal.close()
         return { changelog, changes, length, sharedLength }
+      }
+      case 'proposalState': {
+        await ensureSharedDrive(spec)
+        return { state: await proposalState({ request: args.request, spec, store }) }
       }
       case 'sign':
         return { response: signRequest({ identity: requireIdentity(), publicId: spec.publicId, request: args.request }) }
