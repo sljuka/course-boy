@@ -61,7 +61,7 @@ export async function launchApp({
   // own code, so no repo path is passed and no dev build is needed.
   packagedExecutable = null,
   // Extra environment variables for the app, e.g. MATKO_DHT_BOOTSTRAP to keep a
-  // sharing test on a local DHT testnet (see e2e/sharing.e2e.mjs).
+  // sharing test on a local DHT testnet (see e2e/sharing-suite.mjs).
   env = {},
   // The profile to open (created if missing), or null for the launcher (the
   // first-run name screen or the profile picker), as a fresh install starts.

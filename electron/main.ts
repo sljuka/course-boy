@@ -462,7 +462,7 @@ function openProfileServices(dataDir: string) {
       courseSharingStore.set('nextPublicIndex', Math.max(courseSharingStore.get('nextPublicIndex') ?? 0, publicIndex + 1))
       return landed
     },
-    // Test-only: a shorter wait per course number (e2e/sharing.e2e.mjs). Unset in the app.
+    // Test-only: a shorter wait per course number (e2e/sharing-restore.e2e.mjs). Unset in the app.
     lookupTimeoutMs: Number(process.env.MATKO_RESTORE_LOOKUP_MS) || undefined,
     // Test-only too: fewer misses before the search ends. Unset in the app.
     gapLimit: Number(process.env.MATKO_RESTORE_GAP_LIMIT) || undefined,
@@ -496,6 +496,7 @@ function openProfileServices(dataDir: string) {
       closed = true
       courseSharing.stop()
       identityRestore.stop()
+      maintainers.stop()
       publisherIdentity.close()
     },
     courseProgress,

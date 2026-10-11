@@ -132,6 +132,7 @@ export type MaintainersDeps = {
   removeStaging(stagingPath: string): Promise<void>
   // The course is online at `sharedKey` now: share it from there.
   onShared(courseId: string): void
+  setInterval?: (callback: () => void, delayMs: number) => { cancel(): void }
   store: { read(): MaintainersState; write(state: MaintainersState): void }
 }
 
@@ -144,15 +145,41 @@ export class MaintainersError extends Error {
   }
 }
 
+// Every shared course is read again this often, besides on every change: a
+// read that timed out (a mailbox whose data hadn't arrived yet) would
+// otherwise wait for a change that may never come.
+const REFRESH_INTERVAL_MS = 20_000
+
+function defaultSetInterval(callback: () => void, delayMs: number) {
+  const timer = setInterval(callback, delayMs)
+  return { cancel: () => clearInterval(timer) }
+}
+
 export function createMaintainers(deps: MaintainersDeps) {
   // One refresh at a time per course: events arrive in bursts.
   const queues = new Map<string, Promise<unknown>>()
+  let periodic: { cancel(): void } | null = null
+  const pending = new Set<string>()
 
   function serial<T>(publicId: string, run: () => Promise<T>): Promise<T> {
     const previous = queues.get(publicId) ?? Promise.resolve()
     const next = previous.catch(() => {}).then(run)
     queues.set(publicId, next)
     return next
+  }
+
+  // Every course read again every REFRESH_INTERVAL_MS (one at a time per
+  // course: skipped while the last one is still waiting).
+  function startPeriodicRefresh() {
+    periodic ??= (deps.setInterval ?? defaultSetInterval)(() => {
+      for (const publicId of Object.keys(records())) {
+        if (pending.has(publicId)) continue
+        pending.add(publicId)
+        void serial(publicId, () => refresh(publicId))
+          .catch(logFailure(publicId))
+          .finally(() => pending.delete(publicId))
+      }
+    }, REFRESH_INTERVAL_MS)
   }
 
   function records(): Record<string, SharedCourseRecord> {
@@ -414,6 +441,8 @@ export function createMaintainers(deps: MaintainersDeps) {
       // The owner's mailbox is read in the background: its data may take a
       // moment to arrive, and every change to it is read again anyway.
       void serial(publicId, () => refresh(publicId)).catch(logFailure(publicId))
+      // Read again every so often until the course lands.
+      startPeriodicRefresh()
       return { publicId }
     },
 
@@ -512,9 +541,16 @@ export function createMaintainers(deps: MaintainersDeps) {
     },
 
     async start(): Promise<void> {
+      startPeriodicRefresh()
       for (const publicId of Object.keys(records())) {
         await serial(publicId, () => refresh(publicId)).catch(logFailure(publicId))
       }
+    },
+
+    // The profile is closing.
+    stop(): void {
+      periodic?.cancel()
+      periodic = null
     },
 
     refresh: (publicId: string) => serial(publicId, () => refresh(publicId)),

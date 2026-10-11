@@ -126,6 +126,7 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
     }),
     seedOldCode: async () => {},
     removeStaging: async () => {},
+    setInterval: () => ({ cancel: () => {} }),
     store: { read: () => state, write: (next) => (state = next) },
   })
   const peer = { landCourse, onShared, op, published, self, service, state: () => state }

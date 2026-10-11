@@ -558,7 +558,7 @@ export function spawnBareWorker(): void {
     const storagePath = getWorkerStoragePath()
 
     // Test-only: point the worker's swarm at a local DHT testnet instead of the
-    // public one (see e2e/sharing.e2e.mjs). Unset in the app.
+    // public one (see e2e/sharing-suite.mjs). Unset in the app.
     const bootstrap = process.env.MATKO_DHT_BOOTSTRAP ?? ''
 
     const worker = spawnBare('bare', {

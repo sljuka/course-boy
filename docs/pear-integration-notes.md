@@ -443,7 +443,7 @@ only publishers ever touch, not an onboarding step every user sees.
      scoped here.
 
 7. **Courses stay shared across restarts; Publish is the share action. Done, 2026-10-03
-   (SLJ-38, part 1 of SLJ-9).** Verified by `e2e/sharing.e2e.mjs`: a teacher and three
+   (SLJ-38, part 1 of SLJ-9).** Verified by `e2e/sharing-restarts.e2e.mjs`: a teacher and three
    students as separate app instances on a local `hyperdht/testnet`. The teacher publishes
    twice (same code), student 1 imports, and both restart. With the teacher offline,
    student 2 imports from student 1. The teacher then restarts alone and student 3
@@ -484,7 +484,7 @@ only publishers ever touch, not an onboarding step every user sees.
      `bootstrap`. Unset in the app.
 
 8. **Students get updates. Done, 2026-10-03 (SLJ-39, part 2 of SLJ-9).** Verified by
-   `e2e/sharing.e2e.mjs`, on top of the Phase 7 scenario:
+   `e2e/sharing-restarts.e2e.mjs`, on top of the Phase 7 scenario:
    - an online student is offered the version the teacher just published, and applies it
      from the course page;
    - files the update didn't change keep their inode, so they weren't rewritten;
@@ -534,7 +534,7 @@ only publishers ever touch, not an onboarding step every user sees.
    - Verified by unit tests in `electron/course-paths.test.ts`: migration (incl. an
      interrupted one), update into a new folder with unchanged files shared, switch,
      prune, failure leaves the course as it was, staging cleanup. Also by
-     `e2e/sharing.e2e.mjs`: three versions kept, back and forward through the menu.
+     `e2e/sharing-restarts.e2e.mjs`: three versions kept, back and forward through the menu.
 
 10. **Import and update progress, waiting and Cancel. Done, 2026-10-05 (SLJ-43).**
    - **Transfers in the worker:** an import or update download runs under an id the
@@ -563,7 +563,7 @@ only publishers ever touch, not an onboarding step every user sees.
    - **Gotcha:** a *second* `Hyperdrive` instance on a key already open in the same
      Corestore never became ready (`drive.ready()` hung). Updates therefore download
      through the followed drive itself.
-   - Verified by `e2e/sharing.e2e.mjs`:
+   - Verified by `e2e/sharing-restarts.e2e.mjs`:
      - a 2 MB import reports its full size;
      - a one-lesson update reports < 10% of it;
      - with the teacher offline, Home's Downloading group shows "Looking for the
@@ -698,7 +698,7 @@ Its Corestore has its own random seed; cores are created from their manifests on
 comes from the store's seed, so sharing needs no unlocking. Passing a key pair when a
 core is *created* would store the secret again; the regression check below guards it.
 
-**Tests** (`e2e/sharing.e2e.mjs`):
+**Tests** (`e2e/sharing-restore.e2e.mjs`, `e2e/sharing-password.e2e.mjs`):
 - the identity file opens only with the password and holds the identity behind the
   code, and the teacher's `p2p/` contains neither the identity nor the course's signing
   key after publishing;
@@ -962,7 +962,7 @@ the network. Starting a move from the app comes with inviting a maintainer (mile
   reach a maintainer who hasn't landed the course yet.
 - **Publish:** a Publish of a shared course is a proposal (`publishShared`). With the
   identity locked it only seeds.
-- **e2e:** `e2e/sharing.e2e.mjs` "a course maintained by two teachers" (about 50 s): two
+- **e2e:** `e2e/sharing-maintainers.e2e.mjs` "a course maintained by two teachers" (about 50 s): two
   teachers and two students.
   - Marko approves the first shared version; students follow the course to the new code.
   - Marko's version goes online only after Ana approves it.
@@ -1024,3 +1024,22 @@ the network. Starting a move from the app comes with inviting a maintainer (mile
 - **Open:** a rare worker crash ("Cannot read properties of null (reading
   'byteLength')") was seen once during these runs. The worker now logs the stack of an
   uncaught error before exiting, so the next occurrence can be traced.
+
+### Sharing e2e, split (SLJ-69, 2026-10-11)
+
+`e2e/sharing.e2e.mjs` (35 tests, about 9 minutes, flaky at the end of a full run) is now
+five files, one per area: `sharing-restarts`, `sharing-restore`, `sharing-password`,
+`sharing-programs` and `sharing-maintainers`. `e2e/sharing-suite.mjs` gives each file its
+own folder, its own testnet (5 DHT nodes) and its own apps, all closed when the file
+ends, so any file runs on its own. All five take about 2 min 45 s in a row.
+
+The flakiness was partly the shared network: one testnet, and more than a dozen apps
+by the end. It was also real app bugs, which only showed up there:
+- **A mailbox could be left unreadable.** A new computer learned its old mailbox's
+  length from a peer without the entries, and wrote on top. Once the peer left, nobody
+  held the full history. Fixed: the history is fetched before the first write whenever
+  entries are missing, and every maintainer keeps a full copy of the mailboxes they
+  follow.
+- **A mailbox read could hang** despite per-call timeouts. Each read is now bounded as
+  a whole, and every shared course is read again every 20 s, so a missed or failed read
+  doesn't leave a course waiting for a change that never comes.

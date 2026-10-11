@@ -88,10 +88,20 @@ function createMaintainers(context) {
   // key, which Hypercore treats as fatal. So its history is fetched first
   // from whoever has it (the other maintainers follow it). A truly new
   // mailbox costs one lookup: nobody is found, and nothing is waited for.
+  //
+  // It also runs when the mailbox *knows* entries it doesn't hold: joining its
+  // topic, a new computer learns the old mailbox's length from a peer at once,
+  // without the entries. Writing on top of that, then losing the peer, leaves
+  // a mailbox nobody can read in full.
   const synced = new Set()
   async function syncBeforeWriting(publicId) {
     if (synced.has(publicId)) return
-    const drive = mailboxes.get(publicId)
+    let drive = mailboxes.get(publicId)
+    if (drive.core.length > 0 && drive.core.contiguousLength < drive.core.length) {
+      await withTimeout(drive.core.download({ start: 0, end: drive.core.length }).done(), SYNC_TIMEOUT_MS).catch(() => {})
+      await downloadBlobs(drive)
+    }
+    drive = mailboxes.get(publicId)
     if (drive.core.length === 0) {
       await withTimeout(context.swarm.flush(), SYNC_TIMEOUT_MS).catch(() => {})
       if (drive.core.peers.length > 0) {
@@ -104,6 +114,7 @@ function createMaintainers(context) {
           await withTimeout(reader.core.update({ wait: true }), SYNC_TIMEOUT_MS).catch(() => {})
           if (reader.core.length > 0) {
             await withTimeout(reader.core.download({ start: 0, end: reader.core.length }).done(), SYNC_TIMEOUT_MS)
+            await downloadBlobs(reader)
           }
         } finally {
           await reader.close()
@@ -142,21 +153,38 @@ function createMaintainers(context) {
     await drive.ready()
     context.swarm.join(drive.discoveryKey, { client: true, server: true })
     drive.core.on('append', () => context.onMailboxChanged?.(IdEncoding.normalize(drive.key)))
+    // A full copy, kept up to date (mailboxes are tiny): any maintainer can
+    // then give a mailbox's whole history to its owner's new computer.
+    drive.core.download({ start: 0, end: -1 })
+    drive.getBlobs().then((blobs) => blobs.core.download({ start: 0, end: -1 }), () => {})
     followed.set(hex, drive)
     return drive
   }
 
-  // Everything a mailbox says (ours or someone else's), as plain data.
-  async function readMailbox(key, { wait = false } = {}) {
+  // Everything a mailbox says (ours or someone else's), as plain data. Bounded
+  // as a whole: a read whose data never arrives (some steps inside Hyperdrive
+  // don't honour a per-call timeout) comes back empty instead of blocking
+  // every later read of the course; the next refresh tries again.
+  async function readMailbox(key, options) {
+    const empty = { approvals: {}, changesRequested: {}, members: null, proposal: null }
+    return withTimeout(readMailboxUnbounded(key, options), READ_TIMEOUT_MS * 2).catch(() => empty)
+  }
+
+  async function readMailboxUnbounded(key, { wait = false } = {}) {
     const drive = (await ownMailboxByKey(key)) ?? (await followMailbox(key))
     if (wait) await drive.core.update({ wait: true }).catch(() => {})
     else await drive.core.update().catch(() => {})
 
     const readJson = async (file) => {
       try {
-        const entry = await drive.entry(file, { timeout: READ_TIMEOUT_MS })
-        if (!entry || (entry.value.blob?.byteLength ?? 0) > MAX_FILE_BYTES) return null
-        return JSON.parse(await drive.get(file, { timeout: READ_TIMEOUT_MS }))
+        return await withTimeout(
+          (async () => {
+            const entry = await drive.entry(file, { timeout: READ_TIMEOUT_MS })
+            if (!entry || (entry.value.blob?.byteLength ?? 0) > MAX_FILE_BYTES) return null
+            return JSON.parse(await drive.get(file, { timeout: READ_TIMEOUT_MS }))
+          })(),
+          READ_TIMEOUT_MS,
+        )
       } catch {
         return null
       }
@@ -278,6 +306,16 @@ function createMaintainers(context) {
   }
 
   return { acceptInvite, close, createInvite, followMailbox, openMailbox, readMailbox, self, writeMailbox }
+}
+
+// All of a drive's file data, as far as it's known now.
+async function downloadBlobs(drive) {
+  try {
+    const blobs = (await withTimeout(drive.getBlobs(), READ_TIMEOUT_MS)).core
+    await withTimeout(blobs.download({ start: 0, end: blobs.length }).done(), SYNC_TIMEOUT_MS)
+  } catch {
+    // Read later, on demand.
+  }
 }
 
 function withTimeout(promise, ms) {
