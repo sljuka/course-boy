@@ -83,15 +83,22 @@ describe('maintainers (SLJ-11)', () => {
     marko = await makePeer('marko')
     anaSelf = await ana.maintainers.self(PUBLIC_ID)
 
-    // An earlier code doesn't get in the way of a newer one.
-    await ana.maintainers.createInvite(PUBLIC_ID)
-    const code = await ana.maintainers.createInvite(PUBLIC_ID)
-    const accepted = await marko.maintainers.acceptInvite(code)
     markoSelf = await marko.maintainers.self(PUBLIC_ID)
+    const eve = await makePeer('eve')
+
+    // An invite is for one publisher (SLJ-67): an earlier code doesn't get in
+    // the way of a newer one, and someone else with the code is refused.
+    await ana.maintainers.createInvite(PUBLIC_ID, markoSelf.publisherId)
+    const code = await ana.maintainers.createInvite(PUBLIC_ID, markoSelf.publisherId)
+    await expect(eve.maintainers.acceptInvite(code)).rejects.toMatchObject({ code: 'INVITE_REFUSED' })
+    const accepted = await marko.maintainers.acceptInvite(code)
 
     expect(accepted).toEqual({ ownerMailboxKey: anaSelf.mailboxKey, publicId: PUBLIC_ID })
     const joined = await until(() => ana.events.joined[0])
     expect(joined).toEqual({ member: markoSelf, publicId: PUBLIC_ID })
+    expect(ana.events.joined).toHaveLength(1)
+    // Used: nobody else gets in with it any more, even with Marko's id claimed.
+    await expect(eve.maintainers.acceptInvite(code)).rejects.toMatchObject({ code: 'INVITE_REFUSED' })
 
     // The owner writes who maintains the course and the rule; Marko reads it.
     await ana.maintainers.writeMailbox(PUBLIC_ID, '/members.json', {

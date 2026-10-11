@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, History, Home, Play } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCheck, History, Home, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -15,6 +15,7 @@ import { CourseActionsMenu } from "@/components/course-actions-menu";
 import { CourseFavoriteToggle } from "@/components/course-progress/course-favorite-toggle";
 import { CourseProgressBadge } from "@/components/course-progress/course-progress-badge";
 import { PageContent } from "@/components/page-content";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
@@ -44,7 +45,10 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
     throwOnError: true,
   });
-  const { data: sharing } = useCourseSharingQuery(course?.distribution === "imported" ? courseId : undefined);
+  const isPreview = Boolean(course?.preview);
+  const { data: sharing } = useCourseSharingQuery(
+    course?.distribution === "imported" && !isPreview ? courseId : undefined,
+  );
 
   if (isLoading) {
     return (
@@ -180,6 +184,79 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
     </div>
   );
 
+  const sectionsContent = (
+    <>
+        {resolvedCourse.sections.length === 0 && (
+        <CardDescription data-testid="course-no-sections">{t("courseDetails.noSections")}</CardDescription>
+      )}
+      {resolvedCourse.sections.map((section) => (
+        <Card
+          className="overflow-hidden border-border bg-muted/80 shadow-none"
+          id={section.id}
+          key={section.id}
+        >
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1">
+              <div className="text-base font-semibold text-foreground">
+                {section.title}
+              </div>
+              {section.description && (
+                <CardDescription>{truncateSummary(section.description)}</CardDescription>
+              )}
+            </div>
+            <div className="overflow-x-auto pb-2">
+              <CoursePreviewStrip
+                items={buildSectionPreviewItems(section, { introTitle: t("courseDetails.sectionIntro") })}
+                onSelect={handlePreviewItemSelect}
+                progress={courseProgress}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </>
+  );
+
+  // A proposed version, before it's approved (SLJ-67): as students would see
+  // it, with a way back to its review. Not a course on this device, so no
+  // sharing, versions, side panel or star, and its progress isn't kept.
+  if (resolvedCourse.preview) {
+    const preview = resolvedCourse.preview;
+    return (
+      <PageContent
+        actions={
+          <Button data-testid="course-start" disabled={!entryStep} onClick={startCourse} size="sm">
+            <Play aria-hidden="true" />
+            {t("courseDetails.startCourse")}
+          </Button>
+        }
+        breadcrumbs={[
+          { icon: CheckCheck, label: t("sidebar.approvals"), to: "/approvals" },
+          { icon: CheckCheck, label: t("maintainers.versionTitle", { version: preview.version }), to: preview.backPath },
+          { icon: BookOpen, label: resolvedCourse.title },
+        ]}
+        pageHero={
+          <div className="flex flex-col gap-1">
+            <CardTitle size="lg">{resolvedCourse.title}</CardTitle>
+            <CardDescription className="max-w-3xl">{resolvedCourse.description}</CardDescription>
+          </div>
+        }
+      >
+        <Alert data-testid="course-preview-banner">
+          <AlertTitle>{t("maintainers.previewBannerTitle", { version: preview.version })}</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-2">
+            {t("maintainers.previewBannerDescription")}
+            <Button data-testid="preview-back" onClick={() => navigate(preview.backPath)} size="sm" variant="secondary">
+              <ArrowLeft aria-hidden="true" />
+              {t("maintainers.previewBack")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+        {sectionsContent}
+      </PageContent>
+    );
+  }
+
   return (
     <CourseInfoSidePanel course={resolvedCourse}>
       <PageContent
@@ -189,34 +266,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
         pageHero={pageHero}
       >
         {resolvedCourse.distribution === "imported" && <CourseUpdateNotice courseId={courseId} />}
-        {resolvedCourse.sections.length === 0 && (
-          <CardDescription data-testid="course-no-sections">{t("courseDetails.noSections")}</CardDescription>
-        )}
-        {resolvedCourse.sections.map((section) => (
-          <Card
-            className="overflow-hidden border-border bg-muted/80 shadow-none"
-            id={section.id}
-            key={section.id}
-          >
-            <CardContent className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <div className="text-base font-semibold text-foreground">
-                  {section.title}
-                </div>
-                {section.description && (
-                  <CardDescription>{truncateSummary(section.description)}</CardDescription>
-                )}
-              </div>
-              <div className="overflow-x-auto pb-2">
-                <CoursePreviewStrip
-                  items={buildSectionPreviewItems(section, { introTitle: t("courseDetails.sectionIntro") })}
-                  onSelect={handlePreviewItemSelect}
-                  progress={courseProgress}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {sectionsContent}
         <VersionHistoryDialog
           courseId={courseId}
           mode="history"

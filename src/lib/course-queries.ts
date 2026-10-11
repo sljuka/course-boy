@@ -52,13 +52,17 @@ import { queryClient } from "@/lib/query-client";
 // so every entity's own save must tag itself with this same key to be seen.
 export const courseContentSaveMutationKey = ["courses", "save"] as const;
 
+// `watch`: read again every so often and on focus, for lists where courses
+// arrive on their own (a shared course landing for a maintainer, SLJ-11).
 export function useCoursesQuery(
   locale: Locale,
-  options: { throwOnError?: boolean } = {},
+  options: { throwOnError?: boolean; watch?: boolean } = {},
 ) {
   return useQuery<CourseSummary[]>({
     queryKey: ["courses", "list", locale],
     queryFn: () => window.courses.list(locale),
+    refetchInterval: options.watch ? 15_000 : false,
+    refetchOnWindowFocus: options.watch ? "always" : true,
     throwOnError: options.throwOnError,
   });
 }

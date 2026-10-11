@@ -515,6 +515,10 @@ export type CourseDiskUsage = {
 };
 
 export type CourseDetails = CourseSummary & {
+  // A proposed version shown as students would see it (SLJ-67, "Preview as
+  // student"): not on this device as a course; its progress isn't kept.
+  // `backPath`: its review page.
+  preview?: { backPath: string; version: string };
   builtin: boolean;
   // When the course was first created (`course.json` `createdAt`), or null if
   // the package doesn't say.

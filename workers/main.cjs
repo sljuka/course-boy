@@ -1179,7 +1179,7 @@ async function start() {
       case 'self':
         return maintainers.self(args.publicId)
       case 'createInvite':
-        return { code: await maintainers.createInvite(args.publicId) }
+        return { code: await maintainers.createInvite(args.publicId, args.invitee) }
       case 'acceptInvite':
         return maintainers.acceptInvite(args.code)
       case 'writeMailbox':
@@ -1217,8 +1217,21 @@ async function start() {
           spec,
           store,
         })
+        // Its release notes (SLJ-67): the version's changelog.json, as its cut
+        // wrote it. Written by the proposer's app, so the file list stays the
+        // check; a small file, read with a time limit.
+        let changelog = []
+        try {
+          const checkout = proposal.checkout(length)
+          const text = await withTimeout(checkout.get('/changelog.json'), REMOTE_READ_TIMEOUT_MS, 'NO_CHANGELOG')
+          await checkout.close()
+          const parsed = text && text.byteLength <= 512 * 1024 ? JSON.parse(text) : []
+          changelog = Array.isArray(parsed) ? parsed : []
+        } catch {
+          changelog = []
+        }
         await proposal.close()
-        return { changes, length, sharedLength }
+        return { changelog, changes, length, sharedLength }
       }
       case 'sign':
         return { response: signRequest({ identity: requireIdentity(), publicId: spec.publicId, request: args.request }) }
@@ -1272,6 +1285,36 @@ async function start() {
           }
         } finally {
           if (!open) await drive.close().catch(() => {})
+        }
+      }
+      // A proposed version, as files (SLJ-67, "Preview as student"):
+      // `stagingPath` already holds a hardlinked copy of the version this
+      // device has (main makes it, or it's empty), so only files whose
+      // version-meta.json hash differs come over the network. Written
+      // atomically, so the hardlinked files are replaced, never changed.
+      case 'downloadProposal': {
+        const proposal = new Hyperdrive(store.session(), IdEncoding.decode(args.proposalKey))
+        try {
+          await proposal.ready()
+          await withTimeout(proposal.core.update({ wait: true }), REMOTE_READ_TIMEOUT_MS, 'Nobody sharing this version is online')
+          const version = proposal.checkout(args.length)
+          try {
+            const remoteMeta = await withTimeout(version.get('/version-meta.json'), REMOTE_READ_TIMEOUT_MS, 'NO_META').catch(() => null)
+            const localMeta = await fsp.readFile(path.join(args.stagingPath, 'version-meta.json'), 'utf8').catch(() => null)
+            const unchanged = unchangedFileKeys(remoteMeta ? remoteMeta.toString() : null, localMeta)
+            await version
+              .mirror(new Localdrive(args.stagingPath, { atomic: true }), {
+                filter: (key) => key !== SOURCE_FILE_KEY && !unchanged.has(key),
+              })
+              .done()
+          } finally {
+            await version.close()
+          }
+          const manifest = JSON.parse(await fsp.readFile(path.join(args.stagingPath, 'course.json'), 'utf8'))
+          if (!isValidCourseId(manifest.id)) throw new Error('course.json has an invalid id')
+          return { courseId: manifest.id, version: manifest.version }
+        } finally {
+          await proposal.close().catch(() => {})
         }
       }
       case 'downloadShared': {

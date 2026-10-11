@@ -1,3 +1,5 @@
+import type { CourseChangelogEntry } from "./course-package"
+
 // Courses maintained by several publishers (SLJ-11): what the renderer sees.
 // The main process decides (electron/maintainers.ts); a version goes online
 // only when more than half of the maintainers approve it.
@@ -30,4 +32,10 @@ export type ApprovalItem = {
 
 export type ProposalChange = { kind: "added" | "changed" | "removed"; path: string }
 
-export type ProposalReview = { changes: ProposalChange[]; version: string }
+// A proposal's review: its release notes since the version online now (the
+// author's notes and changes in course terms), and the files it changes.
+export type ProposalReview = {
+  changes: ProposalChange[]
+  releaseNotes: CourseChangelogEntry[]
+  version: string
+}

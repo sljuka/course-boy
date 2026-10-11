@@ -13,7 +13,6 @@ import { PanelCard } from "@/components/ui/panel-card";
 import { useCourseVersionHistoryQuery } from "@/lib/course-queries";
 import {
   shortPublisherId,
-  useInviteMaintainerMutation,
   useMaintainersQuery,
   useOwnPublisherIdQuery,
 } from "@/lib/maintainers-queries";
@@ -30,8 +29,7 @@ export function MaintainersPanel({ courseId, variant }: { courseId: string; vari
   const { data: info } = useMaintainersQuery(courseId);
   const { data: history } = useCourseVersionHistoryQuery(courseId);
   const { data: ownId } = useOwnPublisherIdQuery();
-  const inviteMutation = useInviteMaintainerMutation();
-  const [inviteCode, setInviteCode] = useState<string | null>(null);
+  const [isInviting, setIsInviting] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
 
   const isPublished = Boolean(history?.publishedVersion);
@@ -57,8 +55,7 @@ export function MaintainersPanel({ courseId, variant }: { courseId: string; vari
           <Button
             aria-label={inviteLabel}
             data-testid="invite-maintainer"
-            disabled={inviteMutation.isPending}
-            onClick={() => inviteMutation.mutate(courseId, { onSuccess: ({ code }) => setInviteCode(code) })}
+            onClick={() => setIsInviting(true)}
             size="icon-xs"
             title={inviteLabel}
             variant="ghost"
@@ -108,13 +105,8 @@ export function MaintainersPanel({ courseId, variant }: { courseId: string; vari
             {t("maintainers.startOpen")}
           </Button>
         )}
-        {inviteMutation.error && (
-          <Alert variant="destructive">
-            <AlertDescription>{inviteMutation.error.message}</AlertDescription>
-          </Alert>
-        )}
       </div>
-      <InviteMaintainerDialog code={inviteCode} onClose={() => setInviteCode(null)} />
+      <InviteMaintainerDialog courseId={courseId} onClose={() => setIsInviting(false)} open={isInviting} />
       <StartSharingDialog
         courseId={courseId}
         // Remounted when someone joins, so the rule's choices follow.

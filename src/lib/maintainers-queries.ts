@@ -37,15 +37,19 @@ export function useProposalReviewQuery(publicId: string | undefined, hash: strin
 const refreshMaintainers = () => queryClient.invalidateQueries({ queryKey: ["maintainers"] });
 
 // Defined once, not per render (see program-queries.ts).
-const invite = (courseId: string) => window.maintainers.invite(courseId);
+const invite = (input: { courseId: string; publisherId: string }) => window.maintainers.invite(input);
 const accept = (code: string) => window.maintainers.accept(code);
 const startSharing = (input: { courseId: string; quorum: number }) => window.maintainers.startSharing(input);
 const approve = (input: { hash: string; publicId: string }) => window.maintainers.approve(input);
+const previewProposal = (input: { hash: string; publicId: string }) => window.maintainers.preview(input);
 const requestChanges = (input: { hash: string; note: string; publicId: string }) =>
   window.maintainers.requestChanges(input);
 
 export function useInviteMaintainerMutation() {
-  return useMutation<{ code: string }, Error, string>({ mutationFn: invite, onSuccess: refreshMaintainers });
+  return useMutation<{ code: string }, Error, { courseId: string; publisherId: string }>({
+    mutationFn: invite,
+    onSuccess: refreshMaintainers,
+  });
 }
 
 export function useAcceptMaintainerInviteMutation() {
@@ -92,4 +96,10 @@ export function useOwnPublisherIdQuery() {
     queryFn: () => window.sharing.getCreatorKey(),
     staleTime: 60_000,
   });
+}
+
+// "Preview as student" (SLJ-67): the proposed version's files downloaded for
+// a look; returns the id its course page opens under.
+export function usePreviewProposalMutation() {
+  return useMutation<{ courseId: string }, Error, { hash: string; publicId: string }>({ mutationFn: previewProposal });
 }

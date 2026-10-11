@@ -106,6 +106,7 @@ describe('launch', () => {
       'get',
       'invite',
       'listApprovals',
+      'preview',
       'requestChanges',
       'review',
       'startSharing',

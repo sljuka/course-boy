@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, net, protocol, screen, session, sh
 import { randomBytes } from 'node:crypto'
 import { readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { open as openFile, readFile, rm, stat as statFile } from 'node:fs/promises'
+import { copyFile, link, mkdir, open as openFile, readdir, readFile, rename, rm, stat as statFile } from 'node:fs/promises'
 import path from 'node:path'
 import Store from 'electron-store'
 import {
@@ -99,7 +99,7 @@ import {
   uploadLocalCourseAsset,
 } from './course-paths'
 import { assetMimeTypesByExtension, resolveAssetFilename } from '../src/lib/course-asset-id'
-import { isValidCourseId } from '../src/lib/course-id'
+import { createCourseId, isValidCourseId } from '../src/lib/course-id'
 import { DEFAULT_HOME_VIEW, parseCourseListView, type CourseListView } from '../src/lib/course-list-view'
 import { parseExplorerPanelPreference, type ExplorerPanelPreference } from '../src/lib/explorer-panel'
 import { parseRecentlyViewedEntries, type RecentlyViewedEntry } from '../src/lib/recently-viewed'
@@ -326,6 +326,13 @@ function openProfileServices(dataDir: string) {
 
   // Courses maintained by several publishers (SLJ-11): who maintains what,
   // proposals and approvals. Main-process only.
+  // "Preview as student" (SLJ-67): proposed versions' files, each in
+  // previews/<hash>/<course id>/, read through a throwaway course id (see
+  // `previews` and courses:get). Gone at every profile open.
+  const previewsRoot = path.join(dataDir, 'previews')
+  void rm(previewsRoot, { force: true, recursive: true }).catch(() => {})
+  const previews = new Map<string, { backPath: string; courseId: string; root: string; version: string }>()
+
   const maintainersStore = new Store<MaintainersState>({
     cwd: dataDir,
     defaults: { courses: {} },
@@ -334,6 +341,14 @@ function openProfileServices(dataDir: string) {
   const maintainers = createMaintainers({
     courseOnDevice: async (courseId) =>
       (await listCourses(await ensureLocalCoursesRoot())).some((candidate) => candidate.id === courseId),
+    createPreviewPath: async (hash, basePath) => {
+      const root = path.join(previewsRoot, hash)
+      await rm(root, { force: true, recursive: true })
+      const target = path.join(root, 'package')
+      await mkdir(target, { recursive: true })
+      if (basePath) await linkTree(basePath, target)
+      return target
+    },
     createStagingPath: createRecoveryStagingPath,
     landCourse: landRecoveredCourse,
     // Shared from the shared course from now on (see publishCourse below).
@@ -503,12 +518,27 @@ function openProfileServices(dataDir: string) {
     courseSharing,
     courseSharingStore,
     maintainers,
+    previews,
+    previewsRoot,
     programSharing,
     identityFilePath,
     identityRestore,
     identityRestoreStore,
     preferencesStore,
     publisherIdentity,
+  }
+}
+
+// A folder's files as hardlinks in `target` (copied where a link can't be
+// made): a version's copy that costs no space. Writers replace files
+// atomically, so the original is never changed through a link.
+async function linkTree(source: string, target: string): Promise<void> {
+  await mkdir(target, { recursive: true })
+  for (const entry of await readdir(source, { withFileTypes: true })) {
+    const from = path.join(source, entry.name)
+    const to = path.join(target, entry.name)
+    if (entry.isDirectory()) await linkTree(from, to)
+    else if (entry.isFile()) await link(from, to).catch(() => copyFile(from, to))
   }
 }
 
@@ -709,10 +739,15 @@ ipcMain.handle('courses:list', (_event, locale?: Locale) => {
 
 ipcMain.handle(
   'courses:get',
-  (_event, courseId: string, locale?: Locale) => {
-    return ensureLocalCoursesRoot().then((coursesRoot) =>
-      getCourseDetails(coursesRoot, courseId, locale),
-    )
+  async (_event, courseId: string, locale?: Locale) => {
+    // A proposed version's preview (SLJ-67): read from its own folder, under
+    // its throwaway id, marked so the course page shows it as a preview.
+    const preview = profile.previews.get(courseId)
+    if (preview) {
+      const details = await getCourseDetails(preview.root, preview.courseId, locale)
+      return details ? { ...details, id: courseId, preview: { backPath: preview.backPath, version: preview.version } } : null
+    }
+    return getCourseDetails(await ensureLocalCoursesRoot(), courseId, locale)
   },
 )
 
@@ -903,11 +938,13 @@ ipcMain.handle('progress:get', () => profile.courseProgress.read())
 
 ipcMain.handle('progress:record-opened', (_event, courseId: unknown) => {
   if (!isId(courseId)) throw new Error('Invalid course id')
+  if (profile.previews.has(courseId)) return
   profile.courseProgress.recordOpened(courseId)
 })
 
 ipcMain.handle('progress:record-step-done', (_event, input: { courseId?: unknown; stepId?: unknown }) => {
   if (!isId(input?.courseId) || !isId(input.stepId)) throw new Error('Invalid step')
+  if (profile.previews.has(input.courseId)) return
   profile.courseProgress.recordStepDone(input.courseId, input.stepId)
 })
 
@@ -924,6 +961,8 @@ ipcMain.handle('progress:record-test-result', (_event, input: RecordTestResultIn
   ) {
     throw new Error('Invalid test result')
   }
+  // A preview's progress isn't kept (SLJ-67).
+  if (profile.previews.has(input.courseId)) return
   profile.courseProgress.recordTestResult(input.courseId, input.stepId, {
     correct: result.correct,
     longestStreak: result.longestStreak,
@@ -933,6 +972,7 @@ ipcMain.handle('progress:record-test-result', (_event, input: RecordTestResultIn
 
 ipcMain.handle('progress:set-favorite', (_event, input: { courseId?: unknown; favorite?: unknown }) => {
   if (!isId(input?.courseId) || typeof input.favorite !== 'boolean') throw new Error('Invalid favorite')
+  if (profile.previews.has(input.courseId)) return
   profile.courseProgress.setFavorite(input.courseId, input.favorite)
 })
 
@@ -941,9 +981,11 @@ ipcMain.handle('progress:set-favorite', (_event, input: { courseId?: unknown; fa
 const isPublicId = (value: unknown): value is string => typeof value === 'string' && /^[a-z2-7]{16}$/.test(value)
 const isHash = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
 
-ipcMain.handle('maintainers:invite', (_event, courseId: unknown) => {
-  if (!isId(courseId)) throw new Error('Invalid course id')
-  return profile.maintainers.invite(courseId)
+ipcMain.handle('maintainers:invite', (_event, input: { courseId?: unknown; publisherId?: unknown }) => {
+  if (!isId(input?.courseId) || typeof input.publisherId !== 'string' || !/^[a-z0-9]{52,64}$/i.test(input.publisherId.trim())) {
+    throw new Error('Invalid invite')
+  }
+  return profile.maintainers.invite(input.courseId, input.publisherId.trim())
 })
 
 ipcMain.handle('maintainers:accept', (_event, code: unknown) => {
@@ -968,16 +1010,41 @@ ipcMain.handle('maintainers:review', (_event, input: { hash?: unknown; publicId?
   return profile.maintainers.review(input.publicId, input.hash)
 })
 
-ipcMain.handle('maintainers:approve', (_event, input: { hash?: unknown; publicId?: unknown }) => {
+// "Preview as student" (SLJ-67): the proposed version's files land in their
+// own folder, and get a throwaway course id the student pages read (courses:get
+// and the asset protocol look it up). Returns that id.
+ipcMain.handle('maintainers:preview', async (_event, input: { hash?: unknown; publicId?: unknown }) => {
   if (!isPublicId(input?.publicId) || !isHash(input.hash)) throw new Error('Invalid proposal')
-  return profile.maintainers.approve(input.publicId, input.hash)
+  const { publicId, hash } = input
+  const opened = profile
+  const { courseId, path: stagingPath, version } = await opened.maintainers.preview(publicId, hash)
+  const root = path.dirname(stagingPath)
+  await rename(stagingPath, path.join(root, courseId))
+  for (const [id, entry] of opened.previews) if (entry.root === root) opened.previews.delete(id)
+  const previewId = createCourseId()
+  opened.previews.set(previewId, { backPath: `/approvals/${publicId}/${hash}`, courseId, root, version })
+  return { courseId: previewId }
 })
 
-ipcMain.handle('maintainers:request-changes', (_event, input: { hash?: unknown; note?: unknown; publicId?: unknown }) => {
+// A proposal answered: its preview isn't needed any more.
+function dropPreviews(hash: string) {
+  const root = path.join(profile.previewsRoot, hash)
+  for (const [id, entry] of profile.previews) if (entry.root === root) profile.previews.delete(id)
+  void rm(root, { force: true, recursive: true }).catch(() => {})
+}
+
+ipcMain.handle('maintainers:approve', async (_event, input: { hash?: unknown; publicId?: unknown }) => {
+  if (!isPublicId(input?.publicId) || !isHash(input.hash)) throw new Error('Invalid proposal')
+  await profile.maintainers.approve(input.publicId, input.hash)
+  dropPreviews(input.hash)
+})
+
+ipcMain.handle('maintainers:request-changes', async (_event, input: { hash?: unknown; note?: unknown; publicId?: unknown }) => {
   if (!isPublicId(input?.publicId) || !isHash(input.hash) || typeof input.note !== 'string') {
     throw new Error('Invalid request')
   }
-  return profile.maintainers.requestChanges(input.publicId, input.hash, input.note)
+  await profile.maintainers.requestChanges(input.publicId, input.hash, input.note)
+  dropPreviews(input.hash)
 })
 
 ipcMain.handle('progress:set-program-favorite', (_event, input: { favorite?: unknown; programId?: unknown }) => {
@@ -1181,8 +1248,10 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
       return new Response(null, { status: 404 })
     }
 
-    const localCoursesRoot = await ensureLocalCoursesRoot()
-    const courseRootPath = path.resolve(localCoursesRoot, courseId)
+    // A preview's files are in its own folder, under its real course id (SLJ-67).
+    const preview = profile.previews.get(courseId)
+    const localCoursesRoot = preview ? preview.root : await ensureLocalCoursesRoot()
+    const courseRootPath = path.resolve(localCoursesRoot, preview ? preview.courseId : courseId)
     const relativeToCoursesRoot = path.relative(localCoursesRoot, courseRootPath)
 
     if (relativeToCoursesRoot.startsWith('..') || path.isAbsolute(relativeToCoursesRoot)) {

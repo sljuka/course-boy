@@ -371,8 +371,9 @@ type SharedCourseOps = {
     { first: boolean; proposalKey: string; request: string; responses: string[]; spec: SharedCourseSpecInput },
     { sharedKey: string },
   ]
-  createInvite: [{ publicId: string }, { code: string }]
+  createInvite: [{ invitee: string; publicId: string }, { code: string }]
   downloadShared: [{ spec: SharedCourseSpecInput; stagingPath: string }, { courseId: string; version: string }]
+  downloadProposal: [{ length: number; proposalKey: string; stagingPath: string }, { courseId: string; version: string }]
   dropProposal: [{ proposalKey: string }, Record<string, never>]
   followMailbox: [{ key: string }, Record<string, never>]
   moveNotice: [{ courseId: string; publicId: string; sharedKey: string }, Record<string, never>]
@@ -387,7 +388,7 @@ type SharedCourseOps = {
   ]
   review: [
     { proposalKey: string; request: string; spec: SharedCourseSpecInput },
-    { changes: ProposalChange[]; length: number; sharedLength: number },
+    { changelog: unknown[]; changes: ProposalChange[]; length: number; sharedLength: number },
   ]
   seedShared: [{ spec: SharedCourseSpecInput }, { courseId: string | null; sharedKey: string; version: string | null }]
   self: [{ publicId: string }, MaintainerSelf]

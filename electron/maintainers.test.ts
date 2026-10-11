@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { createMaintainers, type MaintainersService, type MaintainersState } from './maintainers'
+import { createMaintainers, notesSince, type MaintainersService, type MaintainersState } from './maintainers'
 
 // A fake of what the worker does (mailboxes, the shared course), shared by
 // two maintainers' services, so the decisions are tested without a network.
@@ -85,7 +85,12 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
       case 'sign':
         return { response: `sig-${self.maintainerKey}-${args.request}` }
       case 'review':
-        return { changes: [{ kind: 'changed', path: '/lesson.md' }], length: world.shared.length + 1, sharedLength: world.shared.length }
+        return {
+          changelog: [{ changes: [], cutAt: '', notes: 'Fixed a typo', version: '0.2' }],
+          changes: [{ kind: 'changed', path: '/lesson.md' }],
+          length: world.shared.length + 1,
+          sharedLength: world.shared.length,
+        }
       case 'commit':
         world.commits.push({ first: args.first as boolean, request: args.request as string, responses: args.responses as string[] })
         world.shared = {
@@ -127,6 +132,7 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
     seedOldCode: async () => {},
     removeStaging: async () => {},
     setInterval: () => ({ cancel: () => {} }),
+    createPreviewPath: async (hash: string) => `/previews/${hash}`,
     store: { read: () => state, write: (next) => (state = next) },
   })
   const peer = { landCourse, onShared, op, published, self, service, state: () => state }
@@ -139,7 +145,7 @@ describe('maintainers (SLJ-11)', () => {
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
 
-    expect(await ana.service.invite('course-1')).toEqual({ code: 'invite-pubid0000000000a' })
+    expect(await ana.service.invite('course-1', 'pub-marko')).toEqual({ code: 'invite-pubid0000000000a' })
     await marko.service.accept('invite-pubid0000000000a')
     // Accepting reads the owner's mailbox in the background: wait for it.
     await marko.service.refresh('pubid0000000000a')
@@ -155,7 +161,10 @@ describe('maintainers (SLJ-11)', () => {
     expect(marko.service.listApprovals()).toEqual([
       { courseId: null, from: 'pub-ana', hash: proposal.hash, publicId: 'pubid0000000000a', title: null, version: '0.2' },
     ])
-    expect(await marko.service.review('pubid0000000000a', proposal.hash)).toMatchObject({ version: '0.2' })
+    expect(await marko.service.review('pubid0000000000a', proposal.hash)).toMatchObject({
+      releaseNotes: [{ notes: 'Fixed a typo', version: '0.2' }],
+      version: '0.2',
+    })
 
     // One approval isn't enough: nothing is committed yet.
     await ana.service.refresh('pubid0000000000a')
@@ -183,7 +192,7 @@ describe('maintainers (SLJ-11)', () => {
     const world = createWorld()
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
-    await ana.service.invite('course-1')
+    await ana.service.invite('course-1', 'pub-marko')
     await marko.service.accept('invite-pubid0000000000a')
     // Accepting reads the owner's mailbox in the background: wait for it.
     await marko.service.refresh('pubid0000000000a')
@@ -214,7 +223,7 @@ describe('maintainers (SLJ-11)', () => {
     const world = createWorld()
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
-    await ana.service.invite('course-1')
+    await ana.service.invite('course-1', 'pub-marko')
     await marko.service.accept('invite-pubid0000000000a')
     // Accepting reads the owner's mailbox in the background: wait for it.
     await marko.service.refresh('pubid0000000000a')
@@ -233,7 +242,7 @@ describe('maintainers (SLJ-11)', () => {
     const world = createWorld()
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
-    await ana.service.invite('course-1')
+    await ana.service.invite('course-1', 'pub-marko')
     await marko.service.accept('invite-pubid0000000000a')
     // Accepting reads the owner's mailbox in the background: wait for it.
     await marko.service.refresh('pubid0000000000a')
@@ -247,7 +256,7 @@ describe('maintainers (SLJ-11)', () => {
     const world = createWorld()
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
-    await ana.service.invite('course-1')
+    await ana.service.invite('course-1', 'pub-marko')
     await marko.service.accept('invite-pubid0000000000a')
     await marko.service.refresh('pubid0000000000a')
     const first = await ana.service.startSharing('course-1', 2)
@@ -269,7 +278,7 @@ describe('maintainers (SLJ-11)', () => {
     const world = createWorld()
     const ana = createPeer(world, 'ana', { courseId: 'course-1' })
     const marko = createPeer(world, 'marko')
-    await ana.service.invite('course-1')
+    await ana.service.invite('course-1', 'pub-marko')
     await marko.service.accept('invite-pubid0000000000a')
     await marko.service.refresh('pubid0000000000a')
     const first = await ana.service.startSharing('course-1', 2)
@@ -279,7 +288,7 @@ describe('maintainers (SLJ-11)', () => {
 
     // Marko's new computer joins again with a fresh code, and gets the course.
     const markoAgain = createPeer(world, 'marko')
-    await ana.service.invite('course-1')
+    await ana.service.invite('course-1', 'pub-marko')
     await markoAgain.service.accept('invite-pubid0000000000a')
     await markoAgain.service.refresh('pubid0000000000a')
     expect(markoAgain.landCourse).toHaveBeenCalledWith({ courseId: 'course-1', stagingPath: '/staging', version: '0.2' })
@@ -287,3 +296,21 @@ describe('maintainers (SLJ-11)', () => {
     expect(ana.state().courses.pubid0000000000a.members).toHaveLength(2)
   })
 })
+
+// SLJ-67: a proposal's release notes, as its review page shows them.
+describe('notesSince', () => {
+  const entry = (version: string, notes?: string) => ({ changes: [], cutAt: '', notes, version })
+
+  it('keeps the entries newer than the version online, up to the proposed one, newest first', () => {
+    const changelog = [entry('0.2', 'first'), entry('0.3', 'fix'), entry('0.4', 'new section'), entry('0.5', 'later')]
+    expect(notesSince(changelog, '0.2', '0.4').map((item) => item.version)).toEqual(['0.4', '0.3'])
+  })
+
+  it('keeps everything up to the proposed version for a first version, and drops malformed entries', () => {
+    const changelog = [entry('0.2'), { version: '9.9.9', changes: [] }, { notes: 'no version' }, null, entry('0.3', 'x'.repeat(6000))]
+    const notes = notesSince(changelog, null, '0.3')
+    expect(notes.map((item) => item.version)).toEqual(['0.3', '0.2'])
+    expect(notes[0].notes).toHaveLength(5000)
+  })
+})
+

@@ -11,12 +11,15 @@
 //                                 proposal whose request has that hash
 //   /changes-requested/<hash>.json  "ask for changes", with a note
 //
-// Inviting: the owner's app makes a blind-pairing invite (one code to send:
-// the course's public id, then the invite). The invited maintainer's app answers with
-// their publisher id, maintainer key and mailbox; the owner's app confirms
-// with its own mailbox's key. Each then follows the other's mailbox. Nothing
-// secret is exchanged: the invite code is what lets someone in, so it's sent
-// to one person, privately.
+// Inviting (SLJ-67): an invite is for one publisher. The owner's app makes a
+// blind-pairing invite tied to the publisher id the owner entered (one code to
+// send: the course's public id, then the invite). The invited maintainer's app
+// answers with their publisher id, maintainer key and mailbox, **signed with
+// the key behind that publisher id** (derived from their identity), so the
+// owner's app knows the keys are theirs. Anyone else using the code is refused,
+// and the code works once (the same publisher may retry) and for a week. The
+// owner's app confirms with its own mailbox's key; each then follows the
+// other's mailbox.
 //
 // No Electron or Bare specifics, so vitest runs it (maintainers.test.mjs).
 
@@ -42,6 +45,10 @@ const SYNC_TIMEOUT_MS = 15_000
 // while), this many times.
 const JOIN_ATTEMPT_MS = 10_000
 const JOIN_ATTEMPTS = 6
+// How long an invite code works.
+const INVITE_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000
+// What a joining maintainer signs: who they are, for which invite and course.
+const JOIN_SIGNATURE_CONTEXT = Buffer.from('matko-maintainer-join')
 
 class MaintainersError extends Error {
   constructor(code, message) {
@@ -220,10 +227,18 @@ function createMaintainers(context) {
 
   // The owner: a code that lets one person join as a maintainer. Their answer
   // arrives through `context.onJoined`.
-  async function createInvite(publicId) {
+  // `invitee`: the publisher id of the one person this invite is for.
+  async function createInvite(publicId, invitee) {
+    let inviteePublicKey
+    try {
+      inviteePublicKey = IdEncoding.decode(invitee)
+    } catch {
+      throw new MaintainersError('INVALID_PUBLISHER', "That isn't a publisher id")
+    }
     const mailbox = await openMailbox(publicId)
-    const { id, invite, publicKey } = BlindPairing.createInvite(mailbox.key)
-    invites.set(id.toString('hex'), { publicId, publicKey })
+    const expires = Date.now() + INVITE_LIFETIME_MS
+    const { id, invite, publicKey } = BlindPairing.createInvite(mailbox.key, { expires })
+    invites.set(id.toString('hex'), { expires, inviteePublicKey, publicId, publicKey, usedBy: null })
 
     if (!members.has(publicId)) {
       const member = context.pairing.addMember({
@@ -236,14 +251,26 @@ function createMaintainers(context) {
             return
           }
           request.open(record.publicKey)
+          if (Date.now() > record.expires) {
+            request.deny({ status: 3 }) // expired
+            return
+          }
+          // Only the invited publisher, proven by their signature; once (the
+          // same publisher may come again, e.g. after a timed-out attempt).
           const joined = parseMember(request.userData)
-          if (!joined) {
+          if (!joined || !verifyJoin(joined, request.inviteId, publicId, record.inviteePublicKey)) {
             request.deny({ status: 1 })
             return
           }
+          if (record.usedBy && record.usedBy !== joined.publisherId) {
+            request.deny({ status: 2 }) // already used
+            return
+          }
+          record.usedBy = joined.publisherId
           request.confirm({ key: mailbox.key })
           void followMailbox(joined.mailboxKey).catch(() => {})
-          context.onJoined?.({ member: joined, publicId })
+          const { signature: _signature, ...member } = joined
+          context.onJoined?.({ member, publicId })
         },
       })
       members.set(publicId, member)
@@ -261,17 +288,27 @@ function createMaintainers(context) {
   async function acceptInvite(code) {
     let invite
     let publicId
+    let inviteId
     try {
       const bytes = z32.decode(code.trim())
       publicId = bytes.subarray(0, 16).toString('ascii')
       invite = bytes.subarray(16)
       assertPublicId(publicId)
-      BlindPairing.decodeInvite(invite)
+      inviteId = BlindPairing.decodeInvite(invite).id
     } catch {
       throw new MaintainersError('INVALID_INVITE', "This isn't a maintainer invite")
     }
 
-    const userData = Buffer.from(JSON.stringify(await self(publicId)))
+    // Who we are, signed with the key behind our publisher id.
+    const me = await self(publicId)
+    const creator = creatorKeyPair(identity())
+    let signature
+    try {
+      signature = crypto.sign(joinMessage(inviteId, publicId, me), creator.secretKey)
+    } finally {
+      creator.secretKey.fill(0)
+    }
+    const userData = Buffer.from(JSON.stringify({ ...me, signature: signature.toString('hex') }))
     let result = null
     for (let attempt = 0; attempt < JOIN_ATTEMPTS && !result; attempt++) {
       const candidate = context.pairing.addCandidate({ invite, onadd: () => {}, userData })
@@ -284,8 +321,10 @@ function createMaintainers(context) {
           JOIN_ATTEMPT_MS,
         )
       } catch (error) {
-        // Refused (a used or unknown invite): don't keep trying.
-        if (error?.message !== 'Timed out') throw error
+        // Refused (for someone else, already used, or expired): don't keep trying.
+        if (error?.message !== 'Timed out') {
+          throw new MaintainersError('INVITE_REFUSED', "This invite can't be used: it's for someone else, already used, or expired")
+        }
       } finally {
         await candidate.close()
       }
@@ -342,10 +381,31 @@ function parseMember(userData) {
       mailboxKey: IdEncoding.normalize(data.mailboxKey),
       maintainerKey: IdEncoding.normalize(data.maintainerKey),
       publisherId: IdEncoding.normalize(data.publisherId),
+      signature: typeof data.signature === 'string' ? Buffer.from(data.signature, 'hex') : null,
     }
   } catch {
     return null
   }
+}
+
+// What a joining maintainer signs (with the key behind their publisher id):
+// the invite they use, the course, and the keys they bring.
+function joinMessage(inviteId, publicId, member) {
+  return crypto.hash([
+    JOIN_SIGNATURE_CONTEXT,
+    Buffer.from(inviteId),
+    Buffer.from(publicId, 'ascii'),
+    IdEncoding.decode(member.publisherId),
+    IdEncoding.decode(member.maintainerKey),
+    IdEncoding.decode(member.mailboxKey),
+  ])
+}
+
+// The joiner is the invited publisher, and signed for these keys.
+function verifyJoin(member, inviteId, publicId, inviteePublicKey) {
+  if (!member.signature || member.signature.length !== 64) return false
+  if (!IdEncoding.decode(member.publisherId).equals(inviteePublicKey)) return false
+  return crypto.verify(joinMessage(inviteId, publicId, member), member.signature, inviteePublicKey)
 }
 
 // The hash a request is filed under in the mailboxes.

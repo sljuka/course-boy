@@ -25,7 +25,9 @@ type Group = { courses: CourseSummary[]; key: "published" | "local" };
 export function MyCoursesList({ query, view }: { query: string; view: CourseListView }) {
   const { t } = useTranslation();
   const { locale } = useAppState();
-  const { data: courses = [], isLoading } = useCoursesQuery(locale, { throwOnError: true });
+  // Watched: a course you maintain with others lands here on its own once its
+  // first shared version is approved (SLJ-11).
+  const { data: courses = [], isLoading } = useCoursesQuery(locale, { throwOnError: true, watch: true });
 
   const groups = useMemo<Group[]>(() => {
     const normalizedQuery = query.trim().toLowerCase();

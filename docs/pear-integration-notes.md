@@ -1046,3 +1046,33 @@ by the end. It was also real app bugs, which only showed up there:
 - **A mailbox read could hang** despite per-call timeouts. Each read is now bounded as
   a whole, and every shared course is read again every 20 s, so a missed or failed read
   doesn't leave a course waiting for a change that never comes.
+
+### Reviewing a proposed version (SLJ-67, 2026-10-11)
+
+- **Release notes:** the review page shows the proposal's release notes since the
+  version online now: the author's notes, and the changes in course terms. They come
+  from the version's own `changelog.json` in the proposal, as its cut wrote them
+  (`notesSince` in `electron/maintainers.ts`). The proposer's app writes them, so the
+  list of changed files (folded below) stays the check.
+- **"Preview as student"** downloads the proposed version into the profile's
+  `previews/<hash>/<course id>/`. It starts from a hardlinked copy of the version this
+  device has, so only files whose `version-meta.json` hash differs are fetched (worker
+  op `downloadProposal`).
+- **The throwaway course id:** main gives the preview a temporary id (`previews` in
+  `openProfileServices`). `courses:get` and the `matko-asset://` protocol read that id
+  from the preview's folder, so the student course page and player work unchanged.
+- **Kept apart from real courses:** the details carry a `preview` marker, so the course
+  page shows a banner and a way back to the review instead of sharing, versions and
+  the side panel. Progress and stars aren't recorded for preview ids.
+- **Cleanup:** previews are deleted when the proposal is approved or changes are asked
+  for, and all of them at every profile open.
+- **IPC:** `maintainers:preview` (`window.maintainers.preview`).
+- **Invites are for one publisher:**
+  - The owner enters the invitee's publisher id (shown with a copy button in Settings →
+    Sharing). The joining app signs its answer with the key behind that id
+    (`creatorKeyPair`), covering the invite id, the course, and the keys it brings.
+  - The owner's app checks that signature (`verifyJoin` in `workers/maintainers.cjs`), so
+    anyone else with the code is refused, and the keys are proven to be that
+    publisher's.
+  - A code works once (the same publisher may retry) and for a week.
+  - `maintainers:invite` now takes `{ courseId, publisherId }`.

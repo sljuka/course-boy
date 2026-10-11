@@ -1,23 +1,32 @@
-import { CheckCheck, FileMinus, FilePen, FilePlus } from "lucide-react";
+import { CheckCheck, Eye, FileMinus, FilePen, FilePlus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { VersionNotes } from "@/components/course-details/version-notes";
 import { Page } from "@/components/page/page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ListRow, ListRowMeta } from "@/components/ui/list-row";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { useApproveMutation, useProposalReviewQuery, useRequestChangesMutation } from "@/lib/maintainers-queries";
+import {
+  useApproveMutation,
+  usePreviewProposalMutation,
+  useProposalReviewQuery,
+  useRequestChangesMutation,
+} from "@/lib/maintainers-queries";
 
 const CHANGE_ICONS = { added: FilePlus, changed: FilePen, removed: FileMinus } as const;
 
-// One proposed version's review (SLJ-11): which files it adds, changes or
-// removes compared with the course online now (only those were downloaded),
-// then Approve, or Ask for changes with a note to the maintainer who
+// One proposed version's review (SLJ-11, SLJ-67): its release notes since the
+// version online now (the author's notes and what changed, in course terms,
+// as the cut wrote them), then the files it adds, changes or removes (only
+// those were downloaded; the check, since the notes come from the proposer's
+// app), then Approve, or Ask for changes with a note to the maintainer who
 // proposed it. Approving is checked again: it must build on the course's
 // latest version, and you never approve two versions for the same spot.
 export function ApprovalReviewPage() {
@@ -27,6 +36,7 @@ export function ApprovalReviewPage() {
   const { data: review, error, isLoading } = useProposalReviewQuery(publicId, hash);
   const approveMutation = useApproveMutation();
   const changesMutation = useRequestChangesMutation();
+  const previewMutation = usePreviewProposalMutation();
   const [note, setNote] = useState("");
   const isBusy = approveMutation.isPending || changesMutation.isPending;
   const done = () => navigate("/approvals");
@@ -54,23 +64,59 @@ export function ApprovalReviewPage() {
           </Alert>
         )}
         {review && (
-          <div className="flex flex-col" data-testid="approval-changes">
-            {review.changes.map((change) => {
-              const Icon = CHANGE_ICONS[change.kind];
-              return (
-                <ListRow className="h-8 gap-2" key={change.path}>
-                  <Icon aria-hidden="true" className="size-4 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">{change.path}</span>
-                  <ListRowMeta>{t(`maintainers.change.${change.kind}`)}</ListRowMeta>
-                </ListRow>
-              );
-            })}
-            {review.changes.length === 0 && <CardDescription>{t("maintainers.noChanges")}</CardDescription>}
+          <div className="flex flex-col gap-4" data-testid="approval-release-notes">
+            {review.releaseNotes.map((entry) => (
+              <div className="flex flex-col gap-2" key={entry.version}>
+                <CardTitle>{t("maintainers.versionTitle", { version: entry.version })}</CardTitle>
+                <VersionNotes entry={entry} />
+              </div>
+            ))}
+            {review.releaseNotes.length === 0 && <CardDescription>{t("maintainers.noReleaseNotes")}</CardDescription>}
           </div>
         )}
-        {(approveMutation.error || changesMutation.error) && (
+        {review && (
+          <Collapsible>
+            <CollapsibleTrigger data-testid="approval-files">
+              {t("maintainers.filesChanged", { count: review.changes.length })}
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="flex flex-col" data-testid="approval-changes">
+                {review.changes.map((change) => {
+                  const Icon = CHANGE_ICONS[change.kind];
+                  return (
+                    <ListRow className="h-8 gap-2" key={change.path}>
+                      <Icon aria-hidden="true" className="size-4 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{change.path}</span>
+                      <ListRowMeta>{t(`maintainers.change.${change.kind}`)}</ListRowMeta>
+                    </ListRow>
+                  );
+                })}
+                {review.changes.length === 0 && <CardDescription>{t("maintainers.noChanges")}</CardDescription>}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+        {review && publicId && hash && (
+          <div>
+            {/* As students would see it, before approving (only changed files are downloaded). */}
+            <Button
+              data-testid="preview-version"
+              disabled={previewMutation.isPending}
+              onClick={() =>
+                previewMutation.mutate({ hash, publicId }, { onSuccess: ({ courseId }) => navigate(`/courses/${courseId}`) })
+              }
+              variant="secondary"
+            >
+              {previewMutation.isPending ? <Spinner aria-hidden="true" /> : <Eye aria-hidden="true" />}
+              {t("maintainers.previewButton")}
+            </Button>
+          </div>
+        )}
+        {(approveMutation.error || changesMutation.error || previewMutation.error) && (
           <Alert variant="destructive">
-            <AlertDescription>{(approveMutation.error ?? changesMutation.error)?.message}</AlertDescription>
+            <AlertDescription>
+              {(approveMutation.error ?? changesMutation.error ?? previewMutation.error)?.message}
+            </AlertDescription>
           </Alert>
         )}
         {review && publicId && hash && (

@@ -235,8 +235,9 @@ contextBridge.exposeInMainWorld('progress', {
 
 // Courses maintained by several publishers (SLJ-11).
 contextBridge.exposeInMainWorld('maintainers', {
-  invite(courseId: string) {
-    return ipcRenderer.invoke('maintainers:invite', courseId) as Promise<{ code: string }>
+  // `publisherId`: the one person the invite is for (SLJ-67).
+  invite(input: { courseId: string; publisherId: string }) {
+    return ipcRenderer.invoke('maintainers:invite', input) as Promise<{ code: string }>
   },
   accept(code: string) {
     return ipcRenderer.invoke('maintainers:accept', code) as Promise<{ publicId: string }>
@@ -255,6 +256,9 @@ contextBridge.exposeInMainWorld('maintainers', {
   },
   approve(input: { hash: string; publicId: string }) {
     return ipcRenderer.invoke('maintainers:approve', input) as Promise<void>
+  },
+  preview(input: { hash: string; publicId: string }) {
+    return ipcRenderer.invoke('maintainers:preview', input) as Promise<{ courseId: string }>
   },
   requestChanges(input: { hash: string; note: string; publicId: string }) {
     return ipcRenderer.invoke('maintainers:request-changes', input) as Promise<void>

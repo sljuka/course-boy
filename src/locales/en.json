@@ -795,7 +795,8 @@
     "gateTitle": "Enter your password",
     "gateDescription": "This profile publishes courses in your name, so it asks for your password when it opens. Without it you can still learn, make and print courses, and your courses stay online. Only publishing waits.",
     "gateForgotten": "Forgot it? It can't be recovered. Open without publishing to keep learning, making and printing courses.",
-    "openWithoutPublishing": "Open without publishing"
+    "openWithoutPublishing": "Open without publishing",
+    "yourPublisherId": "Your publisher id (for invites to maintain a course)"
   },
   "identityRestore": {
     "title": "Restore your publishing identity",
@@ -997,7 +998,7 @@
     "invite": "Invite a maintainer",
     "inviteBack": "Invite a maintainer back (on a new computer)",
     "inviteTitle": "Invite a maintainer",
-    "inviteDescription": "Send this code to one person, privately: it's all they need to join. They enter it under My courses → Join as a maintainer.",
+    "inviteDescription": "Send this code to them. Only they can use it (their app proves who they are), once, within a week. They enter it under My courses → Join as a maintainer.",
     "inviteCodeLabel": "Invite code",
     "copyCode": "Copy code",
     "inviteWaiting": "Once they join, they appear in this panel.",
@@ -1029,7 +1030,7 @@
     "versionTitle": "Version {{version}}",
     "reviewTitle": "Review version {{version}}",
     "reviewLoading": "Loading the proposed version…",
-    "reviewDescription": "What this version changes compared with the course online now. Only the changed files were downloaded.",
+    "reviewDescription": "What this version changes compared with the course online now, as its author's app describes it. The list of files below is the check: only those were downloaded.",
     "change": {
       "added": "Added",
       "changed": "Changed",
@@ -1043,6 +1044,15 @@
     "sentTitle": "Version {{version}} sent for approval",
     "sentDescription": "It goes online once {{count}} of you have approved it (you already have). Students then get it as an update, with the course's code below.",
     "askApproval": "Ask for approval of {{version}}",
-    "askApprovalShort": "Ask for approval"
+    "askApprovalShort": "Ask for approval",
+    "noReleaseNotes": "This version came without release notes. Check the files below.",
+    "filesChanged": "Files changed: {{count}}",
+    "previewButton": "Preview as student",
+    "previewBannerTitle": "Preview of version {{version}}",
+    "previewBannerDescription": "This is the proposed version as students will see it once it's approved. It isn't on this device as a course, and nothing you do here is saved.",
+    "previewBack": "Back to the review",
+    "invitePublisherDescription": "Enter the publisher id of the teacher you're inviting: they find it under Settings → Sharing. Only they can use the invite.",
+    "inviteePublisherId": "Their publisher id",
+    "createInvite": "Create invite"
   }
 }

@@ -2,6 +2,7 @@ import { FileKey, FolderOpen, KeyRound } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { CopyableCode } from "@/components/copyable-code";
 import { IdentitySafetyTips } from "@/components/identity/identity-safety-tips";
 import { RestoreIdentityDialog } from "@/components/identity/restore-identity-dialog";
 import { RestoredCoursesList } from "@/components/identity/restored-courses-list";
@@ -33,6 +34,10 @@ export function PublisherIdentitySettings() {
           <FieldTitle>{t("publisherIdentity.settingsTitle")}</FieldTitle>
           <FieldDescription>{t("publisherIdentity.settingsDescription")}</FieldDescription>
           <FieldDescription>{t("publisherIdentity.fileNote")}</FieldDescription>
+          {/* What another teacher needs to invite you to maintain a course (SLJ-67). */}
+          {status.publisherId && (
+            <CopyableCode label={t("publisherIdentity.yourPublisherId")} testId="own-publisher-id" value={status.publisherId} />
+          )}
           <div>
             <Button
               data-testid="reveal-identity-file"

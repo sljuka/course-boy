@@ -356,7 +356,8 @@ the original owner as `publisher.id`. How it fits together:
   owner, `/proposal.json`, `/approvals/<hash>.json`, `/changes-requested/<hash>.json`) that
   the others follow.
 - **Invites:** `blind-pairing`. The code is the course's public id followed by the
-  invite.
+  invite. It's for one publisher id: the joiner signs its answer with the key behind
+  that id, and the owner's app refuses anyone else. It works once, for a week (SLJ-67).
 - **Publishing:** a Publish of a shared course is a proposal.
 - **One approval per spot:** an app never approves two versions for the same spot in
   the course's history (`approvedAt`).

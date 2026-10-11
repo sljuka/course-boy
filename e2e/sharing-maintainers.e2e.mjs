@@ -55,7 +55,11 @@ describe('a course maintained by two teachers', () => {
     await ana.evaluate((id) => {
       location.hash = `#/drafts/${id}`
     }, ids.courseId)
+    // The invite is for Marko alone: his publisher id first (SLJ-67).
+    const markoPublisherId = await marko.evaluate(() => window.sharing.getCreatorKey())
     await ana.click('[data-testid="invite-maintainer"]')
+    await ana.fill('[data-testid="maintainer-invitee"]', markoPublisherId)
+    await ana.click('[data-testid="create-maintainer-invite"]')
     await waitFor(ana, () => Boolean(document.querySelector('[data-testid="maintainer-invite-code"]')?.value))
     const code = await ana.inputValue('[data-testid="maintainer-invite-code"]')
     await ana.getByRole('button', { name: 'Done' }).click()
@@ -94,8 +98,31 @@ describe('a course maintained by two teachers', () => {
     // Named by the course's title, though the course isn't on Marko's computer yet.
     await waitForText(marko, 'E2E Co-maintained Course')
     await marko.locator('[data-testid="approval"] a').first().click()
+    // Its release notes first; the files it changes folded below, opened to check.
+    await marko.locator('[data-testid="approval-release-notes"]').waitFor({ timeout: 30_000 })
+    await marko.click('[data-testid="approval-files"]')
     await waitFor(marko, () => document.querySelectorAll('[data-testid="approval-changes"] > *').length > 0, { timeout: 30_000 })
     expect(await marko.locator('[data-testid="approval-changes"]').innerText()).not.toContain('version-meta.json')
+
+    // Preview as student (SLJ-67): the proposed version, read like a course,
+    // without landing it; nothing recorded; back to the review.
+    await marko.click('[data-testid="preview-version"]')
+    await marko.locator('[data-testid="course-preview-banner"]').waitFor({ timeout: 30_000 })
+    const previewId = await marko.evaluate(() => location.hash.match(/#\/courses\/([^/?]+)/)?.[1])
+    expect(previewId).toBeTruthy()
+    expect(previewId).not.toBe(ids.courseId)
+    await marko.click('[data-testid="course-start"]')
+    await waitForText(marko, 'First version.', { timeout: 30_000 })
+    // Still the preview: the player stays under its id.
+    expect(await marko.evaluate(() => location.hash)).toContain(previewId)
+    const markoProgress = await marko.evaluate(() => window.progress.get())
+    expect(markoProgress.courses[previewId]).toBeUndefined()
+    expect((await marko.evaluate(() => window.courses.list('en'))).some((course) => course.id === ids.courseId)).toBe(false)
+    await marko.evaluate((id) => {
+      location.hash = `#/courses/${id}`
+    }, previewId)
+    await marko.click('[data-testid="preview-back"]')
+    await marko.locator('[data-testid="approve-version"]').waitFor({ timeout: 30_000 })
     await marko.click('[data-testid="approve-version"]')
     await waitForText(marko, 'Nothing is waiting for your approval.', { timeout: 30_000 })
 
@@ -197,7 +224,11 @@ describe('a course maintained by two teachers', () => {
     await close('coMaintainer')
     const ana = apps.coOwnerNew.page
     const marko = await restoreOn('coMaintainerNew', 'co-maintainer.matko-identity')
-    const { code } = await ana.evaluate((courseId) => window.maintainers.invite(courseId), ids.courseId)
+    const markoPublisherId = await marko.evaluate(() => window.sharing.getCreatorKey())
+    const { code } = await ana.evaluate((input) => window.maintainers.invite(input), {
+      courseId: ids.courseId,
+      publisherId: markoPublisherId,
+    })
     await marko.evaluate((code) => window.maintainers.accept(code), code)
     await expect
       .poll(() => marko.evaluate((id) => window.maintainers.get(id).then((info) => info?.sharedKey ?? null), ids.courseId), {

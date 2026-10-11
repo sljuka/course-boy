@@ -795,7 +795,8 @@
     "gateTitle": "Unesi svoju lozinku",
     "gateDescription": "Ovaj profil objavljuje kurseve u tvoje ime, pa traži tvoju lozinku kad se otvori. I bez nje možeš da učiš, praviš i štampaš kurseve, a tvoji kursevi ostaju na mreži. Čeka samo objavljivanje.",
     "gateForgotten": "Zaboravljena lozinka? Ne može da se povrati. Otvori bez objavljivanja i nastavi da učiš, praviš i štampaš kurseve.",
-    "openWithoutPublishing": "Otvori bez objavljivanja"
+    "openWithoutPublishing": "Otvori bez objavljivanja",
+    "yourPublisherId": "Tvoj ID izdavača (za pozive za održavanje kursa)"
   },
   "identityRestore": {
     "title": "Vrati svoj identitet izdavača",
@@ -997,7 +998,7 @@
     "invite": "Pozovi osobu da održava kurs",
     "inviteBack": "Ponovo pozovi osobu koja održava kurs (na novom računaru)",
     "inviteTitle": "Poziv za održavanje kursa",
-    "inviteDescription": "Pošalji ovaj kod jednoj osobi, privatno: to je sve što joj treba da se pridruži. Unosi ga u Mojim kursevima → Pridruži se održavanju.",
+    "inviteDescription": "Pošalji im ovaj kod. Samo ta osoba može da ga iskoristi (njena aplikacija dokazuje ko je), jednom, u roku od nedelju dana. Unosi ga u Mojim kursevima → Pridruži se održavanju.",
     "inviteCodeLabel": "Kod poziva",
     "copyCode": "Kopiraj kod",
     "inviteWaiting": "Kada se pridruži, pojaviće se u ovom panelu.",
@@ -1029,7 +1030,7 @@
     "versionTitle": "Verzija {{version}}",
     "reviewTitle": "Pregled verzije {{version}}",
     "reviewLoading": "Učitavanje predložene verzije…",
-    "reviewDescription": "Šta ova verzija menja u odnosu na kurs koji je sada na mreži. Preuzete su samo izmenjene datoteke.",
+    "reviewDescription": "Šta ova verzija menja u odnosu na kurs koji je sada na mreži, kako to opisuje aplikacija autora. Spisak datoteka ispod je provera: preuzete su samo one.",
     "change": {
       "added": "Dodato",
       "changed": "Izmenjeno",
@@ -1043,6 +1044,15 @@
     "sentTitle": "Verzija {{version}} je poslata na odobrenje",
     "sentDescription": "Ide na mrežu kada je odobri {{count}} od vas (tvoje odobrenje je već tu). Učenici je onda dobijaju kao ažuriranje, sa kodom kursa ispod.",
     "askApproval": "Zatraži odobrenje za {{version}}",
-    "askApprovalShort": "Zatraži odobrenje"
+    "askApprovalShort": "Zatraži odobrenje",
+    "noReleaseNotes": "Ova verzija je stigla bez napomena o izdanju. Proveri datoteke ispod.",
+    "filesChanged": "Izmenjenih datoteka: {{count}}",
+    "previewButton": "Pregledaj kao učenik ili učenica",
+    "previewBannerTitle": "Pregled verzije {{version}}",
+    "previewBannerDescription": "Ovako će učenici videti predloženu verziju kada se odobri. Nije na ovom uređaju kao kurs, i ništa što ovde radiš se ne čuva.",
+    "previewBack": "Nazad na pregled izmena",
+    "invitePublisherDescription": "Unesi ID izdavača osobe koju pozivaš: nalazi ga u Podešavanja → Deljenje. Samo ta osoba može da iskoristi poziv.",
+    "inviteePublisherId": "Njihov ID izdavača",
+    "createInvite": "Napravi poziv"
   }
 }

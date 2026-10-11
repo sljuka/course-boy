@@ -21,7 +21,8 @@
 //
 // No Electron dependency: unit-tested in maintainers.test.ts.
 
-import { compareCourseVersions, parseCourseVersion } from '../src/lib/course-versioning'
+import type { CourseChangelogEntry } from '../src/lib/course-package'
+import { compareCourseVersions, isCourseVersion, parseCourseVersion } from '../src/lib/course-versioning'
 import type { MaintainerSelf, MailboxContents, ProposalChange, SharedCourseSpecInput } from './bare-worker'
 
 export type Member = MaintainerSelf
@@ -87,8 +88,9 @@ type Ops = {
     { first: boolean; proposalKey: string; request: string; responses: string[]; spec: SharedCourseSpecInput },
     { sharedKey: string },
   ]
-  createInvite: [{ publicId: string }, { code: string }]
+  createInvite: [{ invitee: string; publicId: string }, { code: string }]
   downloadShared: [{ spec: SharedCourseSpecInput; stagingPath: string }, { courseId: string; version: string }]
+  downloadProposal: [{ length: number; proposalKey: string; stagingPath: string }, { courseId: string; version: string }]
   dropProposal: [{ proposalKey: string }, unknown]
   followMailbox: [{ key: string }, unknown]
   moveNotice: [{ courseId: string; publicId: string; sharedKey: string }, unknown]
@@ -103,7 +105,7 @@ type Ops = {
   ]
   review: [
     { proposalKey: string; request: string; spec: SharedCourseSpecInput },
-    { changes: ProposalChange[]; length: number; sharedLength: number },
+    { changelog: unknown[]; changes: ProposalChange[]; length: number; sharedLength: number },
   ]
   seedShared: [{ spec: SharedCourseSpecInput }, { courseId: string | null; sharedKey: string; version: string | null }]
   self: [{ publicId: string }, MaintainerSelf]
@@ -133,6 +135,10 @@ export type MaintainersDeps = {
   // The course is online at `sharedKey` now: share it from there.
   onShared(courseId: string): void
   setInterval?: (callback: () => void, delayMs: number) => { cancel(): void }
+  // "Preview as student" (SLJ-67): an empty folder for a proposal's files,
+  // holding a hardlinked copy of `basePath` (the version this device has)
+  // when there is one, so only changed files are downloaded.
+  createPreviewPath(hash: string, basePath: string | null): Promise<string>
   store: { read(): MaintainersState; write(state: MaintainersState): void }
 }
 
@@ -365,9 +371,10 @@ export function createMaintainers(deps: MaintainersDeps) {
   }
 
   return {
-    // The owner: a code that lets one person join as a maintainer. The rule
-    // (how many must approve) is chosen when sharing starts.
-    async invite(courseId: string): Promise<{ code: string }> {
+    // The owner: a code that lets one person join as a maintainer: the
+    // publisher `invitee` (their publisher id), who proves it when joining
+    // (SLJ-67). The rule (how many must approve) is chosen when sharing starts.
+    async invite(courseId: string, invitee: string): Promise<{ code: string }> {
       const published = await deps.publishedCourse(courseId)
       if (!published.publicId) throw new MaintainersError('NOT_PUBLISHED', 'Publish the course before inviting maintainers')
       const publicId = published.publicId
@@ -395,7 +402,7 @@ export function createMaintainers(deps: MaintainersDeps) {
             sharedKey: null,
           })
         }
-        return deps.op('createInvite', { publicId })
+        return deps.op('createInvite', { invitee, publicId })
       })
     },
 
@@ -583,16 +590,41 @@ export function createMaintainers(deps: MaintainersDeps) {
       )
     },
 
-    // What a proposal changes (for its review page).
-    async review(publicId: string, hash: string): Promise<{ changes: ProposalChange[]; version: string }> {
+    // What a proposal changes (for its review page): its release notes since
+    // the version online now (the author's notes and the changes in course
+    // terms, as its cut wrote them), and the files it changes, the check.
+    async review(
+      publicId: string,
+      hash: string,
+    ): Promise<{ changes: ProposalChange[]; releaseNotes: CourseChangelogEntry[]; version: string }> {
       const record = records()[publicId]
       const item = record?.inbox[hash]
       if (!record || !item) throw new MaintainersError('NO_PROPOSAL', 'This proposal is no longer waiting')
-      const { changes } = await deps.op('review', { proposalKey: item.proposalKey, request: item.request, spec: specOf(record) })
+      const spec = specOf(record)
+      const { changelog, changes } = await deps.op('review', { proposalKey: item.proposalKey, request: item.request, spec })
+      const { version: onlineVersion } = await deps.op('seedShared', { spec })
       // The version's bookkeeping (its file hashes, its release notes'
       // history) isn't something to review.
       const content = changes.filter((change) => !BOOKKEEPING_FILES.has(change.path))
-      return { changes: content, version: item.version }
+      return {
+        changes: content,
+        releaseNotes: notesSince(Array.isArray(changelog) ? changelog : [], onlineVersion, item.version),
+        version: item.version,
+      }
+    },
+
+    // "Preview as student" (SLJ-67): the proposed version's files on this
+    // device, in a folder of their own. Returns where, and its course id.
+    async preview(publicId: string, hash: string): Promise<{ courseId: string; path: string; version: string }> {
+      const record = records()[publicId]
+      const item = record?.inbox[hash]
+      if (!record || !item) throw new MaintainersError('NO_PROPOSAL', 'This proposal is no longer waiting')
+      const spec = specOf(record)
+      const { length } = await deps.op('review', { proposalKey: item.proposalKey, request: item.request, spec })
+      const base = record.courseId ? (await deps.publishedCourse(record.courseId)).versionPath : null
+      const stagingPath = await deps.createPreviewPath(hash, base)
+      const downloaded = await deps.op('downloadProposal', { length, proposalKey: item.proposalKey, stagingPath })
+      return { courseId: downloaded.courseId, path: stagingPath, version: downloaded.version }
     },
 
     // Approves a proposal: checked again first (it must build on the
@@ -636,6 +668,32 @@ export function createMaintainers(deps: MaintainersDeps) {
 }
 
 const BOOKKEEPING_FILES = new Set(['/version-meta.json', '/changelog.json'])
+
+// The changelog entries a proposal adds: newer than the version online now (all
+// of them for a first version), up to the proposed one, newest first. Remote
+// data: only well-formed entries, texts capped.
+export function notesSince(changelog: unknown[], onlineVersion: string | null, proposedVersion: string): CourseChangelogEntry[] {
+  const newer = (version: string, than: string) =>
+    compareCourseVersions(parseCourseVersion(version), parseCourseVersion(than)) > 0
+  return changelog
+    .filter((entry): entry is CourseChangelogEntry => {
+      const candidate = entry as Partial<CourseChangelogEntry> | null
+      return (
+        Boolean(candidate) &&
+        isCourseVersion(candidate?.version) &&
+        Array.isArray(candidate?.changes) &&
+        (candidate.notes === undefined || typeof candidate.notes === 'string')
+      )
+    })
+    .filter(
+      (entry) =>
+        isCourseVersion(proposedVersion) &&
+        !newer(entry.version, proposedVersion) &&
+        (!onlineVersion || !isCourseVersion(onlineVersion) || newer(entry.version, onlineVersion)),
+    )
+    .map((entry) => ({ ...entry, notes: entry.notes?.slice(0, 5000) }))
+    .sort((left, right) => compareCourseVersions(parseCourseVersion(right.version), parseCourseVersion(left.version)))
+}
 
 function logFailure(publicId: string) {
   return (error: unknown) => console.error(`[maintainers] ${publicId} failed:`, error)
