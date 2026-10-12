@@ -483,7 +483,8 @@
     "title": "Teacher workspace",
     "favorites": "Favorites",
     "myPrograms": "My programs",
-    "approvals": "Approvals"
+    "approvals": "Approvals",
+    "publishers": "Publishers"
   },
   "testEditor": {
     "tagsTooltip": "Tags are useful for marking exercises. They are used for exercise randomization. Tags can be configured in the course root folder.",
@@ -1093,5 +1094,31 @@
     "reviewChangeTitle": "Review a change of maintainers",
     "reviewChangeDescription": "Who maintains this course, and how many must approve each new version. Approving it as a current maintainer lets the course move; as a new maintainer, you agree to maintain it.",
     "removedNotice": "You no longer maintain this course together with the others: a change approved by them removed you. Your copy stays on this computer."
+  },
+  "publishers": {
+    "title": "Publishers",
+    "description": "People and groups you know by their Publisher ID: the publishers of courses and programs you imported, and the people you maintain courses with. Pick them when you invite someone to maintain a course. Names are only what you call them; they don't prove who someone is.",
+    "add": "Add publisher",
+    "empty": "No publishers yet. They appear as you import courses and maintain courses with others, or add one by hand with their Publisher ID.",
+    "noName": "No name",
+    "addedByYou": "Added by you",
+    "maintainsWithYou": "Maintains {{title}} with you",
+    "importedCourse": "Imported from {{title}}",
+    "importedProgram": "Imported from the program {{title}}",
+    "sourceAndMore": "{{source}} and {{count}} more",
+    "addTitle": "Add a publisher",
+    "addDescription": "Enter their Publisher ID (they find it under Settings → Sharing) and a name to know them by.",
+    "editTitle": "Publisher",
+    "editDescription": "Their Publisher ID, to copy, and the name you know them by.",
+    "publisherId": "Publisher ID",
+    "label": "Name",
+    "labelPlaceholder": "For example: Ana, math department",
+    "labelHint": "Only you see this name. It doesn't prove who they are.",
+    "remove": "Remove",
+    "cancel": "Cancel",
+    "save": "Save",
+    "pickLabel": "From Publishers",
+    "pickPlaceholder": "Choose someone…",
+    "saveAs": "Save to Publishers as (optional)"
   }
 }

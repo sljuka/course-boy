@@ -483,7 +483,8 @@
     "title": "Nastavnički radni prostor",
     "favorites": "Omiljeni",
     "myPrograms": "Moji programi",
-    "approvals": "Odobrenja"
+    "approvals": "Odobrenja",
+    "publishers": "Izdavači"
   },
   "testEditor": {
     "tagsTooltip": "Oznake su korisne za obeležavanje zadataka. Koriste se za nasumičan izbor zadataka. Oznake se podešavaju u korenskom folderu kursa.",
@@ -1093,5 +1094,31 @@
     "reviewChangeTitle": "Pregled promene spiska osoba koje održavaju kurs",
     "reviewChangeDescription": "Ko održava ovaj kurs i koliko vas mora da odobri svaku novu verziju. Ako ga sada održavaš, odobrenjem dozvoljavaš da kurs pređe na novi kod; ako si nova osoba, pristaješ da ga održavaš.",
     "removedNotice": "Više ne održavaš ovaj kurs sa ostalima: promena koju su odobrili te je uklonila. Tvoja kopija ostaje na ovom računaru."
+  },
+  "publishers": {
+    "title": "Izdavači",
+    "description": "Osobe i grupe koje znaš po ID-ju izdavača: izdavači kurseva i programa koje imaš uvezene i osobe sa kojima održavaš kurseve. Izaberi ih kad pozivaš nekog da održava kurs. Ime je samo ono kako ih ti zoveš; ne dokazuje ko su.",
+    "add": "Dodaj izdavača",
+    "empty": "Još nema izdavača. Pojavljuju se kako uvoziš kurseve i održavaš kurseve sa drugima, a možeš i ručno dodati nekog po ID-ju izdavača.",
+    "noName": "Bez imena",
+    "addedByYou": "Dodato ručno",
+    "maintainsWithYou": "Održava {{title}} sa tobom",
+    "importedCourse": "Uvezeno: {{title}}",
+    "importedProgram": "Uvezen program: {{title}}",
+    "sourceAndMore": "{{source}} i još {{count}}",
+    "addTitle": "Dodaj izdavača",
+    "addDescription": "Unesi ID izdavača (nalazi se u Podešavanja → Deljenje) i ime po kojem ćeš ih znati.",
+    "editTitle": "Izdavač",
+    "editDescription": "ID izdavača, za kopiranje, i ime po kojem ih znaš.",
+    "publisherId": "ID izdavača",
+    "label": "Ime",
+    "labelPlaceholder": "Na primer: Ana, aktiv matematike",
+    "labelHint": "Ovo ime vidiš samo ti. Ne dokazuje ko su.",
+    "remove": "Ukloni",
+    "cancel": "Otkaži",
+    "save": "Sačuvaj",
+    "pickLabel": "Iz izdavača",
+    "pickPlaceholder": "Izaberi nekog…",
+    "saveAs": "Sačuvaj među izdavače kao (nije obavezno)"
   }
 }

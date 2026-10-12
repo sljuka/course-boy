@@ -1,6 +1,7 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import type { ApprovalsList, MaintainersInfo, ProposalReview } from '../src/lib/maintainers'
+import type { PublisherEntry } from '../src/lib/publishers'
 import type { PeekCourseResult, ProgramManifest, ProgramSharingInfo, ProgramSummary } from '../src/lib/program-package'
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import type {
@@ -234,6 +235,19 @@ contextBridge.exposeInMainWorld('progress', {
 })
 
 // Courses maintained by several publishers (SLJ-11).
+// Publishers (SLJ-108): the profile's address book of Publisher IDs.
+contextBridge.exposeInMainWorld('publishers', {
+  list(locale: string) {
+    return ipcRenderer.invoke('publishers:list', locale) as Promise<PublisherEntry[]>
+  },
+  save(input: { label: string | null; publisherId: string }) {
+    return ipcRenderer.invoke('publishers:save', input) as Promise<void>
+  },
+  remove(publisherId: string) {
+    return ipcRenderer.invoke('publishers:remove', publisherId) as Promise<void>
+  },
+})
+
 contextBridge.exposeInMainWorld('maintainers', {
   // `publisherId`: the one person the invite is for (SLJ-67).
   invite(input: { courseId: string; publisherId: string }) {

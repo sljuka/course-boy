@@ -1,4 +1,4 @@
-import { BookOpen, Home, Library } from "lucide-react";
+import { BookOpen, Contact, Home, Library } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -38,6 +38,8 @@ const sidebarGroups: readonly {
     items: [
       { href: "/my-courses", icon: BookOpen, id: "myCourses" },
       { href: "/my-programs", icon: Library, id: "myPrograms" },
+      // The address book of Publisher IDs (SLJ-108), for inviting maintainers.
+      { href: "/publishers", icon: Contact, id: "publishers" },
     ],
     label: "teaching",
     roles: ["teacher"],

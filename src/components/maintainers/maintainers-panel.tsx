@@ -13,10 +13,10 @@ import { ListRow, ListRowMeta } from "@/components/ui/list-row";
 import { PanelCard } from "@/components/ui/panel-card";
 import { useCourseVersionHistoryQuery } from "@/lib/course-queries";
 import {
-  shortPublisherId,
   useMaintainersQuery,
   useOwnPublisherIdQuery,
 } from "@/lib/maintainers-queries";
+import { usePublisherName } from "@/lib/publishers-queries";
 import { useRuleText } from "./use-rule-text";
 
 // The course editor's Maintainers panel (SLJ-11): who maintains the course
@@ -49,7 +49,8 @@ export function MaintainersPanel({ courseId, variant }: { courseId: string; vari
   const canInvite = isOwner && isPublished && !isRemoved;
   const inviteLabel = isShared ? t("maintainers.inviteShared") : t("maintainers.invite");
   const pending = info?.pending ?? [];
-  const nameOf = (publisherId: string) => (publisherId === ownId ? t("maintainers.you") : shortPublisherId(publisherId));
+  const publisherName = usePublisherName();
+  const nameOf = (publisherId: string) => (publisherId === ownId ? t("maintainers.you") : publisherName(publisherId));
 
   return (
     <PanelCard
@@ -112,7 +113,7 @@ export function MaintainersPanel({ courseId, variant }: { courseId: string; vari
           Object.entries(info.changesRequested).map(([publisherId, note]) => (
             <Alert data-testid="maintainers-changes-requested" key={publisherId}>
               <AlertDescription>
-                {t("maintainers.changesRequestedBy", { name: shortPublisherId(publisherId), note })}
+                {t("maintainers.changesRequestedBy", { name: nameOf(publisherId), note })}
               </AlertDescription>
             </Alert>
           ))}

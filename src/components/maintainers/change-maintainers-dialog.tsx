@@ -18,7 +18,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import type { MaintainersInfo } from "@/lib/maintainers";
-import { quorumChoices, shortPublisherId, useProposeChangeMutation } from "@/lib/maintainers-queries";
+import { quorumChoices, useProposeChangeMutation } from "@/lib/maintainers-queries";
+import { usePublisherName } from "@/lib/publishers-queries";
 import { useRuleText } from "./use-rule-text";
 
 // Changes who maintains a shared course, or the rule (SLJ-70): pick the
@@ -58,7 +59,8 @@ export function ChangeMaintainersDialog({
   const removed = info.members.filter((member) => !chosen.has(member.publisherId));
   // Under "everyone approves", removing someone needs their approval too.
   const removalNeedsThem = removed.length > 0 && info.quorum === info.members.length;
-  const nameOf = (publisherId: string) => (publisherId === ownId ? t("maintainers.you") : shortPublisherId(publisherId));
+  const publisherName = usePublisherName();
+  const nameOf = (publisherId: string) => (publisherId === ownId ? t("maintainers.you") : publisherName(publisherId));
 
   function toggle(publisherId: string, checked: boolean) {
     setChosen((current) => {

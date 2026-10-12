@@ -60,6 +60,7 @@ describe('launch', () => {
       profiles: Object.keys(window.profiles ?? {}).sort(),
       programs: Object.keys(window.programs ?? {}).sort(),
       progress: Object.keys(window.progress ?? {}).sort(),
+      publishers: Object.keys(window.publishers ?? {}).sort(),
       sharing: Object.keys(window.sharing ?? {}).sort(),
     }))
 
@@ -114,6 +115,7 @@ describe('launch', () => {
       'withdraw',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
+    expect(surface.publishers).toEqual(['list', 'remove', 'save'])
     expect(surface.programs).toEqual(['create', 'get', 'getSharing', 'list', 'markSeen', 'peekCourse', 'publish', 'remove', 'update', 'uploadImage'])
     expect(surface.progress).toEqual(['get', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite', 'setProgramFavorite'])
     expect(surface.profiles).toEqual(['create', 'getRemovalSummary', 'getState', 'open', 'openCoursesFolder', 'removeCurrent', 'switchProfile'])
@@ -239,12 +241,51 @@ describe('sidebar by role', () => {
     await waitFor(harness.page, () => Boolean(document.querySelector('#settings-role-teacher')))
     await harness.page.click('label[for="settings-role-teacher"]')
     await waitFor(harness.page, () => document.querySelectorAll('[data-sidebar=menu-button]').length > 1)
-    expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses', 'My programs'])
+    expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses', 'My programs', 'Publishers'])
     const prefs = await harness.page.evaluate(() => window.preferences.get())
     expect(prefs.role).toBe('teacher')
 
     // Leave the app on Home, where the next suite starts.
     await harness.page.evaluate(() => {
+      location.hash = '#/'
+    })
+  })
+})
+
+// SLJ-108: Publishers, the address book of Publisher IDs.
+describe('publishers', () => {
+  const MILA = 'm'.repeat(52)
+
+  it('adds a publisher by hand, renames it, and removes it', async () => {
+    const page = harness.page
+    await page.evaluate(() => {
+      location.hash = '#/publishers'
+    })
+    await waitForText(page, 'No publishers yet.')
+
+    await page.click('[data-testid="add-publisher"]')
+    await page.fill('[data-testid="publisher-new-id"]', 'not an id')
+    await page.click('[data-testid="publisher-save"]')
+    await waitFor(page, () => document.querySelector('[data-testid="publisher-dialog"] [role="alert"]') !== null)
+    await page.fill('[data-testid="publisher-new-id"]', MILA)
+    await page.fill('[data-testid="publisher-label"]', 'Mila (math)')
+    await page.click('[data-testid="publisher-save"]')
+    await waitFor(page, () => document.querySelector('[data-testid="publisher"]')?.textContent?.includes('Mila (math)'))
+    expect(await page.locator('[data-testid="publisher"]').innerText()).toContain('Added by you')
+
+    // Open it: its id to copy, a new name.
+    await page.locator('[data-testid="publisher"] button').click()
+    expect(await page.locator('[data-testid="publisher-id"]').inputValue()).toBe(MILA)
+    await page.fill('[data-testid="publisher-label"]', 'Mila')
+    await page.click('[data-testid="publisher-save"]')
+    await waitFor(page, () => document.querySelector('[data-testid="publisher"]')?.textContent?.startsWith('Mila'))
+    expect(await page.evaluate(() => window.publishers.list('en'))).toMatchObject([{ label: 'Mila', publisherId: MILA }])
+
+    await page.locator('[data-testid="publisher"] button').click()
+    await page.click('[data-testid="publisher-remove"]')
+    await waitForText(page, 'No publishers yet.')
+
+    await page.evaluate(() => {
       location.hash = '#/'
     })
   })

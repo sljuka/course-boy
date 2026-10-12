@@ -28,6 +28,7 @@ import { HomePage } from "@/pages/home-page";
 import { MyProgramsPage } from "@/pages/my-programs-page";
 import { ApprovalReviewPage } from "@/pages/approval-review-page";
 import { ApprovalsPage } from "@/pages/approvals-page";
+import { PublishersPage } from "@/pages/publishers-page";
 import { ProgramEditorPage } from "@/pages/program-editor-page";
 import { ProgramPage } from "@/pages/program-page";
 import { ProgramThemeScope } from "@/components/programs/program-theme-scope";
@@ -73,6 +74,7 @@ const AppRoutes = () => {
             <Route element={<MyCoursesPage />} path="/my-courses" />
             <Route element={<MyProgramsPage />} path="/my-programs" />
             <Route element={<ApprovalsPage />} path="/approvals" />
+            <Route element={<PublishersPage />} path="/publishers" />
             <Route element={<ApprovalReviewPage />} path="/approvals/:publicId/:hash" />
             <Route element={<ProgramEditorPage />} path="/my-programs/:programId" />
             <Route element={<CourseCreatePage />} path="/courses/new" />

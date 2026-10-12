@@ -5,14 +5,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { StatusIcon } from "@/components/ui/status-icon";
 import type { ApprovalItem } from "@/lib/maintainers";
-import { shortPublisherId } from "@/lib/maintainers-queries";
+import { usePublisherName } from "@/lib/publishers-queries";
 
 // Where a proposed version stands (SLJ-109), on top of its page: its group,
 // who approved it out of how many needed and who hasn't yet, the notes of
 // anyone who asked for changes, and the course once it went online.
 export function ApprovalStatus({ item, ownPublisherId }: { item: ApprovalItem; ownPublisherId: string }) {
   const { t } = useTranslation();
-  const nameOf = (publisherId: string) => (publisherId === ownPublisherId ? t("maintainers.you") : shortPublisherId(publisherId));
+  const publisherName = usePublisherName();
+  const nameOf = (publisherId: string) => (publisherId === ownPublisherId ? t("maintainers.you") : publisherName(publisherId));
   const approved = Math.min(item.approvedBy.length, item.quorum);
 
   return (

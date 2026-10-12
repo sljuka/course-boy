@@ -1180,6 +1180,23 @@ export function createMaintainers(deps: MaintainersDeps) {
 
     refresh: (publicId: string) => serial(publicId, () => refresh(publicId)),
 
+    // Who this profile maintains courses with (Publishers, SLJ-108): every
+    // other maintainer and joined person of each course it still maintains,
+    // with the course's id on this device (when it's here) and title.
+    knownPublishers(): { courseId: string | null; publicId: string; publisherId: string; title: string | null }[] {
+      return Object.values(records())
+        .filter((record) => !record.removed)
+        .flatMap((record) => {
+          const title = record.proposal?.title ?? Object.values(record.proposals ?? {}).find((entry) => entry.title)?.title ?? null
+          return [...record.members, ...(record.pending ?? [])].map((member) => ({
+            courseId: record.courseId,
+            publicId: record.publicId,
+            publisherId: member.publisherId,
+            title,
+          }))
+        })
+    },
+
     // What the course's maintainer panel shows.
     getInfo(courseId: string) {
       const record = recordFor(courseId)

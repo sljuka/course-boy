@@ -5,7 +5,7 @@ import { ListRow, ListRowLink, ListRowMeta } from "@/components/ui/list-row";
 import { StatusIcon } from "@/components/ui/status-icon";
 import { formatShortDate } from "@/lib/format-date";
 import type { ApprovalItem } from "@/lib/maintainers";
-import { shortPublisherId } from "@/lib/maintainers-queries";
+import { usePublisherName } from "@/lib/publishers-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 // One proposed version in Approvals (SLJ-109): its group's glyph (a pie of
@@ -15,7 +15,8 @@ import { useAppState } from "@/lib/use-app-state";
 export function ApprovalRow({ item, ownPublisherId, title }: { item: ApprovalItem; ownPublisherId: string; title: string }) {
   const { t } = useTranslation();
   const { locale } = useAppState();
-  const nameOf = (publisherId: string) => (publisherId === ownPublisherId ? t("maintainers.you") : shortPublisherId(publisherId));
+  const publisherName = usePublisherName();
+  const nameOf = (publisherId: string) => (publisherId === ownPublisherId ? t("maintainers.you") : publisherName(publisherId));
   const approved = Math.min(item.approvedBy.length, item.quorum);
   const date = item.decidedAt ?? item.proposedAt;
 

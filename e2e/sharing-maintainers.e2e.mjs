@@ -166,6 +166,12 @@ describe('a course maintained by two teachers', () => {
       .toBe(sharedKey)
     const markoCourse = (await marko.evaluate(() => window.courses.list('en'))).find((course) => course.id === ids.courseId)
     expect(markoCourse).toMatchObject({ distribution: 'local', title: 'E2E Co-maintained Course' })
+    // SLJ-108: each knows the other in Publishers, from the course they maintain together.
+    const markoId = await marko.evaluate(() => window.sharing.getCreatorKey())
+    const anaPublishers = await ana.evaluate(() => window.publishers.list('en'))
+    expect(anaPublishers.find((entry) => entry.publisherId === markoId)?.sources).toContainEqual(
+      expect.objectContaining({ kind: 'maintainer', title: 'E2E Co-maintained Course' }),
+    )
     await marko.locator('[data-testid="approvals-group-approved"] [data-testid="approval"]').waitFor({ timeout: 30_000 })
     // Its page now says where it stands, with nothing left to answer.
     await marko.locator('[data-testid="approval"] a').first().click()

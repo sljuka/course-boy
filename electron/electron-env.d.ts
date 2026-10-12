@@ -129,6 +129,12 @@ interface Window {
     requestChanges: (input: { hash: string; note: string; publicId: string }) => Promise<void>
     withdraw: (input: { hash: string; publicId: string }) => Promise<void>
   }
+  // Publishers (SLJ-108): the profile's address book of Publisher IDs.
+  publishers: {
+    list: (locale: string) => Promise<import('../src/lib/publishers').PublisherEntry[]>
+    save: (input: { label: string | null; publisherId: string }) => Promise<void>
+    remove: (publisherId: string) => Promise<void>
+  }
   preferences: {
     get: () => Promise<import('../src/lib/preferences').UserPreferences>
     resetOnboarding: () => Promise<import('../src/lib/preferences').UserPreferences>

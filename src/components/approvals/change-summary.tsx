@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useRuleText } from "@/components/maintainers/use-rule-text";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import type { ApprovalItem } from "@/lib/maintainers";
-import { shortPublisherId } from "@/lib/maintainers-queries";
+import { usePublisherName } from "@/lib/publishers-queries";
 
 // What a change of maintainers does (SLJ-70), on its page: who it adds and
 // removes, the rule before and after, and how far the new maintainers are
@@ -12,7 +12,8 @@ export function ChangeSummary({ item, ownPublisherId }: { item: ApprovalItem; ow
   const { t } = useTranslation();
   const ruleText = useRuleText();
   const change = item.change!;
-  const nameOf = (publisherId: string) => (publisherId === ownPublisherId ? t("maintainers.you") : shortPublisherId(publisherId));
+  const publisherName = usePublisherName();
+  const nameOf = (publisherId: string) => (publisherId === ownPublisherId ? t("maintainers.you") : publisherName(publisherId));
   const names = (ids: string[]) => ids.map(nameOf).join(", ");
 
   return (

@@ -352,6 +352,9 @@ the original owner as `publisher.id`. How it fits together:
 - **Decisions:** `electron/maintainers.ts` decides when, with its state in the profile's
   `maintainers.json` electron-store file. The renderer reaches it through
   `window.maintainers` (`maintainers:*` IPC).
+- **Publishers (SLJ-108):** the profile's address book, `electron/publishers.ts`, through
+  `window.publishers` (`publishers:*` IPC). It derives entries from the followed courses
+  and programs and the maintainers state; renaming fields there changes what it lists.
 - **Mailboxes:** each maintainer has a mailbox drive per course (`/members.json` from the
   owner, `/proposal.json`, `/approvals/<hash>.json`, `/changes-requested/<hash>.json`) that
   the others follow. An approval is `{ response, spot }` (the spot since SLJ-109; a new

@@ -1235,3 +1235,56 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   (SLJ-41). A canary test (`workers/shared-course.test.mjs`) fails once Hyperdrive gives
   the file-data core a prologue.
 
+### Old versions' file data, cleared (SLJ-113, 2026-10-12)
+
+- **Why:** a Hyperdrive never edits in place. Replacing a 1 GB video appends the new one,
+  and the old one's blocks stay in the file-data core on every computer holding the
+  drive: the teacher's, and every student's that downloaded it. Nobody needs them:
+  imports and updates fetch only the current version's files, and going back to an
+  earlier version uses the student's own copies (`versions/<v>/`).
+- **What:** `clearOldVersions` (`workers/drive-storage.cjs`) clears the file-data blocks
+  no file of the current version points to. The file index stays whole.
+- **When** (`clearOldVersionsSoon` in `workers/main.cjs`, in the background, bounded to
+  60 s): on **students'** computers, after an update is applied and once per run for
+  every followed drive opened at startup. It works on one version, fixed when it
+  starts (a checkout, and that version's file-data length), so blocks written meanwhile
+  are never touched.
+- **Not on the teacher's computer yet (SLJ-114).** Clearing the drive a course or
+  program is published from broke students' next update in e2e (sharing-restarts,
+  sharing-programs), though the cleared ranges were right and a plain Hyperdrive with
+  the same layout works. So a teacher's own drives still keep their history. Never for
+  shared courses' drives on maintainers' computers (`sharedDrives`) either: they keep
+  their whole history by design.
+- **Needs Hypercore 11.37.2 or later** (updated 2026-10-12, lockfile only). In 11.35.2, `clear` also deletes the tree node of the block right
+  before the cleared range (its sibling check reads `s <= start` instead of
+  `s >= start`). The computer keeps the block's data but can no longer prove it, so a
+  new student can't fetch it. `clearingIsSafe` checks the installed version, and nothing
+  is cleared before 11.37.2. Hyperdrive's own `clear(path)` has the same problem.
+  `workers/drive-storage.test.mjs` covers a teacher-style drive, a student, and a
+  write while clearing.
+
+### Publishers: an address book of Publisher IDs (SLJ-108, 2026-10-12)
+
+- **What:** a "Publishers" page under Teaching. It lists the people and groups the
+  profile knows by their Publisher ID, each with a name (editable), the id (to copy) and
+  why they're there:
+  - "Imported from *course*" or "*program*": the publisher its `source.json` claims;
+  - "Maintains *course* with you": co-maintainers and joined people (SLJ-11, SLJ-70);
+  - "Added by you": entered by hand.
+- **Stored:** `electron/publishers.ts`, in the profile's `publishers.json`. Only what the
+  teacher added is kept: names, hand-entered publishers, and removed ones (`hidden`, so
+  an import doesn't bring them back). The rest is read from the followed courses and
+  programs and the maintainers state each time the list is shown, so imports need no
+  hook. This profile's own Publisher ID is never listed.
+- **Used by:** the Invite dialog (pick from Publishers, or type an id and "Save to
+  Publishers as"), and wherever maintainers are named: the Maintainers panel, Approvals,
+  the version page and the change dialog show the name instead of the short id
+  (`usePublisherName`).
+- **Not verified:** a name is what the teacher typed, and a course's claimed publisher
+  is unverified until SLJ-18. The page says so.
+- **IPC:** a new bridge, `window.publishers` (`list`, `save`, `remove`;
+  `publishers:*`).
+- **Not built:** an author name from the course (that would be a course package format
+  change, so it waits for a decision; SLJ-31's signed publisher profiles fit better), and
+  showing who published each course in a program.
+

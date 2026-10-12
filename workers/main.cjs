@@ -16,6 +16,7 @@ const path = require('bare-path')
 const { isValidCourseId } = require('./course-id.cjs')
 const { movedToKey, unchangedFileKeys, verifySource } = require('./course-source.cjs')
 const { createMaintainers, requestHash } = require('./maintainers.cjs')
+const { clearOldVersions } = require('./drive-storage.cjs')
 const {
   commitProposal,
   createProposal,
@@ -75,6 +76,9 @@ const EVENT_MAINTAINER_JOINED = 101 // must match electron/bare-worker.ts
 const UPDATE_POLL_INTERVAL_MS = 15 * 60_000
 // Reading a remote file waits for a peer that has it; don't wait forever.
 const REMOTE_READ_TIMEOUT_MS = 30_000
+// Clearing old versions' file data (SLJ-113) gives up after this: offline, a
+// part of a followed drive's file index may not be here yet.
+const CLEAR_TIMEOUT_MS = 60_000
 // A finished transfer's last state stays readable this long, so the UI can show
 // its final numbers after the import/update call has returned.
 const FINISHED_TRANSFER_TTL_MS = 60_000
@@ -166,6 +170,24 @@ async function start() {
     const blobs = store.get({ manifest: Hyperdrive.getContentManifest(db.manifest, db.key) })
     await blobs.ready()
     return { close: () => Promise.all([db.close(), blobs.close()]), key: db.key }
+  }
+
+  // Old versions' file data, cleared (SLJ-113, drive-storage.cjs): on
+  // students' computers, after an applied update and once per run for every
+  // followed drive opened at startup. Not on the teacher's computer for now:
+  // clearing the drive a teacher publishes from broke students' next update
+  // in e2e (sharing-restarts, sharing-programs) for a reason not found yet
+  // (SLJ-114). Never for shared courses' drives (`sharedDrives`): maintainers
+  // keep their whole history. In the background and bounded: it only frees
+  // space.
+  const clearedThisRun = new Set()
+  function clearOldVersionsSoon(drive, { oncePerRun = false } = {}) {
+    const hex = drive.key.toString('hex')
+    if (oncePerRun && clearedThisRun.has(hex)) return
+    clearedThisRun.add(hex)
+    withTimeout(clearOldVersions(drive), CLEAR_TIMEOUT_MS, 'CLEAR_TIMEOUT').catch((error) =>
+      console.error('[worker] clearing old versions failed:', error?.message ?? error),
+    )
   }
 
   async function closePublishedDrive(courseId) {
@@ -493,6 +515,7 @@ async function start() {
       const filter = unchanged.size > 0 ? (key) => !unchanged.has(key) : null
       const changedFiles = await mirrorWithProgress(drive, new Localdrive(targetPath, { atomic: true }), transfer, filter)
       finishTransfer(transferId, transfer, 'done')
+      clearOldVersionsSoon(drive)
       return { changedFiles }
     } catch (error) {
       finishTransfer(transferId, transfer, transfer.isCancelled ? 'cancelled' : 'error')
@@ -528,6 +551,7 @@ async function start() {
       .update()
       .then((changed) => changed && notifyDriveChanged(drive))
       .catch(() => {})
+    clearOldVersionsSoon(drive, { oncePerRun: true })
   }
 
   // How many peers this device is connected to for a course it shares: your

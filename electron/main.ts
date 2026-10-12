@@ -140,6 +140,7 @@ import type {
 } from '../src/lib/publisher-identity'
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import { isLocale, type Locale } from '../src/lib/i18n'
+import { createPublishers, isPublisherId, type KnownPublisher, type PublishersState } from './publishers'
 import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
@@ -507,6 +508,34 @@ function openProfileServices(dataDir: string) {
     },
   })
 
+  // Publishers (SLJ-108): the address book. It stores what the teacher added;
+  // the publishers of imported courses and programs, and co-maintainers, are
+  // read from what the app keeps already.
+  const publishersStore = new Store<PublishersState>({ cwd: dataDir, defaults: {}, name: 'publishers' })
+  const publishers = createPublishers({
+    known: async (locale) => {
+      const appLocale = isLocale(locale) ? locale : 'en'
+      const courses = await listCourses(await ensureLocalCoursesRoot(), appLocale)
+      const courseTitle = (courseId: string | null) => courses.find((course) => course.id === courseId)?.title ?? null
+      const programs = await listPrograms(appLocale, () => [])
+      const known: KnownPublisher[] = []
+      for (const [courseId, followed] of Object.entries(courseSharingStore.get('followed') ?? {})) {
+        known.push({ publisherId: followed.publisherId, source: { id: courseId, kind: 'course', title: courseTitle(courseId) ?? courseId } })
+      }
+      for (const [programId, followed] of Object.entries(programSharingStore.get('followed') ?? {})) {
+        const title = programs.find((program) => program.id === programId)?.title ?? programId
+        known.push({ publisherId: followed.publisherId, source: { id: programId, kind: 'program', title } })
+      }
+      for (const member of maintainers.knownPublishers()) {
+        const title = courseTitle(member.courseId) ?? member.title ?? member.publicId
+        known.push({ publisherId: member.publisherId, source: { id: member.publicId, kind: 'maintainer', title } })
+      }
+      return known
+    },
+    ownPublisherId: async () => publisherIdentity.publisherId() ?? '',
+    store: { read: () => publishersStore.store, write: (state) => (publishersStore.store = state) },
+  })
+
   return {
     close() {
       closed = true
@@ -527,6 +556,7 @@ function openProfileServices(dataDir: string) {
     identityRestoreStore,
     preferencesStore,
     publisherIdentity,
+    publishers,
   }
 }
 
@@ -1125,6 +1155,22 @@ ipcMain.handle('courses:publish-version', async (_event, input: PublishCourseVer
 
 ipcMain.handle('sharing:get-creator-key', () => {
   return profile.publisherIdentity.publisherId() ?? ''
+})
+
+// Publishers (SLJ-108): the profile's address book of Publisher IDs.
+ipcMain.handle('publishers:list', (_event, locale: unknown) => profile.publishers.list(typeof locale === 'string' ? locale : 'en'))
+
+ipcMain.handle('publishers:save', (_event, input: { label?: unknown; publisherId?: unknown }) => {
+  const publisherId = typeof input?.publisherId === 'string' ? input.publisherId.trim() : ''
+  if (!isPublisherId(publisherId) || (input.label !== null && typeof input.label !== 'string')) {
+    throw new Error('Invalid publisher')
+  }
+  return profile.publishers.save({ label: input.label, publisherId })
+})
+
+ipcMain.handle('publishers:remove', (_event, publisherId: unknown) => {
+  if (!isPublisherId(publisherId)) throw new Error('Invalid publisher')
+  return profile.publishers.remove(publisherId)
 })
 
 // The publisher identity (SLJ-55): set up with the wizard, unlocked with its
