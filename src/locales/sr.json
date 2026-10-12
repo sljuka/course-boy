@@ -1070,6 +1070,28 @@
       "changes-requested": "Tražene izmene",
       "approved": "Odobreno",
       "replaced": "Zamenjeno"
-    }
+    },
+    "withdraw": "Povuci ovu verziju",
+    "withdrawDescription": "Niko drugi je još nije odobrio, pa je još možeš povući. Onda umesto nje možeš odobriti verziju druge osobe koja održava kurs ili objaviti novu.",
+    "withdrawnDescription": "Verzija je povučena, pa neće ići na mrežu.",
+    "inviteShared": "Pozovi osobu da održava kurs, ili nekog ko se vraća sa novog računara",
+    "inviteSharedWaiting": "Kad se pridruži, pojavljuje se ovde kao pridružena osoba. Održava kurs kad promeniš spisak tako da je dodaš i ta promena bude odobrena.",
+    "joinedPending": "Pridružena, još ne održava kurs",
+    "changeOpen": "Promeni ko održava kurs ili pravilo",
+    "changeTitle": "Promeni ko održava kurs ili pravilo",
+    "changeDescription": "Izaberi ko održava ovaj kurs sa tobom i koliko vas mora da odobri svaku novu verziju.",
+    "changeNeedsTwo": "Kurs koji se održava zajedno treba bar dve osobe.",
+    "changeApprovalNote": "Kurs dobija novi kod kad promena bude odobrena; učenici ga prate sami. Po sadašnjem pravilu ({{rule}}) promenu odobravaju osobe koje sada održavaju kurs, a nove osobe po novom pravilu.",
+    "changeNeedsRemoved": "Po sadašnjem pravilu svi moraju da odobre, pa je potrebno i odobrenje od: {{names}}.",
+    "changeWaiting": "Promena spiska osoba koje održavaju kurs čeka odobrenje",
+    "changeRow": "Promena spiska osoba koje održavaju kurs",
+    "changeAdds": "Dodaje: {{names}}",
+    "changeRemoves": "Uklanja: {{names}}",
+    "changeRule": "Svaka nova verzija traži: {{before}} → {{after}}",
+    "changeNewApproved": "nove osobe: odobrenja {{approved}} od {{quorum}}",
+    "changeMoveNote": "Sam kurs se ne menja. Dobija novi kod, a učenici ga tamo prate sami.",
+    "reviewChangeTitle": "Pregled promene spiska osoba koje održavaju kurs",
+    "reviewChangeDescription": "Ko održava ovaj kurs i koliko vas mora da odobri svaku novu verziju. Ako ga sada održavaš, odobrenjem dozvoljavaš da kurs pređe na novi kod; ako si nova osoba, pristaješ da ga održavaš.",
+    "removedNotice": "Više ne održavaš ovaj kurs sa ostalima: promena koju su odobrili te je uklonila. Tvoja kopija ostaje na ovom računaru."
   }
 }

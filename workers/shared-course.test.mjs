@@ -235,6 +235,69 @@ describe('shared courses (multisig)', () => {
     expect(await proposalState({ request: rival.request, spec, store: marko.store })).toBe('replaced')
   }, 60_000)
 
+  // SLJ-70: a change of maintainers (Mila joins, 2 of 3): the next
+  // generation's shared course gets its first version under the new rule,
+  // then the current one names it, under the current rule.
+  it('moves to the next generation when the maintainers change', async () => {
+    const mila = await makePeer('mila')
+    const signers = [ana, marko, mila].map((peer) => maintainerPublicKey(peer.identity, PUBLIC_ID))
+    const nextSpec = sharedCourseSpec({ generation: 1, publicId: PUBLIC_ID, quorum: 2, signers })
+    // Each generation is a course of its own, even with the same maintainers and rule.
+    const sameRule = sharedCourseSpec({ generation: 1, publicId: PUBLIC_ID, quorum: 2, signers: spec.signers })
+    expect(sharedCourseKey(sameRule).equals(sharedCourseKey(spec))).toBe(false)
+
+    const currentKey = IdEncoding.normalize(sharedCourseKey(spec))
+    const nextKey = IdEncoding.normalize(sharedCourseKey(nextSpec))
+    const versionPath = versionFolder({
+      'assets/pic.bin': asset,
+      'course.json': JSON.stringify({ id: 'course-a', version: '0.3' }),
+      'section/lessons/1.md': '# Lesson one, fixed',
+    })
+    const next = await createProposal({
+      identity: marko.identity,
+      index: 3,
+      source: { driveKey: nextKey, publicId: PUBLIC_ID },
+      spec: nextSpec,
+      store: marko.store,
+      versionPath,
+    })
+    const notice = await createProposal({
+      identity: marko.identity,
+      index: 4,
+      source: { driveKey: currentKey, movedTo: { driveKey: nextKey }, publicId: PUBLIC_ID },
+      spec,
+      store: marko.store,
+      versionPath,
+    })
+    const sign = (peer, request) => signRequest({ identity: peer.identity, publicId: PUBLIC_ID, request })
+    await commitProposal({
+      first: true,
+      proposal: next.drive,
+      request: next.request,
+      responses: [sign(ana, next.request), sign(marko, next.request)],
+      spec: nextSpec,
+      store: marko.store,
+    })
+    await commitProposal({
+      proposal: notice.drive,
+      request: notice.request,
+      responses: [sign(ana, notice.request), sign(marko, notice.request)],
+      spec,
+      store: marko.store,
+    })
+    expect(await proposalState({ request: next.request, spec: nextSpec, store: marko.store })).toBe('online')
+    expect(await proposalState({ request: notice.request, spec, store: marko.store })).toBe('online')
+
+    // The current course names the next; the next holds the course.
+    const current = await openSharedDrive(marko.store, spec)
+    expect(movedToKey((await current.get('/source.json')).toString(), current.key)).toBe(nextKey)
+    await current.close()
+    const moved = await openSharedDrive(marko.store, nextSpec)
+    expect(JSON.parse(await moved.get('/course.json')).version).toBe('0.3')
+    expect(moved.core.manifest.quorum).toBe(2)
+    await moved.close()
+  }, 60_000)
+
   it("refuses to review a proposal that doesn't build on the course's latest version", async () => {
     // Ana's proposal number 1 was made before Marko's version landed for her:
     // she builds it on a store that never saw Marko's version.

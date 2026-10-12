@@ -120,12 +120,14 @@ interface Window {
     invite: (input: { courseId: string; publisherId: string }) => Promise<{ code: string }>
     accept: (code: string) => Promise<{ publicId: string }>
     startSharing: (input: { courseId: string; quorum: number }) => Promise<void>
+    proposeChange: (input: { courseId: string; publisherIds: string[]; quorum: number }) => Promise<void>
     get: (courseId: string) => Promise<import('../src/lib/maintainers').MaintainersInfo | null>
     listApprovals: () => Promise<import('../src/lib/maintainers').ApprovalsList>
     review: (input: { hash: string; publicId: string }) => Promise<import('../src/lib/maintainers').ProposalReview>
     approve: (input: { hash: string; publicId: string }) => Promise<void>
     preview: (input: { hash: string; publicId: string }) => Promise<{ courseId: string }>
     requestChanges: (input: { hash: string; note: string; publicId: string }) => Promise<void>
+    withdraw: (input: { hash: string; publicId: string }) => Promise<void>
   }
   preferences: {
     get: () => Promise<import('../src/lib/preferences').UserPreferences>

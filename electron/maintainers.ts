@@ -28,7 +28,21 @@ import type { MaintainerSelf, MailboxContents, ProposalChange, SharedCourseSpecI
 
 export type Member = MaintainerSelf
 
+// A change of the course's maintainers or rule (SLJ-70): another move, to
+// the next generation's shared course (a new code). Its proposal carries two
+// requests: the moved notice for the current shared course (the proposal's
+// own `request`, approved under the current rule), and `next`, the new shared
+// course's first version (approved under the new rule, by the new
+// maintainers). The owner commits both once each rule is met.
+export type MaintainersChange = {
+  generation: number
+  members: Member[]
+  next: { hash: string; proposalKey: string; request: string }
+  quorum: number
+}
+
 export type SharedProposal = {
+  change?: MaintainersChange
   first: boolean
   // The course's title in its default language, for others' approval lists
   // (the course may not be on their computer yet).
@@ -44,6 +58,10 @@ export type SharedProposal = {
 export type ProposalRecord = {
   // Publisher ids of the maintainers who approved it (its proposer too).
   approvedBy: string[]
+  // A change of maintainers (SLJ-70): who of the new ones approved the next
+  // shared course's first version.
+  approvedNextBy?: string[]
+  change?: MaintainersChange
   // Notes asking for changes, by publisher id.
   changesRequested: Record<string, string>
   // When it went online or was replaced (ms), null while waiting.
@@ -52,6 +70,8 @@ export type ProposalRecord = {
   from: string
   hash: string
   mailboxKey: string
+  // The shared course's generation it's for (SLJ-70; 0 when unset).
+  generation?: number
   // Proposed from this app.
   mine: boolean
   proposalKey: string
@@ -59,8 +79,9 @@ export type ProposalRecord = {
   proposedAt: number
   request: string
   // 'online': the shared course holds exactly it; 'replaced': another version
-  // took its spot, or its proposer proposed a newer one.
-  state: 'online' | 'replaced' | 'waiting'
+  // took its spot, or its proposer proposed a newer one; 'withdrawn': its
+  // proposer withdrew it (SLJ-110).
+  state: 'online' | 'replaced' | 'waiting' | 'withdrawn'
   title?: string
   version: string
 }
@@ -73,13 +94,16 @@ export type SharedCourseRecord = {
   // request hash: they no longer wait for us.
   answered: string[]
   // Each maintainer approves at most one version per spot (the shared
-  // course's length it builds on): spot -> request hash.
+  // course's length it builds on): spotKey -> request hash.
   approvedAt: Record<string, string>
   // Notes asking for changes to our proposal, by publisher id.
   changesRequested: Record<string, string>
   // Every proposal seen, by request hash; decided ones capped at
   // MAX_DECIDED_PROPOSALS. Missing in stores written before SLJ-109.
   proposals?: Record<string, ProposalRecord>
+  // How many times the maintainers or the rule changed (SLJ-70): the shared
+  // course's generation. 0 when unset.
+  generation?: number
   // Maintainers, the owner first. Ours as the owner wrote them.
   members: Member[]
   nextProposalIndex: number
@@ -87,6 +111,15 @@ export type SharedCourseRecord = {
   oldCode: string | null
   // A maintainer's: whose /members.json to read.
   ownerMailboxKey: string | null
+  // The owner's: who joined with an invite since the course is shared, and
+  // becomes a maintainer once a change adding them is approved (SLJ-70).
+  pending?: Member[]
+  // Earlier generations' shared courses (SLJ-70), kept shared: students
+  // still on them find the "moved" notice there.
+  previous?: { generation: number; members: Member[]; quorum: number }[]
+  // This maintainer was removed by a change (SLJ-70): the course stays on
+  // this device, no longer maintained together.
+  removed?: boolean
   proposal: SharedProposal | null
   publicId: string
   quorum: number
@@ -115,19 +148,22 @@ type Ops = {
   moveNotice: [{ courseId: string; publicId: string; sharedKey: string }, unknown]
   propose: [
     { index: number; source: unknown; spec: SharedCourseSpecInput; versionPath: string },
-    { hash: string; length: number; proposalKey: string; request: string },
+    { hash: string; length: number; proposalKey: string; request: string; sharedLength: number },
   ]
   readMailbox: [{ key: string }, MailboxContents]
   proposalState: [{ request: string; spec: SharedCourseSpecInput }, { state: 'online' | 'replaced' | 'waiting' }]
   readSharedSource: [
     { sharedKey: string },
-    { courseId: string | null; source: unknown; title: string | null; version: string | null },
+    { courseId: string | null; movedTo: string | null; source: unknown; title: string | null; version: string | null },
   ]
   review: [
     { proposalKey: string; request: string; spec: SharedCourseSpecInput },
     { changelog: unknown[]; changes: ProposalChange[]; length: number; sharedLength: number },
   ]
-  seedShared: [{ spec: SharedCourseSpecInput }, { courseId: string | null; sharedKey: string; version: string | null }]
+  seedShared: [
+    { spec: SharedCourseSpecInput },
+    { courseId: string | null; length: number; sharedKey: string; version: string | null },
+  ]
   self: [{ publicId: string }, MaintainerSelf]
   sign: [{ request: string; spec: SharedCourseSpecInput }, { response: string }]
   writeMailbox: [{ file: string; publicId: string; value: unknown }, unknown]
@@ -225,7 +261,14 @@ export function createMaintainers(deps: MaintainersDeps) {
   }
 
   function specOf(record: SharedCourseRecord): SharedCourseSpecInput {
-    return { publicId: record.publicId, quorum: record.quorum, signers: record.members.map((member) => member.maintainerKey) }
+    return specFor(record.publicId, record.generation ?? 0, record.members, record.quorum)
+  }
+
+  // The spec of generation `generation` of the course, current or earlier.
+  function specAt(record: SharedCourseRecord, generation: number): SharedCourseSpecInput | null {
+    if (generation === (record.generation ?? 0)) return specOf(record)
+    const earlier = record.previous?.find((entry) => entry.generation === generation)
+    return earlier ? specFor(record.publicId, generation, earlier.members, earlier.quorum) : null
   }
 
   // More than half, and no more than there are maintainers.
@@ -239,16 +282,26 @@ export function createMaintainers(deps: MaintainersDeps) {
     await deps.op('writeMailbox', {
       file: '/members.json',
       publicId: record.publicId,
-      value: { members: record.members, publicId: record.publicId, quorum: record.quorum },
+      value: {
+        generation: record.generation ?? 0,
+        members: record.members,
+        pending: record.pending ?? [],
+        publicId: record.publicId,
+        quorum: record.quorum,
+      },
     })
   }
 
   // The shared course's source.json: where it's shared from, the original
   // publisher (so students' update checks still pass), and its maintainers.
-  function sourceFor(record: SharedCourseRecord, sharedKey: string) {
+  function sourceFor(
+    record: Pick<SharedCourseRecord, 'generation' | 'members' | 'publicId' | 'quorum'>,
+    sharedKey: string,
+  ) {
     return {
       driveKey: sharedKey,
       maintainers: {
+        generation: record.generation ?? 0,
         // Mailbox keys too, so restoring on a new computer can reach the others.
         members: record.members.map(({ mailboxKey, maintainerKey, publisherId }) => ({ mailboxKey, maintainerKey, publisherId })),
         quorum: record.quorum,
@@ -258,6 +311,10 @@ export function createMaintainers(deps: MaintainersDeps) {
     }
   }
 
+  // Proposing approves the version too, so it takes its spot (SLJ-110): this
+  // app then approves nothing else there. A newer proposal of ours for the
+  // same spot withdraws the previous one, which is only safe while nobody
+  // else has approved it (`withdrawOwn`).
   async function propose(record: SharedCourseRecord, { first }: { first: boolean }) {
     if (!record.courseId) throw new MaintainersError('NOT_HERE', 'This course is not on this device yet')
     const published = await deps.publishedCourse(record.courseId)
@@ -266,18 +323,39 @@ export function createMaintainers(deps: MaintainersDeps) {
     }
 
     const spec = specOf(record)
-    const { sharedKey } = await deps.op('seedShared', { spec })
+    const self = await deps.op('self', { publicId: record.publicId })
+    record = await recoverOwnAnswers(record, self)
+    const { length, sharedKey } = await deps.op('seedShared', { spec })
+    const generation = record.generation ?? 0
+    const taken = record.approvedAt[spotKey(generation, length)]
+    const previous = record.proposal
+    if (previous?.change) {
+      throw new MaintainersError('CHANGE_WAITING', 'A change of maintainers is waiting for approval. Publish again once it is decided.')
+    }
+    if (taken && taken !== previous?.hash) {
+      throw new MaintainersError(
+        'ALREADY_APPROVED',
+        "You approved another version for this point in the course's history. Propose again once it's online or replaced.",
+      )
+    }
+    if (previous) record = await withdrawOwn(record, previous.hash)
+
     // By time, not a counter kept here: after a restore on a new computer, a
     // counter would start over and reuse a proposal drive the old computer
     // already wrote to.
     const index = Math.max(record.nextProposalIndex, Date.now())
-    const { hash, proposalKey, request } = await deps.op('propose', {
+    const { hash, proposalKey, request, sharedLength } = await deps.op('propose', {
       index,
       source: sourceFor(record, sharedKey),
       spec,
       versionPath: published.versionPath,
     })
-    if (record.proposal) await deps.op('dropProposal', { proposalKey: record.proposal.proposalKey }).catch(() => {})
+    // The course moved on meanwhile and that spot is taken: not this one.
+    const takenNow = record.approvedAt[spotKey(generation, sharedLength)]
+    if (takenNow && takenNow !== hash) {
+      await deps.op('dropProposal', { proposalKey }).catch(() => {})
+      throw new MaintainersError('ALREADY_APPROVED', "You approved another version for this point in the course's history.")
+    }
 
     const proposal: SharedProposal = {
       first,
@@ -287,19 +365,22 @@ export function createMaintainers(deps: MaintainersDeps) {
       title: published.title?.slice(0, 200),
       version: published.version,
     }
-    // The proposer approves their own proposal too.
+    // The proposer approves their own proposal too; the spot goes along, so a
+    // new computer knows it (recoverOwnAnswers).
     const { response } = await deps.op('sign', { request, spec })
     await deps.op('writeMailbox', { file: '/proposal.json', publicId: record.publicId, value: proposal })
-    await deps.op('writeMailbox', { file: `/approvals/${hash}.json`, publicId: record.publicId, value: { response } })
-    const self = await deps.op('self', { publicId: record.publicId })
+    await deps.op('writeMailbox', {
+      file: `/approvals/${hash}.json`,
+      publicId: record.publicId,
+      value: { generation, response, spot: sharedLength },
+    })
     const proposals = { ...(record.proposals ?? {}) }
-    const previous = record.proposal && proposals[record.proposal.hash]
-    if (previous?.state === 'waiting') proposals[previous.hash] = { ...previous, decidedAt: now(), state: 'replaced' }
     proposals[hash] = {
       approvedBy: [self.publisherId],
       changesRequested: {},
       decidedAt: null,
       from: self.publisherId,
+      generation,
       hash,
       mailboxKey: self.mailboxKey,
       mine: true,
@@ -310,8 +391,88 @@ export function createMaintainers(deps: MaintainersDeps) {
       title: proposal.title,
       version: proposal.version,
     }
-    save({ ...record, changesRequested: {}, nextProposalIndex: index + 1, proposal, proposals: capHistory(proposals) })
+    save({
+      ...record,
+      approvedAt: { ...record.approvedAt, [spotKey(generation, sharedLength)]: hash },
+      changesRequested: {},
+      nextProposalIndex: index + 1,
+      proposal,
+      proposals: capHistory(proposals),
+    })
     return proposal
+  }
+
+  // Withdraws our waiting proposal `hash` (SLJ-110), freeing its spot. Only
+  // while no other maintainer has approved it: with their approval out
+  // there, it could still reach the rule, and approving a rival as well
+  // could put two versions online. Checked against every mailbox, read now.
+  async function withdrawOwn(record: SharedCourseRecord, hash: string): Promise<SharedCourseRecord> {
+    const self = await deps.op('self', { publicId: record.publicId })
+    for (const member of involved(record)) {
+      if (member.mailboxKey === self.mailboxKey) continue
+      const mailbox = await deps.op('readMailbox', { key: member.mailboxKey })
+      const approval = mailbox.approvals[hash]
+      if (typeof approval?.response === 'string' || typeof approval?.responseNext === 'string') {
+        throw new MaintainersError(
+          'APPROVED_BY_OTHERS',
+          'Others have approved this version already, so it may still go online. It can no longer be withdrawn.',
+        )
+      }
+    }
+    await deps.op('writeMailbox', { file: `/withdrawn/${hash}.json`, publicId: record.publicId, value: { at: now() } })
+    await deps.op('writeMailbox', { file: '/proposal.json', publicId: record.publicId, value: null })
+    const proposalKey = record.proposal?.hash === hash ? record.proposal.proposalKey : record.proposals?.[hash]?.proposalKey
+    if (proposalKey) await deps.op('dropProposal', { proposalKey }).catch(() => {})
+    const nextKey = (record.proposal?.hash === hash ? record.proposal.change : record.proposals?.[hash]?.change)?.next.proposalKey
+    if (nextKey) await deps.op('dropProposal', { proposalKey: nextKey }).catch(() => {})
+    const approvedAt = Object.fromEntries(Object.entries(record.approvedAt).filter(([, approved]) => approved !== hash))
+    const proposals = { ...(record.proposals ?? {}) }
+    const entry = proposals[hash]
+    if (entry) proposals[hash] = { ...entry, decidedAt: now(), state: 'withdrawn' }
+    const next: SharedCourseRecord = {
+      ...record,
+      approvedAt,
+      changesRequested: record.proposal?.hash === hash ? {} : record.changesRequested,
+      proposal: record.proposal?.hash === hash ? null : record.proposal,
+      proposals,
+    }
+    save(next)
+    return next
+  }
+
+  // Everyone whose mailbox matters for the course: its maintainers, the
+  // owner's pending joiners, and the maintainers named by any change still
+  // waiting (SLJ-70), once each.
+  function involved(record: SharedCourseRecord): Member[] {
+    const changes = Object.values(record.proposals ?? {})
+      .filter((entry) => entry.state === 'waiting' && entry.change)
+      .flatMap((entry) => entry.change!.members)
+    const all = [...record.members, ...(record.pending ?? []), ...(record.proposal?.change?.members ?? []), ...changes]
+    return all.filter((member, index) => all.findIndex((other) => other.mailboxKey === member.mailboxKey) === index)
+  }
+
+  // The course moved to the next generation (SLJ-70): its earlier shared
+  // course is kept (students still on it find the notice there).
+  function moveTo(
+    record: SharedCourseRecord,
+    next: { generation: number; members: Member[]; quorum: number },
+    selfPublisherId: string,
+  ): SharedCourseRecord {
+    const wasMember = record.members.some((member) => member.publisherId === selfPublisherId)
+    const stillMember = next.members.some((member) => member.publisherId === selfPublisherId)
+    return {
+      ...record,
+      generation: next.generation,
+      members: next.members,
+      pending: (record.pending ?? []).filter((member) => !next.members.some((other) => other.publisherId === member.publisherId)),
+      previous: [
+        ...(record.previous ?? []),
+        { generation: record.generation ?? 0, members: record.members, quorum: record.quorum },
+      ],
+      quorum: next.quorum,
+      removed: wasMember && !stillMember ? true : record.removed,
+      sharedCourseKey: null,
+    }
   }
 
   // Reads every mailbox of the course and acts: new members and rule (from
@@ -319,74 +480,111 @@ export function createMaintainers(deps: MaintainersDeps) {
   // are enough), and the shared course landing here for a new maintainer.
   async function refresh(publicId: string): Promise<void> {
     let record = records()[publicId]
-    if (!record) return
+    if (!record || record.removed) return
     const self = await deps.op('self', { publicId })
 
     if (record.role === 'maintainer' && record.ownerMailboxKey) {
       const owner = await deps.op('readMailbox', { key: record.ownerMailboxKey })
       const members = parseMembers(owner.members, publicId)
-      if (members) {
-        record = { ...record, members: members.members, quorum: members.quorum }
+      if (members && members.generation > (record.generation ?? 0) && record.members.length > 0) {
+        // A change was approved and committed: the next generation.
+        record = moveTo(record, members, self.publisherId)
+        save(record)
+        if (record.removed) return
+      } else if (members && members.generation >= (record.generation ?? 0)) {
+        record = { ...record, generation: members.generation, members: members.members, quorum: members.quorum }
         save(record)
       }
     }
 
+    const generation = record.generation ?? 0
+    const isMember = (publisherId: string) => record.members.some((member) => member.publisherId === publisherId)
     const responses = new Map<string, string>()
+    // A change of ours (SLJ-70): approvals of the moved notice from the
+    // current maintainers, of the next first version from the new ones.
+    const changeResponses = new Map<string, string>()
+    const nextResponses = new Map<string, string>()
     const changesRequested = { ...record.changesRequested }
     const proposals = { ...(record.proposals ?? {}) }
     // Each mailbox's current proposal, by mailbox: an older one of the same
     // proposer still waiting was replaced by it.
     const current = new Map<string, string>()
     let ownMailbox: MailboxContents | null = null
-    for (const member of record.members) {
+    for (const member of involved(record)) {
       const isSelf = member.mailboxKey === self.mailboxKey
       if (!isSelf) await deps.op('followMailbox', { key: member.mailboxKey })
       const mailbox = await deps.op('readMailbox', { key: member.mailboxKey })
       if (isSelf) ownMailbox = mailbox
       const proposal = parseProposal(mailbox.proposal)
-      if (proposal) {
+      // Only maintainers propose versions; a change only comes from the owner.
+      const canPropose = proposal && (proposal.change ? member.publisherId === record.members[0]?.publisherId : isMember(member.publisherId))
+      if (proposal && canPropose) {
         current.set(member.mailboxKey, proposal.hash)
         proposals[proposal.hash] ??= {
           ...proposal,
           approvedBy: [],
+          approvedNextBy: proposal.change ? [] : undefined,
           changesRequested: {},
           decidedAt: null,
           from: member.publisherId,
+          generation,
           mailboxKey: member.mailboxKey,
           mine: isSelf,
           proposedAt: now(),
           state: 'waiting',
         }
       }
-      // Who approved or asked for changes, for every proposal still waiting.
+      // Who approved or asked for changes, for every proposal still waiting;
+      // and which of this maintainer's own they withdrew.
       for (const entry of Object.values(proposals)) {
         if (entry.state !== 'waiting') continue
-        const approved = typeof mailbox.approvals[entry.hash]?.response === 'string'
+        if (entry.mailboxKey === member.mailboxKey && mailbox.withdrawn?.[entry.hash]) {
+          proposals[entry.hash] = { ...entry, decidedAt: now(), state: 'withdrawn' }
+          continue
+        }
+        const approval = mailbox.approvals[entry.hash]
+        const approved = typeof approval?.response === 'string' && isMember(member.publisherId)
+        const approvedNext =
+          typeof approval?.responseNext === 'string' &&
+          Boolean(entry.change?.members.some((other) => other.publisherId === member.publisherId))
         const note = mailbox.changesRequested[entry.hash]?.note
         proposals[entry.hash] = {
           ...entry,
           approvedBy: approved && !entry.approvedBy.includes(member.publisherId) ? [...entry.approvedBy, member.publisherId] : entry.approvedBy,
+          approvedNextBy:
+            approvedNext && !(entry.approvedNextBy ?? []).includes(member.publisherId)
+              ? [...(entry.approvedNextBy ?? []), member.publisherId]
+              : entry.approvedNextBy,
           changesRequested:
             typeof note === 'string' ? { ...entry.changesRequested, [member.publisherId]: note.slice(0, 2000) } : entry.changesRequested,
         }
       }
       const mine = record.proposal
-      if (mine && !isSelf) {
-        const response = mailbox.approvals[mine.hash]?.response
-        if (typeof response === 'string') responses.set(member.maintainerKey, response)
+      if (mine) {
+        const approval = mailbox.approvals[mine.hash]
+        if (typeof approval?.response === 'string' && isMember(member.publisherId)) {
+          if (mine.change) changeResponses.set(member.maintainerKey, approval.response)
+          else if (!isSelf) responses.set(member.maintainerKey, approval.response)
+        }
+        if (mine.change && typeof approval?.responseNext === 'string' && mine.change.members.some((other) => other.mailboxKey === member.mailboxKey)) {
+          nextResponses.set(member.maintainerKey, approval.responseNext)
+        }
         const note = mailbox.changesRequested[mine.hash]?.note
-        if (typeof note === 'string') changesRequested[member.publisherId] = note.slice(0, 2000)
+        if (!isSelf && typeof note === 'string') changesRequested[member.publisherId] = note.slice(0, 2000)
       }
     }
-    // Where each waiting proposal stands against the shared course: online
+    // Where each waiting proposal stands against its shared course: online
     // once it holds exactly it (whoever committed it), replaced once another
     // version took its spot or its proposer proposed a newer one.
     for (const entry of Object.values(proposals)) {
       if (entry.state !== 'waiting' || record.members.length < 2) continue
-      const state = await deps
-        .op('proposalState', { request: entry.request, spec: specOf(record) })
-        .then((result) => result.state)
-        .catch(() => 'waiting' as const)
+      const spec = specAt(record, entry.generation ?? 0)
+      const state = spec
+        ? await deps
+            .op('proposalState', { request: entry.request, spec })
+            .then((result) => result.state)
+            .catch(() => 'waiting' as const)
+        : 'replaced'
       const superseded = current.has(entry.mailboxKey) && current.get(entry.mailboxKey) !== entry.hash
       const next = state === 'waiting' && superseded ? 'replaced' : state
       if (next !== 'waiting') proposals[entry.hash] = { ...entry, decidedAt: now(), state: next }
@@ -396,8 +594,14 @@ export function createMaintainers(deps: MaintainersDeps) {
     if (ownMailbox) record = await recoverOwnAnswers(record, self, ownMailbox)
 
     // Enough approvals of ours (ours included): put it online.
-    if (record.proposal && responses.size + 1 >= record.quorum && record.members.length >= 2) {
-      const own = (await deps.op('readMailbox', { key: self.mailboxKey })).approvals[record.proposal.hash]?.response
+    const mine = record.proposal
+    if (mine?.change) {
+      if (changeResponses.size >= record.quorum && nextResponses.size >= mine.change.quorum) {
+        await commitChange(record, mine, [...changeResponses.values()], [...nextResponses.values()], self.publisherId)
+        record = records()[publicId]
+      }
+    } else if (mine && responses.size + 1 >= record.quorum && record.members.length >= 2) {
+      const own = (await deps.op('readMailbox', { key: self.mailboxKey })).approvals[mine.hash]?.response
       if (typeof own === 'string') await commit(record, [own, ...responses.values()])
       record = records()[publicId]
     }
@@ -405,18 +609,69 @@ export function createMaintainers(deps: MaintainersDeps) {
     if (record.role === 'owner' && record.sharedKey && record.oldCode && record.courseId) {
       await deps.seedOldCode(record.courseId, record.oldCode).catch(() => {})
     }
+    // Earlier generations' shared courses stay shared, for their notices.
+    for (const earlier of record.previous ?? []) {
+      await deps.op('seedShared', { spec: specFor(publicId, earlier.generation, earlier.members, earlier.quorum) }).catch(() => {})
+    }
 
-    // The shared course is online: seed it; a new maintainer lands it here.
+    // The shared course is online: seed it; a new maintainer lands it here,
+    // and after a change everyone shares it from its new code.
     if (record.members.length >= 2) {
       const seeded = await deps.op('seedShared', { spec: specOf(record) })
-      if (record.sharedCourseKey !== seeded.sharedKey || (seeded.version && !record.sharedKey)) {
+      const movedOnline = Boolean(seeded.version) && record.sharedKey !== seeded.sharedKey
+      if (record.sharedCourseKey !== seeded.sharedKey || movedOnline) {
         record = { ...record, sharedCourseKey: seeded.sharedKey, sharedKey: seeded.version ? seeded.sharedKey : record.sharedKey }
         save(record)
+        if (movedOnline && record.courseId) deps.onShared(record.courseId)
       }
       if (seeded.courseId && seeded.version && !record.courseId) {
         await land(record, seeded.courseId)
       }
     }
+  }
+
+  // Our change of maintainers has both rules met (SLJ-70): the new shared
+  // course's first version goes online first, then the moved notice on the
+  // current one (students follow it only once there's something to follow).
+  async function commitChange(
+    record: SharedCourseRecord,
+    proposal: SharedProposal,
+    responses: string[],
+    nextResponses: string[],
+    selfPublisherId: string,
+  ) {
+    const change = proposal.change!
+    const nextSpec = specFor(record.publicId, change.generation, change.members, change.quorum)
+    const { sharedKey } = await deps.op('commit', {
+      first: true,
+      proposalKey: change.next.proposalKey,
+      request: change.next.request,
+      responses: nextResponses,
+      spec: nextSpec,
+    })
+    await deps.op('commit', {
+      first: false,
+      proposalKey: proposal.proposalKey,
+      request: proposal.request,
+      responses,
+      spec: specOf(record),
+    })
+    await deps.op('dropProposal', { proposalKey: proposal.proposalKey }).catch(() => {})
+    await deps.op('dropProposal', { proposalKey: change.next.proposalKey }).catch(() => {})
+    const proposals = { ...(record.proposals ?? {}) }
+    const entry = proposals[proposal.hash]
+    if (entry) proposals[proposal.hash] = { ...entry, decidedAt: now(), state: 'online' }
+    const moved: SharedCourseRecord = {
+      ...moveTo(record, change, selfPublisherId),
+      changesRequested: {},
+      proposal: null,
+      proposals,
+      sharedCourseKey: sharedKey,
+      sharedKey,
+    }
+    save(moved)
+    await writeMembers(moved)
+    if (moved.courseId) deps.onShared(moved.courseId)
   }
 
   async function commit(record: SharedCourseRecord, responses: string[]) {
@@ -466,8 +721,8 @@ export function createMaintainers(deps: MaintainersDeps) {
   //   without one, of someone else's proposal still waiting, the proposal is
   //   checked again (its spot is the shared course's length it builds on);
   //   one that no longer builds on the latest version has lost its spot
-  //   anyway. Our own proposals' approvals carry no spot: proposing isn't
-  //   approving someone else's version.
+  //   anyway. Our own proposals' approvals carry their spot too (SLJ-110),
+  //   unless withdrawn; older ones without it are left out.
   async function recoverOwnAnswers(
     record: SharedCourseRecord | undefined,
     self: MaintainerSelf,
@@ -480,17 +735,26 @@ export function createMaintainers(deps: MaintainersDeps) {
     const spotted = new Set(Object.values(approvedAt))
     for (const hash of [...Object.keys(mailbox.approvals), ...Object.keys(mailbox.changesRequested)]) answered.add(hash)
     for (const [hash, approval] of Object.entries(mailbox.approvals)) {
-      if (spotted.has(hash)) continue
+      // A withdrawn proposal of ours freed its spot.
+      if (spotted.has(hash) || mailbox.withdrawn?.[hash]) continue
+      const generation = Number.isInteger(approval?.generation) ? (approval.generation as number) : 0
       let spot: number | null = Number.isInteger(approval?.spot) ? (approval.spot as number) : null
       const entry = record.proposals?.[hash]
-      if (spot === null && entry && !entry.mine && entry.state === 'waiting') {
+      const spec = entry ? specAt(record, entry.generation ?? 0) : null
+      if (spot === null && entry && spec && !entry.mine && entry.state === 'waiting' && typeof approval?.response === 'string') {
         spot = await deps
-          .op('review', { proposalKey: entry.proposalKey, request: entry.request, spec: specOf(record) })
+          .op('review', { proposalKey: entry.proposalKey, request: entry.request, spec })
           .then((review) => review.sharedLength)
           .catch(() => null)
       }
+      // A change's next first version (SLJ-70) holds the first spot of the
+      // next generation.
+      if (typeof approval?.responseNext === 'string') {
+        approvedAt[spotKey(generation + 1, 0)] ??= hash
+        spotted.add(hash)
+      }
       if (spot === null) continue
-      approvedAt[String(spot)] ??= hash
+      approvedAt[spotKey(generation, spot)] ??= hash
       spotted.add(hash)
     }
     const changed = answered.size !== record.answered.length || Object.keys(approvedAt).length !== Object.keys(record.approvedAt).length
@@ -537,7 +801,8 @@ export function createMaintainers(deps: MaintainersDeps) {
         if (existing && existing.role !== 'owner') throw new MaintainersError('NOT_OWNER', 'Only the course owner invites')
         const self = await deps.op('self', { publicId })
         // Already shared: the code lets a maintainer back in on a new
-        // computer (adding new maintainers to a shared course comes later).
+        // computer, or someone new join as pending, until a change adding
+        // them is approved (SLJ-70).
         if (!existing) {
           save({
             answered: [],
@@ -567,8 +832,12 @@ export function createMaintainers(deps: MaintainersDeps) {
         if (!record || record.role !== 'owner') return
         // A maintainer back on a new computer: same keys, nothing to change.
         if (record.members.some((existing) => existing.publisherId === member.publisherId)) return
+        // Shared already: they wait for a change adding them (SLJ-70).
         if (record.sharedKey) {
-          console.warn(`[maintainers] ${publicId}: adding maintainers to a shared course isn't supported yet`)
+          const others = (record.pending ?? []).filter((existing) => existing.publisherId !== member.publisherId)
+          const next = { ...record, pending: [...others, member] }
+          save(next)
+          await writeMembers(next)
           return
         }
         const next = { ...record, members: [...record.members, member] }
@@ -637,10 +906,146 @@ export function createMaintainers(deps: MaintainersDeps) {
           published.version &&
           (!seeded.version ||
             compareCourseVersions(parseCourseVersion(published.version), parseCourseVersion(seeded.version)) > 0)
-        if (canPropose && isNewer && current.proposal?.version !== published.version) {
+        // A version we withdrew isn't proposed again (Publish runs at every
+        // start too); a newer one is.
+        const withdrawn = Object.values(current.proposals ?? {}).some(
+          (entry) => entry.mine && entry.state === 'withdrawn' && entry.version === published.version,
+        )
+        // A change of maintainers waiting (SLJ-70) goes first.
+        if (canPropose && isNewer && !withdrawn && !current.proposal?.change && current.proposal?.version !== published.version) {
           await propose(current, { first: false })
         }
         return seeded.sharedKey
+      })
+    },
+
+    // The owner: changes who maintains the course, or the rule (SLJ-70).
+    // `publisherIds`: the new maintainers, from the current ones and those
+    // who joined since (pending); the owner stays. The course moves to a new
+    // shared course (a new code; students follow on their own), once the
+    // current maintainers approve under the current rule and the new ones
+    // under the new rule. The course's content stays as it is online.
+    async proposeChange(courseId: string, input: { publisherIds: string[]; quorum: number }): Promise<SharedProposal> {
+      const found = recordFor(courseId)
+      if (!found || found.role !== 'owner' || found.removed) {
+        throw new MaintainersError('NOT_OWNER', 'Only the course owner changes its maintainers')
+      }
+      if (!found.sharedKey) throw new MaintainersError('NOT_SHARED', 'This course is not shared yet')
+      return serial(found.publicId, async () => {
+        let record = records()[found.publicId]
+        if (record.proposal) {
+          throw new MaintainersError(
+            'PROPOSAL_WAITING',
+            'Something you proposed is waiting for approval. Change the maintainers once it is decided, or withdraw it.',
+          )
+        }
+        const owner = record.members[0]
+        const candidates = [...record.members, ...(record.pending ?? [])]
+        const wanted = new Set([owner.publisherId, ...input.publisherIds])
+        const members = candidates.filter(
+          (member, index) =>
+            wanted.has(member.publisherId) && candidates.findIndex((other) => other.publisherId === member.publisherId) === index,
+        )
+        if (members.length !== wanted.size) {
+          throw new MaintainersError('UNKNOWN_MAINTAINER', 'Only maintainers and people who joined with an invite can be chosen')
+        }
+        if (members.length < 2) {
+          throw new MaintainersError('NO_MAINTAINERS', 'A course maintained together needs at least two maintainers')
+        }
+        assertRule(input.quorum, members.length)
+        const same =
+          input.quorum === record.quorum &&
+          members.length === record.members.length &&
+          members.every((member) => record.members.some((other) => other.publisherId === member.publisherId))
+        if (same) throw new MaintainersError('NO_CHANGE', 'Nothing changes')
+
+        const self = await deps.op('self', { publicId: record.publicId })
+        record = await recoverOwnAnswers(record, self)
+        const spec = specOf(record)
+        const generation = record.generation ?? 0
+        const seeded = await deps.op('seedShared', { spec })
+        const published = await deps.publishedCourse(courseId)
+        if (!published.versionPath || !seeded.version || published.version !== seeded.version) {
+          throw new MaintainersError('NOT_LATEST', "The version online isn't the one published here yet. Change the maintainers once it is.")
+        }
+        if (record.approvedAt[spotKey(generation, seeded.length)]) {
+          throw new MaintainersError('ALREADY_APPROVED', "You approved another version for this point in the course's history.")
+        }
+
+        const nextGeneration = generation + 1
+        const nextSpec = specFor(record.publicId, nextGeneration, members, input.quorum)
+        // Seeding the new shared course announces it already.
+        const { sharedKey: nextKey } = await deps.op('seedShared', { spec: nextSpec })
+        // By time, like any proposal (see `propose`).
+        const index = Math.max(record.nextProposalIndex, Date.now())
+        const next = await deps.op('propose', {
+          index,
+          source: sourceFor({ generation: nextGeneration, members, publicId: record.publicId, quorum: input.quorum }, nextKey),
+          spec: nextSpec,
+          versionPath: published.versionPath,
+        })
+        const notice = await deps.op('propose', {
+          index: index + 1,
+          source: { ...sourceFor(record, seeded.sharedKey), movedTo: { driveKey: nextKey } },
+          spec,
+          versionPath: published.versionPath,
+        })
+        const change: MaintainersChange = {
+          generation: nextGeneration,
+          members,
+          next: { hash: next.hash, proposalKey: next.proposalKey, request: next.request },
+          quorum: input.quorum,
+        }
+        const proposal: SharedProposal = {
+          change,
+          first: false,
+          hash: notice.hash,
+          proposalKey: notice.proposalKey,
+          request: notice.request,
+          title: published.title?.slice(0, 200),
+          version: seeded.version,
+        }
+        // The owner approves both parts.
+        const response = (await deps.op('sign', { request: notice.request, spec })).response
+        const responseNext = (await deps.op('sign', { request: next.request, spec: nextSpec })).response
+        await deps.op('writeMailbox', { file: '/proposal.json', publicId: record.publicId, value: proposal })
+        await deps.op('writeMailbox', {
+          file: `/approvals/${notice.hash}.json`,
+          publicId: record.publicId,
+          value: { generation, response, responseNext, spot: notice.sharedLength },
+        })
+        const proposals = { ...(record.proposals ?? {}) }
+        proposals[notice.hash] = {
+          approvedBy: [self.publisherId],
+          approvedNextBy: [self.publisherId],
+          change,
+          changesRequested: {},
+          decidedAt: null,
+          from: self.publisherId,
+          generation,
+          hash: notice.hash,
+          mailboxKey: self.mailboxKey,
+          mine: true,
+          proposalKey: notice.proposalKey,
+          proposedAt: now(),
+          request: notice.request,
+          state: 'waiting',
+          title: proposal.title,
+          version: proposal.version,
+        }
+        save({
+          ...record,
+          approvedAt: {
+            ...record.approvedAt,
+            [spotKey(generation, notice.sharedLength)]: notice.hash,
+            [spotKey(nextGeneration, 0)]: notice.hash,
+          },
+          changesRequested: {},
+          nextProposalIndex: index + 2,
+          proposal,
+          proposals: capHistory(proposals),
+        })
+        return proposal
       })
     },
 
@@ -650,10 +1055,23 @@ export function createMaintainers(deps: MaintainersDeps) {
     // rule), and lands its latest version here.
     async restoreSharedCourse(input: { oldCode: string; publicId: string; sharedKey: string }): Promise<{
       courseId: string
+      // The latest shared course's key: the course's code now.
+      sharedKey: string
       title: string
     }> {
       return serial(input.publicId, async () => {
-        const shared = await deps.op('readSharedSource', { sharedKey: input.sharedKey })
+        // Its maintainers may have changed since (SLJ-70): each change moved
+        // it on to the next generation's shared course, named in the
+        // previous one's notice. The latest is the one taken up.
+        let sharedKey = input.sharedKey
+        let shared = await deps.op('readSharedSource', { sharedKey })
+        const previous: NonNullable<SharedCourseRecord['previous']> = []
+        for (let hops = 0; shared.movedTo && hops < MAX_GENERATIONS; hops++) {
+          const earlier = parseSharedSource(shared.source)
+          if (earlier) previous.push({ generation: earlier.generation, members: earlier.members, quorum: earlier.quorum })
+          sharedKey = shared.movedTo
+          shared = await deps.op('readSharedSource', { sharedKey })
+        }
         const parsed = parseSharedSource(shared.source)
         if (!parsed || !shared.courseId) throw new MaintainersError('NOT_SHARED', "This shared course can't be read")
         const self = await deps.op('self', { publicId: input.publicId })
@@ -664,16 +1082,18 @@ export function createMaintainers(deps: MaintainersDeps) {
           changesRequested: {},
           courseId: null,
           proposals: {},
+          generation: parsed.generation,
           members: parsed.members,
           nextProposalIndex: 0,
           oldCode: role === 'owner' ? input.oldCode : null,
           ownerMailboxKey: role === 'owner' ? null : parsed.members[0].mailboxKey,
+          previous,
           proposal: null,
           publicId: input.publicId,
           quorum: parsed.quorum,
           role,
-          sharedCourseKey: input.sharedKey,
-          sharedKey: input.sharedKey,
+          sharedCourseKey: sharedKey,
+          sharedKey,
         }
         save(record)
         // The owner says again who maintains it and the rule, in her mailbox
@@ -681,23 +1101,26 @@ export function createMaintainers(deps: MaintainersDeps) {
         // maintainers who join again from a new computer.
         if (role === 'owner') await writeMembers(record)
         await land(record, shared.courseId)
-        return { courseId: shared.courseId, title: shared.title ?? '' }
+        return { courseId: shared.courseId, sharedKey, title: shared.title ?? '' }
       })
     },
 
+    // Removed from its maintainers (SLJ-70), the course is this device's
+    // own again.
     isShared(courseId: string): boolean {
-      return Boolean(recordFor(courseId)?.sharedKey)
+      const record = recordFor(courseId)
+      return Boolean(record?.sharedKey) && !record?.removed
     },
 
     // A mailbox or shared course changed: refresh the courses it belongs to.
     onDriveChanged(driveKey: string): void {
       for (const record of Object.values(records())) {
-        const involved =
+        const concerned =
           record.ownerMailboxKey === driveKey ||
           record.sharedKey === driveKey ||
           record.sharedCourseKey === driveKey ||
-          record.members.some((member) => member.mailboxKey === driveKey)
-        if (involved) void serial(record.publicId, () => refresh(record.publicId)).catch(logFailure(record.publicId))
+          involved(record).some((member) => member.mailboxKey === driveKey)
+        if (concerned) void serial(record.publicId, () => refresh(record.publicId)).catch(logFailure(record.publicId))
       }
     },
 
@@ -720,11 +1143,24 @@ export function createMaintainers(deps: MaintainersDeps) {
     getInfo(courseId: string) {
       const record = recordFor(courseId)
       if (!record) return null
+      const change = record.proposal?.change
       return {
         changesRequested: record.changesRequested,
         members: record.members.map((member) => ({ publisherId: member.publisherId })),
-        proposal: record.proposal ? { version: record.proposal.version } : null,
+        // Who joined since the course is shared (SLJ-70), the owner's.
+        pending: (record.pending ?? []).map((member) => ({ publisherId: member.publisherId })),
+        // Our version waiting for approval, or our change of maintainers.
+        proposal: record.proposal
+          ? {
+              change: change
+                ? { members: change.members.map((member) => ({ publisherId: member.publisherId })), quorum: change.quorum }
+                : null,
+              hash: record.proposal.hash,
+              version: record.proposal.version,
+            }
+          : null,
         quorum: record.quorum,
+        removed: Boolean(record.removed),
         role: record.role,
         sharedKey: record.sharedKey,
       }
@@ -734,7 +1170,7 @@ export function createMaintainers(deps: MaintainersDeps) {
     // groups (SLJ-109); `maintained`: how many shared courses this profile
     // maintains (the sidebar shows Approvals once there is one).
     listApprovals(): { items: ApprovalItem[]; maintained: number } {
-      const courses = Object.values(records()).filter((record) => record.members.length >= 2)
+      const courses = Object.values(records()).filter((record) => record.members.length >= 2 || (record.proposals && Object.keys(record.proposals).length > 0))
       const items = courses.flatMap((record) =>
         Object.values(record.proposals ?? {}).map((entry): ApprovalItem => ({
           approvedBy: entry.approvedBy,
@@ -755,9 +1191,11 @@ export function createMaintainers(deps: MaintainersDeps) {
           quorum: record.quorum,
           title: entry.title ?? null,
           version: entry.version,
+          withdrawn: entry.state === 'withdrawn',
+          change: entry.change ? changeSummary(record, entry) : null,
         })),
       )
-      return { items, maintained: courses.length }
+      return { items, maintained: courses.filter((record) => record.members.length >= 2 && !record.removed).length }
     },
 
     // What a proposal changes (for its review page): its release notes since
@@ -803,25 +1241,90 @@ export function createMaintainers(deps: MaintainersDeps) {
         // What this maintainer answered on another computer counts too.
         const record = await recoverOwnAnswers(records()[publicId], self)
         const item = answerable(record, hash)
-        const spec = specOf(record)
-        const { sharedLength } = await deps
-          .op('review', { proposalKey: item.proposalKey, request: item.request, spec })
-          .catch((error) => {
-            // Another version took its spot meanwhile.
-            if ((error as { code?: unknown })?.code === 'NOT_LATEST' || /latest version/.test(String(error))) markReplaced(record, hash)
-            throw error
+        // Withdrawn or replaced by its proposer meanwhile: nothing to approve.
+        const proposer = await deps.op('readMailbox', { key: item.mailboxKey })
+        const stillProposed = parseProposal(proposer.proposal)?.hash
+        // (A read that timed out comes back empty: that alone proves nothing.)
+        if (proposer.withdrawn?.[hash] || (stillProposed !== undefined && stillProposed !== hash)) {
+          const latest = records()[publicId]
+          save({
+            ...latest,
+            proposals: {
+              ...latest.proposals,
+              [hash]: { ...item, decidedAt: now(), state: proposer.withdrawn?.[hash] ? 'withdrawn' : 'replaced' },
+            },
           })
-        const spot = String(sharedLength)
-        const earlier = record.approvedAt[spot]
-        if (earlier && earlier !== hash) {
-          throw new MaintainersError('ALREADY_APPROVED', 'You already approved another version for this spot')
+          throw new MaintainersError('NO_PROPOSAL', 'This proposal is no longer waiting')
         }
-        const { response } = await deps.op('sign', { request: item.request, spec })
-        // The spot goes along, so a new computer knows it too (recoverOwnAnswers).
-        await deps.op('writeMailbox', { file: `/approvals/${hash}.json`, publicId, value: { response, spot: sharedLength } })
+        const generation = item.generation ?? 0
+        const spec = specAt(record, generation)
+        if (!spec) throw new MaintainersError('NO_PROPOSAL', 'This proposal is no longer waiting')
+        // A change of maintainers (SLJ-70): the current maintainers approve
+        // the moved notice, the new ones the next shared course's first
+        // version; someone in both, both.
+        const inCurrent = record.members.some((member) => member.publisherId === self.publisherId)
+        const change = item.change
+        const inNext = Boolean(change?.members.some((member) => member.publisherId === self.publisherId))
+        if (change && !inCurrent && !inNext) throw new MaintainersError('NOT_INVOLVED', "This change doesn't involve you")
+
+        const value: { generation: number; response?: string; responseNext?: string; spot?: number } = { generation }
+        const approvedAt = { ...record.approvedAt }
+        if (!change || inCurrent) {
+          const { changes, sharedLength } = await deps
+            .op('review', { proposalKey: item.proposalKey, request: item.request, spec })
+            .catch((error) => {
+              // Another version took its spot meanwhile.
+              if ((error as { code?: unknown })?.code === 'NOT_LATEST' || /latest version/.test(String(error))) markReplaced(record, hash)
+              throw error
+            })
+          // The moved notice changes nothing else in the course.
+          if (change && changes.some((entry) => !BOOKKEEPING_FILES.has(entry.path))) {
+            throw new MaintainersError('CHANGE_MISMATCH', 'This change of maintainers also changes the course')
+          }
+          const spot = spotKey(generation, sharedLength)
+          const earlier = approvedAt[spot]
+          if (earlier && earlier !== hash) {
+            throw new MaintainersError('ALREADY_APPROVED', 'You already approved another version for this spot')
+          }
+          value.response = (await deps.op('sign', { request: item.request, spec })).response
+          // The spot goes along, so a new computer knows it too (recoverOwnAnswers).
+          value.spot = sharedLength
+          approvedAt[spot] = hash
+        }
+        if (change && inNext) {
+          // The request must be for the shared course of the maintainers and
+          // rule the change names (its key comes from them).
+          const nextSpec = specFor(publicId, change.generation, change.members, change.quorum)
+          await deps.op('review', { proposalKey: change.next.proposalKey, request: change.next.request, spec: nextSpec })
+          const spot = spotKey(change.generation, 0)
+          const earlier = approvedAt[spot]
+          if (earlier && earlier !== hash) {
+            throw new MaintainersError('ALREADY_APPROVED', 'You already approved another change for these maintainers')
+          }
+          value.responseNext = (await deps.op('sign', { request: change.next.request, spec: nextSpec })).response
+          approvedAt[spot] = hash
+        }
+        await deps.op('writeMailbox', { file: `/approvals/${hash}.json`, publicId, value })
         const proposals = { ...(record.proposals ?? {}) }
-        proposals[hash] = { ...item, approvedBy: [...new Set([...item.approvedBy, self.publisherId])] }
-        save({ ...record, answered: [...record.answered, hash], approvedAt: { ...record.approvedAt, [spot]: hash }, proposals })
+        proposals[hash] = {
+          ...item,
+          approvedBy: value.response ? [...new Set([...item.approvedBy, self.publisherId])] : item.approvedBy,
+          approvedNextBy: value.responseNext ? [...new Set([...(item.approvedNextBy ?? []), self.publisherId])] : item.approvedNextBy,
+        }
+        save({ ...record, answered: [...record.answered, hash], approvedAt, proposals })
+      })
+    },
+
+    // Withdraws our own waiting proposal (SLJ-110): only while no other
+    // maintainer has approved it.
+    withdraw(publicId: string, hash: string): Promise<void> {
+      return serial(publicId, async () => {
+        const record = records()[publicId]
+        const entry = record?.proposals?.[hash]
+        if (!record || !entry?.mine || entry.state !== 'waiting') {
+          throw new MaintainersError('NO_PROPOSAL', 'This proposal is no longer waiting')
+        }
+        await withdrawOwn(record, hash)
       })
     },
 
@@ -846,13 +1349,51 @@ export function createMaintainers(deps: MaintainersDeps) {
 
 const BOOKKEEPING_FILES = new Set(['/version-meta.json', '/changelog.json'])
 
+function specFor(publicId: string, generation: number, members: Member[], quorum: number): SharedCourseSpecInput {
+  return { generation, publicId, quorum, signers: members.map((member) => member.maintainerKey) }
+}
+
+// A spot in the course's history: the shared course's length a version
+// builds on, in its generation (SLJ-70; generation 0 keeps the plain length
+// it was stored under before).
+function spotKey(generation: number, length: number): string {
+  return generation > 0 ? `${generation}:${length}` : String(length)
+}
+
+// A change of maintainers as Approvals shows it (SLJ-70): who it adds and
+// removes against the maintainers it was proposed under, the new rule, and
+// who of the new maintainers approved the new shared course.
+function changeSummary(record: SharedCourseRecord, entry: ProposalRecord): ApprovalItem['change'] {
+  const change = entry.change!
+  const generation = entry.generation ?? 0
+  const before =
+    generation === (record.generation ?? 0) ? record : record.previous?.find((earlier) => earlier.generation === generation)
+  const beforeIds = (before?.members ?? record.members).map((member) => member.publisherId)
+  const afterIds = change.members.map((member) => member.publisherId)
+  const approvedBy = entry.approvedNextBy ?? []
+  return {
+    added: afterIds.filter((id) => !beforeIds.includes(id)),
+    approvedBy,
+    count: afterIds.length,
+    previousCount: beforeIds.length,
+    missing: entry.state === 'waiting' ? afterIds.filter((id) => !approvedBy.includes(id)) : [],
+    previousQuorum: before?.quorum ?? record.quorum,
+    quorum: change.quorum,
+    removed: beforeIds.filter((id) => !afterIds.includes(id)),
+  }
+}
+
 // Which group of the Approvals page a proposal is in.
 function groupOf(record: SharedCourseRecord, entry: ProposalRecord): ApprovalGroup {
   if (entry.state === 'online') return 'approved'
-  if (entry.state === 'replaced') return 'replaced'
+  if (entry.state === 'replaced' || entry.state === 'withdrawn') return 'replaced'
   if (!entry.mine && !record.answered.includes(entry.hash)) return 'waiting-for-you'
   return Object.keys(entry.changesRequested).length > 0 ? 'changes-requested' : 'waiting-for-others'
 }
+
+// How many changes of maintainers restoring follows (SLJ-70): a bound on a
+// chain of notices read from the network.
+const MAX_GENERATIONS = 50
 
 // Decided proposals kept per course (waiting ones are always kept).
 export const MAX_DECIDED_PROPOSALS = 100
@@ -896,39 +1437,80 @@ function logFailure(publicId: string) {
   return (error: unknown) => console.error(`[maintainers] ${publicId} failed:`, error)
 }
 
-function parseMembers(value: unknown, publicId: string): { members: Member[]; quorum: number } | null {
-  const data = value as { members?: unknown; publicId?: unknown; quorum?: unknown } | null
-  if (!data || data.publicId !== publicId || !Array.isArray(data.members) || typeof data.quorum !== 'number') return null
-  const members = data.members.filter(
+function parseMemberList(value: unknown): Member[] | null {
+  if (!Array.isArray(value)) return null
+  const members = value.filter(
     (member): member is Member =>
       Boolean(member) &&
       typeof member.mailboxKey === 'string' &&
       typeof member.maintainerKey === 'string' &&
       typeof member.publisherId === 'string',
   )
-  if (members.length !== data.members.length || members.length === 0) return null
-  return { members, quorum: data.quorum }
+  return members.length === value.length ? members.map(({ mailboxKey, maintainerKey, publisherId }) => ({ mailboxKey, maintainerKey, publisherId })) : null
+}
+
+function parseGeneration(value: unknown): number | null {
+  if (value === undefined) return 0
+  return Number.isInteger(value) && (value as number) >= 0 ? (value as number) : null
+}
+
+function parseMembers(value: unknown, publicId: string): { generation: number; members: Member[]; quorum: number } | null {
+  const data = value as { generation?: unknown; members?: unknown; publicId?: unknown; quorum?: unknown } | null
+  if (!data || data.publicId !== publicId || typeof data.quorum !== 'number') return null
+  const members = parseMemberList(data.members)
+  const generation = parseGeneration(data.generation)
+  if (!members || members.length === 0 || generation === null) return null
+  return { generation, members, quorum: data.quorum }
+}
+
+// A change's description in a proposal (SLJ-70), checked: remote data.
+function parseChange(value: unknown): MaintainersChange | null {
+  const data = value as Partial<MaintainersChange> | null
+  const members = parseMemberList(data?.members)
+  const next = data?.next as Partial<MaintainersChange['next']> | undefined
+  if (
+    !data ||
+    !members ||
+    members.length < 2 ||
+    !Number.isInteger(data.generation) ||
+    (data.generation as number) < 1 ||
+    !Number.isInteger(data.quorum) ||
+    (data.quorum as number) <= members.length / 2 ||
+    (data.quorum as number) > members.length ||
+    typeof next?.hash !== 'string' ||
+    typeof next.proposalKey !== 'string' ||
+    typeof next.request !== 'string'
+  ) {
+    return null
+  }
+  return {
+    generation: data.generation as number,
+    members,
+    next: { hash: next.hash, proposalKey: next.proposalKey, request: next.request },
+    quorum: data.quorum as number,
+  }
 }
 
 // The shared course's source.json: its owner, maintainers (with mailboxes)
 // and rule.
-function parseSharedSource(value: unknown): { members: Member[]; ownerPublisherId: string; quorum: number } | null {
-  const data = value as { maintainers?: { members?: unknown; quorum?: unknown }; publisher?: { id?: unknown } } | null
-  const members = data?.maintainers?.members
+function parseSharedSource(
+  value: unknown,
+): { generation: number; members: Member[]; ownerPublisherId: string; quorum: number } | null {
+  const data = value as {
+    maintainers?: { generation?: unknown; members?: unknown; quorum?: unknown }
+    publisher?: { id?: unknown }
+  } | null
+  const members = parseMemberList(data?.maintainers?.members)
   const quorum = data?.maintainers?.quorum
   const owner = data?.publisher?.id
-  if (!Array.isArray(members) || typeof quorum !== 'number' || typeof owner !== 'string') return null
-  const parsed = members.filter(
-    (member): member is Member =>
-      Boolean(member) &&
-      typeof member.mailboxKey === 'string' &&
-      typeof member.maintainerKey === 'string' &&
-      typeof member.publisherId === 'string',
-  )
-  return parsed.length === members.length && parsed.length > 0 ? { members: parsed, ownerPublisherId: owner, quorum } : null
+  const generation = parseGeneration(data?.maintainers?.generation)
+  if (!members || members.length === 0 || typeof quorum !== 'number' || typeof owner !== 'string' || generation === null) return null
+  return { generation, members, ownerPublisherId: owner, quorum }
 }
 
-function parseProposal(value: unknown): Pick<ProposalRecord, 'hash' | 'proposalKey' | 'request' | 'title' | 'version'> | null {
+function parseProposal(
+  value: unknown,
+): Pick<ProposalRecord, 'change' | 'hash' | 'proposalKey' | 'request' | 'title' | 'version'> | null {
   const data = value as Partial<SharedProposal> | null
   if (
     !data ||
@@ -939,7 +1521,11 @@ function parseProposal(value: unknown): Pick<ProposalRecord, 'hash' | 'proposalK
   ) {
     return null
   }
+  // A proposal naming a change it doesn't describe properly isn't one.
+  const change = data.change === undefined ? undefined : parseChange(data.change)
+  if (change === null) return null
   return {
+    change,
     hash: data.hash,
     proposalKey: data.proposalKey,
     request: data.request,

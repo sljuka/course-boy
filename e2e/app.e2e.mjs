@@ -107,9 +107,11 @@ describe('launch', () => {
       'invite',
       'listApprovals',
       'preview',
+      'proposeChange',
       'requestChanges',
       'review',
       'startSharing',
+      'withdraw',
     ])
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
     expect(surface.programs).toEqual(['create', 'get', 'getSharing', 'list', 'markSeen', 'peekCourse', 'publish', 'remove', 'update', 'uploadImage'])

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { ApprovalStatus } from "@/components/approvals/approval-status";
+import { ChangeSummary } from "@/components/approvals/change-summary";
 import { VersionNotes } from "@/components/course-details/version-notes";
 import { Page } from "@/components/page/page";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,6 +22,7 @@ import {
   usePreviewProposalMutation,
   useProposalReviewQuery,
   useRequestChangesMutation,
+  useWithdrawProposalMutation,
 } from "@/lib/maintainers-queries";
 
 const CHANGE_ICONS = { added: FilePlus, changed: FilePen, removed: FileMinus } as const;
@@ -42,8 +44,23 @@ export function ApprovalReviewPage() {
   const { data: approvals, isLoading: isListLoading } = useApprovalsQuery();
   const { data: ownPublisherId = "" } = useOwnPublisherIdQuery();
   const item = approvals?.items.find((entry) => entry.publicId === publicId && entry.hash === hash);
-  const isReviewable = Boolean(item && !item.mine && (item.group === "waiting-for-you" || item.group === "waiting-for-others" || item.group === "changes-requested"));
+  // A change of maintainers (SLJ-70) changes no files: its summary is the review.
+  const isReviewable = Boolean(
+    item &&
+      !item.mine &&
+      !item.change &&
+      (item.group === "waiting-for-you" || item.group === "waiting-for-others" || item.group === "changes-requested"),
+  );
   const canAnswer = item?.group === "waiting-for-you";
+  // Yours, still waiting, and nobody else has approved it (SLJ-110).
+  const canWithdraw = Boolean(
+    item?.mine &&
+      item.group !== "approved" &&
+      item.group !== "replaced" &&
+      item.approvedBy.every((id) => id === item.from) &&
+      (item.change?.approvedBy ?? []).every((id) => id === item.from),
+  );
+  const withdrawMutation = useWithdrawProposalMutation();
   const { data: review, error, isLoading } = useProposalReviewQuery(publicId, hash, isReviewable);
   const version = review?.version ?? item?.version;
   const approveMutation = useApproveMutation();
@@ -62,14 +79,21 @@ export function ApprovalReviewPage() {
       header={
         <div className="flex flex-col gap-1">
           <CardTitle size="lg">
-            {version ? t("maintainers.reviewTitle", { version }) : t("maintainers.reviewLoading")}
+            {item?.change
+              ? t("maintainers.reviewChangeTitle")
+              : version
+                ? t("maintainers.reviewTitle", { version })
+                : t("maintainers.reviewLoading")}
           </CardTitle>
-          <CardDescription className="max-w-3xl">{t("maintainers.reviewDescription")}</CardDescription>
+          <CardDescription className="max-w-3xl">
+            {item?.change ? t("maintainers.reviewChangeDescription") : t("maintainers.reviewDescription")}
+          </CardDescription>
         </div>
       }
     >
       <div className="flex max-w-3xl flex-col gap-4" data-testid="approval-review">
         {item && <ApprovalStatus item={item} ownPublisherId={ownPublisherId} />}
+        {item?.change && <ChangeSummary item={item} ownPublisherId={ownPublisherId} />}
         {!isListLoading && !item && (
           <Alert variant="destructive">
             <AlertDescription>{t("maintainers.proposalGone")}</AlertDescription>
@@ -130,14 +154,28 @@ export function ApprovalReviewPage() {
             </Button>
           </div>
         )}
-        {(approveMutation.error || changesMutation.error || previewMutation.error) && (
+        {canWithdraw && publicId && hash && (
+          <div className="flex flex-col items-start gap-2">
+            <CardDescription>{t("maintainers.withdrawDescription")}</CardDescription>
+            <Button
+              data-testid="withdraw-version"
+              disabled={withdrawMutation.isPending}
+              onClick={() => withdrawMutation.mutate({ hash, publicId })}
+              variant="secondary"
+            >
+              {withdrawMutation.isPending && <Spinner aria-hidden="true" />}
+              {t("maintainers.withdraw")}
+            </Button>
+          </div>
+        )}
+        {(approveMutation.error || changesMutation.error || previewMutation.error || withdrawMutation.error) && (
           <Alert variant="destructive">
             <AlertDescription>
-              {(approveMutation.error ?? changesMutation.error ?? previewMutation.error)?.message}
+              {(approveMutation.error ?? changesMutation.error ?? previewMutation.error ?? withdrawMutation.error)?.message}
             </AlertDescription>
           </Alert>
         )}
-        {review && canAnswer && publicId && hash && (
+        {(review || item?.change) && canAnswer && publicId && hash && (
           <>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="approval-note">{t("maintainers.noteLabel")}</Label>

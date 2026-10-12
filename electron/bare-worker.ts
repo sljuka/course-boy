@@ -348,8 +348,9 @@ export async function findProgram(input: {
 // workers/maintainers.cjs); electron/maintainers.ts decides when.
 
 // A shared course: its original public id, its maintainers' keys and how many
-// must approve a version.
-export type SharedCourseSpecInput = { publicId: string; quorum: number; signers: string[] }
+// must approve a version, and its generation (SLJ-70: one more each time the
+// maintainers or the rule change; 0 when unset).
+export type SharedCourseSpecInput = { generation?: number; publicId: string; quorum: number; signers: string[] }
 
 // What a maintainer tells the others about themselves for one course.
 export type MaintainerSelf = { mailboxKey: string; maintainerKey: string; publisherId: string }
@@ -357,10 +358,15 @@ export type MaintainerSelf = { mailboxKey: string; maintainerKey: string; publis
 export type MaintainerJoined = { member: MaintainerSelf; publicId: string }
 
 export type MailboxContents = {
-  approvals: Record<string, { response?: unknown; spot?: unknown }>
+  // An approval: `response` for the proposal's request, its spot and
+  // generation; for a change of maintainers (SLJ-70) `responseNext` too.
+  approvals: Record<string, { generation?: unknown; response?: unknown; responseNext?: unknown; spot?: unknown }>
   changesRequested: Record<string, { note?: unknown }>
   members: unknown
   proposal: unknown
+  // Proposals their author withdrew (SLJ-110), by request hash. Missing in
+  // readers older than that.
+  withdrawn?: Record<string, unknown>
 }
 
 export type ProposalChange = { kind: 'added' | 'changed' | 'removed'; path: string }
@@ -379,19 +385,22 @@ type SharedCourseOps = {
   moveNotice: [{ courseId: string; publicId: string; sharedKey: string }, Record<string, never>]
   propose: [
     { index: number; source: unknown; spec: SharedCourseSpecInput; versionPath: string },
-    { hash: string; length: number; proposalKey: string; request: string },
+    { hash: string; length: number; proposalKey: string; request: string; sharedLength: number },
   ]
   readMailbox: [{ key: string }, MailboxContents]
   proposalState: [{ request: string; spec: SharedCourseSpecInput }, { state: 'online' | 'replaced' | 'waiting' }]
   readSharedSource: [
     { sharedKey: string },
-    { courseId: string | null; source: unknown; title: string | null; version: string | null },
+    { courseId: string | null; movedTo: string | null; source: unknown; title: string | null; version: string | null },
   ]
   review: [
     { proposalKey: string; request: string; spec: SharedCourseSpecInput },
     { changelog: unknown[]; changes: ProposalChange[]; length: number; sharedLength: number },
   ]
-  seedShared: [{ spec: SharedCourseSpecInput }, { courseId: string | null; sharedKey: string; version: string | null }]
+  seedShared: [
+    { spec: SharedCourseSpecInput },
+    { courseId: string | null; length: number; sharedKey: string; version: string | null },
+  ]
   self: [{ publicId: string }, MaintainerSelf]
   sign: [{ request: string; spec: SharedCourseSpecInput }, { response: string }]
   writeMailbox: [{ file: string; publicId: string; value: unknown }, Record<string, never>]

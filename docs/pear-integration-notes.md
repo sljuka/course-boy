@@ -1115,3 +1115,73 @@ by the end. It was also real app bugs, which only showed up there:
 - **IPC:** `maintainers:list-approvals` now returns `{ items, maintained }`.
 - **e2e:** `e2e/sharing-maintainers.e2e.mjs` checks the badge, the groups, and the
   read-only page once approved.
+
+### Proposing takes the spot; withdrawing (SLJ-110, 2026-10-11)
+
+- **The gap:** proposing signs the version, but didn't count toward the
+  one-approval-per-spot rule. A proposer could also approve a rival for the same spot,
+  and with 2 of 3 both versions could reach the rule (a fork).
+- **Now proposing takes the spot** (`approvedAt`, with the spot also in the proposer's
+  `/approvals/<hash>.json`, so a new computer rebuilds it). `seedShared` returns the
+  shared course's length and `propose` the spot it built on.
+- **Withdraw** (`maintainers:withdraw`, a button on your own version's page) frees the
+  spot, only while no other maintainer has approved it: with someone's approval out
+  there it could still reach the rule. Checked against every mailbox, read then. It
+  writes `/withdrawn/<hash>.json`, clears `/proposal.json` and drops the proposal
+  drive. Others' apps list it as withdrawn (in Replaced), and Approve checks the
+  proposer's mailbox first, so it's refused there too.
+- **Proposing again** for the same spot withdraws the previous proposal, under the same
+  condition. Otherwise the Publish is refused until the version goes online or is
+  replaced.
+- **A withdrawn version isn't proposed again** by the Publish that runs at every start;
+  a newer committed version is.
+- **What's left:** a race where someone approves in the moment between the withdraw's
+  check and its notice. Only the proposer's app commits a proposal, and it dropped it,
+  so an honest app never puts it online.
+
+### Changing maintainers or the rule (SLJ-70, 2026-10-12)
+
+- **Generations:** a shared course's code comes from its maintainers' keys and the rule,
+  so changing either is another move. Each change is a new **generation**: the spec's
+  namespace becomes `matko-shared-course-<public id>-g<n>` (generation 0 keeps the old
+  name), so the same maintainers and rule coming back never land on an earlier
+  generation's key. `source.json` and `/members.json` carry `generation`.
+- **Joining a shared course:** an invite on a shared course lets someone join as
+  **pending** (`pending` in the owner's record and `/members.json`). They become a
+  maintainer only through a change.
+- **A change** (`proposeChange`, `maintainers:propose-change`, the owner only; the owner
+  stays a maintainer) is one proposal with two signing requests:
+  - its own request: the current shared course's **moved notice** (the version online
+    with `movedTo` in `source.json`, nothing else changed), approved under the current
+    rule by the current maintainers;
+  - `change.next`: the next generation's **first version** (the same files), approved
+    under the new rule by the new maintainers.
+  - Someone in both sets signs both (`response` and `responseNext` in their approval
+    file). Approving checks the next request against the spec the change names, and
+    refuses a notice that changes anything but bookkeeping.
+- **Commit** (the owner's app, once both rules are met): the next generation's first
+  version first, then the notice, so students only follow to something there. Every
+  app then moves: `previous` keeps earlier generations (still seeded for their
+  notices), `members`/`quorum`/`generation` change, and the course is shared from the
+  new code (`onShared`). Students follow the notice like the first move.
+- **Removed maintainers:** their app marks the record `removed`: no longer shared, the
+  course stays on their computer as their own.
+- **Spots** are per generation (`spotKey`: `<generation>:<length>`, plain length for
+  generation 0). The change takes the notice's spot in the current generation and the
+  first spot of the next.
+- **Restore** follows the chain of notices to the latest generation
+  (`restoreSharedCourse`, at most 50), and the course's code becomes the latest key.
+- **UI:** Maintainers panel: joined people listed, "Change maintainers or the rule"
+  (pick people, pick the rule; says when the current rule needs a removed maintainer's
+  approval). Approvals and the version page show a change as "Change of maintainers"
+  with who it adds and removes and the rule before and after.
+- **Fixed on the way: every maintainer keeps the shared course's full history.** A
+  proposal starts with a copy of every block of the shared course, but a restored
+  computer only downloaded the latest version's files. Once the computers that had the
+  history were gone, nobody could propose anything (the copy waited forever). The
+  worker now downloads both cores whole for every shared course it opens
+  (`keepFullCopy`), and copying the history gives up after 60 s with a clear error
+  (`HISTORY_UNAVAILABLE`).
+- **Not built:** changing the owner; a change while a version waits (refused: decide
+  or withdraw it first); SLJ-59 (moving to a new identity) will reuse the same notice.
+

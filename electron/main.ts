@@ -472,7 +472,8 @@ function openProfileServices(dataDir: string) {
       const landed = await maintainers.restoreSharedCourse({ oldCode, publicId, sharedKey })
       courseSharingStore.set('published', {
         ...courseSharingStore.get('published'),
-        [landed.courseId]: { code: sharedKey, publicId, publicIndex },
+        // The latest shared course's: its maintainers may have changed since (SLJ-70).
+        [landed.courseId]: { code: landed.sharedKey, publicId, publicIndex },
       })
       courseSharingStore.set('nextPublicIndex', Math.max(courseSharingStore.get('nextPublicIndex') ?? 0, publicIndex + 1))
       return landed
@@ -998,6 +999,24 @@ ipcMain.handle('maintainers:start-sharing', async (_event, input: { courseId?: u
   await profile.maintainers.startSharing(input.courseId, input.quorum)
 })
 
+// SLJ-70: changes who maintains a shared course, or the rule (another move).
+ipcMain.handle(
+  'maintainers:propose-change',
+  async (_event, input: { courseId?: unknown; publisherIds?: unknown; quorum?: unknown }) => {
+    const ids = input?.publisherIds
+    if (
+      !isId(input?.courseId) ||
+      typeof input.quorum !== 'number' ||
+      !Array.isArray(ids) ||
+      ids.length > 50 ||
+      !ids.every((id) => typeof id === 'string' && /^[a-z0-9]{52,64}$/i.test(id))
+    ) {
+      throw new Error('Invalid request')
+    }
+    await profile.maintainers.proposeChange(input.courseId, { publisherIds: ids as string[], quorum: input.quorum })
+  },
+)
+
 ipcMain.handle('maintainers:get', (_event, courseId: unknown) => {
   if (!isId(courseId)) throw new Error('Invalid course id')
   return profile.maintainers.getInfo(courseId)
@@ -1037,6 +1056,12 @@ ipcMain.handle('maintainers:approve', async (_event, input: { hash?: unknown; pu
   if (!isPublicId(input?.publicId) || !isHash(input.hash)) throw new Error('Invalid proposal')
   await profile.maintainers.approve(input.publicId, input.hash)
   dropPreviews(input.hash)
+})
+
+// SLJ-110: withdraws your own waiting version (only while nobody else approved it).
+ipcMain.handle('maintainers:withdraw', async (_event, input: { hash?: unknown; publicId?: unknown }) => {
+  if (!isPublicId(input?.publicId) || !isHash(input.hash)) throw new Error('Invalid proposal')
+  await profile.maintainers.withdraw(input.publicId, input.hash)
 })
 
 ipcMain.handle('maintainers:request-changes', async (_event, input: { hash?: unknown; note?: unknown; publicId?: unknown }) => {

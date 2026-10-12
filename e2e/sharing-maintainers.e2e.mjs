@@ -1,5 +1,6 @@
 // SLJ-11: a course maintained by two teachers (approval with multisig), its
-// students following it to its shared code, and restoring on new computers.
+// students following it to its shared code, restoring on new computers, and
+// adding a third maintainer (SLJ-70).
 
 import { describe, expect, it } from 'vitest'
 import fs from 'node:fs'
@@ -14,6 +15,7 @@ const { ROOT, apps, close, data, identityFilePath, launch } = sharingSuite('main
   coLateStudent: 'co-late-student',
   coOwnerNew: 'co-owner-new',
   coMaintainerNew: 'co-maintainer-new',
+  coThird: 'co-third',
 })
 
 // SLJ-11, milestone 3: Ana invites Marko to maintain her course (both must
@@ -179,7 +181,7 @@ describe('a course maintained by two teachers', () => {
     const student = apps.coStudent.page
     await writeLesson(marko, ids, 'Second version, by Marko.')
     // Cut, then Publish from the editor: for a shared course it asks for approval.
-    const { version } = await marko.evaluate(
+    let { version } = await marko.evaluate(
       (courseId) => window.courses.cutVersion({ courseId, releaseType: 'minor' }),
       ids.courseId,
     )
@@ -190,10 +192,39 @@ describe('a course maintained by two teachers', () => {
     await waitForText(marko, `Version ${version} sent for approval`, { timeout: 30_000 })
     await marko.getByRole('button', { name: 'Done' }).click()
 
+    // SLJ-110: nobody else has approved it, so Marko can withdraw it from its
+    // page; Ana's app sees it withdrawn. Publishing again proposes it anew.
+    const own = await marko.evaluate(() =>
+      window.maintainers.listApprovals().then(({ items }) => items.find((entry) => entry.mine && entry.group === 'waiting-for-others')),
+    )
+    await marko.evaluate(({ hash, publicId }) => {
+      location.hash = `#/approvals/${publicId}/${hash}`
+    }, own)
+    await marko.click('[data-testid="withdraw-version"]')
+    await waitFor(marko, () => document.querySelector('[data-testid="approval-status-summary"]')?.getAttribute('data-group') === 'replaced', {
+      timeout: 30_000,
+    })
+    await expect
+      .poll(
+        () => ana.evaluate((hash) => window.maintainers.listApprovals().then(({ items }) => items.find((entry) => entry.hash === hash)?.withdrawn ?? null), own.hash),
+        { interval: 500, timeout: 60_000 },
+      )
+      .not.toBe(false)
+    // A withdrawn version isn't proposed again (not even at the next start):
+    // a new one is.
+    await writeLesson(marko, ids, 'Second version, by Marko. Fixed.')
+    version = await cutAndPublish(marko, ids.courseId)
+
     const waitingForAna = () =>
-      ana.evaluate(() => window.maintainers.listApprovals().then(({ items }) => items.filter((entry) => entry.group === 'waiting-for-you')))
+      ana.evaluate(
+        (withdrawn) =>
+          window.maintainers.listApprovals().then(({ items }) => items.filter((entry) => entry.group === 'waiting-for-you' && entry.hash !== withdrawn)),
+        own.hash,
+      )
     await expect.poll(waitingForAna, { interval: 500, timeout: 60_000 }).toHaveLength(1)
     const [item] = await waitingForAna()
+    expect(item.hash).not.toBe(own.hash)
+    expect(item.version).toBe(version)
     expect(item).toMatchObject({ approvedBy: [await marko.evaluate(() => window.sharing.getCreatorKey())], quorum: 2, version })
     // Marko's own, waiting for Ana.
     expect(
@@ -269,4 +300,66 @@ describe('a course maintained by two teachers', () => {
       .toBe(sharedKey)
     expect(await marko.evaluate((id) => window.maintainers.get(id).then((info) => info.role), ids.courseId)).toBe('maintainer')
   }, 180_000)
+
+  // SLJ-70: Mila joins with an invite, Ana changes the maintainers to add
+  // her (2 of 3 from now on); once Marko approves, the course moves to its
+  // next shared code, the student follows, and Mila's app lands it.
+  it('Ana adds a third maintainer; once approved the course moves and everyone follows', async () => {
+    const ana = apps.coOwnerNew.page
+    const marko = apps.coMaintainerNew.page
+    const student = apps.coStudent.page
+    const mila = await launch('coThird')
+    await finishOnboarding(mila, 'teacher')
+    await setUpIdentity(mila)
+    const milaId = await mila.evaluate(() => window.sharing.getCreatorKey())
+    const { code } = await ana.evaluate((input) => window.maintainers.invite(input), { courseId: ids.courseId, publisherId: milaId })
+    await mila.evaluate((code) => window.maintainers.accept(code), code)
+
+    // Ana's panel shows her as joined; Ana changes the maintainers.
+    await ana.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await ana.locator('[data-testid="maintainer-pending"]').waitFor({ timeout: 60_000 })
+    await ana.click('[data-testid="open-change-maintainers"]')
+    await waitForText(ana, 'Any 2 of 3')
+    await ana.click('[data-testid="propose-change"]')
+    await waitForText(ana, 'A change of maintainers is waiting for approval', { timeout: 60_000 })
+
+    // Marko approves it (both parts: as a current maintainer and a new one).
+    const waitingForMarko = () =>
+      marko.evaluate(() =>
+        window.maintainers.listApprovals().then(({ items }) => items.find((item) => item.change && item.group === 'waiting-for-you') ?? null),
+      )
+    await expect.poll(waitingForMarko, { interval: 1000, timeout: 60_000 }).not.toBeNull()
+    const change = await waitingForMarko()
+    expect(change.change).toMatchObject({ added: [milaId], quorum: 2, removed: [] })
+    await marko.evaluate((input) => window.maintainers.approve(input), { hash: change.hash, publicId: change.publicId })
+
+    // Ana's app puts it online: a new code, three maintainers.
+    await expect
+      .poll(() => ana.evaluate((id) => window.maintainers.get(id).then((info) => info?.members.length), ids.courseId), {
+        interval: 1000,
+        timeout: 90_000,
+      })
+      .toBe(3)
+    const nextKey = await ana.evaluate((id) => window.maintainers.get(id).then((info) => info.sharedKey), ids.courseId)
+    expect(nextKey).not.toBe(sharedKey)
+
+    // The student's app follows it to the new code; Mila's lands the course.
+    await expect
+      .poll(() => student.evaluate((id) => window.sharing.getCourseSharing(id).then((info) => info.code), ids.courseId), {
+        interval: 1000,
+        timeout: 90_000,
+      })
+      .toBe(nextKey)
+    await expect
+      .poll(() => mila.evaluate((id) => window.maintainers.get(id).then((info) => info?.sharedKey ?? null), ids.courseId), {
+        interval: 1000,
+        timeout: 90_000,
+      })
+      .toBe(nextKey)
+    expect((await mila.evaluate(() => window.courses.list('en'))).find((course) => course.id === ids.courseId)).toMatchObject({
+      distribution: 'local',
+    })
+  }, 300_000)
 })

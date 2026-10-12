@@ -34,9 +34,11 @@ export function ApprovalRow({ item, ownPublisherId, title }: { item: ApprovalIte
       )}
       <ListRowLink render={<Link to={`/approvals/${item.publicId}/${item.hash}`} />}>{title}</ListRowLink>
       <ListRowMeta>
-        {item.mine
-          ? t("maintainers.versionYours", { version: item.version })
-          : t("maintainers.versionFrom", { name: nameOf(item.from), version: item.version })}
+        {item.change
+          ? t("maintainers.changeRow")
+          : item.mine
+            ? t("maintainers.versionYours", { version: item.version })
+            : t("maintainers.versionFrom", { name: nameOf(item.from), version: item.version })}
       </ListRowMeta>
       <ListRowMeta align="end" className="w-64" data-testid="approval-status" fill>
         {item.group === "changes-requested"
@@ -51,6 +53,11 @@ export function ApprovalRow({ item, ownPublisherId, title }: { item: ApprovalIte
               ? t("maintainers.approvedCount", { approved, quorum: item.quorum })
               : null}
       </ListRowMeta>
+      {item.change && (item.group === "waiting-for-others" || item.group === "waiting-for-you") && (
+        <ListRowMeta data-testid="approval-change-status">
+          {t("maintainers.changeNewApproved", { approved: item.change.approvedBy.length, quorum: item.change.quorum })}
+        </ListRowMeta>
+      )}
       <ListRowMeta align="end" className="w-16">
         {formatShortDate(new Date(date).toISOString(), locale)}
       </ListRowMeta>

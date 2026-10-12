@@ -56,15 +56,23 @@ function assertMajority(signers, quorum) {
   }
 }
 
-function namespaceFor(publicId) {
-  return `matko-shared-course-${publicId}`
+// `generation`: how many times the course's maintainers or rule changed
+// (SLJ-70). Each change is a new shared course (a new code); numbering them
+// keeps a later one from landing on an earlier one's key when the same
+// maintainers and rule come back.
+function namespaceFor(publicId, generation = 0) {
+  return generation > 0 ? `matko-shared-course-${publicId}-g${generation}` : `matko-shared-course-${publicId}`
 }
 
-// The shared course's identity: its signers, quorum and original public id.
-function sharedCourseSpec({ publicId, quorum, signers }) {
+// The shared course's identity: its signers, quorum, original public id and
+// generation.
+function sharedCourseSpec({ generation = 0, publicId, quorum, signers }) {
+  if (!Number.isInteger(generation) || generation < 0) {
+    throw new SharedCourseError('INVALID_GENERATION', `Invalid generation ${generation}`)
+  }
   const ordered = canonicalSigners(signers)
   assertMajority(ordered, quorum)
-  return { namespace: namespaceFor(publicId), publicId, quorum, signers: ordered }
+  return { generation, namespace: namespaceFor(publicId, generation), publicId, quorum, signers: ordered }
 }
 
 // This maintainer's key for the course, as a z32 string (what goes into the
@@ -90,10 +98,36 @@ async function openSharedDrive(store, spec) {
 
 // Copies the shared course's blocks, as they are, to the start of an empty
 // core of ours.
+// The whole history must be here or reachable: every maintainer's app keeps
+// a full copy (workers/main.cjs keepFullCopy). Bounded, so a history nobody
+// online has fails clearly instead of waiting forever.
+const HISTORY_TIMEOUT_MS = 60_000
+
 async function copyBlocks(from, to, length) {
   if (to.length > 0) throw new SharedCourseError('PROPOSAL_NOT_EMPTY', 'This proposal drive was used before')
   if (length === 0) return
-  await from.download({ start: 0, end: length }).done()
+  const range = from.download({ start: 0, end: length })
+  let timer
+  try {
+    await Promise.race([
+      range.done(),
+      new Promise((resolve, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new SharedCourseError(
+                'HISTORY_UNAVAILABLE',
+                "The course's full history isn't on this computer, and no other maintainer who has it is online. Try again when one is.",
+              ),
+            ),
+          HISTORY_TIMEOUT_MS,
+        )
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+    range.destroy?.()
+  }
   for (let index = 0; index < length; index++) {
     await to.append(await from.get(index))
   }
@@ -123,6 +157,8 @@ async function createProposal({ identity, index, source, spec, store, versionPat
   const blobs = store.get({ manifest: blobsManifest })
   await blobs.ready()
 
+  // The spot it builds on: the shared course's length it copied.
+  const sharedLength = shared.core.length
   try {
     const dbWriter = store.get({ exclusive: true, key: db.key, keyPair })
     const blobsWriter = store.get({ exclusive: true, key: blobs.key, keyPair })
@@ -143,7 +179,7 @@ async function createProposal({ identity, index, source, spec, store, versionPat
 
   const request = await SignRequest.generateDrive(drive, { manifest: shared.manifest })
 
-  return { drive, length: drive.core.length, request: z32.encode(request) }
+  return { drive, length: drive.core.length, request: z32.encode(request), sharedLength }
 }
 
 // A drive of ours, writable with `keyPair` through a session: the cores are

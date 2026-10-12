@@ -24,10 +24,14 @@ import { useInviteMaintainerMutation } from "@/lib/maintainers-queries";
 // week.
 export function InviteMaintainerDialog({
   courseId,
+  isShared = false,
   onClose,
   open,
 }: {
   courseId: string;
+  // The course is shared already (SLJ-70): joining doesn't make them a
+  // maintainer yet; a change adding them does.
+  isShared?: boolean;
   onClose: () => void;
   open: boolean;
 }) {
@@ -55,7 +59,7 @@ export function InviteMaintainerDialog({
         {code ? (
           <div className="flex flex-col gap-2">
             <CopyableCode label={t("maintainers.inviteCodeLabel")} testId="maintainer-invite-code" value={code} />
-            <CardDescription>{t("maintainers.inviteWaiting")}</CardDescription>
+            <CardDescription>{isShared ? t("maintainers.inviteSharedWaiting") : t("maintainers.inviteWaiting")}</CardDescription>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">

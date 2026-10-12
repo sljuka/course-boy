@@ -10,10 +10,19 @@ export type MaintainersInfo = {
   // publisher id.
   changesRequested: Record<string, string>
   members: { publisherId: string }[]
-  // Our version waiting for approval, if any.
-  proposal: { version: string } | null
+  // The owner's: who joined with an invite since the course is shared, and
+  // becomes a maintainer once a change adding them is approved (SLJ-70).
+  pending: { publisherId: string }[]
+  // Our version waiting for approval, or our change of maintainers, if any.
+  proposal: {
+    change: { members: { publisherId: string }[]; quorum: number } | null
+    hash: string
+    version: string
+  } | null
   // How many must approve a version.
   quorum: number
+  // Removed from the maintainers by a change (SLJ-70).
+  removed: boolean
   role: "maintainer" | "owner"
   // The shared course's code, once it's online.
   sharedKey: string | null
@@ -52,6 +61,23 @@ export type ApprovalItem = {
   // The course's title, as the proposal names it.
   title: string | null
   version: string
+  // Withdrawn by its proposer (SLJ-110); in the Replaced group.
+  withdrawn: boolean
+  // A change of maintainers or the rule (SLJ-70), instead of a new version:
+  // who it adds and removes, the rule before and after, and who of the new
+  // maintainers approved it (`approvedBy` and `quorum` above count the
+  // current ones).
+  change: {
+    added: string[]
+    approvedBy: string[]
+    // How many maintainers after the change, and before.
+    count: number
+    missing: string[]
+    previousCount: number
+    previousQuorum: number
+    quorum: number
+    removed: string[]
+  } | null
 }
 
 // Every proposal, and how many shared courses this profile maintains.

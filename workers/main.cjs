@@ -1163,7 +1163,23 @@ async function start() {
     swarm.join(drive.discoveryKey, { client: true, server: true })
     watchFollowedDrive(drive)
     sharedDrives.set(hex, drive)
+    keepFullCopy(drive)
+    drive.core.on('append', () => keepFullCopy(drive))
     return drive
+  }
+
+  // Every maintainer keeps the whole shared course, its history included
+  // (both cores, every block): a proposal starts with a copy of all of it
+  // (createProposal), and a version's files alone don't hold old blocks. With
+  // only a restored computer's copy of the latest files, nobody could
+  // propose once the computers that had the history are gone. Started once
+  // per drive; the blobs only exist once it has a version.
+  const fullCopies = new WeakSet()
+  function keepFullCopy(drive) {
+    if (fullCopies.has(drive) || drive.core.length === 0) return
+    fullCopies.add(drive)
+    drive.core.download({ start: 0, end: -1 })
+    drive.getBlobs().then((blobs) => blobs.core.download({ start: 0, end: -1 }), () => {})
   }
 
   async function closeSharedDrive(spec) {
@@ -1195,10 +1211,15 @@ async function start() {
         const drive = await ensureSharedDrive(spec)
         await drive.core.update().catch(() => {})
         const manifest = drive.core.length > 0 ? await readRemoteJson(drive, '/course.json').catch(() => null) : null
-        return { courseId: manifest?.id ?? null, sharedKey: IdEncoding.normalize(drive.key), version: manifest?.version ?? null }
+        return {
+          courseId: manifest?.id ?? null,
+          length: drive.core.length,
+          sharedKey: IdEncoding.normalize(drive.key),
+          version: manifest?.version ?? null,
+        }
       }
       case 'propose': {
-        const { drive, length, request } = await createProposal({
+        const { drive, length, request, sharedLength } = await createProposal({
           identity: requireIdentity(),
           index: args.index,
           source: args.source,
@@ -1208,7 +1229,7 @@ async function start() {
         })
         swarm.join(drive.discoveryKey, { client: true, server: true })
         proposalDrives.set(drive.key.toString('hex'), drive)
-        return { hash: requestHash(request), length, proposalKey: IdEncoding.normalize(drive.key), request }
+        return { hash: requestHash(request), length, proposalKey: IdEncoding.normalize(drive.key), request, sharedLength }
       }
       case 'review': {
         await ensureSharedDrive(spec)
@@ -1284,6 +1305,8 @@ async function start() {
           const title = manifest?.locales?.[manifest?.defaultLocale]?.title
           return {
             courseId: manifest?.id ?? null,
+            // Where it continues, if its maintainers changed since (SLJ-70).
+            movedTo: source ? movedToKey(JSON.stringify(source), drive.key) : null,
             source,
             title: typeof title === 'string' ? title.slice(0, 200) : null,
             version: manifest?.version ?? null,

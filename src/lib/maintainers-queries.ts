@@ -42,8 +42,11 @@ const refreshMaintainers = () => queryClient.invalidateQueries({ queryKey: ["mai
 const invite = (input: { courseId: string; publisherId: string }) => window.maintainers.invite(input);
 const accept = (code: string) => window.maintainers.accept(code);
 const startSharing = (input: { courseId: string; quorum: number }) => window.maintainers.startSharing(input);
+const proposeChange = (input: { courseId: string; publisherIds: string[]; quorum: number }) =>
+  window.maintainers.proposeChange(input);
 const approve = (input: { hash: string; publicId: string }) => window.maintainers.approve(input);
 const previewProposal = (input: { hash: string; publicId: string }) => window.maintainers.preview(input);
+const withdraw = (input: { hash: string; publicId: string }) => window.maintainers.withdraw(input);
 const requestChanges = (input: { hash: string; note: string; publicId: string }) =>
   window.maintainers.requestChanges(input);
 
@@ -65,8 +68,21 @@ export function useStartSharingMutation() {
   });
 }
 
+// SLJ-70: asks to change who maintains a shared course, or the rule.
+export function useProposeChangeMutation() {
+  return useMutation<void, Error, { courseId: string; publisherIds: string[]; quorum: number }>({
+    mutationFn: proposeChange,
+    onSuccess: refreshMaintainers,
+  });
+}
+
 export function useApproveMutation() {
   return useMutation<void, Error, { hash: string; publicId: string }>({ mutationFn: approve, onSuccess: refreshMaintainers });
+}
+
+// SLJ-110: withdraws your own waiting version.
+export function useWithdrawProposalMutation() {
+  return useMutation<void, Error, { hash: string; publicId: string }>({ mutationFn: withdraw, onSuccess: refreshMaintainers });
 }
 
 export function useRequestChangesMutation() {

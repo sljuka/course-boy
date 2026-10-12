@@ -5,13 +5,16 @@ import { createMaintainers, notesSince, type MaintainersService, type Maintainer
 // A fake of what the worker does (mailboxes, the shared course), shared by
 // two maintainers' services, so the decisions are tested without a network.
 type Mailbox = {
-  approvals: Record<string, { response?: unknown; spot?: unknown }>
+  approvals: Record<string, { generation?: unknown; response?: unknown; responseNext?: unknown; spot?: unknown }>
   changesRequested: Record<string, { note?: unknown }>
   members: unknown
   proposal: unknown
+  withdrawn: Record<string, unknown>
 }
 
 type Self = { mailboxKey: string; maintainerKey: string; publisherId: string }
+
+type Shared = { length: number; source: unknown; version: string | null }
 
 type World = {
   commits: { first: boolean; request: string; responses: string[] }[]
@@ -21,7 +24,10 @@ type World = {
   owner: { self: Self; service: MaintainersService } | null
   // request -> the shared course's length once it's committed
   lengths: Map<string, number>
-  shared: { length: number; source: unknown; version: string | null }
+  // The shared course (generation 0), and later generations' (SLJ-70).
+  shared: Shared
+  generations: Map<number, Shared>
+  requestGenerations: Map<string, number> // request -> the generation it's for
   sources: Map<string, unknown> // request -> its source.json
   versions: Map<string, string> // request -> version
 }
@@ -34,10 +40,26 @@ function createWorld(): World {
     moved: [],
     owner: null,
     shared: { length: 0, source: null, version: null },
+    generations: new Map(),
+    requestGenerations: new Map(),
     sources: new Map(),
     versions: new Map(),
   }
 }
+
+function sharedAt(world: World, generation: number): Shared {
+  if (generation === 0) return world.shared
+  if (!world.generations.has(generation)) world.generations.set(generation, { length: 0, source: null, version: null })
+  return world.generations.get(generation)!
+}
+
+function setShared(world: World, generation: number, shared: Shared) {
+  if (generation === 0) world.shared = shared
+  else world.generations.set(generation, shared)
+}
+
+const keyOf = (generation: number) => (generation > 0 ? `shared-key-g${generation}` : 'shared-key')
+const generationOf = (args: Record<string, unknown>) => (args.spec as { generation?: number } | undefined)?.generation ?? 0
 
 function createPeer(world: World, name: string, { courseId = null as string | null, publishedVersion = '0.2' } = {}) {
   const self = { mailboxKey: `mb-${name}`, maintainerKey: `mk-${name}`, publisherId: `pub-${name}` }
@@ -46,7 +68,7 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
   const published = { version: publishedVersion }
   const mailbox = () => {
     if (!world.mailboxes.has(self.mailboxKey)) {
-      world.mailboxes.set(self.mailboxKey, { approvals: {}, changesRequested: {}, members: null, proposal: null })
+      world.mailboxes.set(self.mailboxKey, { approvals: {}, changesRequested: {}, members: null, proposal: null, withdrawn: {} })
     }
     return world.mailboxes.get(self.mailboxKey)!
   }
@@ -69,52 +91,86 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
         if (file === '/members.json') box.members = args.value
         else if (file === '/proposal.json') box.proposal = args.value
         else if (file.startsWith('/approvals/')) box.approvals[file.slice(11, -5)] = args.value as { response: unknown }
+        else if (file.startsWith('/withdrawn/')) box.withdrawn[file.slice(11, -5)] = args.value
         else if (file.startsWith('/changes-requested/')) box.changesRequested[file.slice(19, -5)] = args.value as { note: unknown }
         return {}
       }
       case 'readMailbox':
-        return world.mailboxes.get(args.key as string) ?? { approvals: {}, changesRequested: {}, members: null, proposal: null }
+        return world.mailboxes.get(args.key as string) ?? { approvals: {}, changesRequested: {}, members: null, proposal: null, withdrawn: {} }
       case 'followMailbox':
       case 'dropProposal':
         return {}
-      case 'seedShared':
-        return { courseId: world.shared.version ? 'course-1' : null, sharedKey: 'shared-key', version: world.shared.version }
+      case 'seedShared': {
+        const shared = sharedAt(world, generationOf(args))
+        return {
+          courseId: shared.version ? 'course-1' : null,
+          length: shared.length,
+          sharedKey: keyOf(generationOf(args)),
+          version: shared.version,
+        }
+      }
       case 'propose': {
         const request = `req-${name}-${proposals++}`
+        const shared = sharedAt(world, generationOf(args))
         world.versions.set(request, published.version)
         world.sources.set(request, args.source)
-        world.lengths.set(request, world.shared.length + 1)
-        return { hash: `h-${request}`, length: world.shared.length + 1, proposalKey: `prop-${request}`, request }
+        world.lengths.set(request, shared.length + 1)
+        world.requestGenerations.set(request, generationOf(args))
+        return {
+          hash: `h-${request}`,
+          length: shared.length + 1,
+          proposalKey: `prop-${request}`,
+          request,
+          sharedLength: shared.length,
+        }
       }
       case 'sign':
         return { response: `sig-${self.maintainerKey}-${args.request}` }
       case 'proposalState': {
         const request = args.request as string
         if (world.commits.some((commit) => commit.request === request)) return { state: 'online' }
-        return { state: world.shared.length >= (world.lengths.get(request) ?? Infinity) ? 'replaced' : 'waiting' }
+        const shared = sharedAt(world, world.requestGenerations.get(request) ?? 0)
+        return { state: shared.length >= (world.lengths.get(request) ?? Infinity) ? 'replaced' : 'waiting' }
       }
-      case 'review':
+      case 'review': {
+        const request = args.request as string
+        // A request is checked against the shared course it names.
+        if ((world.requestGenerations.get(request) ?? 0) !== generationOf(args)) throw new Error('This request is not for this course')
+        const shared = sharedAt(world, generationOf(args))
+        // A moved notice (SLJ-70) changes only source.json, which isn't listed.
+        const moved = Boolean((world.sources.get(request) as { movedTo?: unknown } | undefined)?.movedTo)
         return {
           changelog: [{ changes: [], cutAt: '', notes: 'Fixed a typo', version: '0.2' }],
-          changes: [{ kind: 'changed', path: '/lesson.md' }],
-          length: world.shared.length + 1,
-          sharedLength: world.shared.length,
+          changes: moved ? [] : [{ kind: 'changed', path: '/lesson.md' }],
+          length: shared.length + 1,
+          sharedLength: shared.length,
         }
-      case 'commit':
-        world.commits.push({ first: args.first as boolean, request: args.request as string, responses: args.responses as string[] })
-        world.shared = {
-          length: world.shared.length + 1,
-          source: world.sources.get(args.request as string),
-          version: world.versions.get(args.request as string)!,
-        }
-        return { sharedKey: 'shared-key' }
+      }
+      case 'commit': {
+        const generation = generationOf(args)
+        const request = args.request as string
+        if ((world.requestGenerations.get(request) ?? 0) !== generation) throw new Error('This request is not for this course')
+        const shared = sharedAt(world, generation)
+        if (world.lengths.get(request) !== shared.length + 1) throw new Error("This version doesn't build on the course's latest version")
+        world.commits.push({ first: args.first as boolean, request, responses: args.responses as string[] })
+        setShared(world, generation, {
+          length: shared.length + 1,
+          source: world.sources.get(request),
+          version: world.versions.get(request)!,
+        })
+        return { sharedKey: keyOf(generation) }
+      }
       case 'moveNotice':
         world.moved.push(args.courseId as string)
         return {}
-      case 'readSharedSource':
-        return { courseId: 'course-1', source: world.shared.source, title: 'Fractions', version: world.shared.version }
+      case 'readSharedSource': {
+        const key = args.sharedKey as string
+        const shared = sharedAt(world, key === 'shared-key' ? 0 : Number(key.slice('shared-key-g'.length)))
+        const movedTo = (shared.source as { movedTo?: { driveKey?: string } } | null)?.movedTo?.driveKey ?? null
+        return { courseId: 'course-1', movedTo, source: shared.source, title: 'Fractions', version: shared.version }
+      }
       case 'downloadShared':
-        return { courseId: 'course-1', version: world.shared.version }
+        return { courseId: 'course-1', version: sharedAt(world, generationOf(args)).version }
       default:
         throw new Error(`unexpected op ${name_}`)
     }
@@ -184,6 +240,8 @@ describe('maintainers (SLJ-11)', () => {
           quorum: 2,
           title: null,
           version: '0.2',
+          withdrawn: false,
+          change: null,
         },
       ],
       maintained: 1,
@@ -378,22 +436,69 @@ describe('maintainers (SLJ-11)', () => {
   })
 
   it('never approves two different versions for the same spot', async () => {
-    const world = createWorld()
-    const ana = createPeer(world, 'ana', { courseId: 'course-1' })
-    const marko = createPeer(world, 'marko')
-    await ana.service.invite('course-1', 'pub-marko')
-    await marko.service.accept('invite-pubid0000000000a')
-    // Accepting reads the owner's mailbox in the background: wait for it.
-    await marko.service.refresh('pubid0000000000a')
-
+    const { ana, marko } = await threeMaintainers()
     const first = await ana.service.startSharing('course-1', 2)
     await marko.service.refresh('pubid0000000000a')
     await marko.service.approve('pubid0000000000a', first.hash)
 
-    // Ana proposes again before it was committed (same spot): Marko's app refuses.
-    const second = await ana.service.startSharing('course-1', 2)
+    // Ana can't withdraw it now (Marko's approval is out there), so she can't
+    // propose another version for the same spot either.
+    await expect(ana.service.startSharing('course-1', 2)).rejects.toMatchObject({ code: 'APPROVED_BY_OTHERS' })
+    await expect(ana.service.withdraw('pubid0000000000a', first.hash)).rejects.toMatchObject({ code: 'APPROVED_BY_OTHERS' })
+    // (Rivals from another maintainer: the cases below.)
+  })
+
+  // SLJ-110: proposing takes the spot.
+  it("a proposer can't approve a rival for the spot their own version holds, until they withdraw it", async () => {
+    const { ana, marko, mila, world } = await threeMaintainers()
+    const first = await ana.service.startSharing('course-1', 2)
+    for (const peer of [marko, mila]) {
+      await peer.service.refresh('pubid0000000000a')
+      await peer.service.approve('pubid0000000000a', first.hash)
+    }
+    for (const peer of [ana, marko, mila]) await peer.service.refresh('pubid0000000000a')
+
+    // Ana proposes 0.3 and Marko a rival 0.4, for the same spot.
+    ana.published.version = '0.3'
+    await ana.service.publishShared('course-1')
+    marko.published.version = '0.4'
+    await marko.service.publishShared('course-1')
+    await ana.service.refresh('pubid0000000000a')
+    await mila.service.refresh('pubid0000000000a')
+    const anas = ana.service.listApprovals().items.find((item) => item.version === '0.3')!
+    const markos = ana.service.listApprovals().items.find((item) => item.version === '0.4')!
+    expect(anas).toMatchObject({ group: 'waiting-for-others', mine: true })
+    await expect(ana.service.approve('pubid0000000000a', markos.hash)).rejects.toMatchObject({ code: 'ALREADY_APPROVED' })
+
+    // Nobody approved hers: she withdraws it, and can approve Marko's.
+    await ana.service.withdraw('pubid0000000000a', anas.hash)
+    expect(ana.service.listApprovals().items.find((item) => item.hash === anas.hash)).toMatchObject({
+      group: 'replaced',
+      withdrawn: true,
+    })
+    expect(ana.service.getInfo('course-1')?.proposal).toBeNull()
+    // Publish runs again at every start: a withdrawn version isn't proposed again.
+    await ana.service.publishShared('course-1')
+    expect(ana.service.getInfo('course-1')?.proposal).toBeNull()
+    await ana.service.approve('pubid0000000000a', markos.hash)
     await marko.service.refresh('pubid0000000000a')
-    await expect(marko.service.approve('pubid0000000000a', second.hash)).rejects.toMatchObject({ code: 'ALREADY_APPROVED' })
+    expect(world.shared.version).toBe('0.4')
+
+    // Mila's app sees it withdrawn, and won't approve it.
+    await mila.service.refresh('pubid0000000000a')
+    expect(mila.service.listApprovals().items.find((item) => item.hash === anas.hash)).toMatchObject({ withdrawn: true })
+    await expect(mila.service.approve('pubid0000000000a', anas.hash)).rejects.toMatchObject({ code: 'NO_PROPOSAL' })
+  })
+
+  it("a proposal another maintainer approved can't be withdrawn, and approving it after a withdrawal is refused", async () => {
+    const { ana, marko, mila } = await threeMaintainers()
+    const first = await ana.service.startSharing('course-1', 2)
+    await marko.service.refresh('pubid0000000000a')
+    await mila.service.refresh('pubid0000000000a')
+    // Marko approves; Ana can't withdraw any more.
+    await marko.service.approve('pubid0000000000a', first.hash)
+    await expect(ana.service.withdraw('pubid0000000000a', first.hash)).rejects.toMatchObject({ code: 'APPROVED_BY_OTHERS' })
+    expect(mila.service.listApprovals().items).toMatchObject([{ group: 'waiting-for-you' }])
   })
 
   it('refuses a rule that is not more than half', async () => {
@@ -426,7 +531,7 @@ describe('maintainers (SLJ-11)', () => {
     const restored = createPeer(world, 'ana')
     expect(
       await restored.service.restoreSharedCourse({ oldCode: 'old-code', publicId: 'pubid0000000000a', sharedKey: 'shared-key' }),
-    ).toEqual({ courseId: 'course-1', title: 'Fractions' })
+    ).toEqual({ courseId: 'course-1', sharedKey: 'shared-key', title: 'Fractions' })
     expect(restored.landCourse).toHaveBeenCalledWith({ courseId: 'course-1', stagingPath: '/staging', version: '0.2' })
     expect(restored.service.getInfo('course-1')).toMatchObject({ quorum: 2, role: 'owner', sharedKey: 'shared-key' })
     expect(restored.state().courses.pubid0000000000a.members.map((member) => member.mailboxKey)).toEqual(['mb-ana', 'mb-marko'])
@@ -452,6 +557,153 @@ describe('maintainers (SLJ-11)', () => {
     expect(markoAgain.landCourse).toHaveBeenCalledWith({ courseId: 'course-1', stagingPath: '/staging', version: '0.2' })
     expect(markoAgain.service.isShared('course-1')).toBe(true)
     expect(ana.state().courses.pubid0000000000a.members).toHaveLength(2)
+  })
+})
+
+// SLJ-70: changing who maintains a shared course, or the rule, moves it to
+// the next generation's shared course.
+describe('changing maintainers (SLJ-70)', () => {
+  const ID = 'pubid0000000000a'
+
+  // Ana and Marko share a course (both must approve).
+  async function sharedByTwo() {
+    const world = createWorld()
+    const ana = createPeer(world, 'ana', { courseId: 'course-1' })
+    const marko = createPeer(world, 'marko')
+    await ana.service.invite('course-1', 'pub-marko')
+    await marko.service.accept(`invite-${ID}`)
+    await marko.service.refresh(ID)
+    const first = await ana.service.startSharing('course-1', 2)
+    await marko.service.refresh(ID)
+    await marko.service.approve(ID, first.hash)
+    await ana.service.refresh(ID)
+    await marko.service.refresh(ID)
+    return { ana, marko, world }
+  }
+
+  // ...and Mila joins with an invite, then a change adding her is approved.
+  async function sharedByThree() {
+    const { ana, marko, world } = await sharedByTwo()
+    const mila = createPeer(world, 'mila')
+    await ana.service.invite('course-1', 'pub-mila')
+    await mila.service.accept(`invite-${ID}`)
+    await mila.service.refresh(ID)
+    const change = await ana.service.proposeChange('course-1', { publisherIds: ['pub-marko', 'pub-mila'], quorum: 2 })
+    for (const peer of [marko, mila]) {
+      await peer.service.refresh(ID)
+      await peer.service.approve(ID, change.hash)
+    }
+    await ana.service.refresh(ID)
+    for (const peer of [marko, mila]) await peer.service.refresh(ID)
+    return { ana, change, marko, mila, world }
+  }
+
+  it('adds a maintainer: the current ones approve the move, the new ones the new course, and everyone follows', async () => {
+    const { ana, marko, world } = await sharedByTwo()
+    const mila = createPeer(world, 'mila')
+    await ana.service.invite('course-1', 'pub-mila')
+    await mila.service.accept(`invite-${ID}`)
+    await mila.service.refresh(ID)
+    // She joined, but isn't a maintainer yet.
+    expect(ana.service.getInfo('course-1')).toMatchObject({ members: [{ publisherId: 'pub-ana' }, { publisherId: 'pub-marko' }], pending: [{ publisherId: 'pub-mila' }] })
+
+    const change = await ana.service.proposeChange('course-1', { publisherIds: ['pub-marko', 'pub-mila'], quorum: 2 })
+    expect(ana.service.getInfo('course-1')?.proposal).toMatchObject({ change: { quorum: 2 } })
+    await marko.service.refresh(ID)
+    expect(marko.service.listApprovals().items.find((item) => item.hash === change.hash)).toMatchObject({
+      change: { added: ['pub-mila'], approvedBy: ['pub-ana'], missing: ['pub-marko', 'pub-mila'], previousQuorum: 2, quorum: 2, removed: [] },
+      group: 'waiting-for-you',
+    })
+    await marko.service.approve(ID, change.hash)
+    // Marko signed both parts: the move under the current rule, the new course under the new one.
+    expect(world.mailboxes.get('mb-marko')!.approvals[change.hash]).toMatchObject({ response: expect.any(String), responseNext: expect.any(String) })
+
+    // Both rules are met by Ana and Marko (2 of 2 now, 2 of 3 next), without
+    // Mila: Ana's app commits the new course first, then the moved notice.
+    await ana.service.refresh(ID)
+    expect(world.generations.get(1)).toMatchObject({ version: '0.2' })
+    expect(world.shared.source).toMatchObject({ movedTo: { driveKey: 'shared-key-g1' } })
+    expect(world.commits.slice(-2).map((commit) => commit.first)).toEqual([true, false])
+    expect(ana.state().courses[ID]).toMatchObject({ generation: 1, pending: [], quorum: 2, sharedKey: 'shared-key-g1' })
+    expect(ana.onShared).toHaveBeenLastCalledWith('course-1')
+
+    // Marko's app follows to the new code; Mila's lands the course.
+    marko.onShared.mockClear()
+    await marko.service.refresh(ID)
+    expect(marko.state().courses[ID]).toMatchObject({ generation: 1, sharedKey: 'shared-key-g1' })
+    expect(marko.onShared).toHaveBeenCalledWith('course-1')
+    await mila.service.refresh(ID)
+    expect(mila.landCourse).toHaveBeenCalledWith({ courseId: 'course-1', stagingPath: '/staging', version: '0.2' })
+    expect(mila.service.isShared('course-1')).toBe(true)
+    // Mila's approval is no longer needed: the change is Approved for her too.
+    expect(mila.service.listApprovals().items.find((item) => item.hash === change.hash)).toMatchObject({ group: 'approved' })
+  })
+
+  it('a version proposed after the change goes online under the new rule', async () => {
+    const { ana, marko, world } = await sharedByThree()
+    marko.published.version = '0.3'
+    await marko.service.publishShared('course-1')
+    await ana.service.refresh(ID)
+    const waiting = ana.service.listApprovals().items.find((item) => item.version === '0.3')!
+    expect(waiting).toMatchObject({ group: 'waiting-for-you', quorum: 2 })
+    await ana.service.approve(ID, waiting.hash)
+    await marko.service.refresh(ID)
+    expect(world.generations.get(1)).toMatchObject({ version: '0.3' })
+  })
+
+  it('removes a maintainer without them; their app stops maintaining the course', async () => {
+    const { ana, marko, mila } = await sharedByThree()
+    const change = await ana.service.proposeChange('course-1', { publisherIds: ['pub-marko'], quorum: 2 })
+    await marko.service.refresh(ID)
+    expect(marko.service.listApprovals().items.find((item) => item.hash === change.hash)?.change).toMatchObject({ removed: ['pub-mila'] })
+    await marko.service.approve(ID, change.hash)
+    await ana.service.refresh(ID)
+    expect(ana.state().courses[ID]).toMatchObject({ generation: 2, members: [{ publisherId: 'pub-ana' }, { publisherId: 'pub-marko' }] })
+
+    await mila.service.refresh(ID)
+    expect(mila.service.getInfo('course-1')).toMatchObject({ removed: true })
+    expect(mila.service.isShared('course-1')).toBe(false)
+    expect(mila.service.listApprovals().maintained).toBe(0)
+  })
+
+  it("restoring the owner follows the chain of moves to the latest shared course", async () => {
+    const { world } = await sharedByThree()
+    const restored = createPeer(world, 'ana')
+    expect(await restored.service.restoreSharedCourse({ oldCode: 'old-code', publicId: ID, sharedKey: 'shared-key' })).toEqual({
+      courseId: 'course-1',
+      sharedKey: 'shared-key-g1',
+      title: 'Fractions',
+    })
+    expect(restored.state().courses[ID]).toMatchObject({ generation: 1, previous: [{ generation: 0, quorum: 2 }], role: 'owner' })
+    expect(restored.state().courses[ID].members).toHaveLength(3)
+  })
+
+  it("refuses a change that isn't one, a rule that isn't more than half, or someone who hasn't joined", async () => {
+    const { ana } = await sharedByTwo()
+    await expect(ana.service.proposeChange('course-1', { publisherIds: ['pub-marko'], quorum: 2 })).rejects.toMatchObject({ code: 'NO_CHANGE' })
+    await expect(ana.service.proposeChange('course-1', { publisherIds: ['pub-stranger'], quorum: 2 })).rejects.toMatchObject({
+      code: 'UNKNOWN_MAINTAINER',
+    })
+    await expect(ana.service.proposeChange('course-1', { publisherIds: [], quorum: 1 })).rejects.toMatchObject({ code: 'NO_MAINTAINERS' })
+  })
+
+  it('a change nobody approved yet can be withdrawn, and a version can be proposed again', async () => {
+    const { ana, marko, world } = await sharedByTwo()
+    const mila = createPeer(world, 'mila')
+    await ana.service.invite('course-1', 'pub-mila')
+    await mila.service.accept(`invite-${ID}`)
+    const change = await ana.service.proposeChange('course-1', { publisherIds: ['pub-marko', 'pub-mila'], quorum: 3 })
+    await marko.service.refresh(ID)
+    // A Publish while the change waits doesn't replace it.
+    ana.published.version = '0.3'
+    await ana.service.publishShared('course-1')
+    expect(ana.service.getInfo('course-1')?.proposal?.change).not.toBeNull()
+
+    await ana.service.withdraw(ID, change.hash)
+    await marko.service.refresh(ID)
+    expect(marko.service.listApprovals().items.find((item) => item.hash === change.hash)).toMatchObject({ withdrawn: true })
+    await ana.service.publishShared('course-1')
+    expect(ana.service.getInfo('course-1')?.proposal).toMatchObject({ change: null, version: '0.3' })
   })
 })
 

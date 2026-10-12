@@ -107,7 +107,7 @@ adding a case to the e2e suite over one-off manual checking.
   together (`hyper-multisig`), and a version goes online only when more than half of
   them approve it (`electron/maintainers.ts`, `workers/shared-course.cjs`,
   `workers/maintainers.cjs`). Students follow a course that moved to a shared code on
-  their own.
+  their own, also when its maintainers or rule change later (another move, SLJ-70).
   `source.json` in the drive records where a course is shared from. Students are offered newer versions of imported
   courses and apply them from the course page (SLJ-39); imported courses keep previous versions as `versions/<v>/` +
   `release.json`, and the student can go back (SLJ-40). No `pear-runtime`, no OTA

@@ -356,6 +356,14 @@ the original owner as `publisher.id`. How it fits together:
   owner, `/proposal.json`, `/approvals/<hash>.json`, `/changes-requested/<hash>.json`) that
   the others follow. An approval is `{ response, spot }` (the spot since SLJ-109; a new
   computer rebuilds what it approved from it), so keep both when changing the format.
+  `/withdrawn/<hash>.json` marks a proposal its author withdrew (SLJ-110); readers that
+  don't know it would still list the proposal as waiting.
+- **Generations (SLJ-70):** the shared course's spec includes `generation` (its
+  namespace gets `-g<n>` from 1 on), recorded in `source.json` (`maintainers.generation`)
+  and the owner's `/members.json` (with `pending`). A change of maintainers is a
+  `/proposal.json` with `change: { generation, members, quorum, next }`; its approvals
+  carry `responseNext`. Readers treat a missing `generation` as 0. Changing the namespace
+  rule changes every shared course's code.
 - **Invites:** `blind-pairing`. The code is the course's public id followed by the
   invite. It's for one publisher id: the joiner signs its answer with the key behind
   that id, and the owner's app refuses anyone else. It works once, for a week (SLJ-67).

@@ -29,7 +29,9 @@ export function ApprovalStatus({ item, ownPublisherId }: { item: ApprovalItem; o
       <AlertTitle>{t(`maintainers.groups.${item.group}`)}</AlertTitle>
       <AlertDescription>
         <p>
-          {item.group === "replaced"
+          {item.withdrawn
+            ? t("maintainers.withdrawnDescription")
+            : item.group === "replaced"
             ? t("maintainers.replacedDescription")
             : t("maintainers.approvedCount", { approved, quorum: item.quorum })}
         </p>

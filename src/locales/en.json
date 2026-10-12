@@ -1070,6 +1070,28 @@
       "changes-requested": "Changes requested",
       "approved": "Approved",
       "replaced": "Replaced"
-    }
+    },
+    "withdraw": "Withdraw this version",
+    "withdrawDescription": "Nobody else has approved it yet, so you can still withdraw it. Then you can approve another maintainer's version instead, or publish a new one.",
+    "withdrawnDescription": "Its author withdrew it, so it won't go online.",
+    "inviteShared": "Invite a maintainer, or one back on a new computer",
+    "inviteSharedWaiting": "Once they join, they appear in this panel as joined. They become a maintainer when you change the maintainers to add them, and that change is approved.",
+    "joinedPending": "Joined, not a maintainer yet",
+    "changeOpen": "Change maintainers or the rule",
+    "changeTitle": "Change maintainers or the rule",
+    "changeDescription": "Choose who maintains this course with you, and how many of you must approve each new version.",
+    "changeNeedsTwo": "A course maintained together needs at least two maintainers.",
+    "changeApprovalNote": "The course gets a new code once the change is approved; students follow it on their own. Under the current rule ({{rule}}) the current maintainers must approve it, and the new maintainers under the new rule.",
+    "changeNeedsRemoved": "Under the current rule everyone must approve, so this needs {{names}} to approve too.",
+    "changeWaiting": "A change of maintainers is waiting for approval",
+    "changeRow": "Change of maintainers",
+    "changeAdds": "Adds: {{names}}",
+    "changeRemoves": "Removes: {{names}}",
+    "changeRule": "Each new version needs: {{before}} → {{after}}",
+    "changeNewApproved": "new maintainers: {{approved}} of {{quorum}} approved",
+    "changeMoveNote": "The course itself doesn't change. It gets a new code, and students follow it there on their own.",
+    "reviewChangeTitle": "Review a change of maintainers",
+    "reviewChangeDescription": "Who maintains this course, and how many must approve each new version. Approving it as a current maintainer lets the course move; as a new maintainer, you agree to maintain it.",
+    "removedNotice": "You no longer maintain this course together with the others: a change approved by them removed you. Your copy stays on this computer."
   }
 }

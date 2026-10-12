@@ -245,6 +245,9 @@ contextBridge.exposeInMainWorld('maintainers', {
   startSharing(input: { courseId: string; quorum: number }) {
     return ipcRenderer.invoke('maintainers:start-sharing', input) as Promise<void>
   },
+  proposeChange(input: { courseId: string; publisherIds: string[]; quorum: number }) {
+    return ipcRenderer.invoke('maintainers:propose-change', input) as Promise<void>
+  },
   get(courseId: string) {
     return ipcRenderer.invoke('maintainers:get', courseId) as Promise<MaintainersInfo | null>
   },
@@ -262,6 +265,9 @@ contextBridge.exposeInMainWorld('maintainers', {
   },
   requestChanges(input: { hash: string; note: string; publicId: string }) {
     return ipcRenderer.invoke('maintainers:request-changes', input) as Promise<void>
+  },
+  withdraw(input: { hash: string; publicId: string }) {
+    return ipcRenderer.invoke('maintainers:withdraw', input) as Promise<void>
   },
 })
 
