@@ -14,7 +14,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CourseSummary } from "@/lib/course-package";
 import type { CourseProgressSummary } from "@/lib/course-progress";
-import { useImportedPublisher } from "@/lib/publishers-queries";
+import { useCoursePublishers } from "@/lib/publishers-queries";
 import type { CourseUpdateInfo } from "@/lib/sharing";
 import { formatShortDate } from "@/lib/format-date";
 import { useAppState } from "@/lib/use-app-state";
@@ -39,7 +39,7 @@ type CourseCardProps = {
 export function CourseCard({ compact = false, course, href, leading, progress, update }: CourseCardProps) {
   const { t } = useTranslation();
   // An imported course's publisher (SLJ-108): their name in Publishers, else the short id.
-  const publisher = useImportedPublisher(course.id);
+  const publisher = useCoursePublishers(course);
   const progressLabel = useCourseProgressLabel(progress?.summary, progress?.isStarted ?? false);
   const { locale } = useAppState();
 
@@ -64,7 +64,7 @@ export function CourseCard({ compact = false, course, href, leading, progress, u
             )}
           </CardTitle>
           {publisher && (
-            <CardDescription data-testid="course-publisher" title={publisher.publisherId}>
+            <CardDescription data-testid="course-publisher" title={publisher.publisherIds}>
               {t("publishers.by", { name: publisher.name })}
             </CardDescription>
           )}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { normalizePublisherName } from '../src/lib/publishers'
+import { normalizePublisherName, publishersFromSource } from '../src/lib/publishers'
 import { createPublishers, type KnownPublisher, type PublishersState } from './publishers'
 
 const ANA = 'a'.repeat(52)
@@ -107,5 +107,27 @@ describe('publishers (SLJ-108)', () => {
     expect(normalizePublisherName('  Ana \t Petrović\u0000 ')).toBe('Ana Petrović')
     expect(normalizePublisherName(42)).toBe('')
     expect([...normalizePublisherName('😺'.repeat(100))]).toHaveLength(80)
+  })
+})
+
+describe('publishersFromSource', () => {
+  it('lists the publisher, then the other maintainers, once each, with their names', () => {
+    expect(
+      publishersFromSource({
+        maintainers: {
+          members: [
+            { name: 'Ana', publisherId: ANA },
+            { publisherId: MARKO },
+            { name: 'x', publisherId: 'not an id' },
+            null,
+          ],
+        },
+        publisher: { id: ANA, name: ' Ana ' },
+      }),
+    ).toEqual([
+      { name: 'Ana', publisherId: ANA },
+      { name: null, publisherId: MARKO },
+    ])
+    expect(publishersFromSource(null)).toEqual([])
   })
 })

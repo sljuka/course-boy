@@ -29,6 +29,7 @@ describe('a course maintained by two teachers', () => {
     const ana = await launch('coOwner')
     await finishOnboarding(ana, 'teacher')
     await setUpIdentity(ana)
+    await ana.evaluate(() => window.preferences.set({ publisherName: 'Ana E2E' }))
     fs.copyFileSync(identityFilePath('coOwner'), path.join(ROOT, 'co-owner.matko-identity'))
     ids = await ana.evaluate(async () => {
       const { courseId } = await window.courses.createDraft({
@@ -51,6 +52,7 @@ describe('a course maintained by two teachers', () => {
     const marko = await launch('coMaintainer')
     await finishOnboarding(marko, 'teacher')
     await setUpIdentity(marko)
+    await marko.evaluate(() => window.preferences.set({ publisherName: 'Marko E2E' }))
     fs.copyFileSync(identityFilePath('coMaintainer'), path.join(ROOT, 'co-maintainer.matko-identity'))
 
     // Ana invites from the course editor's Maintainers panel.
@@ -244,6 +246,13 @@ describe('a course maintained by two teachers', () => {
     expect(await student.evaluate((id) => window.sharing.applyCourseUpdate(id), ids.courseId)).toMatchObject({ version })
     const lesson = currentVersionFiles(data.coStudent, ids.courseId).find(({ file }) => file.endsWith('.md'))
     expect(fs.readFileSync(lesson.path, 'utf8')).toContain('Second version, by Marko.')
+    // Both maintainers, each by the name they gave, as the student sees them.
+    const [anaId, markoId] = await Promise.all([ana, marko].map((page) => page.evaluate(() => window.sharing.getCreatorKey())))
+    const studentCourse = (await student.evaluate(() => window.courses.list('en'))).find((course) => course.id === ids.courseId)
+    expect(studentCourse.publishedBy).toEqual([
+      { name: 'Ana E2E', publisherId: anaId },
+      { name: 'Marko E2E', publisherId: markoId },
+    ])
     // Approved, in both maintainers' history.
     for (const page of [ana, marko]) {
       await expect

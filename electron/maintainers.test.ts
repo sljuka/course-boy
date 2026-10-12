@@ -8,6 +8,7 @@ type Mailbox = {
   approvals: Record<string, { generation?: unknown; response?: unknown; responseNext?: unknown; spot?: unknown }>
   changesRequested: Record<string, { note?: unknown }>
   members: unknown
+  profile?: unknown
   proposal: unknown
   withdrawn: Record<string, unknown>
 }
@@ -66,7 +67,11 @@ function setShared(world: World, generation: number, shared: Shared) {
 const keyOf = (generation: number) => (generation > 0 ? `shared-key-g${generation}` : 'shared-key')
 const generationOf = (args: Record<string, unknown>) => (args.spec as { generation?: number } | undefined)?.generation ?? 0
 
-function createPeer(world: World, name: string, { courseId = null as string | null, publishedVersion = '0.2' } = {}) {
+function createPeer(
+  world: World,
+  name: string,
+  { courseId = null as string | null, publishedVersion = '0.2', publisherName = '' } = {},
+) {
   const self = { mailboxKey: `mb-${name}`, maintainerKey: `mk-${name}`, publisherId: `pub-${name}` }
   let state: MaintainersState = { courses: {} }
   let proposals = 0
@@ -95,6 +100,7 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
         const file = args.file as string
         if (file === '/members.json') box.members = args.value
         else if (file === '/proposal.json') box.proposal = args.value
+        else if (file === '/profile.json') box.profile = args.value
         else if (file.startsWith('/approvals/')) box.approvals[file.slice(11, -5)] = args.value as { response: unknown }
         else if (file.startsWith('/withdrawn/')) box.withdrawn[file.slice(11, -5)] = args.value
         else if (file.startsWith('/changes-requested/')) box.changesRequested[file.slice(19, -5)] = args.value as { note: unknown }
@@ -208,6 +214,7 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
     removeStaging: async () => {},
     setInterval: () => ({ cancel: () => {} }),
     createPreviewPath: async (hash: string) => `/previews/${hash}`,
+    ownPublisherName: () => publisherName,
     store: { read: () => state, write: (next) => (state = next) },
   })
   const peer = { landCourse, onShared, op, published, self, service, state: () => state }
@@ -790,6 +797,35 @@ describe('notesSince', () => {
     const notes = notesSince(changelog, null, '0.3')
     expect(notes.map((item) => item.version)).toEqual(['0.3', '0.2'])
     expect(notes[0].notes).toHaveLength(5000)
+  })
+})
+
+// Students see every maintainer of a course maintained together, each with
+// their Publisher name: each maintainer's app puts its own in its mailbox, and
+// whoever proposes a version writes everyone's into the course's source.json.
+describe('maintainers: Publisher names', () => {
+  it("carries every maintainer's name in the shared course's source.json", async () => {
+    const world = createWorld()
+    const ana = createPeer(world, 'ana', { courseId: 'course-1', publisherName: 'Ana' })
+    const marko = createPeer(world, 'marko', { publisherName: '  Marko\n' })
+
+    await ana.service.invite('course-1', 'pub-marko')
+    await marko.service.accept('invite-pubid0000000000a')
+    await marko.service.refresh('pubid0000000000a')
+    await ana.service.refresh('pubid0000000000a')
+    expect(world.mailboxes.get('mb-marko')?.profile).toEqual({ name: 'Marko' })
+    expect(ana.state().courses.pubid0000000000a.names).toEqual({ 'pub-ana': 'Ana', 'pub-marko': 'Marko' })
+
+    await ana.service.startSharing('course-1', 2)
+    expect([...world.sources.values()][0]).toMatchObject({
+      maintainers: {
+        members: [
+          { name: 'Ana', publisherId: 'pub-ana' },
+          { name: 'Marko', publisherId: 'pub-marko' },
+        ],
+      },
+      publisher: { id: 'pub-ana', name: 'Ana' },
+    })
   })
 })
 

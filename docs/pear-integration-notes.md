@@ -1280,8 +1280,12 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   and courses are put online again when it changes (programs at their next Publish).
   Publishers reads it from the imported copy's `source.json` (`claimedName`), so it
   arrives with the import and changes with each version. Shown everywhere with the id,
-  "Ana (4y9dgb89…)", or "4y9dgb89…" without one; a label the student typed wins. Courses
-  maintained together don't carry it yet.
+  "Ana (4y9dgb89…)", or "4y9dgb89…" without one; a label the student typed wins.
+- **Courses maintained together** list every maintainer: "by Ana (4y9dgb89…), Marko
+  (k3x8…)", the owner first. Each maintainer's app puts its Publisher name in its mailbox
+  (`/profile.json`); the others read it, and every proposed version's `source.json` carries
+  all of them (`maintainers.members[].name`). A rename reaches students with the next
+  version. Students' Publishers list every maintainer, from the course they imported.
 - **Stored:** `electron/publishers.ts`, in the profile's `publishers.json`. Only what the
   teacher added is kept: names, hand-entered publishers, and removed ones (`hidden`, so
   an import doesn't bring them back). The rest is read from the followed courses and

@@ -24,6 +24,7 @@
 import type { CourseChangelogEntry } from '../src/lib/course-package'
 import type { ApprovalGroup, ApprovalItem } from '../src/lib/maintainers'
 import { compareCourseVersions, isCourseVersion, parseCourseVersion } from '../src/lib/course-versioning'
+import { normalizePublisherName } from '../src/lib/publishers'
 import type { MaintainerSelf, MailboxContents, ProposalChange, SharedCourseSpecInput } from './bare-worker'
 
 export type Member = MaintainerSelf
@@ -109,6 +110,9 @@ export type SharedCourseRecord = {
   generation?: number
   // Maintainers, the owner first. Ours as the owner wrote them.
   members: Member[]
+  // Each maintainer's Publisher name, by publisher id, as their mailbox says
+  // (ours as Settings says): carried by the shared course's source.json.
+  names?: Record<string, string>
   nextProposalIndex: number
   // The owner's: the course's code before it moved (kept shared).
   oldCode: string | null
@@ -201,6 +205,9 @@ export type MaintainersDeps = {
   createPreviewPath(hash: string, basePath: string | null): Promise<string>
   // The clock, for the history's dates (tests set it).
   now?: () => number
+  // This teacher's Publisher name ("" for none): put in their mailbox for the
+  // other maintainers, and into the shared course's source.json.
+  ownPublisherName?: () => string
   store: { read(): MaintainersState; write(state: MaintainersState): void }
 }
 
@@ -297,21 +304,28 @@ export function createMaintainers(deps: MaintainersDeps) {
   }
 
   // The shared course's source.json: where it's shared from, the original
-  // publisher (so students' update checks still pass), and its maintainers.
+  // publisher (so students' update checks still pass), and its maintainers,
+  // each with their Publisher name if they gave one (students see them all).
   function sourceFor(
-    record: Pick<SharedCourseRecord, 'generation' | 'members' | 'publicId' | 'quorum'>,
+    record: Pick<SharedCourseRecord, 'generation' | 'members' | 'names' | 'publicId' | 'quorum'>,
     sharedKey: string,
   ) {
+    const named = (publisherId: string) => (record.names?.[publisherId] ? { name: record.names[publisherId] } : {})
     return {
       driveKey: sharedKey,
       maintainers: {
         generation: record.generation ?? 0,
         // Mailbox keys too, so restoring on a new computer can reach the others.
-        members: record.members.map(({ mailboxKey, maintainerKey, publisherId }) => ({ mailboxKey, maintainerKey, publisherId })),
+        members: record.members.map(({ mailboxKey, maintainerKey, publisherId }) => ({
+          mailboxKey,
+          maintainerKey,
+          publisherId,
+          ...named(publisherId),
+        })),
         quorum: record.quorum,
       },
       publicId: record.publicId,
-      publisher: { id: record.members[0].publisherId },
+      publisher: { id: record.members[0].publisherId, ...named(record.members[0].publisherId) },
     }
   }
 
@@ -514,11 +528,15 @@ export function createMaintainers(deps: MaintainersDeps) {
     // proposer still waiting was replaced by it.
     const current = new Map<string, string>()
     let ownMailbox: MailboxContents | null = null
+    const ownName = normalizePublisherName(deps.ownPublisherName?.())
+    const names: Record<string, string> = {}
     for (const member of involved(record)) {
       const isSelf = member.mailboxKey === self.mailboxKey
       if (!isSelf) await deps.op('followMailbox', { key: member.mailboxKey })
       const mailbox = await deps.op('readMailbox', { key: member.mailboxKey })
       if (isSelf) ownMailbox = mailbox
+      const name = isSelf ? ownName : normalizePublisherName((mailbox.profile as { name?: unknown } | null)?.name)
+      if (name) names[member.publisherId] = name
       const proposal = parseProposal(mailbox.proposal)
       // Only maintainers propose versions; a change only comes from the owner.
       const canPropose = proposal && (proposal.change ? member.publisherId === record.members[0]?.publisherId : isMember(member.publisherId))
@@ -593,8 +611,13 @@ export function createMaintainers(deps: MaintainersDeps) {
       const next = state === 'waiting' && superseded ? 'replaced' : state
       if (next !== 'waiting') proposals[entry.hash] = { ...entry, decidedAt: now(), state: next }
     }
-    record = { ...record, changesRequested, proposals: capHistory(proposals) }
+    record = { ...record, changesRequested, names, proposals: capHistory(proposals) }
     save(record)
+    // Our name, for the others' copies of the course's source.json.
+    const mailboxName = normalizePublisherName((ownMailbox?.profile as { name?: unknown } | null | undefined)?.name)
+    if (ownMailbox && mailboxName !== ownName) {
+      await deps.op('writeMailbox', { file: '/profile.json', publicId, value: { name: ownName } }).catch(() => {})
+    }
     if (ownMailbox) record = await recoverOwnAnswers(record, self, ownMailbox)
 
     // Enough approvals of ours (ours included): put it online.
@@ -1015,7 +1038,7 @@ export function createMaintainers(deps: MaintainersDeps) {
         const index = Math.max(record.nextProposalIndex, Date.now())
         const next = await deps.op('propose', {
           index,
-          source: sourceFor({ generation: nextGeneration, members, publicId: record.publicId, quorum: input.quorum }, nextKey),
+          source: sourceFor({ generation: nextGeneration, members, names: record.names, publicId: record.publicId, quorum: input.quorum }, nextKey),
           spec: nextSpec,
           versionPath: published.versionPath,
         })

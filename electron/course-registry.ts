@@ -27,6 +27,7 @@ import type {
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
 import { isLocale, type Locale } from "../src/lib/i18n";
 import { isSerbianScriptSetting } from "../src/lib/serbian-script";
+import { publishersFromSource, type CoursePublisher } from "../src/lib/publishers";
 import {
   compareCourseVersions,
   formatCourseVersion,
@@ -1235,6 +1236,17 @@ async function isDraftSameAsVersion(
   );
 }
 
+// Who an imported course says published it (its source.json, next to the
+// course.json it's read from); none for one without it (the built-in course
+// before it's published).
+async function readPublishedBy(packageDirectoryPath: string): Promise<CoursePublisher[]> {
+  try {
+    return publishersFromSource(JSON.parse(await fs.readFile(path.join(packageDirectoryPath, "source.json"), "utf8")));
+  } catch {
+    return [];
+  }
+}
+
 async function toCourseSummary(
   courseRecord: CourseRecord,
   localizedCourseMetadata: LocalizedCourseMetadata,
@@ -1260,6 +1272,7 @@ async function toCourseSummary(
       courseRecord.distribution === "local"
         ? (await readCourseReleaseState(courseRecord.courseRootPath)).publishedVersion
         : null,
+    publishedBy: courseRecord.distribution === "local" ? [] : await readPublishedBy(courseRecord.packageDirectoryPath),
     status: courseRecord.manifest.status,
     supportedLocales: courseRecord.manifest.supportedLocales,
     title: localizedCourseMetadata.title,

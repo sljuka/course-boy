@@ -78,7 +78,7 @@ import {
   type SerbianScriptSetting,
 } from "../src/lib/serbian-script";
 import { getProfileDataDir } from "./profile-context";
-import { normalizePublisherName } from "../src/lib/publishers";
+import { publishersFromSource, type CoursePublisher } from "../src/lib/publishers";
 import { parseMnemonics } from "../src/lib/mnemonics";
 
 // The bundled "Getting Started with Matko" course. Its id follows the same
@@ -2835,23 +2835,23 @@ export async function readImportedCourseVersion(courseId: string): Promise<strin
   }
 }
 
-// The Publisher name the current version of an imported course carries (its
-// source.json's `publisher.name`), or null. A claim, like the Publisher ID.
-export async function readImportedCoursePublisherName(courseId: string): Promise<string | null> {
+// Who the current version of an imported course says published it: the
+// publisher, then the other maintainers of a course maintained together (its
+// source.json, see publishersFromSource). Empty when it isn't imported here.
+export async function readImportedCoursePublishers(courseId: string): Promise<CoursePublisher[]> {
   const courseRootPath = await resolveImportedCourseRoot(courseId);
-  if (!courseRootPath) return null;
+  if (!courseRootPath) return [];
 
   const { publishedVersion } = await readCourseReleaseState(courseRootPath);
   const folders = publishedVersion ? [path.join(courseRootPath, "versions", publishedVersion), courseRootPath] : [courseRootPath];
   for (const folder of folders) {
     try {
-      const source = JSON.parse(await fs.readFile(path.join(folder, "source.json"), "utf8"));
-      return normalizePublisherName(source?.publisher?.name) || null;
+      return publishersFromSource(JSON.parse(await fs.readFile(path.join(folder, "source.json"), "utf8")));
     } catch {
       // Not in this folder (an import not moved into versions/ yet): the next.
     }
   }
-  return null;
+  return [];
 }
 
 // The versions of an imported course kept on this device, newest first.

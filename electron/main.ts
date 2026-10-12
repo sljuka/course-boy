@@ -82,7 +82,7 @@ import {
   listPublishedLocalCourseIds,
   migrateImportedCourse,
   readBundledCourseSources,
-  readImportedCoursePublisherName,
+  readImportedCoursePublishers,
   readImportedCourseVersion,
   switchImportedCourseVersion,
   openCourseDirectoryInFileSystem,
@@ -349,6 +349,7 @@ function openProfileServices(dataDir: string) {
     name: 'maintainers',
   })
   const maintainers = createMaintainers({
+    ownPublisherName: () => normalizePublisherName(preferencesStore.get('publisherName')),
     courseOnDevice: async (courseId) =>
       (await listCourses(await ensureLocalCoursesRoot())).some((candidate) => candidate.id === courseId),
     createPreviewPath: async (hash, basePath) => {
@@ -532,12 +533,15 @@ function openProfileServices(dataDir: string) {
       const courseTitle = (courseId: string | null) => courses.find((course) => course.id === courseId)?.title ?? null
       const programs = await listPrograms(appLocale, () => [])
       const known: KnownPublisher[] = []
+      // Everyone who published an imported course: its publisher, and the
+      // other maintainers of one maintained together.
       for (const [courseId, followed] of Object.entries(courseSharingStore.get('followed') ?? {})) {
-        known.push({
-          name: await readImportedCoursePublisherName(courseId).catch(() => null),
-          publisherId: followed.publisherId,
-          source: { id: courseId, kind: 'course', title: courseTitle(courseId) ?? courseId },
-        })
+        const source = { id: courseId, kind: 'course' as const, title: courseTitle(courseId) ?? courseId }
+        const publishers = await readImportedCoursePublishers(courseId).catch(() => [])
+        if (!publishers.some((publisher) => publisher.publisherId === followed.publisherId)) {
+          known.push({ publisherId: followed.publisherId, source })
+        }
+        for (const publisher of publishers) known.push({ name: publisher.name, publisherId: publisher.publisherId, source })
       }
       for (const [programId, followed] of Object.entries(programSharingStore.get('followed') ?? {})) {
         const title = programs.find((program) => program.id === programId)?.title ?? programId

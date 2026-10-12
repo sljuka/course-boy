@@ -173,7 +173,7 @@ function createMaintainers(context) {
   // don't honour a per-call timeout) comes back empty instead of blocking
   // every later read of the course; the next refresh tries again.
   async function readMailbox(key, options) {
-    const empty = { approvals: {}, changesRequested: {}, members: null, proposal: null, withdrawn: {} }
+    const empty = { approvals: {}, changesRequested: {}, members: null, profile: null, proposal: null, withdrawn: {} }
     return withTimeout(readMailboxUnbounded(key, options), READ_TIMEOUT_MS * 2).catch(() => empty)
   }
 
@@ -213,6 +213,8 @@ function createMaintainers(context) {
       approvals: await readFolder('/approvals'),
       changesRequested: await readFolder('/changes-requested'),
       members: await readJson('/members.json'),
+      // Its maintainer's Publisher name: `{ name }`, written by their app.
+      profile: await readJson('/profile.json'),
       proposal: await readJson('/proposal.json'),
       // Proposals their author withdrew (SLJ-110), by request hash.
       withdrawn: await readFolder('/withdrawn'),

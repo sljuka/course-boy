@@ -368,6 +368,8 @@ export type MailboxContents = {
   approvals: Record<string, { generation?: unknown; response?: unknown; responseNext?: unknown; spot?: unknown }>
   changesRequested: Record<string, { note?: unknown }>
   members: unknown
+  // `{ name }`: its maintainer's Publisher name. Missing in older readers.
+  profile?: unknown
   proposal: unknown
   // Proposals their author withdrew (SLJ-110), by request hash. Missing in
   // readers older than that.

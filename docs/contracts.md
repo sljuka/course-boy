@@ -328,8 +328,12 @@ is a claim until SLJ-18 signs versions, so the app never shows it as verified.
 `publisher.name` (optional) is the teacher's Publisher name from Settings, written by the
 worker at every publish when they have one; also a claim, so the app always shows it with
 the Publisher ID ("Ana (4y9dgb89…)"), and a name the student gave them in Publishers
-takes its place. Programs carry it the same way; a course maintained together doesn't yet
-(any maintainer can propose a version, and only the owner's app knows the owner's name). Where a
+takes its place. Programs carry it the same way. A course maintained together carries every
+maintainer's: `maintainers.members[].name`, and the owner's as `publisher.name`. Each
+maintainer's app writes its own into its mailbox (`/profile.json`, `{ name }`), every
+maintainer reads the others' there, and whoever proposes a version writes them all into its
+`source.json` (`sourceFor` in `electron/maintainers.ts`). Students see the publisher and then
+the other maintainers (`CourseSummary.publishedBy`, `publishersFromSource`). Where a
 course comes from *on this device* (the code used at import) is app state, kept in the
 main-process-only `course-sharing.json` electron-store file, never re-read from
 `source.json` (see `electron/course-sharing.ts`).

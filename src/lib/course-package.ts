@@ -3,6 +3,7 @@ import type { Locale } from "@/lib/i18n";
 import type { CourseMnemonic } from "@/lib/mnemonics";
 import type { CourseAssetKind } from "@/lib/course-asset-id";
 import type { CourseTagDefinition } from "@/lib/course-tags";
+import type { CoursePublisher } from "@/lib/publishers";
 import type { SerbianScriptSetting } from "@/lib/serbian-script";
 import type {
   CourseVersionInfo,
@@ -498,6 +499,10 @@ export type CourseSummary = {
   // Your own courses only: the version marked published (`release.json`), or
   // null if none ever was. Always null for bundled and imported courses.
   publishedVersion: string | null;
+  // Imported courses only: who it says published it, its publisher first,
+  // then the other maintainers of one maintained together (source.json).
+  // Empty for your own courses and the built-in one before it's published.
+  publishedBy: CoursePublisher[];
   status: CourseStatus;
   supportedLocales: Locale[];
   title: string;

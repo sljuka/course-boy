@@ -20,6 +20,33 @@ export type PublisherEntry = {
   sources: PublisherSource[];
 };
 
+// Who a course or program says published it, from its source.json: the
+// publisher first, then the other maintainers of a course maintained
+// together, each with the Publisher name they gave (null without). Claims,
+// like everything in source.json. Remote data: ids checked, names cleaned.
+export type CoursePublisher = { name: string | null; publisherId: string };
+
+export function publishersFromSource(source: unknown): CoursePublisher[] {
+  const value = (source ?? {}) as {
+    maintainers?: { members?: unknown };
+    publisher?: { id?: unknown; name?: unknown };
+  };
+  const candidates = [
+    value.publisher,
+    ...(Array.isArray(value.maintainers?.members) ? value.maintainers.members : []).map(
+      (member: { name?: unknown; publisherId?: unknown } | null) => ({ id: member?.publisherId, name: member?.name }),
+    ),
+  ];
+  const publishers: CoursePublisher[] = [];
+  for (const candidate of candidates) {
+    const publisherId = candidate?.id;
+    if (typeof publisherId !== "string" || !/^[a-z0-9]{52,64}$/i.test(publisherId)) continue;
+    if (publishers.some((known) => known.publisherId === publisherId)) continue;
+    publishers.push({ name: normalizePublisherName(candidate?.name) || null, publisherId });
+  }
+  return publishers;
+}
+
 // Longest Publisher name kept (and longest label), in characters.
 export const MAX_PUBLISHER_NAME_LENGTH = 80;
 
