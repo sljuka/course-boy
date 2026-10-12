@@ -77,6 +77,9 @@ export type ProposalRecord = {
   proposalKey: string
   // When this app first saw it (ms).
   proposedAt: number
+  // Ours and over: its drive's copy of the course's history was deleted
+  // (SLJ-111).
+  cleared?: boolean
   request: string
   // 'online': the shared course holds exactly it; 'replaced': another version
   // took its spot, or its proposer proposed a newer one; 'withdrawn': its
@@ -144,6 +147,7 @@ type Ops = {
   downloadShared: [{ spec: SharedCourseSpecInput; stagingPath: string }, { courseId: string; version: string }]
   downloadProposal: [{ length: number; proposalKey: string; stagingPath: string }, { courseId: string; version: string }]
   dropProposal: [{ proposalKey: string }, unknown]
+  openProposal: [{ proposalKey: string }, { opened: boolean }]
   followMailbox: [{ key: string }, unknown]
   moveNotice: [{ courseId: string; publicId: string; sharedKey: string }, unknown]
   propose: [
@@ -606,6 +610,8 @@ export function createMaintainers(deps: MaintainersDeps) {
       record = records()[publicId]
     }
 
+    record = await clearDecided(record)
+
     if (record.role === 'owner' && record.sharedKey && record.oldCode && record.courseId) {
       await deps.seedOldCode(record.courseId, record.oldCode).catch(() => {})
     }
@@ -628,6 +634,35 @@ export function createMaintainers(deps: MaintainersDeps) {
         await land(record, seeded.courseId)
       }
     }
+  }
+
+  // Our proposals that are over (committed, withdrawn or replaced, here or
+  // before a restart): their drives' copies of the course's history are
+  // deleted (SLJ-111), once each. A proposal of ours that someone else's
+  // version replaced no longer waits for approval either.
+  async function clearDecided(record: SharedCourseRecord): Promise<SharedCourseRecord> {
+    const done = Object.values(record.proposals ?? {}).filter((entry) => entry.mine && entry.state !== 'waiting' && !entry.cleared)
+    if (done.length === 0) return record
+    const proposals = { ...(record.proposals ?? {}) }
+    for (const entry of done) {
+      try {
+        await deps.op('dropProposal', { proposalKey: entry.proposalKey })
+        if (entry.change) await deps.op('dropProposal', { proposalKey: entry.change.next.proposalKey })
+        proposals[entry.hash] = { ...entry, cleared: true }
+      } catch (error) {
+        // Tried again at the next refresh.
+        console.warn(`[maintainers] couldn't delete proposal ${entry.hash}:`, error)
+      }
+    }
+    const stillWaiting = record.proposal && proposals[record.proposal.hash]?.state !== 'waiting' ? null : record.proposal
+    const next: SharedCourseRecord = {
+      ...records()[record.publicId],
+      changesRequested: stillWaiting ? record.changesRequested : {},
+      proposal: stillWaiting,
+      proposals,
+    }
+    save(next)
+    return next
   }
 
   // Our change of maintainers has both rules met (SLJ-70): the new shared
@@ -1127,6 +1162,12 @@ export function createMaintainers(deps: MaintainersDeps) {
     async start(): Promise<void> {
       startPeriodicRefresh()
       for (const publicId of Object.keys(records())) {
+        // Our proposal still waiting: its drive is opened again, so it can be
+        // committed here and reviewers can fetch it (SLJ-111).
+        const proposal = records()[publicId].proposal
+        for (const proposalKey of [proposal?.proposalKey, proposal?.change?.next.proposalKey]) {
+          if (proposalKey) await deps.op('openProposal', { proposalKey }).catch(logFailure(publicId))
+        }
         await serial(publicId, () => refresh(publicId)).catch(logFailure(publicId))
       }
     },

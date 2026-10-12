@@ -21,6 +21,8 @@ const {
   createProposal,
   openProposalForReview,
   proposalState,
+  hasProposal,
+  purgeProposal,
   openSharedDrive,
   sharedCourseKey,
   sharedCourseSpec,
@@ -1273,15 +1275,29 @@ async function start() {
         }
         return { sharedKey: IdEncoding.normalize(sharedCourseKey(spec)) }
       }
+      // A proposal of ours is over (committed, withdrawn or replaced): stop
+      // sharing it and delete its copy of the course's history (SLJ-111).
       case 'dropProposal': {
         const hex = IdEncoding.decode(args.proposalKey).toString('hex')
-        const proposal = proposalDrives.get(hex)
-        if (proposal) {
-          proposalDrives.delete(hex)
-          await swarm.leave(proposal.discoveryKey).catch(() => {})
-          await proposal.close().catch(() => {})
-        }
-        return {}
+        const proposal = proposalDrives.get(hex) ?? null
+        proposalDrives.delete(hex)
+        if (proposal) await swarm.leave(proposal.discoveryKey).catch(() => {})
+        const cleared = await purgeProposal({ drive: proposal, proposalKey: args.proposalKey, store })
+        return { cleared }
+      }
+      // Our proposal still waiting, after a restart: opened again (read-only
+      // is enough to commit it), so it can be committed here and reviewers
+      // can fetch it.
+      case 'openProposal': {
+        const key = IdEncoding.decode(args.proposalKey)
+        const hex = key.toString('hex')
+        if (proposalDrives.has(hex)) return { opened: true }
+        if (!(await hasProposal({ proposalKey: args.proposalKey, store }))) return { opened: false }
+        const drive = new Hyperdrive(store.session(), key)
+        await drive.ready()
+        swarm.join(drive.discoveryKey, { client: true, server: true })
+        proposalDrives.set(hex, drive)
+        return { opened: true }
       }
       case 'moveNotice': {
         const { drive } = await openPublishedDrive(args.courseId, args.publicId)

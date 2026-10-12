@@ -399,6 +399,51 @@ async function writeMovedNotice(drive, sharedKey) {
   await drive.put(SOURCE_FILE_KEY, Buffer.from(JSON.stringify(next, null, 2)))
 }
 
+// Whether this store holds the proposal drive `proposalKey` (without
+// creating it, as opening it would).
+function hasProposal({ proposalKey, store }) {
+  return store.storage.hasCore(crypto.discoveryKey(IdEncoding.decode(proposalKey)))
+}
+
+// Deletes a proposal drive's data from this store, both cores (SLJ-111): it
+// holds a full copy of the shared course's history, needed only while the
+// proposal waits. Once committed (its new blocks are in the shared course),
+// withdrawn or replaced, nothing needs it. Its blocks are cleared (what
+// takes the space); the cores' small tree data stays. (`purge()`, which
+// would remove them entirely, fails in Hypercore 11.35.) `drive`: the drive
+// when it's open here, else it's opened by `proposalKey` if this store has
+// it. Closes it. Returns whether there was anything to clear.
+async function purgeProposal({ drive = null, proposalKey, store }) {
+  // By its cores, not as a drive: once its first block is cleared, a drive
+  // waits for its header from the network.
+  if (drive) await drive.close().catch(() => {})
+  if (!(await hasProposal({ proposalKey, store }))) return false
+  const { db, blobs } = await proposalCores(store, proposalKey)
+  try {
+    let cleared = false
+    for (const core of [db, blobs]) {
+      // Nothing held any more (cleared before): left as it is.
+      if (!core || core.length === 0 || core.contiguousLength === 0) continue
+      await core.clear(0, core.length)
+      cleared = true
+    }
+    return cleared
+  } finally {
+    await Promise.all([db.close(), blobs?.close()])
+  }
+}
+
+// A proposal drive's two cores by its key: the file index, and the file
+// data (its key comes from the index's manifest, as Hyperdrive derives it).
+async function proposalCores(store, proposalKey) {
+  const db = store.get({ key: IdEncoding.decode(proposalKey) })
+  await db.ready()
+  if (!db.manifest) return { blobs: null, db }
+  const blobs = store.get({ manifest: Hyperdrive.getContentManifest(db.manifest, db.key) })
+  await blobs.ready()
+  return { blobs, db }
+}
+
 // hyper-multisig joins topics on the swarm it's given; the worker announces
 // the drives itself, so a no-op stands in.
 const nullSwarm = { join: () => ({ flushed: () => Promise.resolve(), destroy: () => Promise.resolve() }) }
@@ -412,6 +457,9 @@ module.exports = {
   openProposalForReview,
   openWritableDrive,
   proposalState,
+  hasProposal,
+  proposalCores,
+  purgeProposal,
   openSharedDrive,
   sharedCourseKey,
   sharedCourseSpec,

@@ -13,8 +13,11 @@ import {
   createProposal,
   maintainerPublicKey,
   openProposalForReview,
+  hasProposal,
   openSharedDrive,
+  proposalCores,
   proposalState,
+  purgeProposal,
   sharedCourseKey,
   sharedCourseSpec,
   signRequest,
@@ -298,6 +301,46 @@ describe('shared courses (multisig)', () => {
     await moved.close()
   }, 60_000)
 
+  // SLJ-111: a proposal's drive holds a copy of the course's whole history;
+  // once it's over, both its cores' blocks are freed, and the shared course
+  // is untouched.
+  it("frees a proposal's drive, open or not, and leaves the shared course whole", async () => {
+    const versionPath = versionFolder({
+      'assets/pic.bin': asset,
+      'course.json': JSON.stringify({ id: 'course-a', version: '9.0' }),
+      'section/lessons/1.md': '# Never proposed for real',
+    })
+    const stored = async (proposalKey) => {
+      const { blobs, db } = await proposalCores(marko.store, proposalKey)
+      let held = 0
+      for (const core of [db, blobs]) {
+        for (let index = 0; index < core.length; index++) if (await core.has(index)) held++
+      }
+      await Promise.all([db.close(), blobs.close()])
+      return held
+    }
+
+    const open = await createProposal({ identity: marko.identity, index: 5, source: {}, spec, store: marko.store, versionPath })
+    const openKey = IdEncoding.normalize(open.drive.key)
+    expect(await stored(openKey)).toBeGreaterThan(0)
+    expect(await purgeProposal({ drive: open.drive, proposalKey: openKey, store: marko.store })).toBe(true)
+    expect(await stored(openKey)).toBe(0)
+
+    // Closed already (a restart): opened by its key to be freed.
+    const closed = await createProposal({ identity: marko.identity, index: 6, source: {}, spec, store: marko.store, versionPath })
+    const closedKey = IdEncoding.normalize(closed.drive.key)
+    await closed.drive.close()
+    expect(await purgeProposal({ proposalKey: closedKey, store: marko.store })).toBe(true)
+    expect(await stored(closedKey)).toBe(0)
+    // Nothing left, and a drive this store never had.
+    expect(await purgeProposal({ proposalKey: closedKey, store: marko.store })).toBe(false)
+    expect(await hasProposal({ proposalKey: IdEncoding.normalize(crypto.randomBytes(32)), store: marko.store })).toBe(false)
+
+    const shared = await openSharedDrive(marko.store, spec)
+    expect((await shared.get('/assets/pic.bin')).equals(asset)).toBe(true)
+    await shared.close()
+  }, 60_000)
+
   it("refuses to review a proposal that doesn't build on the course's latest version", async () => {
     // Ana's proposal number 1 was made before Marko's version landed for her:
     // she builds it on a store that never saw Marko's version.
@@ -319,6 +362,25 @@ describe('shared courses (multisig)', () => {
       openProposalForReview({ proposalKey: IdEncoding.normalize(proposal.key), request, spec, store: marko.store }),
     ).rejects.toMatchObject({ code: 'NOT_LATEST' })
   }, 60_000)
+})
+
+// SLJ-112 (spike): a move can't keep the course's history yet. Hypercore
+// accepts a multisig manifest with a prologue (the next generation continuing
+// the current one's blocks), but Hyperdrive derives a drive's file-data core
+// without one (its "could be configurable" TODO), and so do the signing
+// requests. If this starts failing, Hyperdrive supports it: revisit SLJ-112.
+describe('keeping history across a move (SLJ-112)', () => {
+  it("Hyperdrive's file-data core can't have a prologue", () => {
+    const signers = [crypto.randomBytes(32), crypto.randomBytes(32), crypto.randomBytes(32)]
+    const manifest = {
+      version: 1,
+      hash: 'blake2b',
+      quorum: 2,
+      signers: signers.map((publicKey) => ({ signature: 'ed25519', namespace: crypto.randomBytes(32), publicKey })),
+      prologue: { hash: crypto.randomBytes(32), length: 100 },
+    }
+    expect(Hyperdrive.getContentManifest(manifest).prologue).toBeNull()
+  })
 })
 
 // SLJ-11, milestone 2: a published course moves to a shared one (here 1 of 1,

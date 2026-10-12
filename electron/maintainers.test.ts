@@ -18,6 +18,9 @@ type Shared = { length: number; source: unknown; version: string | null }
 
 type World = {
   commits: { first: boolean; request: string; responses: string[] }[]
+  // Proposal drives deleted and opened again (SLJ-111).
+  dropped: string[]
+  opened: string[]
   mailboxes: Map<string, Mailbox>
   moved: string[]
   // Whose invite is being accepted.
@@ -35,6 +38,8 @@ type World = {
 function createWorld(): World {
   return {
     commits: [],
+    dropped: [],
+    opened: [],
     lengths: new Map(),
     mailboxes: new Map(),
     moved: [],
@@ -98,8 +103,13 @@ function createPeer(world: World, name: string, { courseId = null as string | nu
       case 'readMailbox':
         return world.mailboxes.get(args.key as string) ?? { approvals: {}, changesRequested: {}, members: null, proposal: null, withdrawn: {} }
       case 'followMailbox':
-      case 'dropProposal':
         return {}
+      case 'dropProposal':
+        world.dropped.push(args.proposalKey as string)
+        return { cleared: true }
+      case 'openProposal':
+        world.opened.push(args.proposalKey as string)
+        return { opened: true }
       case 'seedShared': {
         const shared = sharedAt(world, generationOf(args))
         return {
@@ -557,6 +567,65 @@ describe('maintainers (SLJ-11)', () => {
     expect(markoAgain.landCourse).toHaveBeenCalledWith({ courseId: 'course-1', stagingPath: '/staging', version: '0.2' })
     expect(markoAgain.service.isShared('course-1')).toBe(true)
     expect(ana.state().courses.pubid0000000000a.members).toHaveLength(2)
+  })
+})
+
+// SLJ-111: a proposal's drive holds a copy of the course's whole history; it
+// goes once the proposal is over, and a waiting one is opened again at start.
+describe('proposal drives (SLJ-111)', () => {
+  const ID = 'pubid0000000000a'
+
+  async function sharedByThree() {
+    const world = createWorld()
+    const ana = createPeer(world, 'ana', { courseId: 'course-1' })
+    const marko = createPeer(world, 'marko')
+    const mila = createPeer(world, 'mila')
+    await ana.service.invite('course-1', 'pub-marko')
+    await marko.service.accept(`invite-${ID}`)
+    await ana.service.invite('course-1', 'pub-mila')
+    await mila.service.accept(`invite-${ID}`)
+    for (const peer of [marko, mila]) await peer.service.refresh(ID)
+    const first = await ana.service.startSharing('course-1', 2)
+    await marko.service.refresh(ID)
+    await marko.service.approve(ID, first.hash)
+    await ana.service.refresh(ID)
+    for (const peer of [marko, mila]) await peer.service.refresh(ID)
+    return { ana, first, marko, mila, world }
+  }
+
+  it('deletes a committed proposal\'s drive once', async () => {
+    const { ana, first, world } = await sharedByThree()
+    expect(world.dropped.filter((key) => key === first.proposalKey).length).toBeGreaterThan(0)
+    expect(ana.state().courses[ID].proposals?.[first.hash]).toMatchObject({ cleared: true, state: 'online' })
+    const before = world.dropped.length
+    await ana.service.refresh(ID)
+    expect(world.dropped.length).toBe(before)
+  })
+
+  it("deletes our proposal once another version took its spot, and it no longer waits", async () => {
+    const { ana, marko, mila, world } = await sharedByThree()
+    ana.published.version = '0.3'
+    marko.published.version = '0.4'
+    const anas = await ana.service.publishShared('course-1').then(() => ana.state().courses[ID].proposal!)
+    await marko.service.publishShared('course-1')
+    await mila.service.refresh(ID)
+    const markos = mila.service.listApprovals().items.find((item) => item.version === '0.4')!
+    await mila.service.approve(ID, markos.hash)
+    await marko.service.refresh(ID)
+
+    await ana.service.refresh(ID)
+    expect(world.dropped).toContain(anas.proposalKey)
+    expect(ana.service.getInfo('course-1')?.proposal).toBeNull()
+    expect(ana.state().courses[ID].proposals?.[anas.hash]).toMatchObject({ cleared: true, state: 'replaced' })
+  })
+
+  it('opens our waiting proposal again at start', async () => {
+    const { marko, world } = await sharedByThree()
+    marko.published.version = '0.3'
+    await marko.service.publishShared('course-1')
+    const waiting = marko.state().courses[ID].proposal!
+    await marko.service.start()
+    expect(world.opened).toEqual([waiting.proposalKey])
   })
 })
 

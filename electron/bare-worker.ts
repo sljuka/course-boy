@@ -380,7 +380,8 @@ type SharedCourseOps = {
   createInvite: [{ invitee: string; publicId: string }, { code: string }]
   downloadShared: [{ spec: SharedCourseSpecInput; stagingPath: string }, { courseId: string; version: string }]
   downloadProposal: [{ length: number; proposalKey: string; stagingPath: string }, { courseId: string; version: string }]
-  dropProposal: [{ proposalKey: string }, Record<string, never>]
+  dropProposal: [{ proposalKey: string }, { cleared: boolean }]
+  openProposal: [{ proposalKey: string }, { opened: boolean }]
   followMailbox: [{ key: string }, Record<string, never>]
   moveNotice: [{ courseId: string; publicId: string; sharedKey: string }, Record<string, never>]
   propose: [

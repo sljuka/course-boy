@@ -1185,3 +1185,53 @@ by the end. It was also real app bugs, which only showed up there:
 - **Not built:** changing the owner; a change while a version waits (refused: decide
   or withdraw it first); SLJ-59 (moving to a new identity) will reuse the same notice.
 
+### Proposal drives: deleted once over, reopened after a restart (SLJ-111, 2026-10-12)
+
+- **Why:** a proposal drive starts with a copy of every block of the shared course, so
+  each proposal held another full copy of the course's history on the proposer's
+  computer, for good (`dropProposal` only closed it).
+- **Now:** `dropProposal` clears both cores' blocks (`purgeProposal` in
+  `workers/shared-course.cjs`, by the cores' keys: once its first block is cleared, a
+  drive would wait for its header from the network). `purge()`, which would remove the
+  cores entirely, fails in Hypercore 11.35, so the cores' small tree data stays.
+- **When:** right after a commit and a withdrawal, as before, plus a sweep at every
+  refresh (`clearDecided`) for any proposal of ours that's over and not yet cleared:
+  replaced by someone else's version, or left behind by a crash or an older version.
+  Each is cleared once (`cleared` on the history entry). A proposal of ours that
+  another version replaced also stops showing as waiting for approval.
+- **Fixed on the way:** after a restart the worker never reopened a proposal still
+  waiting, so the proposer's app couldn't commit it ("This proposal is not on this
+  device") and reviewers couldn't fetch it. `start()` now opens it again
+  (`openProposal`, read-only is enough to commit).
+
+### Keeping history across a move: not possible yet (SLJ-112 spike, 2026-10-12)
+
+The idea: the next generation's cores get a Hypercore **prologue** ("my first N blocks
+are the current generation's"), so nobody downloads the course again after a move and
+students who followed it can seed the new drive from their old copy (`copyPrologue`).
+
+- **Hypercore: yes.** A multisig manifest (version 1: signers, quorum) with a prologue
+  works. `copyPrologue` fills the new core locally from the old one, on a signer's
+  store and on a reader's, with no download. It's only reachable through the internal
+  core (`session.core.copyPrologue`), not the public session API.
+- **Hyperdrive: no, for the part that matters.** A drive's file-data core, which holds
+  nearly all the bytes, is found from the header in the file index's block 0
+  (`contentFeed`, empty for shared courses), or derived from the file index's manifest by
+  `generateContentManifest`, which always sets `prologue: null` ("TODO: could be
+  configurable through the header"). With a prologue on the file index, block 0 is the
+  old drive's header, so the file data would start in a fresh core anyway.
+- **The signing requests and hyper-multisig: no either.** `hypercore-signing-request`
+  derives the file-data key the same way (`Hyperdrive.getContentKey`), and
+  hyper-multisig's commit builds its own manifests (`getManifest`, no prologue option).
+- **So:** only the file index (small) could keep its history, which isn't worth the custom
+  code. Doing it for the file data needs upstream changes in Hyperdrive (a configurable
+  file-data prologue), hypercore-signing-request and hyper-multisig, or our own
+  manifests, signing and commit for drives.
+- **Decided (2026-10-12): moves start fresh, and we live with the seeding gap.** Moves are
+  rare (a change of maintainers), students who have the course follow at almost no
+  cost, and only new students right after a move depend on maintainers being online
+  until others have imported fully. No upstream changes pursued. If the gap turns out to
+  matter, students who share the course could download the new drive in the background
+  (SLJ-41). A canary test (`workers/shared-course.test.mjs`) fails once Hyperdrive gives
+  the file-data core a prologue.
+
