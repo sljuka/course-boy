@@ -724,7 +724,8 @@
     "id": "ID",
     "peersOnline": "Korisnici na mreži",
     "size": "Veličina",
-    "onDevice": "Na ovom uređaju"
+    "onDevice": "Na ovom uređaju",
+    "publisher": "Izdavač"
   },
   "mnemonics": {
     "title": "Mnemotehnike",
@@ -1010,10 +1011,8 @@
     "startOpen": "Počnite zajedničko održavanje",
     "startTitle": "Zajedničko održavanje kursa",
     "startDescription": "Izaberi koliko vas mora da odobri svaku novu verziju. Trenutna verzija kursa je prva koju odobravate zajedno.",
-    "ruleLabel": "Svakoj novoj verziji treba",
-    "ruleBoth": "Odobrenje oboje",
-    "ruleAll": "Odobrenje svih ({{count}})",
-    "ruleSome": "Bilo kojih {{quorum}} od {{count}}",
+    "ruleLabel": "Za svaku novu verziju",
+    "rule": "Potrebna odobrenja: {{quorum}} od {{count}}",
     "ruleAllConsequence": "Ako neko od vas izgubi datoteku identiteta, kurs više ne može da se ažurira.",
     "ruleSomeConsequence": "Radi i kada {{count}} od vas ne može da odobri (odsustvo ili izgubljena datoteka identiteta).",
     "startMoveNote": "Kada se odobri, kurs dobija novi kod. Učenici koji ga imaju prelaze na njega sami od sebe, a stari kod i dalje radi.",
@@ -1088,7 +1087,7 @@
     "changeRow": "Promena spiska osoba koje održavaju kurs",
     "changeAdds": "Dodaje: {{names}}",
     "changeRemoves": "Uklanja: {{names}}",
-    "changeRule": "Svaka nova verzija traži: {{before}} → {{after}}",
+    "changeRule": "Za svaku novu verziju: {{before}} → {{after}}",
     "changeNewApproved": "nove osobe: odobrenja {{approved}} od {{quorum}}",
     "changeMoveNote": "Sam kurs se ne menja. Dobija novi kod, a učenici ga tamo prate sami.",
     "reviewChangeTitle": "Pregled promene spiska osoba koje održavaju kurs",
@@ -1102,10 +1101,6 @@
     "empty": "Još nema izdavača. Pojavljuju se kako uvoziš kurseve i održavaš kurseve sa drugima, a možeš i ručno dodati nekog po ID-ju izdavača.",
     "noName": "Bez imena",
     "addedByYou": "Dodato ručno",
-    "maintainsWithYou": "Održava {{title}} sa tobom",
-    "importedCourse": "Uvezeno: {{title}}",
-    "importedProgram": "Uvezen program: {{title}}",
-    "sourceAndMore": "{{source}} i još {{count}}",
     "addTitle": "Dodaj izdavača",
     "addDescription": "Unesi ID izdavača (nalazi se u Podešavanja → Deljenje) i ime po kojem ćeš ih znati.",
     "editTitle": "Izdavač",
@@ -1119,6 +1114,11 @@
     "save": "Sačuvaj",
     "pickLabel": "Iz izdavača",
     "pickPlaceholder": "Izaberi nekog…",
-    "saveAs": "Sačuvaj među izdavače kao (nije obavezno)"
+    "saveAs": "Sačuvaj među izdavače kao (nije obavezno)",
+    "by": "izdavač: {{name}}",
+    "shortId": "{{id}}…",
+    "copyId": "Kopiraj ID izdavača",
+    "twoSources": "{{first}}, {{second}}",
+    "more": "i još {{count}}"
   }
 }

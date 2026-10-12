@@ -70,6 +70,17 @@ describe('restoring the publisher identity on a new computer', () => {
     await finishOnboarding(student, 'student')
     expect(await importCourse(student, code)).toEqual({ courseId: ids.courseId })
     expect((await student.evaluate(() => window.courses.list('en'))).find((course) => course.id === ids.courseId)?.version).toBe(version)
+    // SLJ-108: Home says who published it; without a name in Publishers, the
+    // short id. Reloaded: imported through the API, nothing refreshes Home's
+    // lists (the Import dialog does, and so does focusing the window).
+    await student.evaluate(() => {
+      location.hash = '#/'
+    })
+    await student.reload()
+    await waitFor(student, (prefix) => document.querySelector('[data-testid="course-publisher"]')?.textContent?.includes(prefix), {
+      arg: publisherId.slice(0, 8),
+      timeout: 30_000,
+    })
     // The student holds the program too, so it can be found once the old computer is gone.
     expect(await importCourse(student, programCode)).toEqual({ programId })
 

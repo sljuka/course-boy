@@ -44,3 +44,16 @@ export function usePublisherName(): (publisherId: string) => string {
     [publishers],
   );
 }
+
+// Who published an imported course or program, as Publishers knows it: their
+// name there, else their Publisher ID shortened ("4y9dgb89…"). Null for a
+// course of this profile's own, or one Publishers doesn't list.
+export function useImportedPublisher(id: string, kind: "course" | "program" = "course") {
+  const { data: publishers } = usePublishersQuery();
+  const entry = publishers?.find((candidate) =>
+    candidate.sources.some((source) => source.kind === kind && source.id === id),
+  );
+  if (!entry) return null;
+  return { name: entry.label ?? `${shortPublisherId(entry.publisherId)}…`, publisherId: entry.publisherId };
+}
+

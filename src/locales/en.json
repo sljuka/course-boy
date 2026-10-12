@@ -724,7 +724,8 @@
     "id": "ID",
     "peersOnline": "Peers online",
     "size": "Size",
-    "onDevice": "On this device"
+    "onDevice": "On this device",
+    "publisher": "Publisher"
   },
   "mnemonics": {
     "title": "Mnemonics",
@@ -1010,10 +1011,8 @@
     "startOpen": "Start maintaining together",
     "startTitle": "Maintain this course together",
     "startDescription": "Choose how many of you must approve each new version. The course's current version is the first one you approve together.",
-    "ruleLabel": "Each new version needs",
-    "ruleBoth": "Both of you",
-    "ruleAll": "All {{count}} of you",
-    "ruleSome": "Any {{quorum}} of {{count}}",
+    "ruleLabel": "Each new version",
+    "rule": "{{quorum}} of {{count}} approvals required",
     "ruleAllConsequence": "If one of you loses their identity file, the course can't be updated any more.",
     "ruleSomeConsequence": "Keeps working while {{count}} of you can't approve (away, or lost their identity file).",
     "startMoveNote": "Once approved, the course gets a new code. Students who have it follow it there on their own, and the old code keeps working.",
@@ -1088,7 +1087,7 @@
     "changeRow": "Change of maintainers",
     "changeAdds": "Adds: {{names}}",
     "changeRemoves": "Removes: {{names}}",
-    "changeRule": "Each new version needs: {{before}} → {{after}}",
+    "changeRule": "Each new version: {{before}} → {{after}}",
     "changeNewApproved": "new maintainers: {{approved}} of {{quorum}} approved",
     "changeMoveNote": "The course itself doesn't change. It gets a new code, and students follow it there on their own.",
     "reviewChangeTitle": "Review a change of maintainers",
@@ -1102,10 +1101,6 @@
     "empty": "No publishers yet. They appear as you import courses and maintain courses with others, or add one by hand with their Publisher ID.",
     "noName": "No name",
     "addedByYou": "Added by you",
-    "maintainsWithYou": "Maintains {{title}} with you",
-    "importedCourse": "Imported from {{title}}",
-    "importedProgram": "Imported from the program {{title}}",
-    "sourceAndMore": "{{source}} and {{count}} more",
     "addTitle": "Add a publisher",
     "addDescription": "Enter their Publisher ID (they find it under Settings → Sharing) and a name to know them by.",
     "editTitle": "Publisher",
@@ -1119,6 +1114,11 @@
     "save": "Save",
     "pickLabel": "From Publishers",
     "pickPlaceholder": "Choose someone…",
-    "saveAs": "Save to Publishers as (optional)"
+    "saveAs": "Save to Publishers as (optional)",
+    "by": "by {{name}}",
+    "shortId": "{{id}}…",
+    "copyId": "Copy Publisher ID",
+    "twoSources": "{{first}}, {{second}}",
+    "more": "and {{count}} more"
   }
 }

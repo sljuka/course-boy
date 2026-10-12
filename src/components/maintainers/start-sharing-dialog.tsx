@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { quorumChoices, useStartSharingMutation } from "@/lib/maintainers-queries";
+import { useRuleText } from "./use-rule-text";
 
 // Starts maintaining the course together (SLJ-11): picks how many must
 // approve each version (always more than half, said as a consequence, not a
@@ -39,12 +40,8 @@ export function StartSharingDialog({
   const [quorum, setQuorum] = useState<number>(choices[0] ?? memberCount);
   const startMutation = useStartSharingMutation();
 
-  const ruleLabel = (value: number) =>
-    value === memberCount
-      ? memberCount === 2
-        ? t("maintainers.ruleBoth")
-        : t("maintainers.ruleAll", { count: memberCount })
-      : t("maintainers.ruleSome", { count: memberCount, quorum: value });
+  const ruleText = useRuleText();
+  const ruleLabel = (value: number) => ruleText(value, memberCount);
   const consequence =
     quorum === memberCount
       ? t("maintainers.ruleAllConsequence")

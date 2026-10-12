@@ -93,6 +93,8 @@ export function useImportCourseMutation() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["courses", "list"] }),
         queryClient.invalidateQueries({ queryKey: ["programs"] }),
+        // Its publisher is in Publishers now (SLJ-108).
+        queryClient.invalidateQueries({ queryKey: ["publishers"] }),
       ]);
     },
   });

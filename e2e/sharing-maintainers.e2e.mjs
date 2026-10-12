@@ -87,10 +87,10 @@ describe('a course maintained by two teachers', () => {
     const ana = apps.coOwner.page
     const marko = apps.coMaintainer.page
     const student = apps.coStudent.page
-    // Both maintainers listed; Ana starts, with "Both of you" (the only rule for two).
+    // Both maintainers listed; Ana starts, with "2 of 2" (the only rule for two).
     await waitFor(ana, () => document.querySelectorAll('[data-testid="maintainer"]').length === 2, { timeout: 30_000 })
     await ana.click('[data-testid="open-start-sharing"]')
-    await waitForText(ana, 'Both of you')
+    await waitForText(ana, '2 of 2 approvals required')
     await ana.click('[data-testid="start-sharing"]')
     await waitFor(ana, () => document.querySelector('[data-testid="maintainers-waiting"]') !== null, { timeout: 30_000 })
 
@@ -327,7 +327,7 @@ describe('a course maintained by two teachers', () => {
     }, ids.courseId)
     await ana.locator('[data-testid="maintainer-pending"]').waitFor({ timeout: 60_000 })
     await ana.click('[data-testid="open-change-maintainers"]')
-    await waitForText(ana, 'Any 2 of 3')
+    await waitForText(ana, '2 of 3 approvals required')
     await ana.click('[data-testid="propose-change"]')
     await waitForText(ana, 'A change of maintainers is waiting for approval', { timeout: 60_000 })
 

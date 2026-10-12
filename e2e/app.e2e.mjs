@@ -224,7 +224,7 @@ describe('sidebar by role', () => {
     await harness.page.evaluate(() => window.preferences.set({ role: 'student' }))
     await harness.page.reload()
     await waitFor(harness.page, () => document.querySelectorAll('[data-sidebar=menu-button]').length > 0)
-    expect(await sidebarLinkTexts()).toEqual(['Home'])
+    expect(await sidebarLinkTexts()).toEqual(['Home', 'Publishers'])
 
     // Teacher pages stay reachable by URL (history, recently viewed), so the
     // route itself sends students Home.
@@ -272,16 +272,19 @@ describe('publishers', () => {
     await page.click('[data-testid="publisher-save"]')
     await waitFor(page, () => document.querySelector('[data-testid="publisher"]')?.textContent?.includes('Mila (math)'))
     expect(await page.locator('[data-testid="publisher"]').innerText()).toContain('Added by you')
+    // The id shortened, with a button that copies it whole.
+    expect(await page.locator('[data-testid="publisher-short-id"]').innerText()).toBe('mmmmmmmm…')
+    await page.locator('[data-testid="publisher-copy-id"]').waitFor()
 
     // Open it: its id to copy, a new name.
-    await page.locator('[data-testid="publisher"] button').click()
+    await page.locator('[data-testid="publisher-name"]').click()
     expect(await page.locator('[data-testid="publisher-id"]').inputValue()).toBe(MILA)
     await page.fill('[data-testid="publisher-label"]', 'Mila')
     await page.click('[data-testid="publisher-save"]')
-    await waitFor(page, () => document.querySelector('[data-testid="publisher"]')?.textContent?.startsWith('Mila'))
+    await waitFor(page, () => document.querySelector('[data-testid="publisher-name"]')?.textContent === 'Mila')
     expect(await page.evaluate(() => window.publishers.list('en'))).toMatchObject([{ label: 'Mila', publisherId: MILA }])
 
-    await page.locator('[data-testid="publisher"] button').click()
+    await page.locator('[data-testid="publisher-name"]').click()
     await page.click('[data-testid="publisher-remove"]')
     await waitForText(page, 'No publishers yet.')
 

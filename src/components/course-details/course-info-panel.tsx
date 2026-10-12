@@ -11,6 +11,7 @@ import { getLocaleFlag } from "@/lib/locale-flags";
 import { useCourseSharingQuery } from "@/lib/sharing-queries";
 import { formatBytes } from "@/lib/transfer-progress";
 import { useAppState } from "@/lib/use-app-state";
+import { useImportedPublisher } from "@/lib/publishers-queries";
 import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-panel";
 
 const contentRatingKeys = {
@@ -42,6 +43,8 @@ export function CourseInfoCard({
   // Refetched after edits (the editor saves as you type), not polled.
   const { data: diskUsage } = useCourseDiskUsageQuery(course.id, course.updatedAt);
   const lessonCount = course.sections.reduce((count, section) => count + section.lessons.length, 0);
+  // Who published it (SLJ-108): their name in Publishers, else the short id.
+  const publisher = useImportedPublisher(course.id);
 
   return (
     <PanelCard title={t("courseInfo.title")} variant={variant}>
@@ -79,6 +82,13 @@ export function CourseInfoCard({
         <PropertyRow label={t("courseInfo.source")}>
           {t(`courseInfo.sources.${course.distribution}`)}
         </PropertyRow>
+        {publisher && (
+          <PropertyRow label={t("courseInfo.publisher")}>
+            <span data-testid="course-info-publisher" title={publisher.publisherId}>
+              {publisher.name}
+            </span>
+          </PropertyRow>
+        )}
       </PropertyList>
     </PanelCard>
   );

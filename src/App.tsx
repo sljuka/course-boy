@@ -69,12 +69,12 @@ const AppRoutes = () => {
           <Route element={<SettingsPage />} path="/settings" />
           <Route element={<CourseDetailPage />} path="/courses/:courseId" />
           <Route element={<ProgramPage />} path="/programs/:programId" />
+          <Route element={<PublishersPage />} path="/publishers" />
           {/* Teacher-only pages; see RoleRoute. */}
           <Route element={<RoleRoute roles="teacher" />}>
             <Route element={<MyCoursesPage />} path="/my-courses" />
             <Route element={<MyProgramsPage />} path="/my-programs" />
             <Route element={<ApprovalsPage />} path="/approvals" />
-            <Route element={<PublishersPage />} path="/publishers" />
             <Route element={<ApprovalReviewPage />} path="/approvals/:publicId/:hash" />
             <Route element={<ProgramEditorPage />} path="/my-programs/:programId" />
             <Route element={<CourseCreatePage />} path="/courses/new" />

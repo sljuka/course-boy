@@ -981,8 +981,8 @@ the network. Starting a move from the app comes with inviting a maintainer (mile
 **Milestone 4 (the UI):**
 - **Maintainers panel** in the course editor (`src/components/maintainers/`):
   - invite one person at a time (each gets a code);
-  - "Start maintaining together", with the rule picked as a consequence ("Both of you",
-    "Any 2 of 3", "All 3 of you"; only rules with more than half are offered);
+  - "Start maintaining together", with the rule picked as a consequence ("2 of 2 approvals required",
+    "2 of 3 approvals required"; only rules with more than half are offered);
   - then the maintainers, the rule, your version waiting for approval, and any notes
     asking for changes.
 - **"Join as a maintainer"** on My courses.
@@ -1265,12 +1265,15 @@ students who followed it can seed the new drive from their old copy (`copyProlog
 
 ### Publishers: an address book of Publisher IDs (SLJ-108, 2026-10-12)
 
-- **What:** a "Publishers" page under Teaching. It lists the people and groups the
-  profile knows by their Publisher ID, each with a name (editable), the id (to copy) and
-  why they're there:
-  - "Imported from *course*" or "*program*": the publisher its `source.json` claims;
-  - "Maintains *course* with you": co-maintainers and joined people (SLJ-11, SLJ-70);
-  - "Added by you": entered by hand.
+- **What:** a "Publishers" page, its own sidebar section below Favorites, for teachers
+  and students alike. It lists the people and groups the profile knows by their
+  Publisher ID. Each row: the id shortened ("4y9dgb89…") with a button copying it whole,
+  the name or "No name" (opens it to rename or remove), and the names of their courses
+  and programs, each once (the first two; "and N more" grows the row to list the rest
+  under them). Where they come from:
+  - imported courses and programs: the publisher their `source.json` claims;
+  - courses maintained together: co-maintainers and joined people (SLJ-11, SLJ-70);
+  - entered by hand: shown as "Added by you".
 - **Stored:** `electron/publishers.ts`, in the profile's `publishers.json`. Only what the
   teacher added is kept: names, hand-entered publishers, and removed ones (`hidden`, so
   an import doesn't bring them back). The rest is read from the followed courses and
@@ -1282,6 +1285,9 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   (`usePublisherName`).
 - **Not verified:** a name is what the teacher typed, and a course's claimed publisher
   is unverified until SLJ-18. The page says so.
+- **Imported courses say who published them:** "by *name*" on Home's rows and cards and
+  a Publisher row in the course's info panel, from Publishers (`useImportedPublisher`):
+  the name given there, else the Publisher ID shortened ("4y9dgb89…").
 - **IPC:** a new bridge, `window.publishers` (`list`, `save`, `remove`;
   `publishers:*`).
 - **Not built:** an author name from the course (that would be a course package format

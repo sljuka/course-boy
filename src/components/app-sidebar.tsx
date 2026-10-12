@@ -1,4 +1,4 @@
-import { BookOpen, Contact, Home, Library } from "lucide-react";
+import { BookOpen, Home, Library } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 import { AppMenu } from "@/components/app-menu";
 import { AppSidebarApprovals } from "@/components/app-sidebar-approvals";
 import { AppSidebarFavorites } from "@/components/app-sidebar-favorites";
+import { AppSidebarPublishers } from "@/components/app-sidebar-publishers";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -38,8 +39,6 @@ const sidebarGroups: readonly {
     items: [
       { href: "/my-courses", icon: BookOpen, id: "myCourses" },
       { href: "/my-programs", icon: Library, id: "myPrograms" },
-      // The address book of Publisher IDs (SLJ-108), for inviting maintainers.
-      { href: "/publishers", icon: Contact, id: "publishers" },
     ],
     label: "teaching",
     roles: ["teacher"],
@@ -131,6 +130,8 @@ function AppSidebar() {
         ))}
         {/* After the role's groups (below Teaching for a teacher). */}
         <AppSidebarFavorites />
+        {/* Its own section, below Favorites (SLJ-108). */}
+        <AppSidebarPublishers />
       </SidebarContent>
     </Sidebar>
   );
