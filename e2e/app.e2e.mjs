@@ -22,6 +22,7 @@ import {
   waitForText,
   waitForUrl,
 } from './launch.mjs'
+import { recordFailures } from './failures.mjs'
 
 const USER_DATA = '/tmp/matko-e2e-vitest'
 // Where the app keeps its data: the e2e profile's folder (SLJ-57).
@@ -29,6 +30,7 @@ const DATA_DIR = profileDataDir(USER_DATA)
 const NICKNAME = 'Quacky McDuck'
 
 let harness
+recordFailures(import.meta.filename, () => ({ app: harness }))
 
 beforeAll(async () => {
   harness = await launchApp({ userData: USER_DATA, fresh: true })
@@ -2032,7 +2034,14 @@ describe('document full screen', () => {
 
     await page.click('[data-testid="document-full-screen"]')
     await page.locator('[data-testid="exit-full-screen"]').waitFor()
-    await expect.poll(isWindowFullScreen, { timeout: 10_000 }).toBe(true)
+    // Up to macOS, which doesn't while the display is off (launchApp keeps it
+    // on, but can't turn it back on once it's off before the run).
+    await expect
+      .poll(isWindowFullScreen, {
+        message: "the window didn't go full screen: was the display off?",
+        timeout: 10_000,
+      })
+      .toBe(true)
     expect(await chromeShown()).toBe(false)
     // Only the text: the title field stays in the normal view.
     expect(await page.locator('[id^="draft-document-title-"]').count()).toBe(0)

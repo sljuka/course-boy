@@ -10,10 +10,12 @@
 import { describe, expect, it, afterAll } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
+import { recordFailures } from './failures.mjs'
 import { bodyText, launchApp, waitFor, waitForText } from './launch.mjs'
 
 const USER_DATA = '/tmp/matko-e2e-profiles'
 let harness = null
+recordFailures(import.meta.filename, () => ({ app: harness }))
 
 const profileFolders = () => fs.readdirSync(path.join(USER_DATA, 'profiles')).sort()
 const profileFile = (id) => JSON.parse(fs.readFileSync(path.join(USER_DATA, 'profiles', id, 'profile.json'), 'utf8'))

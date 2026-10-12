@@ -8,6 +8,7 @@ import { afterAll, beforeAll, expect } from 'vitest'
 import fs from 'node:fs'
 import path from 'node:path'
 import createTestnet from 'hyperdht/testnet.js'
+import { recordFailures } from './failures.mjs'
 import { launchApp, profileDataDir, waitFor } from './launch.mjs'
 
 // SLJ-55: one password, one file. Publishing online starts with setting up the
@@ -26,6 +27,7 @@ export function sharingSuite(area, names) {
   // Where each instance keeps its data: its e2e profile's folder (SLJ-57).
   const data = Object.fromEntries(Object.entries(dirs).map(([name, dir]) => [name, profileDataDir(dir)]))
   const apps = {}
+  recordFailures(`sharing-${area}`, () => apps)
   let testnet
   let env
 

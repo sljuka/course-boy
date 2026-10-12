@@ -65,6 +65,12 @@ bundles (all renderer libraries, and main-process ones like `electron-store`) is
 Both share `e2e/launch.mjs`, so the REPL and the assertions behave identically. Prefer
 adding a case to the e2e suite over one-off manual checking.
 
+When an e2e test fails, `e2e/failures.mjs` saves what each open window showed (screenshot,
+route, visible text, console errors) under `/tmp/matko-e2e-failures/<file>/` and prints the
+path: read it before rerunning, especially for a failure that comes and goes. A test app
+keeps the display awake while it runs, but on macOS the full-screen test still fails if the
+display was already off when the run started.
+
 ## Read before editing
 
 - [docs/contracts.md](docs/contracts.md:1) — **read this before touching `electron/`,

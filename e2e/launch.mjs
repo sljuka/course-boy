@@ -101,6 +101,12 @@ export async function launchApp({
         },
   )
 
+  // Keeps the display and the computer awake while the app runs. A run is
+  // often left alone, and once the display turns off, macOS no longer takes
+  // a window full screen (the full-screen test fails); once the computer
+  // sleeps, every test still running fails.
+  await app.evaluate(({ powerSaveBlocker }) => powerSaveBlocker.start('prevent-display-sleep'))
+
   const page = await app.firstWindow()
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
