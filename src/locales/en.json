@@ -798,6 +798,10 @@
     "gateDescription": "This profile publishes courses in your name, so it asks for your password when it opens. Without it you can still learn, make and print courses, and your courses stay online. Only publishing waits.",
     "gateForgotten": "Forgot it? It can't be recovered. Open without publishing to keep learning, making and printing courses.",
     "openWithoutPublishing": "Open without publishing",
+    "publisherName": "Publisher name (optional)",
+    "publisherNamePlaceholder": "For example: Ana Petrović",
+    "publisherNameHint": "Students see your courses and programs as published by {{example}}. Leave it empty to show only your Publisher ID.",
+    "publisherNameHintNone": "Your courses and programs show only your Publisher ID: {{example}}. Add a name to show it next to it.",
     "yourPublisherId": "Your Publisher ID",
     "yourPublisherIdHint": "Like an email address: share it freely. Other teachers use it to invite you to maintain a course. Your publishing identity (the file and its password) is the secret part; never share that."
   },
@@ -964,7 +968,12 @@
       "sidebar-border": "Sidebar borders",
       "sidebar-ring": "Sidebar focus ring"
     },
-    "edit": "Edit program"
+    "edit": "Edit program",
+    "progress": {
+      "not-started": "Not started",
+      "started": "Started",
+      "finished": "Finished"
+    }
   },
   "programSharing": {
     "publish": "Publish",
@@ -1117,6 +1126,8 @@
     "saveAs": "Save to Publishers as (optional)",
     "by": "by {{name}}",
     "shortId": "{{id}}…",
+    "nameWithId": "{{name}} ({{id}}…)",
+    "claimedNameHint": "Their courses say they're “{{name}}”. A name you give them here is shown instead.",
     "copyId": "Copy Publisher ID",
     "twoSources": "{{first}}, {{second}}",
     "more": "and {{count}} more"

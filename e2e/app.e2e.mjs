@@ -2008,6 +2008,32 @@ describe('programs', () => {
   })
 })
 
+// The Publisher name: the publishing identity's setup suggests the profile
+// name, and shows how students will see it, or the Publisher ID alone.
+describe('publisher name', () => {
+  it('starts as the profile name in the identity setup, and can be cleared', async () => {
+    const { page } = harness
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await page.click('[data-testid="open-set-up-identity"]')
+    await page.click('[data-testid="identity-next"]')
+
+    const input = page.locator('[data-testid="publisher-name-input"]')
+    const hint = page.locator('[data-testid="publisher-name-hint"]')
+    expect(await input.inputValue()).toBe(NICKNAME)
+    expect(await hint.textContent()).toContain(`${NICKNAME} (4y9dgb89…)`)
+
+    await input.fill('')
+    expect(await hint.textContent()).toContain('4y9dgb89…')
+    expect(await hint.textContent()).not.toContain(NICKNAME)
+
+    await page.keyboard.press('Escape')
+    await page.locator('[data-testid="set-up-identity-dialog"]').waitFor({ state: 'detached' })
+    expect((await page.evaluate(() => window.preferences.get())).publisherName).toBeUndefined()
+  })
+})
+
 // Full screen for writing a document: the window goes full screen and the
 // app's chrome (title bar, sidebar, explorer, toolbars) steps aside; Esc and
 // "Exit full screen" bring it back. Last in this file: it changes the window.

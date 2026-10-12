@@ -39,7 +39,7 @@ export function HomeCourseRow({
         <CourseFavoriteToggle courseId={course.id} />
       </ListRowActions>
       <ListRowLink render={<Link to={`/courses/${course.id}`} />}>{course.title}</ListRowLink>
-      {course.distribution === "bundled" && <Badge variant="secondary">{t("home.builtInBadge")}</Badge>}
+      {course.isBuiltIn && <Badge variant="secondary">{t("home.builtInBadge")}</Badge>}
       {update && (
         <Badge data-testid="course-update-badge" variant={update.kind === "recommended" ? "warning" : "info"}>
           {update.kind === "recommended"

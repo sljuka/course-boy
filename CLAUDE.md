@@ -109,6 +109,9 @@ display was already off when the run started.
   A program (an ordered set of courses, SLJ-32) is published the same way with its own
   code, imported through the same box, and followed: students get its changes on their
   own (`electron/program-sharing.ts`).
+  The built-in course is a published course too (SLJ-115): the app ships a snapshot and
+  `courses/bundled.json` holds its code, and the maintainer updates it with
+  `scripts/built-in-course.mjs` (adopt, publish, snapshot).
   A course can have several maintainers (SLJ-11): its drive is signed by their keys
   together (`hyper-multisig`), and a version goes online only when more than half of
   them approve it (`electron/maintainers.ts`, `workers/shared-course.cjs`,
@@ -127,6 +130,10 @@ Two terms for the publisher, kept apart (SLJ-67):
   signs everything published. Described as proof that it's you, never to be shared.
 - **Publisher ID**: the public part (its public key). Described as "like an email
   address: share it freely". Others use it to invite you to maintain a course.
+
+- **Publisher name**: optional, the name their courses and programs carry (Settings →
+  Sharing; the identity setup suggests the profile name). Students see it with the
+  Publisher ID, "Ana (4y9dgb89…)", since anyone can call themselves anything.
 
 Not "private/public id", and none of these in user-facing copy: key, public key, private
 key, signature (outside the identity explainer), multisig, quorum, maintainer key,

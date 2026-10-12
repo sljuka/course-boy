@@ -16,8 +16,11 @@ import {
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldTitle } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { PublisherNameField } from "@/components/identity/publisher-name-field";
+import { useProfilesStateQuery } from "@/lib/profiles-queries";
 import { MIN_IDENTITY_PASSWORD_LENGTH } from "@/lib/publisher-identity";
 import { useSetUpIdentityMutation } from "@/lib/publisher-identity-queries";
+import { savePublisherName } from "@/lib/publisher-name-queries";
 
 const INTRO_PARTS = ["online", "signing", "file"] as const;
 
@@ -42,6 +45,10 @@ export function SetUpIdentityDialog({
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [step, setStep] = useState<"intro" | "password">("intro");
+  // Their profile name to start with; they can change it or clear it.
+  const { data: profiles } = useProfilesStateQuery();
+  const [publisherName, setPublisherName] = useState<string | null>(null);
+  const shownPublisherName = publisherName ?? profiles?.active?.name ?? "";
   const setUpMutation = useSetUpIdentityMutation();
   const isTooShort = [...password].length < MIN_IDENTITY_PASSWORD_LENGTH;
   const isMismatch = confirmation.length > 0 && confirmation !== password;
@@ -51,6 +58,7 @@ export function SetUpIdentityDialog({
     if (setUpMutation.isPending) return;
     setPassword("");
     setConfirmation("");
+    setPublisherName(null);
     setStep("intro");
     setUpMutation.reset();
     onClose();
@@ -60,8 +68,10 @@ export function SetUpIdentityDialog({
     setUpMutation.mutate(
       { password },
       {
-        onSuccess: (result) => {
+        onSuccess: async (result) => {
           if (!("ok" in result)) return;
+          // Before onDone: the first Publish carries it.
+          await savePublisherName(shownPublisherName);
           close();
           onDone?.();
         },
@@ -93,7 +103,7 @@ export function SetUpIdentityDialog({
               <Button onClick={close} type="button" variant="secondary">
                 {t("publisherIdentity.cancel")}
               </Button>
-              <Button autoFocus onClick={() => setStep("password")} type="button">
+              <Button autoFocus data-testid="identity-next" onClick={() => setStep("password")} type="button">
                 {t("publisherIdentity.next")}
               </Button>
             </DialogFooter>
@@ -112,6 +122,11 @@ export function SetUpIdentityDialog({
               <DialogDescription>{t("publisherIdentity.passwordDescription")}</DialogDescription>
             </DialogHeader>
             <FieldGroup>
+              <PublisherNameField
+                disabled={setUpMutation.isPending}
+                onChange={setPublisherName}
+                value={shownPublisherName}
+              />
               <Field>
                 <FieldLabel htmlFor="identity-password">{t("publisherIdentity.password")}</FieldLabel>
                 <Input

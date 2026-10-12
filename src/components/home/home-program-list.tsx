@@ -3,18 +3,19 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { ProgramFavoriteToggle } from "@/components/programs/program-favorite-toggle";
+import { ProgramProgressIcon } from "@/components/programs/program-progress-icon";
 import { Badge } from "@/components/ui/badge";
-import { CoverLogo } from "@/components/ui/cover-banner";
 import { ListGroup, ListGroupContent, ListGroupHeader } from "@/components/ui/list-group";
 import { ListRow, ListRowActions, ListRowLink, ListRowMeta } from "@/components/ui/list-row";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { parseCourseSearchQuery } from "@/lib/course-search-query";
-import { programAssetUrl, useProgramsQuery } from "@/lib/program-queries";
+import { useProgramsQuery } from "@/lib/program-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 // Home's Programs group (SLJ-32 phase 2): programs imported with a code, each
-// opening its page, with how many courses its publisher added since the
-// student last looked, and its star. Hidden when there are none, or the
+// opening its page, with where the student is in it (like a course's row),
+// how many courses its publisher added since the student last looked, and its
+// star. Hidden when there are none, or the
 // search matches none (`:favorites` keeps only starred programs).
 export function HomeProgramList({ query }: { query: string }) {
   const { t } = useTranslation();
@@ -41,17 +42,11 @@ export function HomeProgramList({ query }: { query: string }) {
       <ListGroupContent>
         {imported.map((program) => (
           <ListRow data-testid="home-program" key={program.id}>
+            <ProgramProgressIcon courseIds={program.courseIds} />
             {/* Above the row's stretched link, so it toggles instead of opening the program. */}
             <ListRowActions>
               <ProgramFavoriteToggle programId={program.id} />
             </ListRowActions>
-            <CoverLogo size="small">
-              {program.logo ? (
-                <img alt="" src={programAssetUrl(program.id, program.logo)} />
-              ) : (
-                <Library aria-hidden="true" />
-              )}
-            </CoverLogo>
             <ListRowLink render={<Link to={`/programs/${program.id}`} />}>
               {program.title || t("programs.untitled")}
             </ListRowLink>

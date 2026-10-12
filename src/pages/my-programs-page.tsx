@@ -6,7 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Page } from "@/components/page/page";
 import { Button, ButtonLabel } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
-import { CoverLogo } from "@/components/ui/cover-banner";
+import { ProgramProgressIcon } from "@/components/programs/program-progress-icon";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -50,9 +50,7 @@ export function MyProgramsPage() {
         <div className="flex flex-col">
           {own.map((program) => (
             <ListRow data-testid="my-program" key={program.id}>
-              <CoverLogo size="small">
-                <Library aria-hidden="true" />
-              </CoverLogo>
+              <ProgramProgressIcon courseIds={program.courseIds} />
               <ListRowLink render={<Link to={`/my-programs/${program.id}`} />}>
                 {program.title || t("programs.untitled")}
               </ListRowLink>

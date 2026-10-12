@@ -165,6 +165,29 @@ describe('course sharing: student', () => {
     expect(state().followed['course-b']).toEqual(followed)
   })
 
+  // SLJ-115: the built-in course, installed from the app's snapshot, is
+  // followed from where it's published; once it has a record (it may have
+  // moved since), that record stays.
+  it('follows the built-in course from its published code, once', async () => {
+    const { sharing, state, worker } = setup()
+
+    sharing.followBuiltIn({ courseId: 'built-in', driveKey: 'drive-built-in', publisherId: 'project' })
+    await sharing.start()
+
+    expect(state().followed['built-in']).toMatchObject({
+      driveKey: 'drive-built-in',
+      followedSince: '2026-10-03T10:00:00.000Z',
+      publisherId: 'project',
+    })
+    expect(worker.followCourse).toHaveBeenCalledWith('drive-built-in')
+    expect(worker.checkUpdate).toHaveBeenCalledWith('drive-built-in')
+
+    const moved = { ...state().followed['built-in'], driveKey: 'drive-moved', previousDriveKeys: ['drive-built-in'] }
+    const later = setup({ initial: { followed: { 'built-in': moved }, published: {} } })
+    later.sharing.followBuiltIn({ courseId: 'built-in', driveKey: 'drive-built-in', publisherId: 'project' })
+    expect(later.state().followed['built-in']).toEqual(moved)
+  })
+
   it('follows every imported course again at startup', async () => {
     const { sharing, worker } = setup({
       initial: {

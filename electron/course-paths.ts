@@ -78,6 +78,7 @@ import {
   type SerbianScriptSetting,
 } from "../src/lib/serbian-script";
 import { getProfileDataDir } from "./profile-context";
+import { normalizePublisherName } from "../src/lib/publishers";
 import { parseMnemonics } from "../src/lib/mnemonics";
 
 // The bundled "Getting Started with Matko" course. Its id follows the same
@@ -106,8 +107,109 @@ function normalizeContentRating(value: unknown): ContentRating {
   return "all-ages";
 }
 
+// MATKO_BUNDLED_COURSES_DIR: tests only, to ship a different snapshot (a
+// course a test teacher published, SLJ-115).
 function getBundledCoursesRoot(): string {
-  return path.join(process.env.APP_ROOT, "courses");
+  return process.env.MATKO_BUNDLED_COURSES_DIR ?? path.join(process.env.APP_ROOT, "courses");
+}
+
+// ─── The built-in course as a published course (SLJ-115) ───────────────────
+//
+// `courses/bundled.json` says where each built-in course is shared from:
+//   { "courses": [{ "courseId", "code", "publisherId" }] }
+// With a code, the folder next to it is a snapshot of a published version
+// (what the drive holds, source.json included), and the course is installed
+// like an imported one (versions/<v>/ + release.json) and followed for
+// updates. Without one (before its first publish), it's copied to the
+// profile's root as before. The snapshot must say it comes from that code
+// and Publisher ID, or it's ignored as if it had no code.
+
+export type BundledCourseSource = { courseId: string; driveKey: string; publisherId: string };
+
+export async function readBundledCourseSources(): Promise<BundledCourseSource[]> {
+  const bundledCoursesRoot = getBundledCoursesRoot();
+  let entries: unknown;
+
+  try {
+    entries = JSON.parse(await fs.readFile(path.join(bundledCoursesRoot, "bundled.json"), "utf8"))?.courses;
+  } catch {
+    return [];
+  }
+
+  const sources: BundledCourseSource[] = [];
+
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    const { code, courseId, publisherId } = (entry ?? {}) as Record<string, unknown>;
+
+    if (
+      typeof courseId !== "string" ||
+      !bundledSeedCourseIdSet.has(courseId) ||
+      typeof code !== "string" ||
+      typeof publisherId !== "string"
+    ) {
+      continue;
+    }
+
+    try {
+      const snapshotPath = path.join(bundledCoursesRoot, courseId);
+      const manifest = JSON.parse(await fs.readFile(path.join(snapshotPath, "course.json"), "utf8"));
+      const source = JSON.parse(await fs.readFile(path.join(snapshotPath, "source.json"), "utf8"));
+
+      if (manifest.id !== courseId || source?.driveKey !== code || source?.publisher?.id !== publisherId) {
+        throw new Error("its snapshot comes from somewhere else");
+      }
+    } catch (error) {
+      console.error(`[bundled] ignoring the code of ${courseId}:`, error);
+      continue;
+    }
+
+    sources.push({ courseId, driveKey: code, publisherId });
+  }
+
+  return sources;
+}
+
+// Installs the shipped snapshot as a version of the profile's imported copy,
+// when it's newer than every version kept there: the newer one wins, so a
+// student already past it (updated from the network) stays where they are.
+// A copy installed before (at the course's root) is replaced; progress is
+// kept by course id, elsewhere.
+async function installPublishedBundledCourse(snapshotPath: string, courseRootPath: string): Promise<void> {
+  const manifest = JSON.parse(await fs.readFile(path.join(snapshotPath, "course.json"), "utf8"));
+  const version = String(manifest.version);
+  parseCourseVersion(version);
+
+  const versionsPath = path.join(courseRootPath, "versions");
+  await fs.mkdir(versionsPath, { recursive: true });
+  const kept = await listKeptVersions(courseRootPath);
+
+  if (kept.every((keptVersion) => compareVersionStrings(version, keptVersion) > 0)) {
+    const stagingPath = path.join(
+      versionsPath,
+      `${VERSION_STAGING_PREFIX}${version}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+    );
+
+    try {
+      await fs.cp(snapshotPath, stagingPath, { recursive: true });
+      await writeFileAtomic(path.join(stagingPath, "course.json"), JSON.stringify({ ...manifest, status: "published" }, null, 2));
+      await fs.rename(stagingPath, path.join(versionsPath, version));
+    } catch (error) {
+      await fs.rm(stagingPath, { force: true, recursive: true }).catch(() => {});
+      throw error;
+    }
+
+    await setCurrentImportedVersion(courseRootPath, version);
+  } else if (!(await readCourseReleaseState(courseRootPath)).publishedVersion) {
+    // Stopped between the rename and release.json last time.
+    await setCurrentImportedVersion(courseRootPath, kept[0]);
+  }
+
+  // The copy from before, at the root: release.json now points into versions/.
+  for (const entry of await fs.readdir(courseRootPath, { withFileTypes: true })) {
+    if (entry.name !== "versions" && entry.name !== "release.json" && !entry.name.startsWith(".")) {
+      await fs.rm(path.join(courseRootPath, entry.name), { force: true, recursive: true });
+    }
+  }
 }
 
 // Mirrors `getBundledCoursesRoot` — bundled, read-only source files shipped
@@ -211,6 +313,7 @@ async function setUpLocalCoursesRoot(localCoursesRoot: string): Promise<string> 
     const bundledCoursesRoot = getBundledCoursesRoot();
     const bundledSeedState = await readBundledSeedState(localCoursesRoot);
     const removedCourseIds = new Set(bundledSeedState.removedCourseIds);
+    const published = new Set((await readBundledCourseSources()).map((source) => source.courseId));
 
     await Promise.all(
       bundledSeedCourseIds.map(async (courseId) => {
@@ -220,6 +323,21 @@ async function setUpLocalCoursesRoot(localCoursesRoot: string): Promise<string> 
 
         const sourcePath = path.join(bundledCoursesRoot, courseId);
         const targetPath = path.join(localCoursesRoot, courseId);
+
+        // The maintainer's own copy, which they edit and publish (SLJ-115).
+        if (await pathExists(path.join(targetPath, "draft"))) {
+          return;
+        }
+
+        if (published.has(courseId)) {
+          await installPublishedBundledCourse(sourcePath, targetPath);
+          return;
+        }
+
+        // Already installed as a published course (by a newer app version).
+        if (await pathExists(path.join(targetPath, "release.json"))) {
+          return;
+        }
 
         await fs.cp(sourcePath, targetPath, {
           errorOnExist: false,
@@ -2590,7 +2708,12 @@ async function resolveImportedCourseRoot(courseId: string): Promise<string | nul
   const localCoursesRoot = await ensureLocalCoursesRoot();
   const courseRootPath = resolveCourseRootPath(localCoursesRoot, courseId);
 
-  if (bundledSeedCourseIdSet.has(courseId) || (await pathExists(path.join(courseRootPath, "draft")))) {
+  if (await pathExists(path.join(courseRootPath, "draft"))) {
+    return null;
+  }
+
+  // The built-in course counts once it's installed as a published one (SLJ-115).
+  if (bundledSeedCourseIdSet.has(courseId) && !(await pathExists(getReleaseStatePath(courseRootPath)))) {
     return null;
   }
 
@@ -2710,6 +2833,25 @@ export async function readImportedCourseVersion(courseId: string): Promise<strin
   } catch {
     return null;
   }
+}
+
+// The Publisher name the current version of an imported course carries (its
+// source.json's `publisher.name`), or null. A claim, like the Publisher ID.
+export async function readImportedCoursePublisherName(courseId: string): Promise<string | null> {
+  const courseRootPath = await resolveImportedCourseRoot(courseId);
+  if (!courseRootPath) return null;
+
+  const { publishedVersion } = await readCourseReleaseState(courseRootPath);
+  const folders = publishedVersion ? [path.join(courseRootPath, "versions", publishedVersion), courseRootPath] : [courseRootPath];
+  for (const folder of folders) {
+    try {
+      const source = JSON.parse(await fs.readFile(path.join(folder, "source.json"), "utf8"));
+      return normalizePublisherName(source?.publisher?.name) || null;
+    } catch {
+      // Not in this folder (an import not moved into versions/ yet): the next.
+    }
+  }
+  return null;
 }
 
 // The versions of an imported course kept on this device, newest first.

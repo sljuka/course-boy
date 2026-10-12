@@ -62,7 +62,8 @@ export function HomeCourseList({
     const { favoritesOnly, text } = parseCourseSearchQuery(query);
     return courses.filter(
       (course) =>
-        (course.distribution === "imported" || (showBundledCourses && course.distribution === "bundled")) &&
+        (course.distribution === "imported" || course.distribution === "bundled") &&
+        (showBundledCourses || !course.isBuiltIn) &&
         (!favoritesOnly || progress?.courses[course.id]?.favorite === true) &&
         (!text ||
           [course.title, course.description, course.id].some((value) =>

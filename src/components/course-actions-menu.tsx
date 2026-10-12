@@ -28,7 +28,7 @@ export function CourseActionsMenu({
   items,
 }: {
   afterRemovePath: string;
-  course: { distribution?: CourseDistribution; id: string; title: string };
+  course: { distribution?: CourseDistribution; id: string; isBuiltIn?: boolean; title: string };
   // The page's own items, first (e.g. the editor's Commit new version).
   items?: ReactNode;
   // The page's own destructive items, in red right above Remove course (e.g.
@@ -41,7 +41,7 @@ export function CourseActionsMenu({
   const [, setShowBundledCourses] = useShowBundledCourses();
   // The bundled course (Getting Started) is hidden, not deleted: the same
   // switch as Settings' "Show Getting Started course", so it can come back.
-  const isBundled = course.distribution === "bundled";
+  const isBundled = course.isBuiltIn === true;
 
   return (
     <>

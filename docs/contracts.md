@@ -154,7 +154,10 @@ profile's folder, `<data folder>/profiles/<slug>-<16 chars>/`: `getLocalCoursesR
 teacher switches profiles in the running app. They are **not** in the repo's
 `courses/` directory, which is the bundled seed copied in on first run
 (`bundledSeedCourseIds` in `course-paths.ts`, tracked by
-`courses/.bundled-seed-state.json`).
+`courses/.bundled-seed-state.json`). `courses/bundled.json` says where the seed is
+published (`{ courses: [{ courseId, code, publisherId }] }`, SLJ-115): with a code, the
+seed folder is a snapshot of a published version (with its drive's `source.json`), installed
+like an imported course; with `code: null`, it's copied in as before.
 
 ```
 courses/<course-id>/course.json                              # published manifest
@@ -321,7 +324,12 @@ files but never into the teacher's `versions/<v>/`, so a version's hashes in
 `version-meta.json` stay valid. An imported course therefore has one at its root. Import
 refuses a course without one, or one whose `driveKey` isn't the code actually used
 (`workers/course-source.cjs`). That proves consistency, not authorship: `publisher.id`
-is a claim until SLJ-18 signs versions, so the app never shows it as verified. Where a
+is a claim until SLJ-18 signs versions, so the app never shows it as verified.
+`publisher.name` (optional) is the teacher's Publisher name from Settings, written by the
+worker at every publish when they have one; also a claim, so the app always shows it with
+the Publisher ID ("Ana (4y9dgb89…)"), and a name the student gave them in Publishers
+takes its place. Programs carry it the same way; a course maintained together doesn't yet
+(any maintainer can propose a version, and only the owner's app knows the owner's name). Where a
 course comes from *on this device* (the code used at import) is app state, kept in the
 main-process-only `course-sharing.json` electron-store file, never re-read from
 `source.json` (see `electron/course-sharing.ts`).
@@ -391,7 +399,9 @@ root-only; `migrateImportedCourse` moves it right after, and at every start
 `migrateImportedCoursesToVersionedLayout` moves courses imported before SLJ-40. It writes
 `release.json` first and moves `course.json` last, so an interrupted run still finds a
 root `course.json` and finishes next time, and readers fall back to the root meanwhile.
-The bundled seed course stays root-only.
+The bundled seed course stays root-only until it has a code in `courses/bundled.json`
+(SLJ-115): then it's installed as `versions/<v>/` + `release.json` too, the shipped
+version only when it's newer than every kept one, and a root copy from before is removed.
 
 **A course brought back with a restored publishing identity (SLJ-54/55)** lands in the
 teacher's layout, `draft/` + `versions/<v>/` + `release.json`, from the published
@@ -427,8 +437,9 @@ the same package is authored on one machine and imported on another:
 `resolveCourseDistribution` in
 [electron/course-registry.ts](../electron/course-registry.ts:1) derives
 `CourseSummary.distribution` from the folder layout — a `draft/` means `"local"` (My
-courses), the bundled seed id means `"bundled"`, anything else is `"imported"` (both
-listed on Home). A leftover `distribution` field in an older or peer-supplied
+courses), the bundled seed id at its root means `"bundled"`, anything else is `"imported"`
+(both listed on Home). `CourseSummary.isBuiltIn` marks the seed either way (the "Built in"
+badge, hidden rather than removed). A leftover `distribution` field in an older or peer-supplied
 `course.json` is ignored.
 
 **`serbianScript` (SLJ-17)** is an optional `course.json` field,

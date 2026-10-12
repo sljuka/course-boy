@@ -36,6 +36,7 @@ import {
   applyProgramUpdate,
   createProgram,
   listPrograms,
+  readImportedProgramPublisherName,
   landRestoredProgram,
   prepareProgramForPublish,
   programOnDevice,
@@ -47,7 +48,8 @@ import {
 } from './program-paths'
 import { createProgramSharing, type ProgramSharingState } from './program-sharing'
 import { isProgramManifest, programCourseFromManifest, type PeekCourseResult } from '../src/lib/program-package'
-import { createCourseSharing, type CourseSharingState } from './course-sharing'
+import { createCourseSharing, type CourseSharing, type CourseSharingState } from './course-sharing'
+import { normalizePublisherName } from '../src/lib/publishers'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import { createIdentityRestoreService, type IdentityRestoreState } from './identity-restore'
 import { createMaintainers, type MaintainersState } from './maintainers'
@@ -79,6 +81,8 @@ import {
   listImportedCourseVersions,
   listPublishedLocalCourseIds,
   migrateImportedCourse,
+  readBundledCourseSources,
+  readImportedCoursePublisherName,
   readImportedCourseVersion,
   switchImportedCourseVersion,
   openCourseDirectoryInFileSystem,
@@ -211,6 +215,9 @@ type UserPreferences = {
   nickname?: string
   persona?: Persona
   previousVersionsToKeep?: number
+  // The name the teacher's courses and programs carry (SLJ-115 follow-up); unset or
+  // "" to publish without one.
+  publisherName?: string
   recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
   theme?: Theme
@@ -298,7 +305,9 @@ function openProfileServices(dataDir: string) {
     worker: {
       followCourse: whileOpen(followCourse),
       getPeers: whileOpen(getPeers),
-      publishProgram: whileOpen(publishProgram),
+      publishProgram: whileOpen((programId: string, programPath: string, publicIndex: number) =>
+        publishProgram(programId, programPath, publicIndex, normalizePublisherName(preferencesStore.get('publisherName'))),
+      ),
       seedProgram: whileOpen(seedProgram),
       stopSharing: whileOpen(stopSharing),
     },
@@ -427,7 +436,11 @@ function openProfileServices(dataDir: string) {
           await seedCourse(courseId, published.code)
           return published.code
         }
-        const { driveKey, publicId } = await publishCourse(courseId, publicIndexFor(courseId))
+        const { driveKey, publicId } = await publishCourse(
+          courseId,
+          publicIndexFor(courseId),
+          normalizePublisherName(preferencesStore.get('publisherName')),
+        )
         courseSharingStore.set('published', {
           ...courseSharingStore.get('published'),
           [courseId]: { ...courseSharingStore.get('published')[courseId], publicId },
@@ -520,11 +533,19 @@ function openProfileServices(dataDir: string) {
       const programs = await listPrograms(appLocale, () => [])
       const known: KnownPublisher[] = []
       for (const [courseId, followed] of Object.entries(courseSharingStore.get('followed') ?? {})) {
-        known.push({ publisherId: followed.publisherId, source: { id: courseId, kind: 'course', title: courseTitle(courseId) ?? courseId } })
+        known.push({
+          name: await readImportedCoursePublisherName(courseId).catch(() => null),
+          publisherId: followed.publisherId,
+          source: { id: courseId, kind: 'course', title: courseTitle(courseId) ?? courseId },
+        })
       }
       for (const [programId, followed] of Object.entries(programSharingStore.get('followed') ?? {})) {
         const title = programs.find((program) => program.id === programId)?.title ?? programId
-        known.push({ publisherId: followed.publisherId, source: { id: programId, kind: 'program', title } })
+        known.push({
+          name: await readImportedProgramPublisherName(programId),
+          publisherId: followed.publisherId,
+          source: { id: programId, kind: 'program', title },
+        })
       }
       for (const member of maintainers.knownPublishers()) {
         const title = courseTitle(member.courseId) ?? member.title ?? member.publicId
@@ -649,6 +670,16 @@ ipcMain.handle(
     // the student might be about to go back to.
     if (typeof preferences.previousVersionsToKeep === 'number') {
       profile.preferencesStore.set('previousVersionsToKeep', clampPreviousVersionsToKeep(preferences.previousVersionsToKeep))
+    }
+
+    // Put online again so the courses carry the new name. Programs carry it
+    // from their next Publish.
+    if (typeof preferences.publisherName === 'string') {
+      const name = normalizePublisherName(preferences.publisherName)
+      if (name !== (profile.preferencesStore.get('publisherName') ?? '')) {
+        profile.preferencesStore.set('publisherName', name)
+        profile.courseSharing.onConsentGiven()
+      }
     }
 
     if (typeof preferences.showMnemonics === 'boolean') {
@@ -1515,11 +1546,23 @@ function startProfile(): void {
   // courses are shared by their code until the password is given.)
   void cleanUpInterruptedCourseUpdates()
     .catch((error) => console.error('[course-sharing] cleanup failed:', error))
+    .then(() => (profile === opened ? followBuiltInCourses(opened.courseSharing) : undefined))
+    .catch((error) => console.error('[course-sharing] following the built-in course failed:', error))
     .then(() =>
       profile === opened
         ? Promise.all([opened.courseSharing.start(), opened.programSharing.start(), opened.maintainers.start()])
         : undefined,
     )
+}
+
+// The built-in course, once installed as a published course (SLJ-115), is
+// followed for updates like an imported one.
+async function followBuiltInCourses(courseSharing: CourseSharing): Promise<void> {
+  for (const source of await readBundledCourseSources()) {
+    if (await readImportedCourseVersion(source.courseId)) {
+      courseSharing.followBuiltIn(source)
+    }
+  }
 }
 
 // Opens another profile (or the launcher, with null) in the running app

@@ -23,6 +23,7 @@ import {
   migrateImportedCourse,
   openCourseDirectoryInFileSystem,
   publishLocalCourseVersion,
+  readBundledCourseSources,
   readImportedCourseVersion,
   removeLocalCourseSectionIntro,
   revertLocalCourseDraftToVersion,
@@ -1252,5 +1253,111 @@ describe("section intro", () => {
     });
 
     expect(await getUnusedDraftAssets(courseId)).toEqual([]);
+  });
+});
+
+// SLJ-115: with a code in bundled.json, the built-in course is installed like
+// an imported course (versions/<v>/ + release.json) from the shipped snapshot.
+describe("built-in course as a published course", () => {
+  const BUILT_IN_ID = "thys2vej6my5mpxt";
+  const CODE = "yry1qwbbn1aa6wkh5eqqczkbz3dmbnosgsbbkbbksxx3hx7xtxjo";
+  const PUBLISHER_ID = "8du7ye9ow5kt4ikt67ftiazcp9mhk1cig9whjsb31as1djyct33y";
+  let shippedDir = "";
+
+  // What an app release ships: the snapshot of `version`, and its code.
+  async function ship(version: string, { sourceCode = CODE } = {}) {
+    await fs.rm(shippedDir, { force: true, recursive: true });
+    await fs.cp(path.join(process.cwd(), "courses", BUILT_IN_ID), path.join(shippedDir, BUILT_IN_ID), { recursive: true });
+    const manifestPath = path.join(shippedDir, BUILT_IN_ID, "course.json");
+    const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+    await fs.writeFile(manifestPath, JSON.stringify({ ...manifest, version }));
+    await fs.writeFile(
+      path.join(shippedDir, BUILT_IN_ID, "source.json"),
+      JSON.stringify({ driveKey: sourceCode, publicId: "x", publisher: { id: PUBLISHER_ID } }),
+    );
+    await fs.writeFile(
+      path.join(shippedDir, "bundled.json"),
+      JSON.stringify({ courses: [{ code: CODE, courseId: BUILT_IN_ID, publisherId: PUBLISHER_ID }] }),
+    );
+  }
+
+  // The app starting again (with whatever `ship` put there).
+  async function start() {
+    forgetLocalCoursesRootSetupForTests();
+    return ensureLocalCoursesRoot();
+  }
+
+  const builtIn = async () => (await listCourses(await ensureLocalCoursesRoot())).find((course) => course.id === BUILT_IN_ID);
+
+  beforeEach(() => {
+    shippedDir = path.join(userDataDir, "shipped");
+    process.env.MATKO_BUNDLED_COURSES_DIR = shippedDir;
+  });
+
+  afterEach(() => {
+    delete process.env.MATKO_BUNDLED_COURSES_DIR;
+    forgetLocalCoursesRootSetupForTests();
+  });
+
+  it("installs the snapshot as an imported version, still built in", async () => {
+    await ship("0.2");
+    await start();
+
+    expect(await readBundledCourseSources()).toEqual([{ courseId: BUILT_IN_ID, driveKey: CODE, publisherId: PUBLISHER_ID }]);
+    expect(await readImportedCourseVersion(BUILT_IN_ID)).toBe("0.2");
+    expect(await builtIn()).toMatchObject({ distribution: "imported", isBuiltIn: true, status: "published" });
+  });
+
+  it("moves a copy installed before at the course's root into versions/", async () => {
+    delete process.env.MATKO_BUNDLED_COURSES_DIR;
+    const coursesRoot = await start();
+    expect(await builtIn()).toMatchObject({ distribution: "bundled", isBuiltIn: true });
+
+    process.env.MATKO_BUNDLED_COURSES_DIR = shippedDir;
+    await ship("0.2");
+    await start();
+
+    expect((await fs.readdir(path.join(coursesRoot, BUILT_IN_ID))).sort()).toEqual(["release.json", "versions"]);
+    expect(await builtIn()).toMatchObject({ distribution: "imported", isBuiltIn: true, version: "0.2" });
+  });
+
+  it("keeps the newer version: a later release's snapshot, or one the student already has", async () => {
+    await ship("0.5");
+    await start();
+
+    await ship("0.4"); // an older app
+    await start();
+    expect(await listImportedCourseVersions(BUILT_IN_ID)).toEqual({ current: "0.5", versions: ["0.5"] });
+
+    await ship("0.6");
+    await start();
+    expect(await listImportedCourseVersions(BUILT_IN_ID)).toEqual({ current: "0.6", versions: ["0.6", "0.5"] });
+
+    // Gone back to 0.5: the same release starting again doesn't move them.
+    await switchImportedCourseVersion(BUILT_IN_ID, "0.5");
+    await start();
+    expect((await listImportedCourseVersions(BUILT_IN_ID)).current).toBe("0.5");
+  });
+
+  it("ignores a code the snapshot doesn't come from, and installs it as before", async () => {
+    await ship("0.2", { sourceCode: "someone-else" });
+    await start();
+
+    expect(await readBundledCourseSources()).toEqual([]);
+    expect(await builtIn()).toMatchObject({ distribution: "bundled" });
+  });
+
+  it("leaves the maintainer's own copy (with a draft) alone", async () => {
+    const coursesRoot = await start();
+    await fs.rm(path.join(coursesRoot, BUILT_IN_ID), { force: true, recursive: true });
+    await fs.cp(path.join(process.cwd(), "courses", BUILT_IN_ID), path.join(coursesRoot, BUILT_IN_ID, "draft"), {
+      recursive: true,
+    });
+
+    await ship("0.2");
+    await start();
+
+    expect(await fs.readdir(path.join(coursesRoot, BUILT_IN_ID))).toEqual(["draft"]);
+    expect(await builtIn()).toMatchObject({ distribution: "local", isBuiltIn: false });
   });
 });

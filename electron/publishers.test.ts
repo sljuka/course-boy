@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { normalizePublisherName } from '../src/lib/publishers'
 import { createPublishers, type KnownPublisher, type PublishersState } from './publishers'
 
 const ANA = 'a'.repeat(52)
@@ -30,6 +31,7 @@ describe('publishers (SLJ-108)', () => {
     ])
     expect(await service.list('en')).toEqual([
       {
+        claimedName: null,
         label: null,
         publisherId: ANA,
         sources: [
@@ -37,7 +39,7 @@ describe('publishers (SLJ-108)', () => {
           { id: 'geometry', kind: 'course', title: 'Geometry' },
         ],
       },
-      { label: null, publisherId: MARKO, sources: [{ id: 'fractions', kind: 'maintainer', title: 'Fractions' }] },
+      { claimedName: null, label: null, publisherId: MARKO, sources: [{ id: 'fractions', kind: 'maintainer', title: 'Fractions' }] },
     ])
   })
 
@@ -80,5 +82,30 @@ describe('publishers (SLJ-108)', () => {
     const { service } = setup()
     await service.save({ label: 'x'.repeat(200), publisherId: MILA })
     expect((await service.list('en'))[0].label).toHaveLength(80)
+  })
+
+  // The Publisher name a course carries: a claim, shown until the teacher
+  // gives them a name of their own, and sorted by.
+  it('shows the name their courses carry, unless the teacher named them', async () => {
+    const { service } = setup([
+      { name: '  Ana\nPetrović ', publisherId: ANA, source: { id: 'fractions', kind: 'course', title: 'Fractions' } },
+      { name: null, publisherId: MARKO, source: { id: 'geometry', kind: 'course', title: 'Geometry' } },
+      { name: 'Marko', publisherId: MARKO, source: { id: 'algebra', kind: 'program', title: 'Algebra' } },
+      { publisherId: MILA, source: { id: 'music', kind: 'course', title: 'Music' } },
+    ])
+    expect((await service.list('en')).map(({ claimedName, label }) => ({ claimedName, label }))).toEqual([
+      { claimedName: 'Ana Petrović', label: null },
+      { claimedName: 'Marko', label: null },
+      { claimedName: null, label: null },
+    ])
+
+    await service.save({ label: 'Zora', publisherId: ANA })
+    expect((await service.list('en')).map((entry) => entry.label ?? entry.claimedName)).toEqual(['Marko', 'Zora', null])
+  })
+
+  it('keeps a Publisher name to one line of at most 80 characters', () => {
+    expect(normalizePublisherName('  Ana \t Petrović\u0000 ')).toBe('Ana Petrović')
+    expect(normalizePublisherName(42)).toBe('')
+    expect([...normalizePublisherName('😺'.repeat(100))]).toHaveLength(80)
   })
 })

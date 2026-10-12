@@ -1,15 +1,36 @@
 import { FileKey, FolderOpen, KeyRound } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CopyableCode } from "@/components/copyable-code";
 import { IdentitySafetyTips } from "@/components/identity/identity-safety-tips";
+import { PublisherNameField } from "@/components/identity/publisher-name-field";
 import { RestoreIdentityDialog } from "@/components/identity/restore-identity-dialog";
 import { RestoredCoursesList } from "@/components/identity/restored-courses-list";
 import { SetUpIdentityDialog } from "@/components/identity/set-up-identity-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldTitle } from "@/components/ui/field";
 import { useIdentityRestoreStatusQuery, useIdentityStatusQuery } from "@/lib/publisher-identity-queries";
+import { usePublisherNamePreference } from "@/lib/publisher-name-queries";
+
+// Saved when the field is left, so typing doesn't put courses online again
+// on every key.
+function PublisherNameSetting({ publisherId }: { publisherId: string | null }) {
+  const [saved, save] = usePublisherNamePreference();
+  const [value, setValue] = useState(saved);
+  useEffect(() => setValue(saved), [saved]);
+
+  return (
+    <PublisherNameField
+      onBlur={() => {
+        if (value.trim() !== saved) void save(value);
+      }}
+      onChange={setValue}
+      publisherId={publisherId}
+      value={value}
+    />
+  );
+}
 
 // Settings → Sharing → Publishing identity (SLJ-55). Before it's set up:
 // what it's for, "Set up your publishing identity" (the same wizard as the
@@ -34,6 +55,7 @@ export function PublisherIdentitySettings() {
           <FieldTitle>{t("publisherIdentity.settingsTitle")}</FieldTitle>
           <FieldDescription>{t("publisherIdentity.settingsDescription")}</FieldDescription>
           <FieldDescription>{t("publisherIdentity.fileNote")}</FieldDescription>
+          <PublisherNameSetting publisherId={status.publisherId} />
           {/* What another teacher needs to invite you to maintain a course (SLJ-67). */}
           {status.publisherId && (
             <div className="flex flex-col gap-1">

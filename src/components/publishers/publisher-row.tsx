@@ -46,7 +46,7 @@ export function PublisherRow({ entry, onOpen }: { entry: PublisherEntry; onOpen:
           </Button>
         </ListRowActions>
         <ListRowLink className="w-48 flex-none" data-testid="publisher-name" render={<button onClick={onOpen} type="button" />}>
-          {entry.label ?? t("publishers.noName")}
+          {entry.label ?? entry.claimedName ?? t("publishers.noName")}
         </ListRowLink>
         <ListRowMeta data-testid="publisher-sources" fill>
           {shown.length === 2 ? t("publishers.twoSources", { first: shown[0], second: shown[1] }) : shown[0]}

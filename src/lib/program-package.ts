@@ -98,6 +98,8 @@ export type ProgramManifest = {
 // A program as the app lists it: its manifest in the reader's language.
 export type ProgramSummary = {
   courseCount: number;
+  // Its courses, in order: how far the student is through it.
+  courseIds: string[];
   description: string;
   distribution: "imported" | "local";
   id: string;

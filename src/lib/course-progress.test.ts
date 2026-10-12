@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { isBetterAttempt, scoreTestAttempt, summarizeCourseProgress } from "@/lib/course-progress"
+import { isBetterAttempt, scoreTestAttempt, summarizeCourseProgress, summarizeProgramProgress } from "@/lib/course-progress"
 
 describe("summarizeCourseProgress", () => {
   const items = ["lesson-01-a", "test-01-a", "section-test-01-quiz"]
@@ -52,3 +52,28 @@ describe("isBetterAttempt", () => {
     expect(isBetterAttempt({ correct: 7, longestStreak: 3, total: 10 }, { correct: 7, longestStreak: 3, total: 10 })).toBe(false)
   })
 })
+
+describe("summarizeProgramProgress", () => {
+  const courses = [
+    { id: "one", stepIds: ["a", "b"] },
+    { id: "two", stepIds: ["c"] },
+  ];
+  const done = { doneAt: "2026-10-12T10:00:00.000Z" };
+
+  it("is not started until one of its courses is", () => {
+    expect(summarizeProgramProgress(["one", "two"], courses, undefined)).toBe("not-started");
+    expect(summarizeProgramProgress([], courses, {})).toBe("not-started");
+  });
+
+  it("is started once a course is opened or a step done, and finished once every course is", () => {
+    expect(summarizeProgramProgress(["one", "two"], courses, { one: { startedAt: "x", steps: {} } })).toBe("started");
+    expect(summarizeProgramProgress(["one", "two"], courses, { two: { steps: { c: done } } })).toBe("started");
+    expect(
+      summarizeProgramProgress(["one", "two"], courses, { one: { steps: { a: done, b: done } }, two: { steps: { c: done } } }),
+    ).toBe("finished");
+  });
+
+  it("isn't finished while one of its courses isn't on this device", () => {
+    expect(summarizeProgramProgress(["one", "three"], courses, { one: { steps: { a: done, b: done } } })).toBe("started");
+  });
+});

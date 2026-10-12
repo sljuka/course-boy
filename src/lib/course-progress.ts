@@ -88,6 +88,28 @@ export function summarizeCourseProgress(
   return { completedAt, done, total };
 }
 
+// How far the student is through a program: "finished" once every one of its
+// courses is here and finished, "started" once any of them is started (or a
+// step done), "not-started" otherwise. `courses`: the courses on this device.
+export type ProgramProgressStatus = "finished" | "not-started" | "started";
+
+export function summarizeProgramProgress(
+  courseIds: string[],
+  courses: { id: string; stepIds: string[] }[],
+  progress: Record<string, CourseProgress> | undefined,
+): ProgramProgressStatus {
+  const summaries = courseIds.map((courseId) => {
+    const course = courses.find((candidate) => candidate.id === courseId);
+    const courseProgress = progress?.[courseId];
+    return {
+      isFinished: Boolean(course && summarizeCourseProgress(course.stepIds, courseProgress).completedAt),
+      isStarted: Boolean(courseProgress?.startedAt) || Object.values(courseProgress?.steps ?? {}).some((step) => step.doneAt),
+    };
+  });
+  if (summaries.length > 0 && summaries.every((summary) => summary.isFinished)) return "finished";
+  return summaries.some((summary) => summary.isStarted || summary.isFinished) ? "started" : "not-started";
+}
+
 // A test's result from each exercise's first-try outcome, in the order shown:
 // true right first time, false wrong, null never answered (counts as wrong).
 export function scoreTestAttempt(firstTryCorrect: (boolean | null)[]): TestAttemptResult {

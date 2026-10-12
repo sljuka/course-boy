@@ -17,7 +17,8 @@ export type ContentRating = "all-ages" | "mature-themes" | "explicit";
 // and "imported" on a student's). See `resolveCourseDistribution` in
 // electron/course-registry.ts:
 // - "local": you author it (the course has a `draft/`).
-// - "bundled": shipped with the app (the seeded tutorial).
+// - "bundled": shipped with the app (the seeded tutorial), before it's
+//   published (SLJ-115); after, it's "imported" with `isBuiltIn`.
 // - "imported": a published course brought in from elsewhere (P2P import) —
 //   read-only, always "at" its version, never a draft.
 export type CourseDistribution = "local" | "bundled" | "imported";
@@ -482,6 +483,9 @@ export type CourseSummary = {
   description: string;
   distribution: CourseDistribution;
   id: string;
+  // The course shipped with the app (Getting Started): "Built in", and hidden
+  // rather than removed. Bundled, or imported once it's published (SLJ-115).
+  isBuiltIn: boolean;
   lessonPreviews: LessonPreview[];
   // The first few lessons and tests, for a course card's preview.
   previewItems: CoursePreviewItem[];

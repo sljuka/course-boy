@@ -1274,6 +1274,14 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   - imported courses and programs: the publisher their `source.json` claims;
   - courses maintained together: co-maintainers and joined people (SLJ-11, SLJ-70);
   - entered by hand: shown as "Added by you".
+- **Names courses carry:** a teacher can give a Publisher name (Settings → Sharing; the
+  identity setup suggests the profile name, and it can be cleared). The worker writes it
+  into every course's and program's `source.json` (`publisher.name`) when it publishes,
+  and courses are put online again when it changes (programs at their next Publish).
+  Publishers reads it from the imported copy's `source.json` (`claimedName`), so it
+  arrives with the import and changes with each version. Shown everywhere with the id,
+  "Ana (4y9dgb89…)", or "4y9dgb89…" without one; a label the student typed wins. Courses
+  maintained together don't carry it yet.
 - **Stored:** `electron/publishers.ts`, in the profile's `publishers.json`. Only what the
   teacher added is kept: names, hand-entered publishers, and removed ones (`hidden`, so
   an import doesn't bring them back). The rest is read from the followed courses and
@@ -1294,3 +1302,39 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   change, so it waits for a decision; SLJ-31's signed publisher profiles fit better), and
   showing who published each course in a program.
 
+
+### The built-in course as a published course (SLJ-115, 2026-10-12)
+
+- **What:** Getting Started is published like any course, by a publishing identity kept
+  for the project (Publisher ID `8du7ye9o…` in `courses/bundled.json`; its file and
+  password stay with the maintainer, never in the repo). The app ships a snapshot of the
+  published version so it's there offline from the first start, and follows the course's
+  code for updates, which students get like any imported course's (offered, notes, going
+  back). It keeps the "Built in" badge and is hidden rather than removed.
+- **`courses/bundled.json`:** `{ courses: [{ courseId, code, publisherId }] }`. With a code,
+  `readBundledCourseSources` (course-paths.ts) checks that the snapshot's `source.json` says
+  it comes from that code and Publisher ID (else the code is ignored), and the course is
+  installed as `versions/<v>/` + `release.json` like an imported one. Main then records it as
+  followed (`followBuiltIn`, course-sharing.ts) before sharing starts. Until the first
+  publish the code is `null` and the app installs it at the course's root as before.
+- **Newer wins:** the shipped version is installed only when it's newer than every version
+  kept on the computer, so a student who already updated from the network (or went back to
+  an older version) stays where they are. A root copy from an earlier app is replaced;
+  progress is kept (it's by course id).
+- **Maintaining it** (`scripts/built-in-course.mjs`, with the app closed):
+  1. `adopt <profile folder>`: once, in a teacher profile set up with (or restored to) the
+     project's identity: makes the shipped course that profile's own, under My courses.
+  2. Edit and publish it there as usual.
+  3. `snapshot <profile folder>`: copies the published version into `courses/<id>/` with the
+     `source.json` its drive holds (the profile's Publisher name included, so students see
+     "Matko (8du7ye9o…)" from the start), and its code into `bundled.json`. Commit; the next app
+     release ships it.
+  Both refuse a profile whose identity isn't the one in `bundled.json`.
+- **Seeding:** a fresh install has the snapshot as files, not drive blocks, so it passes the
+  course on only once it has downloaded a version. Updates need someone online with it: the
+  maintainer's computer or students who have it. An always-on seeder is an operational
+  choice for later.
+- **Tests:** `MATKO_BUNDLED_COURSES_DIR` (tests only) points the app and the script at
+  another snapshot. `e2e/sharing-built-in.e2e.mjs` runs the whole path: adopt, publish,
+  snapshot, an install from before moving over with its progress, then the next version
+  arriving as an update.

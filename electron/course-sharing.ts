@@ -545,6 +545,24 @@ export function createCourseSharing(deps: CourseSharingDeps) {
       void shareAllPublished()
     },
 
+    // The built-in course, installed from the snapshot shipped with the app
+    // (SLJ-115): followed like a course imported with its code, from the
+    // first start on. A record already there (it may have moved since) stays.
+    followBuiltIn(source: { courseId: string; driveKey: string; publisherId: string }): void {
+      if (deps.store.read().followed[source.courseId]) return
+      updateState((state) => ({
+        ...state,
+        followed: {
+          ...state.followed,
+          [source.courseId]: {
+            driveKey: source.driveKey,
+            followedSince: now().toISOString(),
+            publisherId: source.publisherId,
+          },
+        },
+      }))
+    },
+
     // Imports a course by its code and records where it came from. The recorded
     // drive key is the code actually used, never re-read from the course's files.
     // A code can be a program's (SLJ-32): its result is handed back as it is,

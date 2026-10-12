@@ -38,7 +38,7 @@ function RecentlyViewedMenu() {
     (entry) =>
       coursesById.has(entry.courseId) &&
       (entry.kind !== "draft" || role === "teacher") &&
-      (showBundledCourses || coursesById.get(entry.courseId)?.distribution !== "bundled"),
+      (showBundledCourses || !coursesById.get(entry.courseId)?.isBuiltIn),
   );
   const label = t("titleBar.recentlyViewed");
 

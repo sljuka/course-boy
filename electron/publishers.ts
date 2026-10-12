@@ -6,6 +6,9 @@
 // - the publisher of every imported course and program (its source.json's
 //   `publisher.id`: claimed by the course, not verified, SLJ-18);
 // - the people this profile maintains courses with (SLJ-11).
+// A course or program can also carry its publisher's name (their Publisher
+// name, in source.json): shown as `claimedName`, a claim like the id, with a
+// label the teacher typed taking its place.
 // So nothing needs recording at import time, and removing a course removes
 // that reason from the list (an entry with a label stays).
 //
@@ -14,7 +17,7 @@
 //
 // No Electron dependency: unit-tested in publishers.test.ts.
 
-import type { PublisherEntry, PublisherSource } from '../src/lib/publishers'
+import { normalizePublisherName, type PublisherEntry, type PublisherSource } from '../src/lib/publishers'
 
 export type PublishersState = {
   // By publisher id: what the teacher added.
@@ -24,8 +27,9 @@ export type PublishersState = {
   hidden?: string[]
 }
 
-// A publisher the app knows from somewhere else, and where from.
-export type KnownPublisher = { publisherId: string; source: PublisherSource }
+// A publisher the app knows from somewhere else, and where from. `name`: the
+// Publisher name that course or program carries, if any.
+export type KnownPublisher = { name?: string | null; publisherId: string; source: PublisherSource }
 
 export type PublishersDeps = {
   known(locale: string): Promise<KnownPublisher[]>
@@ -68,7 +72,7 @@ export function createPublishers(deps: PublishersDeps) {
       const entryFor = (publisherId: string) => {
         let entry = byId.get(publisherId)
         if (!entry) {
-          entry = { label: entries[publisherId]?.label ?? null, publisherId, sources: [] }
+          entry = { claimedName: null, label: entries[publisherId]?.label ?? null, publisherId, sources: [] }
           byId.set(publisherId, entry)
         }
         return entry
@@ -76,18 +80,23 @@ export function createPublishers(deps: PublishersDeps) {
       for (const [publisherId, added] of Object.entries(entries)) {
         entryFor(publisherId).sources.push({ addedAt: added.addedAt, kind: 'manual' })
       }
-      for (const { publisherId, source } of await deps.known(locale)) {
+      for (const { name, publisherId, source } of await deps.known(locale)) {
         if (!isPublisherId(publisherId) || (hidden.includes(publisherId) && !entries[publisherId])) continue
         const entry = entryFor(publisherId)
+        entry.claimedName ??= normalizePublisherName(name) || null
         const duplicate = entry.sources.some(
           (existing) => existing.kind === source.kind && 'id' in existing && 'id' in source && existing.id === source.id,
         )
         if (!duplicate) entry.sources.push(source)
       }
       byId.delete(own)
+      // Named ones first (their label, else the name they carry), by name.
+      const nameOf = (entry: PublisherEntry) => entry.label ?? entry.claimedName
       return [...byId.values()].sort((left, right) => {
-        if (left.label && right.label) return left.label.localeCompare(right.label)
-        if (left.label || right.label) return left.label ? -1 : 1
+        const leftName = nameOf(left)
+        const rightName = nameOf(right)
+        if (leftName && rightName) return leftName.localeCompare(rightName)
+        if (leftName || rightName) return leftName ? -1 : 1
         return left.publisherId.localeCompare(right.publisherId)
       })
     },

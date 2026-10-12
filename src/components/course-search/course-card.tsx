@@ -82,7 +82,7 @@ export function CourseCard({ compact = false, course, href, leading, progress, u
                   : t("courseUpdates.availableBadge", { version: update.version })}
               </Badge>
             )}
-            {course.distribution === "bundled" && (
+            {course.isBuiltIn && (
               <Badge variant="secondary">{t("home.builtInBadge")}</Badge>
             )}
             {!compact && (

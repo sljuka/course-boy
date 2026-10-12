@@ -798,6 +798,10 @@
     "gateDescription": "Ovaj profil objavljuje kurseve u tvoje ime, pa traži tvoju lozinku kad se otvori. I bez nje možeš da učiš, praviš i štampaš kurseve, a tvoji kursevi ostaju na mreži. Čeka samo objavljivanje.",
     "gateForgotten": "Zaboravljena lozinka? Ne može da se povrati. Otvori bez objavljivanja i nastavi da učiš, praviš i štampaš kurseve.",
     "openWithoutPublishing": "Otvori bez objavljivanja",
+    "publisherName": "Ime izdavača (nije obavezno)",
+    "publisherNamePlaceholder": "Na primer: Ana Petrović",
+    "publisherNameHint": "Učenici vide da tvoje kurseve i programe izdaje {{example}}. Ostavi prazno da se prikazuje samo tvoj ID izdavača.",
+    "publisherNameHintNone": "Uz tvoje kurseve i programe prikazuje se samo tvoj ID izdavača: {{example}}. Dodaj ime da se prikaže uz njega.",
     "yourPublisherId": "Tvoj ID izdavača",
     "yourPublisherIdHint": "Kao imejl adresa: slobodno ga deli. Drugi nastavnici ga koriste da te pozovu da održavaš kurs. Tvoj identitet izdavača (datoteka i njena lozinka) je tajni deo; njega nikad ne deli."
   },
@@ -964,7 +968,12 @@
       "sidebar-border": "Ivice bočne trake",
       "sidebar-ring": "Okvir fokusa u bočnoj traci"
     },
-    "edit": "Uredi program"
+    "edit": "Uredi program",
+    "progress": {
+      "not-started": "Nije započet",
+      "started": "Započet",
+      "finished": "Završen"
+    }
   },
   "programSharing": {
     "publish": "Objavi",
@@ -1117,6 +1126,8 @@
     "saveAs": "Sačuvaj među izdavače kao (nije obavezno)",
     "by": "izdavač: {{name}}",
     "shortId": "{{id}}…",
+    "nameWithId": "{{name}} ({{id}}…)",
+    "claimedNameHint": "Njihovi kursevi kažu da je izdavač „{{name}}”. Ime koje ovde upišeš prikazuje se umesto toga.",
     "copyId": "Kopiraj ID izdavača",
     "twoSources": "{{first}}, {{second}}",
     "more": "i još {{count}}"

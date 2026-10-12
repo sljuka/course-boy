@@ -152,15 +152,19 @@ export function isCancelledError(error: unknown): boolean {
 // the publisher's courses (given at its first Publish, the same ever after);
 // its public id and the drive key (the course's code) follow from it and the
 // identity. Needs the identity: fails with `code` LOCKED without it.
+// `publisherName`: the teacher's Publisher name, written into the course's
+// source.json next to their Publisher ID; empty to leave it out.
 export async function publishCourse(
   courseId: string,
   publicIndex: number,
+  publisherName: string,
 ): Promise<{ driveKey: string; publicId: string }> {
   const coursePath = await resolveSharedCoursePackagePath(courseId)
   return sendCommand<{ driveKey: string; publicId: string }>(CMD_PUBLISH_COURSE, {
     courseId,
     coursePath,
     publicIndex,
+    publisherName,
   })
 }
 
@@ -208,8 +212,9 @@ export async function publishProgram(
   programId: string,
   programPath: string,
   publicIndex: number,
+  publisherName: string,
 ): Promise<{ driveKey: string; publicId: string }> {
-  return sendCommand(CMD_PUBLISH_PROGRAM, { programId, programPath, publicIndex })
+  return sendCommand(CMD_PUBLISH_PROGRAM, { programId, programPath, publicIndex, publisherName })
 }
 
 // Shares a published program by its code while the identity is locked.

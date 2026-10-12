@@ -32,6 +32,9 @@ export type UserPreferences = {
   // Imported courses: how many versions before the current one are kept on this
   // device, for going back (SLJ-40). 2 when unset; 0–10.
   previousVersionsToKeep?: number
+  // The name the teacher's courses and programs carry, shown to students next
+  // to their Publisher ID; unset or "" for none.
+  publisherName?: string
   recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
   // Bundled courses (Getting Started) on Home and in recently viewed; on when unset.

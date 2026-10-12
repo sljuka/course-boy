@@ -16,6 +16,7 @@ import {
 } from "../src/lib/program-package";
 import { storeCourseAsset, writeFileAtomic } from "./course-paths";
 import { getProfileDataDir } from "./profile-context";
+import { normalizePublisherName } from "../src/lib/publishers";
 
 // Programs on disk (SLJ-32), per profile: `programs/<program-id>/` holds
 // `program.json` and `assets/` (the logo and banner, content-addressed like
@@ -62,6 +63,17 @@ async function isImported(programId: string): Promise<boolean> {
     .catch(() => false);
 }
 
+// The Publisher name an imported program carries (its source.json's
+// `publisher.name`), or null. A claim, like the Publisher ID.
+export async function readImportedProgramPublisherName(programId: string): Promise<string | null> {
+  try {
+    const source = JSON.parse(await fs.readFile(path.join(programDirectory(programId), "source.json"), "utf8"));
+    return normalizePublisherName(source?.publisher?.name) || null;
+  } catch {
+    return null;
+  }
+}
+
 // Every readable program, in the reader's language, newest change first. A
 // damaged folder (or one from a newer Matko) is left out rather than failing
 // the whole list.
@@ -88,6 +100,7 @@ export async function listPrograms(
           const { description, title } = localizeProgram(manifest, locale);
           return {
             courseCount: manifest.courses.length,
+            courseIds: manifest.courses.map((course) => course.courseId),
             description,
             distribution: (await isImported(entry.name)) ? "imported" : "local",
             id: manifest.id,

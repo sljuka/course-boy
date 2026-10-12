@@ -67,7 +67,7 @@ const appDir = path.join(packaged.resources, 'app')
 if (fs.existsSync(path.join(packaged.resources, 'app.asar'))) {
   fail('app.asar exists: asar must be off, the Bare worker cannot load from inside it (CLAUDE.md).')
 }
-for (const required of ['workers/main.cjs', `courses/${BUNDLED_COURSE_ID}/course.json`, 'presets']) {
+for (const required of ['workers/main.cjs', `courses/${BUNDLED_COURSE_ID}/course.json`, 'courses/bundled.json', 'presets']) {
   if (fs.existsSync(path.join(appDir, required))) {
     console.log(`✔ ships ${required}`)
   } else {

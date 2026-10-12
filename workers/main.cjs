@@ -317,15 +317,18 @@ async function start() {
   }
 
   // `kind`: "program" for a program's drive (SLJ-32); a course's says nothing.
-  async function writeSourceFile(drive, publicId, kind) {
+  // `publisherName`: the teacher's Publisher name, if they give one; only a
+  // claim, shown next to the Publisher ID.
+  async function writeSourceFile(drive, publicId, kind, publisherName) {
     const creator = creatorKeyPair(requireIdentity())
+    const name = typeof publisherName === 'string' ? publisherName.trim() : ''
     const source = Buffer.from(
       JSON.stringify(
         {
           driveKey: IdEncoding.normalize(drive.key),
           ...(kind ? { kind } : {}),
           publicId,
-          publisher: { id: IdEncoding.normalize(creator.publicKey) },
+          publisher: { id: IdEncoding.normalize(creator.publicKey), ...(name ? { name } : {}) },
         },
         null,
         2,
@@ -340,12 +343,12 @@ async function start() {
 
   // `publicIndex`: the course's number among this publisher's courses, given
   // by main at its first Publish; its public id (and so its code) follows.
-  async function publishCourse(courseId, coursePath, publicIndex) {
+  async function publishCourse(courseId, coursePath, publicIndex, publisherName) {
     const publicId = publicCourseId(requireIdentity(), publicIndex)
     const { discovery, drive } = await openPublishedDrive(courseId, publicId)
 
     await mirrorVersionIntoDrive(coursePath, drive)
-    await writeSourceFile(drive, publicId)
+    await writeSourceFile(drive, publicId, undefined, publisherName)
     await discovery.flushed()
 
     return { drive, publicId }
@@ -354,12 +357,12 @@ async function start() {
   // A program (SLJ-32): its folder (program.json and its images) into its own
   // drive, signed by a key pair from the identity and its program number, so
   // its code never changes.
-  async function publishProgram(programId, programPath, publicIndex) {
+  async function publishProgram(programId, programPath, publicIndex, publisherName) {
     const publicId = publicProgramId(requireIdentity(), publicIndex)
     const { discovery, drive } = await openPublishedDrive(PROGRAM_ENTRY_PREFIX + programId, publicId, programKeyPair)
 
     await mirrorVersionIntoDrive(programPath, drive)
-    await writeSourceFile(drive, publicId, 'program')
+    await writeSourceFile(drive, publicId, 'program', publisherName)
     // Announced in the background: offline, it only completes later, and the
     // curator gets the code at once.
     discovery.flushed().catch(() => {})
@@ -1466,10 +1469,10 @@ async function start() {
     }
 
     if (req.command === CMD_PUBLISH_PROGRAM) {
-      const { programId, programPath, publicIndex } = JSON.parse(req.data.toString())
+      const { programId, programPath, publicIndex, publisherName } = JSON.parse(req.data.toString())
       try {
         if (!isValidCourseId(programId)) throw new Error('Invalid program id')
-        const { drive, publicId } = await publishProgram(programId, programPath, publicIndex)
+        const { drive, publicId } = await publishProgram(programId, programPath, publicIndex, publisherName)
         req.reply(JSON.stringify({ driveKey: IdEncoding.normalize(drive.key), publicId }))
       } catch (error) {
         if (error.code !== 'LOCKED') console.error('[worker] failed to publish program:', error)
@@ -1503,10 +1506,10 @@ async function start() {
     }
 
     if (req.command === CMD_PUBLISH_COURSE) {
-      const { courseId, coursePath, publicIndex } = JSON.parse(req.data.toString())
+      const { courseId, coursePath, publicIndex, publisherName } = JSON.parse(req.data.toString())
 
       try {
-        const { drive, publicId } = await publishCourse(courseId, coursePath, publicIndex)
+        const { drive, publicId } = await publishCourse(courseId, coursePath, publicIndex, publisherName)
         req.reply(JSON.stringify({ driveKey: IdEncoding.normalize(drive.key), publicId }))
       } catch (error) {
         if (error.code !== 'LOCKED') console.error('[worker] failed to publish course:', error)

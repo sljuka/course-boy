@@ -427,7 +427,10 @@ export function resolveCourseDistribution(
     return "local";
   }
 
-  return isBundledSeedCourseId(courseId) ? "bundled" : "imported";
+  // The built-in course is "bundled" while it's the copy shipped with the app
+  // (at its root); once installed as a published course (versions/, SLJ-115)
+  // it's imported like any other, and `isBuiltIn` says it's the built-in one.
+  return isBundledSeedCourseId(courseId) && packageDirectoryPath === courseRootPath ? "bundled" : "imported";
 }
 
 // Where a course's readable package is, in order of preference:
@@ -1247,6 +1250,7 @@ async function toCourseSummary(
     description: localizedCourseMetadata.description,
     distribution: courseRecord.distribution,
     id: courseRecord.manifest.id,
+    isBuiltIn: courseRecord.distribution !== "local" && isBundledSeedCourseId(courseRecord.manifest.id),
     lessonPreviews,
     previewItems: items.slice(0, PREVIEW_ITEM_LIMIT),
     stepIds: items.map((item) => item.id),

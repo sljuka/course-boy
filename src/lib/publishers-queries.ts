@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 
 import { shortPublisherId } from "@/lib/maintainers-queries";
 import type { PublisherEntry } from "@/lib/publishers";
@@ -34,26 +35,39 @@ export function useRemovePublisherMutation() {
   return useMutation<void, Error, string>({ mutationFn: removePublisher, onSuccess: refreshPublishers });
 }
 
-// A publisher's name where the app shows one: their label in Publishers, else
-// the short id.
-export function usePublisherName(): (publisherId: string) => string {
+// How the app names a publisher: "Ana (4y9dgb89…)" with a name (the label
+// you gave them in Publishers, else the Publisher name their courses carry),
+// "4y9dgb89…" without. The id is always there: a name proves nothing.
+export function usePublisherDisplay(): (publisherId: string, entry?: PublisherEntry) => string {
+  const { t } = useTranslation();
   const { data: publishers } = usePublishersQuery();
   return useCallback(
-    (publisherId: string) =>
-      publishers?.find((entry) => entry.publisherId === publisherId)?.label ?? shortPublisherId(publisherId),
-    [publishers],
+    (publisherId: string, entry?: PublisherEntry) => {
+      const known = entry ?? publishers?.find((candidate) => candidate.publisherId === publisherId);
+      const name = known?.label ?? known?.claimedName;
+      const id = shortPublisherId(publisherId);
+      return name ? t("publishers.nameWithId", { id, name }) : t("publishers.shortId", { id });
+    },
+    [publishers, t],
   );
 }
 
-// Who published an imported course or program, as Publishers knows it: their
-// name there, else their Publisher ID shortened ("4y9dgb89…"). Null for a
-// course of this profile's own, or one Publishers doesn't list.
+// A publisher's name where the app lists people (maintainers, approvals).
+export function usePublisherName(): (publisherId: string) => string {
+  const display = usePublisherDisplay();
+  return useCallback((publisherId: string) => display(publisherId), [display]);
+}
+
+// Who published an imported course or program, as Publishers knows it (see
+// usePublisherDisplay). Null for a course of this profile's own, or one
+// Publishers doesn't list.
 export function useImportedPublisher(id: string, kind: "course" | "program" = "course") {
   const { data: publishers } = usePublishersQuery();
+  const display = usePublisherDisplay();
   const entry = publishers?.find((candidate) =>
     candidate.sources.some((source) => source.kind === kind && source.id === id),
   );
   if (!entry) return null;
-  return { name: entry.label ?? `${shortPublisherId(entry.publisherId)}…`, publisherId: entry.publisherId };
+  return { name: display(entry.publisherId, entry), publisherId: entry.publisherId };
 }
 

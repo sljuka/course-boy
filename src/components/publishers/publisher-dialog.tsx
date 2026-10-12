@@ -74,9 +74,14 @@ export function PublisherDialog({
             id="publisher-label"
             maxLength={MAX_LABEL_LENGTH}
             onChange={(event) => setLabel(event.target.value)}
-            placeholder={t("publishers.labelPlaceholder")}
+            placeholder={entry?.claimedName ?? t("publishers.labelPlaceholder")}
             value={label}
           />
+          {entry?.claimedName && (
+            <CardDescription data-testid="publisher-claimed-name">
+              {t("publishers.claimedNameHint", { name: entry.claimedName })}
+            </CardDescription>
+          )}
           <CardDescription>{t("publishers.labelHint")}</CardDescription>
         </div>
         {error && (
