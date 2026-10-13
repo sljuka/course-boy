@@ -71,6 +71,10 @@ export type Cancelled = { cancelled: true }
 
 export type ApplyCourseUpdateResult = { version: string } | Cancelled
 
+// An import running in main (SLJ-128), kept until it lands: also those a
+// restart picked up again.
+export type RunningImport = { code: string; startedAt: string; transferId: string }
+
 export type ImportCourseInput = {
   code: string
   // Chosen by the caller, to poll progress (`getTransfer`) and cancel.

@@ -1167,5 +1167,20 @@
     "unavailable": "Not available right now",
     "importAnyway": "Nobody who has it is online. You can still import it: it downloads once someone who has it comes online.",
     "summary": "{{available}} of {{total}} courses available right now"
+  },
+  "background": {
+    "askTitle": "Keep sharing while Matko is closed?",
+    "askBody": "Matko keeps the courses you made and imported available, so others can get them from you even when the teacher is offline. Courses you're importing keep downloading in the background. It uses some battery and internet. You can change this any time in Settings → Sharing.",
+    "askOpenAtLogin": "Also start Matko when I log in, in the menu bar",
+    "askQuit": "Quit Matko",
+    "askKeep": "Keep sharing",
+    "trayOpen": "Open Matko",
+    "trayQuit": "Quit Matko",
+    "trayStatus": "Courses shared: {{count}}",
+    "trayTooltip": "Matko is sharing in the background",
+    "settingKeep": "Keep sharing when the window is closed",
+    "settingKeepHint": "Keeps the courses you made and imported available to others while Matko runs in the menu bar.",
+    "settingOpenAtLogin": "Open at login",
+    "settingOpenAtLoginHint": "Starts Matko in the menu bar when you log in, without a window."
   }
 }

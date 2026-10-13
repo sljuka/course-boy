@@ -5,6 +5,7 @@ import { AppStatusBarProvider } from "@/components/app-frame/app-status-bar-prov
 import { AppTitleBar } from "@/components/app-title-bar/app-title-bar";
 import { TitleBarSidebarProvider } from "@/components/app-title-bar/title-bar-sidebar-provider";
 import { BlankLayout } from "@/components/blank-layout";
+import { KeepSharingDialog } from "@/components/background/keep-sharing-dialog";
 import { CourseLayout } from "@/components/course-layout";
 import { OnboardingGuard } from "@/components/onboarding-guard";
 import { OnboardingLayout } from "@/components/onboarding-layout";
@@ -142,6 +143,8 @@ const AppFrame = () => {
         </PublisherPasswordGate>
       </AppShellMain>
       <AppFrameStatusBar />
+      {/* Asked by main when the window is closed (SLJ-129). */}
+      <KeepSharingDialog />
     </AppShell>
   );
 };

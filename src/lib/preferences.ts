@@ -41,6 +41,10 @@ export type UserPreferences = {
   showBundledCourses?: boolean
   // Course mnemonics in lessons (and tests that allow them); on when unset.
   showMnemonics?: boolean
+  // SLJ-129: keep sharing when the window is closed (unset: not asked yet),
+  // and start at login (in the menu bar, no window).
+  keepSharingInBackground?: boolean
+  openAtLogin?: boolean
   // Programs recolor the app with their theme on their page and in their
   // courses (SLJ-32); on when unset.
   useProgramThemes?: boolean

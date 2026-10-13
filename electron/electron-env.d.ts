@@ -154,6 +154,11 @@ interface Window {
     markSeen: (programId: string) => Promise<void>
     peekCourse: (code: string) => Promise<import('../src/lib/program-package').PeekCourseResult>
   }
+  // Keep sharing in the background (SLJ-129).
+  background: {
+    isSupported: boolean
+    onAskKeepSharing: (callback: () => void) => () => void
+  }
   // Channels (SLJ-31): the profile's own, and a course's.
   channels: {
     own: () => Promise<{ programId: string }>
@@ -201,5 +206,6 @@ interface Window {
     importCourse: (
       input: import('../src/lib/sharing').ImportCourseInput,
     ) => Promise<import('../src/lib/sharing').ImportCourseResult>
+    listImports: () => Promise<import('../src/lib/sharing').RunningImport[]>
   }
 }

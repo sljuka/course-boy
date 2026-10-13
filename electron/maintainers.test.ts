@@ -829,3 +829,21 @@ describe('maintainers: Publisher names', () => {
   })
 })
 
+
+// Before the password is given, every refresh at start meets a locked
+// identity: not logged as a failure (the next periodic refresh works).
+describe('maintainers: a locked identity', () => {
+  it("doesn't log refreshes that meet a locked identity", async () => {
+    const world = createWorld()
+    const ana = createPeer(world, 'ana', { courseId: 'course-1' })
+    await ana.service.invite('course-1', 'pub-marko')
+    const locked = Object.assign(new Error('The publishing identity is locked'), { code: 'LOCKED' })
+    ana.op.mockImplementation(async () => {
+      throw locked
+    })
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    await ana.service.start()
+    expect(errors).not.toHaveBeenCalled()
+    errors.mockRestore()
+  })
+})

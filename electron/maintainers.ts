@@ -1514,8 +1514,14 @@ export function notesSince(changelog: unknown[], onlineVersion: string | null, p
     .sort((left, right) => compareCourseVersions(parseCourseVersion(right.version), parseCourseVersion(left.version)))
 }
 
+// A locked publishing identity (before the password is given) isn't a
+// failure: every course is refreshed again every REFRESH_INTERVAL_MS, and that
+// works once it's unlocked.
 function logFailure(publicId: string) {
-  return (error: unknown) => console.error(`[maintainers] ${publicId} failed:`, error)
+  return (error: unknown) => {
+    if ((error as { code?: string } | null)?.code === 'LOCKED') return
+    console.error(`[maintainers] ${publicId} failed:`, error)
+  }
 }
 
 function parseMemberList(value: unknown): Member[] | null {

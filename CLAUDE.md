@@ -109,6 +109,8 @@ display was already off when the run started.
   A program (an ordered set of courses, SLJ-32) is published the same way with its own
   code, imported through the same box, and followed: students get its changes on their
   own (`electron/program-sharing.ts`).
+  Closing the window can keep sharing running in the background, with a menu bar icon
+  (SLJ-129, `electron/background.ts`): asked once, saved per profile, macOS and Windows.
   A channel (SLJ-31) is stored and shared as a program marked `kind: "channel"`: one
   per profile (My channel), listing the courses its teacher shows on it
   (`electron/channels.ts`); a listed course's `source.json` names the channel.

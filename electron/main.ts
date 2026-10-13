@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, screen, session, shell } from 'electron'
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { copyFile, link, mkdir, open as openFile, readdir, readFile, rename, rm, stat as statFile } from 'node:fs/promises'
@@ -50,6 +50,8 @@ import { createProgramSharing, type ProgramSharingState } from './program-sharin
 import { isProgramManifest, localizeProgram, programCourseFromManifest, type PeekCourseResult, type ProgramManifest } from '../src/lib/program-package'
 import { createCourseSharing, type CourseSharing, type CourseSharingState } from './course-sharing'
 import { createChannels, describeForStudent, type ChannelsService } from './channels'
+import { createBackground, isBackgroundSupported, isStartingHidden, setOpenAtLogin } from './background'
+import { backgroundText } from './main-texts'
 import type { ChannelForCourse } from '../src/lib/channels'
 import { normalizePublisherName } from '../src/lib/publishers'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
@@ -154,6 +156,7 @@ import type {
   CourseUpdateInfo,
   ImportCourseInput,
   ImportCourseResult,
+  RunningImport,
 } from '../src/lib/sharing'
 
 // First: choose the profile and move Chromium's own data into the data
@@ -177,13 +180,8 @@ if (!gotSingleInstanceLock) {
   app.quit()
 } else {
   app.on('second-instance', () => {
-    if (win) {
-      if (win.isMinimized()) {
-        win.restore()
-      }
-
-      win.focus()
-    }
+    // Also when it was running in the background (SLJ-129).
+    background.show()
   })
 }
 
@@ -214,6 +212,10 @@ type UserPreferences = {
   showBundledCourses?: boolean
   useProgramThemes?: boolean
   showMnemonics?: boolean
+  // SLJ-129: keep sharing when the window is closed (unset: not asked yet),
+  // and start at login (in the menu bar, no window).
+  keepSharingInBackground?: boolean
+  openAtLogin?: boolean
   locale?: Locale
   nickname?: string
   persona?: Persona
@@ -332,7 +334,9 @@ function openProfileServices(dataDir: string) {
     },
   })
 
-  const courseSharingStore = new Store<CourseSharingState & { nextPublicIndex?: number }>({
+  // `imports` (SLJ-128): imports running or waiting for someone who has the
+  // code online, picked up again at every start until they land.
+  const courseSharingStore = new Store<CourseSharingState & { imports?: RunningImport[]; nextPublicIndex?: number }>({
     cwd: dataDir,
     defaults: { followed: {}, published: {} },
     name: 'course-sharing',
@@ -767,6 +771,23 @@ ipcMain.handle(
       if (name !== (profile.preferencesStore.get('publisherName') ?? '')) {
         profile.preferencesStore.set('publisherName', name)
         profile.courseSharing.onConsentGiven()
+      }
+    }
+
+    // SLJ-129: the answer to "Keep sharing while Matko is closed?" (or the
+    // Settings switch), and opening at login.
+    if (typeof preferences.openAtLogin === 'boolean') {
+      profile.preferencesStore.set('openAtLogin', preferences.openAtLogin)
+      setOpenAtLogin(preferences.openAtLogin)
+    }
+    if (typeof preferences.keepSharingInBackground === 'boolean') {
+      profile.preferencesStore.set('keepSharingInBackground', preferences.keepSharingInBackground)
+      if (isAskingKeepSharing) {
+        isAskingKeepSharing = false
+        // After replying, so the window gets its answer before it hides or quits.
+        setTimeout(() => background.answered(preferences.keepSharingInBackground === true), 0)
+      } else {
+        background.settingChanged(preferences.keepSharingInBackground)
       }
     }
 
@@ -1439,27 +1460,78 @@ ipcMain.handle('sharing:finish-on-version', (_event, courseId: string) => {
   profile.courseSharing.finishOnVersion(courseId)
 })
 
-ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput) => {
-  const result = await profile.courseSharing.importCourse(
-    input.code,
-    typeof input.transferId === 'string' ? input.transferId : undefined,
-  )
-  if ('cancelled' in result) {
-    return result satisfies ImportCourseResult
+// An import by code (a course's, or a program's or channel's). It can wait a
+// long time for someone who has it to be online, so it's kept in the
+// profile's store while it runs (SLJ-128): quitting doesn't drop it, the next
+// start picks it up again (`resumeImports`). One per code at a time: a second
+// import of the same code gets the running one.
+type ProfileServices = ReturnType<typeof openProfileServices>
+const runningImports = new WeakMap<ProfileServices, Map<string, Promise<ImportCourseResult>>>()
+
+function startImport(opened: ProfileServices, code: string, transferId: string): Promise<ImportCourseResult> {
+  const running = runningImports.get(opened) ?? new Map<string, Promise<ImportCourseResult>>()
+  runningImports.set(opened, running)
+  const existing = running.get(code)
+  if (existing) return existing
+
+  const store = opened.courseSharingStore
+  if (!(store.get('imports') ?? []).some((entry) => entry.code === code)) {
+    store.set('imports', [...(store.get('imports') ?? []), { code, startedAt: new Date().toISOString(), transferId }])
   }
-  // A program's code (SLJ-32): it landed under programs/, followed from now on.
-  if ('programId' in result) {
-    const program = await readProgram(result.programId)
-    profile.programSharing.recordImport(
-      result,
-      program.courses.map((course) => course.courseId),
+  const forget = () => store.set('imports', (store.get('imports') ?? []).filter((entry) => entry.code !== code))
+
+  const promise = (async (): Promise<ImportCourseResult> => {
+    const result = await opened.courseSharing.importCourse(code, transferId)
+    if ('cancelled' in result) return result
+    // A program's code (SLJ-32): it landed under programs/, followed from now on.
+    if ('programId' in result) {
+      const program = await readProgram(result.programId)
+      opened.programSharing.recordImport(
+        result,
+        program.courses.map((course) => course.courseId),
+      )
+      return { programId: result.programId }
+    }
+    // The worker lands an import root-only; move it into versions/<v>/ (SLJ-40).
+    await migrateImportedCourse(result.courseId)
+    return { courseId: result.courseId }
+  })()
+    .then(
+      (result) => {
+        forget()
+        return result
+      },
+      (error) => {
+        // A failure the worker reported (not a course, say) ends it; the
+        // worker stopping (the app quitting, a profile switch) doesn't: it's
+        // picked up again next time.
+        if (profile === opened && (error as { fromWorker?: boolean }).fromWorker) forget()
+        throw error
+      },
     )
-    return { programId: result.programId } satisfies ImportCourseResult
+    .finally(() => running.delete(code))
+  running.set(code, promise)
+  return promise
+}
+
+// At start: the imports a previous session left running, in the background.
+function resumeImports(opened: ProfileServices): void {
+  for (const entry of opened.courseSharingStore.get('imports') ?? []) {
+    void startImport(opened, entry.code, entry.transferId).catch((error) => {
+      console.error(`[sharing] resumed import of ${entry.code} failed:`, error)
+    })
   }
-  // The worker lands an import root-only; move it into versions/<v>/ (SLJ-40).
-  await migrateImportedCourse(result.courseId)
-  return { courseId: result.courseId } satisfies ImportCourseResult
+}
+
+ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput) => {
+  if (typeof input?.code !== 'string' || input.code.trim().length === 0) throw new Error('Invalid code')
+  const transferId = typeof input.transferId === 'string' ? input.transferId : randomUUID()
+  return startImport(profile, input.code, transferId) satisfies Promise<ImportCourseResult>
 })
+
+// Imports running or waiting (SLJ-128), for Home's Downloading group: the
+// ones a restart picked up again aren't in the window's own list.
+ipcMain.handle('sharing:list-imports', (): RunningImport[] => profile.courseSharingStore.get('imports') ?? [])
 
 // A program's logo or banner (SLJ-32): `matko-asset://program-<id>/<file>`.
 // "program-" can't begin a course id (16 base32 characters), so the two never
@@ -1603,7 +1675,10 @@ function createWindow() {
   // three as drawers.
   const workArea = screen.getPrimaryDisplay().workAreaSize
 
+  // Started at login (SLJ-129): just the menu bar icon until it's opened.
+  const startHidden = isBackgroundSupported && isStartingHidden()
   win = new BrowserWindow({
+    show: !startHidden,
     width: Math.min(1440, workArea.width),
     height: Math.min(900, workArea.height),
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
@@ -1634,8 +1709,42 @@ function createWindow() {
   })
 
   lockDownWindow(win, [VITE_DEV_SERVER_URL ?? pathToFileURL(path.join(RENDERER_DIST, 'index.html')).href])
+  background.attach(win, { hidden: startHidden })
   loadApp(win)
 }
+
+// Keep sharing in the background (SLJ-129), for the open profile: its saved
+// answer, and whether it has anything to share.
+let isAskingKeepSharing = false
+const background = createBackground({
+  ask: (target) => {
+    isAskingKeepSharing = true
+    if (!target.isVisible()) target.show()
+    target.webContents.send('background:ask-keep-sharing')
+  },
+  hasSomethingToShare: () => {
+    if (!getActiveProfile()) return false
+    const store = profile.courseSharingStore
+    return (
+      Object.keys(store.get('published') ?? {}).length > 0 ||
+      Object.keys(store.get('followed') ?? {}).length > 0 ||
+      (store.get('imports') ?? []).length > 0
+    )
+  },
+  keepSharing: () => (getActiveProfile() ? profile.preferencesStore.get('keepSharingInBackground') : false),
+  texts: () => {
+    const preferred = getActiveProfile() ? profile.preferencesStore.get('locale') : undefined
+    const locale = isLocale(preferred) ? preferred : 'en'
+    const store = profile.courseSharingStore
+    const count = Object.keys(store.get('published') ?? {}).length + Object.keys(store.get('followed') ?? {}).length
+    return {
+      open: backgroundText(locale, 'trayOpen'),
+      quit: backgroundText(locale, 'trayQuit'),
+      status: backgroundText(locale, 'trayStatus', { count }),
+      tooltip: backgroundText(locale, 'trayTooltip'),
+    }
+  },
+})
 
 // Loads the app at its start page (also after a profile switch).
 function loadApp(window: BrowserWindow): void {
@@ -1658,9 +1767,12 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
+  // dock icon is clicked and there are no other windows open; one hidden in
+  // the background (SLJ-129) is shown again.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow()
+  } else {
+    background.show()
   }
 })
 
@@ -1691,6 +1803,7 @@ function startProfile(): void {
   void cleanUpInterruptedCourseUpdates()
     .catch((error) => console.error('[course-sharing] cleanup failed:', error))
     .then(() => (profile === opened ? followBuiltInCourses(opened.courseSharing) : undefined))
+    .then(() => (profile === opened ? resumeImports(opened) : undefined))
     .catch((error) => console.error('[course-sharing] following the built-in course failed:', error))
     .then(() =>
       profile === opened

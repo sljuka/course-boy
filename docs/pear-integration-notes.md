@@ -1389,4 +1389,32 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   again every minute, `useCourseAvailability`): "Available · N online" (who this
   computer reached, so at least that many), or "Not available right now", and the header
   says "N of M courses available right now". Import stays offered either way: it waits,
-  and downloads once someone who has the course comes online (while the app stays open).
+  and downloads once someone who has the course comes online.
+- **Imports that wait survive a restart (SLJ-128):** main keeps every import it's running
+  (`course-sharing` store `imports`: `{ code, transferId, startedAt }`) until it lands, is
+  cancelled, or the worker reports a real failure (not a course, say); a worker that stops
+  because the app quits doesn't count. At every start they're picked up again in the
+  background (`resumeImports`), one per code. Home's Downloading lists them too
+  (`sharing:list-imports`, merged with the window's own), cancellable as before.
+
+### Keep sharing in the background (SLJ-129, 2026-10-13)
+
+- **Why:** a course can only be downloaded while someone who has it is running Matko, and
+  closing the window used to quit everything.
+- **Asked once, the same for everyone:** the first time the window is closed while the
+  profile has something to share (published or imported courses, or an import waiting),
+  main stops the close and asks the window (`background:ask-keep-sharing`): "Keep sharing
+  while Matko is closed?", with an unticked "Also start Matko when I log in". The answer
+  is saved in the profile's preferences (`keepSharingInBackground`, `openAtLogin`); later
+  closes follow it. Dismissing the dialog keeps the window open.
+- **Kept running:** the window hides (and the Dock icon on macOS); a menu bar / tray icon
+  (a target, drawn at runtime, a template image on macOS) shows how many courses are
+  shared, with Open Matko and Quit Matko. Quitting (its Quit, Cmd+Q, or answering "Quit
+  Matko") stops everything. Opening Matko again (the Dock, a second launch) shows the window.
+- **Open at login:** off by default; starts hidden with `--hidden` (macOS:
+  `wasOpenedAtLogin`), just the tray. Set with `app.setLoginItemSettings`.
+- **Settings → Sharing:** "Keep sharing when the window is closed" and "Open at login".
+- **Linux:** no reliable tray on every desktop, so closing keeps quitting
+  (`isBackgroundSupported`), and the settings aren't shown.
+- **Code:** `electron/background.ts` (close handling, tray, login item), its texts from the
+  locale files via `electron/main-texts.ts`. Tested by `e2e/sharing-background.e2e.mjs`.

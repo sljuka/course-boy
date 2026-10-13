@@ -62,6 +62,7 @@ import type {
   CourseUpdateInfo,
   ImportCourseInput,
   ImportCourseResult,
+  RunningImport,
   TransferInfo,
 } from '../src/lib/sharing'
 
@@ -226,6 +227,21 @@ contextBridge.exposeInMainWorld('channels', {
   },
 })
 
+// Keep sharing in the background (SLJ-129): whether this system can (a menu
+// bar icon), and main asking "Keep sharing while Matko is closed?" when the
+// window is closed. The answer goes through preferences.set. Returns a
+// function that stops listening.
+contextBridge.exposeInMainWorld('background', {
+  isSupported: process.platform === 'darwin' || process.platform === 'win32',
+  onAskKeepSharing(callback: () => void) {
+    const listener = () => callback()
+    ipcRenderer.on('background:ask-keep-sharing', listener)
+    return () => {
+      ipcRenderer.removeListener('background:ask-keep-sharing', listener)
+    }
+  },
+})
+
 // The student's own progress through their courses (SLJ-50).
 contextBridge.exposeInMainWorld('progress', {
   get() {
@@ -377,5 +393,9 @@ contextBridge.exposeInMainWorld('sharing', {
   },
   importCourse(input: ImportCourseInput) {
     return ipcRenderer.invoke('sharing:import-course', input) as Promise<ImportCourseResult>
+  },
+  // Imports running or waiting, also those a restart picked up again (SLJ-128).
+  listImports() {
+    return ipcRenderer.invoke('sharing:list-imports') as Promise<RunningImport[]>
   },
 })

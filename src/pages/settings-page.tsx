@@ -1,6 +1,7 @@
 import { Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { BackgroundSettings } from "@/components/background/background-settings";
 import { PublisherIdentitySettings } from "@/components/identity/publisher-identity-settings";
 import { PageContent } from "@/components/page-content";
 import { ProfileNameSetting } from "@/components/profile/profile-name-setting";
@@ -171,6 +172,7 @@ export const SettingsPage = () => {
             </SelectContent>
           </Select>
         </Field>
+        <BackgroundSettings />
         <PublisherIdentitySettings />
       </SettingsSection>
       <SettingsSection data-testid="danger-zone" title={t("settings.dangerZone.title")} variant="danger">

@@ -1167,5 +1167,20 @@
     "unavailable": "Trenutno nije dostupno",
     "importAnyway": "Niko ko ga ima nije na mreži. Ipak možeš da ga uvezeš: preuzeće se čim se pojavi neko ko ga ima.",
     "summary": "Trenutno dostupno: {{available}} od {{total}} kurseva"
+  },
+  "background": {
+    "askTitle": "Nastaviti deljenje dok je Matko zatvoren?",
+    "askBody": "Matko drži dostupnim kurseve koje praviš i uvoziš, pa drugi mogu da ih dobiju od tebe i kad nastavnik nije na mreži. Kursevi koje uvoziš nastavljaju da se preuzimaju u pozadini. Troši malo baterije i interneta. Ovo možeš da promeniš bilo kada u Podešavanja → Deljenje.",
+    "askOpenAtLogin": "Pokreni Matka i kad se prijavim na računar, u traci menija",
+    "askQuit": "Zatvori Matka",
+    "askKeep": "Nastavi deljenje",
+    "trayOpen": "Otvori Matka",
+    "trayQuit": "Zatvori Matka",
+    "trayStatus": "Deljeni kursevi: {{count}}",
+    "trayTooltip": "Matko deli u pozadini",
+    "settingKeep": "Nastavi deljenje kad je prozor zatvoren",
+    "settingKeepHint": "Kursevi koje praviš i uvoziš ostaju dostupni drugima dok Matko radi u traci menija.",
+    "settingOpenAtLogin": "Pokreni pri prijavljivanju",
+    "settingOpenAtLoginHint": "Pokreće Matka u traci menija kad se prijaviš, bez prozora."
   }
 }

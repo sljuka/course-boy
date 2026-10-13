@@ -56,6 +56,7 @@ describe('launch', () => {
   // This is the only automated check that they do.
   it('exposes the full preload bridge surface', async () => {
     const surface = await harness.page.evaluate(() => ({
+      background: Object.keys(window.background ?? {}).sort(),
       channels: Object.keys(window.channels ?? {}).sort(),
       courses: Object.keys(window.courses ?? {}).sort(),
       maintainers: Object.keys(window.maintainers ?? {}).sort(),
@@ -67,6 +68,7 @@ describe('launch', () => {
       sharing: Object.keys(window.sharing ?? {}).sort(),
     }))
 
+    expect(surface.background).toEqual(['isSupported', 'onAskKeepSharing'])
     expect(surface.channels).toEqual(['getForCourse', 'own', 'setCourseListed'])
     expect(surface.courses).toEqual([
       // `applySvgPreset` was already missing from this list before this
@@ -135,6 +137,7 @@ describe('launch', () => {
       'getTransfer',
       'importCourse',
       'listCourseUpdates',
+      'listImports',
       'openWithoutPublishing',
       'restoreIdentity',
       'revealIdentityFile',

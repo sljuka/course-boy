@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useMutationState, useQuery, type Mutation } from "@tanstack/react-query";
 
 import type {
@@ -8,6 +8,7 @@ import type {
   CourseUpdateInfo,
   ImportCourseInput,
   ImportCourseResult,
+  RunningImport,
 } from "@/lib/sharing";
 import { queryClient } from "@/lib/query-client";
 
@@ -148,16 +149,41 @@ export function usePendingImports(): PendingImport[] {
     },
   });
 
-  return useMemo(
-    () =>
-      pending.map(({ mutationId, ...entry }) => ({
-        ...entry,
-        dismiss: () => {
-          const cache = queryClient.getMutationCache();
-          const mutation = cache.getAll().find((candidate) => candidate.mutationId === mutationId);
-          if (mutation) cache.remove(mutation);
-        },
-      })),
-    [pending],
-  );
+  // Imports main is running that this window didn't start (SLJ-128): picked
+  // up again after a restart. Cancelling one stops it in main.
+  const { data: running = [] } = useQuery<RunningImport[]>({
+    queryKey: ["imports", "running"],
+    queryFn: () => window.sharing.listImports(),
+    refetchInterval: 3_000,
+  });
+  // One that's gone has landed (or was cancelled): its course or program shows up.
+  const runningCodes = running.map((entry) => entry.code).join(" ");
+  const previousCodes = useRef(runningCodes);
+  useEffect(() => {
+    if (previousCodes.current !== runningCodes) {
+      previousCodes.current = runningCodes;
+      void queryClient.invalidateQueries({ queryKey: ["courses", "list"] });
+      void queryClient.invalidateQueries({ queryKey: ["programs"] });
+    }
+  }, [runningCodes]);
+
+  return useMemo(() => {
+    const own = pending.map(({ mutationId, ...entry }) => ({
+      ...entry,
+      dismiss: () => {
+        const cache = queryClient.getMutationCache();
+        const mutation = cache.getAll().find((candidate) => candidate.mutationId === mutationId);
+        if (mutation) cache.remove(mutation);
+      },
+    }));
+    const resumed = running
+      .filter((entry) => !own.some((candidate) => candidate.code === entry.code))
+      .map((entry) => ({
+        code: entry.code,
+        dismiss: () => void window.sharing.cancelTransfer(entry.transferId),
+        error: null,
+        transferId: entry.transferId,
+      }));
+    return [...own, ...resumed];
+  }, [pending, running]);
 }

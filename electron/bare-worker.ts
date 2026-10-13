@@ -137,7 +137,9 @@ async function sendCommand<T>(command: number, payload: unknown): Promise<T> {
 
   if (result.error) {
     // `code` carries e.g. CANCELLED (a transfer the user stopped) to the caller.
-    throw Object.assign(new Error(result.error), { code: result.code })
+    // `fromWorker`: the worker answered with it, unlike a worker that stopped
+    // (the app quitting) and never answered.
+    throw Object.assign(new Error(result.error), { code: result.code, fromWorker: true })
   }
 
   return result
