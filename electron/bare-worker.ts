@@ -228,7 +228,9 @@ export async function seedProgram(programId: string, driveKey: string): Promise<
 
 // A course's course.json and claimed publisher by its code, without importing
 // it. Fails with `code` NOT_FOUND when nobody sharing it is online.
-export async function peekCourse(driveKey: string): Promise<{ manifest: unknown; publisherId: string | null }> {
+export async function peekCourse(
+  driveKey: string,
+): Promise<{ manifest: unknown; publisherId: string | null; publisherName?: string | null }> {
   return sendCommand(CMD_PEEK_COURSE, { driveKey })
 }
 

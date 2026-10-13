@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 
 import { useCourseProgressLabel } from "@/components/course-progress/course-progress-label";
 import { usePendingImportView } from "@/components/home/use-pending-import";
+import { PublishedBy } from "@/components/publishers/publisher-name";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +18,8 @@ import { localizeProgram, type ProgramCourse } from "@/lib/program-package";
 import type { PendingImport } from "@/lib/sharing-queries";
 import { useAppState } from "@/lib/use-app-state";
 
-// One course on a program's page (SLJ-32): its number in the program, then
+// One course on a program's page (SLJ-32): its number in the program, who
+// published it (SLJ-126: a program can hold anyone's courses), then
 // - on this device: a link to it and how far along the student is;
 // - being imported: how the download is going, and Cancel;
 // - not yet: the program's snapshot of it and Import (or "Not shared yet"
@@ -56,6 +58,15 @@ export function ProgramCourseRow({
   );
 
   const title = course?.title ?? (snapshot.title || entry.courseId);
+  // Who published it (SLJ-126): as the course itself says once it's here
+  // (every maintainer), else as the program recorded it.
+  const publishers =
+    course && course.publishedBy.length > 0
+      ? course.publishedBy
+      : entry.snapshot.publisherId
+        ? [{ name: entry.snapshot.publisherName ?? null, publisherId: entry.snapshot.publisherId }]
+        : [];
+  const credit = publishers.length > 0 && <PublishedBy publishers={publishers} testId="program-course-publisher" />;
   const description = course?.description || snapshot.description;
   const status = (
     <>
@@ -99,6 +110,7 @@ export function ProgramCourseRow({
                 {course ? <Link to={`/courses/${course.id}`}>{title}</Link> : title}
               </CardTitle>
             </div>
+            {credit && <CardDescription>{credit}</CardDescription>}
             {description && <CardDescription>{description}</CardDescription>}
             <div className="flex min-w-0 flex-wrap items-center gap-2">{status}</div>
           </CardHeader>
@@ -120,6 +132,11 @@ export function ProgramCourseRow({
           )}
           <ListRowMeta fill>{description}</ListRowMeta>
         </div>
+        {credit && (
+          <ListRowMeta align="end" className="max-w-48" fill>
+            {credit}
+          </ListRowMeta>
+        )}
         {status}
       </ListRow>
     </li>

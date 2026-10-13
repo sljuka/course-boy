@@ -5,6 +5,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { ChannelProgramList } from "@/components/channels/channel-program-list";
 import { ViewOptionsMenu } from "@/components/my-courses/view-options-menu";
+import { PublisherName } from "@/components/publishers/publisher-name";
 import { Page } from "@/components/page/page";
 import { ProgramCodeDialog } from "@/components/programs/program-code";
 import { ProgramCourseRow } from "@/components/programs/program-course-row";
@@ -17,6 +18,7 @@ import { summarizeCourseProgress } from "@/lib/course-progress";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { useCoursesQuery } from "@/lib/course-queries";
 import { localizeProgram } from "@/lib/program-package";
+import { usePublishersQuery } from "@/lib/publishers-queries";
 import { programAssetUrl, useProgramQuery, useProgramSharingQuery, useProgramsQuery } from "@/lib/program-queries";
 import { queryClient } from "@/lib/query-client";
 import { useImportCourseMutation, usePendingImports } from "@/lib/sharing-queries";
@@ -38,6 +40,7 @@ export function ProgramPage() {
   const { data: programs = [] } = useProgramsQuery(locale);
   const { data: sharing, isFetchedAfterMount } = useProgramSharingQuery(programId);
   const { data: progress } = useCourseProgressQuery();
+  const { data: publishers } = usePublishersQuery();
   const pendingImports = usePendingImports();
   const importMutation = useImportCourseMutation();
   const [isSharing, setIsSharing] = useState(false);
@@ -74,6 +77,10 @@ export function ProgramPage() {
   const untitled = isChannel ? t("channels.untitled") : t("programs.untitled");
   // Yours (not imported): the page is the editor's preview, with a way back.
   const isOwn = programs.some((candidate) => candidate.id === program.id && candidate.distribution === "local");
+  // Who curated it (SLJ-126), as Publishers knows it; not shown for your own.
+  const curator = isOwn
+    ? null
+    : publishers?.find((entry) => entry.sources.some((source) => source.kind === "program" && source.id === program.id));
   const courseOf = (courseId: string) => courses.find((candidate) => candidate.id === courseId);
   const pendingFor = (code: string | null) => pendingImports.find((pending) => code && pending.code === code);
   // Courses Import all would get: shared, not here, not already coming.
@@ -163,6 +170,12 @@ export function ProgramPage() {
               <CardTitle data-testid="program-title" size="lg">
                 {title || untitled}
               </CardTitle>
+              {curator && (
+                <CardDescription data-testid="program-curator">
+                  {isChannel ? t("channels.publishedBy") : t("programs.curatedBy")}{" "}
+                  <PublisherName name={curator.claimedName} publisherId={curator.publisherId} />
+                </CardDescription>
+              )}
               <CardDescription data-testid="program-progress">
                 {finished > 0
                   ? t("programSharing.finishedCount", {

@@ -1347,7 +1347,8 @@ students who followed it can seed the new drive from their old copy (`copyProlog
 
 - **What:** each teacher has a channel (My channel, in the sidebar): a name, description,
   logo, banner and colors, the courses they show on it (newest first) and their programs.
-  Students open it from a course's page ("Open channel"), see what's on it, get courses
+  Students open it from a course's page or from Publishers ("Open channel", on the
+  row of a publisher whose course names a channel), see what's on it, get courses
   and programs from it, and follow it (Home → Channels; changes arrive on their own, new
   courses marked New, as in a program).
 - **Built on programs:** a channel is a program marked `kind: "channel"`, so it reuses the
@@ -1371,3 +1372,16 @@ students who followed it can seed the new drive from their old copy (`copyProlog
 - **Tests:** `electron/channels.test.ts`; `e2e/sharing-channels.e2e.mjs` (a first publish
   lands on the channel, a student opens it from the course and sees it checked, a course
   shown later reaches them).
+
+### Programs credit who made each course (SLJ-126, 2026-10-13)
+
+- A program can already hold anyone's courses (added by code; students import each from
+  its own publisher), like a playlist. Now its page says so: each course shows who
+  published it ("by Ana (4y9dgb89…)", every maintainer once the course is here), and an
+  imported program says who curated it ("Curated by …"; a channel, "Published by …").
+- One way to show a publisher everywhere: `PublisherName` / `PublishedBy`
+  (`src/components/publishers/publisher-name.tsx`): "Ana (4y9dgb89…)" with a name (the
+  label you gave them in Publishers, else the one their course carries), "4y9dgb89…"
+  without, the full Publisher ID on hover. Home, course cards, the course page, program
+  rows and the curator use it.
+- Later: saying when a program's course is out of reach (nobody who has it online).

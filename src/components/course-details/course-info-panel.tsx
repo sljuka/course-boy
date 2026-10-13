@@ -13,7 +13,7 @@ import { getLocaleFlag } from "@/lib/locale-flags";
 import { useCourseSharingQuery } from "@/lib/sharing-queries";
 import { formatBytes } from "@/lib/transfer-progress";
 import { useAppState } from "@/lib/use-app-state";
-import { useCoursePublishers } from "@/lib/publishers-queries";
+import { PublishedBy } from "@/components/publishers/publisher-name";
 import { useCourseChannelQuery } from "@/lib/channel-queries";
 import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-panel";
 
@@ -47,7 +47,6 @@ export function CourseInfoCard({
   const { data: diskUsage } = useCourseDiskUsageQuery(course.id, course.updatedAt);
   const lessonCount = course.sections.reduce((count, section) => count + section.lessons.length, 0);
   // Who published it (SLJ-108): their name in Publishers, else the short id.
-  const publisher = useCoursePublishers(course);
   const { data: channel } = useCourseChannelQuery(isImported ? course.id : undefined);
 
   return (
@@ -86,11 +85,9 @@ export function CourseInfoCard({
         <PropertyRow label={t("courseInfo.source")}>
           {t(`courseInfo.sources.${course.distribution}`)}
         </PropertyRow>
-        {publisher && (
+        {course.publishedBy.length > 0 && (
           <PropertyRow label={t("courseInfo.publisher")}>
-            <span data-testid="course-info-publisher" title={publisher.publisherIds}>
-              {publisher.name}
-            </span>
+            <PublishedBy publishers={course.publishedBy} testId="course-info-publisher" withBy={false} />
           </PropertyRow>
         )}
         {isImported && channel?.code && (

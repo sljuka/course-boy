@@ -232,15 +232,25 @@ export async function resolveProgramAsset(
 //
 // Your own courses added before you published them get their code now (one
 // added unpublished has none, and students couldn't get it), from `codeFor`.
+//
+// `own`: the curator's Publisher ID and name, for the courses of theirs in it
+// (`isOwn`), so each course says who published it (SLJ-126).
 export async function prepareProgramForPublish(
   programId: string,
   codeFor: (courseId: string) => string | null = () => null,
+  own: { isOwn: (courseId: string) => boolean; publisherId: string | null; publisherName: string } | null = null,
 ): Promise<string> {
   let manifest = await readProgram(programId);
-  const courses = manifest.courses.map((course) =>
-    course.code ? course : { ...course, code: codeFor(course.courseId) },
-  );
-  if (courses.some((course, index) => course.code !== manifest.courses[index].code)) {
+  const courses = manifest.courses.map((course) => {
+    const withCode = course.code ? course : { ...course, code: codeFor(course.courseId) };
+    return own?.publisherId && own.isOwn(course.courseId)
+      ? {
+          ...withCode,
+          snapshot: { ...withCode.snapshot, publisherId: own.publisherId, publisherName: own.publisherName || null },
+        }
+      : withCode;
+  });
+  if (JSON.stringify(courses) !== JSON.stringify(manifest.courses)) {
     manifest = { ...manifest, courses, updatedAt: new Date().toISOString() };
     await writeProgram(manifest);
   }

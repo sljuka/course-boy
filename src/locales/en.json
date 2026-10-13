@@ -975,7 +975,8 @@
       "not-started": "Not started",
       "started": "Started",
       "finished": "Finished"
-    }
+    },
+    "curatedBy": "Curated by"
   },
   "programSharing": {
     "publish": "Publish",
@@ -1156,6 +1157,7 @@
     "getProgram": "Get",
     "loadError": "Your channel can't be opened right now.",
     "settingsHint": "Your channel shows who you are and what you publish: its name, logo and banner appear on your courses.",
-    "edit": "Edit my channel"
+    "edit": "Edit my channel",
+    "publishedBy": "Published by"
   }
 }

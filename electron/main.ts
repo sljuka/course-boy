@@ -309,8 +309,12 @@ function openProfileServices(dataDir: string) {
   const programSharing = createProgramSharing({
     applyUpdate: (programId, driveKey) =>
       applyProgramUpdate(programId, (stagingPath) => whileOpen(downloadUpdate)(driveKey, stagingPath)),
-    prepareForPublish: (programId) =>
-      prepareProgramForPublish(programId, (courseId) => courseSharing.getInfo(courseId).code),
+    prepareForPublish: async (programId) =>
+      prepareProgramForPublish(programId, (courseId) => courseSharing.getInfo(courseId).code, {
+        isOwn: (courseId) => Boolean(courseSharingStore.get('published')[courseId]),
+        publisherId: publisherIdentity.publisherId(),
+        publisherName: await ownPublisherName(),
+      }),
     store: {
       read: () => programSharingStore.store,
       write: (state) => {
@@ -550,22 +554,39 @@ function openProfileServices(dataDir: string) {
       const courseTitle = (courseId: string | null) => courses.find((course) => course.id === courseId)?.title ?? null
       const programs = await listPrograms(appLocale, () => [])
       const known: KnownPublisher[] = []
-      // Everyone who published an imported course: its publisher, and the
-      // other maintainers of one maintained together.
+      // Channels followed here (SLJ-31), by code.
+      const followedPrograms = Object.entries(programSharingStore.get('followed') ?? {})
+      const channelHere = (code: string) =>
+        followedPrograms.find(
+          ([programId, entry]) => entry.driveKey === code && programs.some((program) => program.id === programId && program.kind === 'channel'),
+        )?.[0] ?? null
+      // Everyone who published an imported course: its publisher (with the
+      // channel the course names), and the other maintainers of one
+      // maintained together.
       for (const [courseId, followed] of Object.entries(courseSharingStore.get('followed') ?? {})) {
         const source = { id: courseId, kind: 'course' as const, title: courseTitle(courseId) ?? courseId }
         const publishers = await readImportedCoursePublishers(courseId).catch(() => [])
+        const channelCode = await readImportedCourseChannelCode(courseId).catch(() => null)
+        const channel = channelCode ? { code: channelCode, programId: channelHere(channelCode) } : null
         if (!publishers.some((publisher) => publisher.publisherId === followed.publisherId)) {
-          known.push({ publisherId: followed.publisherId, source })
+          known.push({ channel, publisherId: followed.publisherId, source })
         }
-        for (const publisher of publishers) known.push({ name: publisher.name, publisherId: publisher.publisherId, source })
+        for (const publisher of publishers) {
+          known.push({
+            channel: publisher.publisherId === followed.publisherId ? channel : null,
+            name: publisher.name,
+            publisherId: publisher.publisherId,
+            source,
+          })
+        }
       }
-      for (const [programId, followed] of Object.entries(programSharingStore.get('followed') ?? {})) {
-        const title = programs.find((program) => program.id === programId)?.title ?? programId
+      for (const [programId, followed] of followedPrograms) {
+        const program = programs.find((candidate) => candidate.id === programId)
         known.push({
+          channel: program?.kind === 'channel' ? { code: followed.driveKey, programId } : null,
           name: await readImportedProgramPublisherName(programId),
           publisherId: followed.publisherId,
-          source: { id: programId, kind: 'program', title },
+          source: { id: programId, kind: 'program', title: program?.title ?? programId },
         })
       }
       for (const member of maintainers.knownPublishers()) {
@@ -596,6 +617,7 @@ function openProfileServices(dataDir: string) {
         snapshot: {
           locales,
           publisherId: publisherIdentity.publisherId(),
+          publisherName: (await ownPublisherName()) || null,
           supportedLocales: course.supportedLocales,
           version: course.publishedVersion,
         },
@@ -1050,8 +1072,8 @@ ipcMain.handle('programs:mark-seen', async (_event, programId: unknown) => {
 ipcMain.handle('programs:peek-course', async (_event, code: unknown) => {
   if (typeof code !== 'string' || !/^[a-z0-9]{52,64}$/i.test(code.trim())) throw new Error('Invalid code')
   try {
-    const { manifest, publisherId } = await peekCourse(code.trim())
-    const course = programCourseFromManifest(code.trim(), manifest, publisherId)
+    const { manifest, publisherId, publisherName } = await peekCourse(code.trim())
+    const course = programCourseFromManifest(code.trim(), manifest, publisherId, publisherName ?? null)
     if (!course) throw new Error('This code is not a course')
     return { course } satisfies PeekCourseResult
   } catch (error) {

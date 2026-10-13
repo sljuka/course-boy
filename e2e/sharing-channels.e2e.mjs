@@ -105,6 +105,15 @@ describe('channels', () => {
       arg: CHANNEL_NAME,
       timeout: 30_000,
     })
+
+    // And from Publishers: the teacher's row opens the channel.
+    await student.evaluate(() => {
+      location.hash = '#/publishers'
+    })
+    await student.reload()
+    await student.locator('[data-testid="publisher-open-channel"]').click({ timeout: 30_000 })
+    await student.locator('[data-testid="channel-page"]').waitFor({ timeout: 30_000 })
+    expect(await student.evaluate(() => location.hash)).toBe(`#/channels/${channelId}`)
   }, 180_000)
 
   it('a course published without it, then shown on the channel, reaches the student', async () => {

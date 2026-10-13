@@ -111,6 +111,14 @@ describe('programs online', () => {
     await page.locator('[data-testid="program-page"]').waitFor()
     const rows = page.locator('[data-testid="program-course"]')
     expect(await rows.count()).toBe(2)
+    // SLJ-126: who curated it, and who published each course (the curator's
+    // own, credited when the program was published), by Publisher ID.
+    const curatorId = await apps.curator.page.evaluate(() => window.sharing.getCreatorKey())
+    await waitFor(page, (prefix) => document.querySelector('[data-testid="program-curator"]')?.textContent?.includes(prefix), {
+      arg: curatorId.slice(0, 8),
+      timeout: 30_000,
+    })
+    expect(await rows.nth(0).locator('[data-testid="program-course-publisher"]').getAttribute('title')).toBe(curatorId)
     // The second course wasn't published when the program was.
     expect(await rows.nth(1).locator('[data-testid="program-course-missing"]').count()).toBe(1)
 
@@ -137,6 +145,11 @@ describe('programs online', () => {
     const peeked = await student.evaluate((code) => window.programs.peekCourse(code), second.code)
     expect(peeked.course).toMatchObject({ code: second.code, courseId: second.courseId })
     expect(peeked.course.snapshot.locales.en.title).toBe('E2E Program Course Two')
+    // Credited to its publisher, with the name their channel gives them (their nickname).
+    expect(peeked.course.snapshot).toMatchObject({
+      publisherId: await curator.evaluate(() => window.sharing.getCreatorKey()),
+      publisherName: 'E2E',
+    })
     expect((await student.evaluate(() => window.courses.list('en'))).some((course) => course.id === second.courseId)).toBe(false)
 
     // In the editor: a course already in the program is refused by name.

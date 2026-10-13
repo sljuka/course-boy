@@ -31,6 +31,7 @@ describe('publishers (SLJ-108)', () => {
     ])
     expect(await service.list('en')).toEqual([
       {
+        channel: null,
         claimedName: null,
         label: null,
         publisherId: ANA,
@@ -39,7 +40,7 @@ describe('publishers (SLJ-108)', () => {
           { id: 'geometry', kind: 'course', title: 'Geometry' },
         ],
       },
-      { claimedName: null, label: null, publisherId: MARKO, sources: [{ id: 'fractions', kind: 'maintainer', title: 'Fractions' }] },
+      { channel: null, claimedName: null, label: null, publisherId: MARKO, sources: [{ id: 'fractions', kind: 'maintainer', title: 'Fractions' }] },
     ])
   })
 
@@ -107,6 +108,20 @@ describe('publishers (SLJ-108)', () => {
     expect(normalizePublisherName('  Ana \t Petrović\u0000 ')).toBe('Ana Petrović')
     expect(normalizePublisherName(42)).toBe('')
     expect([...normalizePublisherName('😺'.repeat(100))]).toHaveLength(80)
+  })
+})
+
+describe('publishers: channels (SLJ-31)', () => {
+  it("keeps the channel a publisher's course names, preferring one that's here", async () => {
+    const code = 'e'.repeat(52)
+    const { service } = setup([
+      { channel: { code, programId: null }, publisherId: ANA, source: { id: 'fractions', kind: 'course', title: 'Fractions' } },
+      { channel: { code, programId: 'channelid0000001' }, publisherId: ANA, source: { id: 'channelid0000001', kind: 'program', title: 'Ana' } },
+      { channel: null, publisherId: MARKO, source: { id: 'geometry', kind: 'course', title: 'Geometry' } },
+    ])
+    const list = await service.list('en')
+    expect(list.find((entry) => entry.publisherId === ANA)?.channel).toEqual({ code, programId: 'channelid0000001' })
+    expect(list.find((entry) => entry.publisherId === MARKO)?.channel).toBeNull()
   })
 })
 

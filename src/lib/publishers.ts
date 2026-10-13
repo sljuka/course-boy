@@ -10,7 +10,13 @@ export type PublisherSource =
   // Maintains a course together with this profile.
   | { id: string; kind: "maintainer"; title: string };
 
+// A publisher's channel (SLJ-31), as their courses name it (or as followed):
+// its code, and its program id once it's on this computer.
+export type PublisherChannel = { code: string; programId: string | null };
+
 export type PublisherEntry = {
+  // Their channel, if one of their courses names it or it's followed here.
+  channel: PublisherChannel | null;
   // The name their courses carry (their Publisher name), if any: only a
   // claim, so always shown with the Publisher ID.
   claimedName: string | null;

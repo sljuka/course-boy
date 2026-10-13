@@ -1,6 +1,7 @@
 import { resolveAssetFilename } from "./course-asset-id";
 import { isValidCourseId } from "./course-id";
 import { isLocale, type Locale } from "./i18n";
+import { normalizePublisherName } from "./publishers";
 
 // A program (SLJ-32): an ordered set of courses shared under one code, with
 // its own title, description, logo, banner and colors. A program only
@@ -33,7 +34,11 @@ export type LocalizedProgramMetadata = {
 // were when the curator added it or last published the program.
 export type ProgramCourseSnapshot = {
   locales: Partial<Record<Locale, LocalizedProgramMetadata>>;
+  // Who published the course (SLJ-126): their Publisher ID and the name their
+  // course carried, when it was added (another publisher's) or the program
+  // was published (yours). Null or unset when not known.
   publisherId: string | null;
+  publisherName?: string | null;
   supportedLocales: Locale[];
   version: string | null;
 };
@@ -180,6 +185,9 @@ function isProgramCourse(value: unknown): value is ProgramCourse {
     isLocalesMap(snapshot?.locales) &&
     isLocaleList(snapshot?.supportedLocales) &&
     (snapshot?.publisherId === null || typeof snapshot?.publisherId === "string") &&
+    (snapshot?.publisherName === undefined ||
+      snapshot.publisherName === null ||
+      (typeof snapshot.publisherName === "string" && snapshot.publisherName.length <= MAX_TITLE_LENGTH)) &&
     (snapshot?.version === null || typeof snapshot?.version === "string")
   );
 }
@@ -267,6 +275,7 @@ export function programCourseFromManifest(
   code: string,
   manifest: unknown,
   publisherId: string | null,
+  publisherName: string | null = null,
 ): ProgramCourse | null {
   const raw = manifest as {
     id?: unknown;
@@ -297,6 +306,7 @@ export function programCourseFromManifest(
     snapshot: {
       locales,
       publisherId: typeof publisherId === "string" ? publisherId.slice(0, 128) : null,
+      publisherName: normalizePublisherName(publisherName) || null,
       supportedLocales,
       version: typeof raw.version === "string" ? raw.version.slice(0, 32) : null,
     },

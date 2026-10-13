@@ -103,17 +103,25 @@ describe("programCourseFromManifest", () => {
           version: "0.3.0",
         },
         "pxxzcf3g",
+        "  Ana\nPetrović ",
       ),
     ).toEqual({
       code,
       courseId: "cnp2svlf5w2xxdl3",
       snapshot: {
         locales: { en: { description: "Caesar to Enigma.", title: "Classical ciphers" } },
+        // The name its publisher's course carries (SLJ-126), cleaned.
         publisherId: "pxxzcf3g",
+        publisherName: "Ana Petrović",
         supportedLocales: ["en"],
         version: "0.3.0",
       },
     })
+  })
+
+  it("keeps no name when the course carries none", () => {
+    const course = programCourseFromManifest(code, { id: "cnp2svlf5w2xxdl3", locales: { en: { title: "X" } }, supportedLocales: ["en"] }, null)
+    expect(course?.snapshot).toMatchObject({ publisherId: null, publisherName: null })
   })
 
   it("refuses what isn't a course", () => {

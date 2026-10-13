@@ -975,7 +975,8 @@
       "not-started": "Nije započet",
       "started": "Započet",
       "finished": "Završen"
-    }
+    },
+    "curatedBy": "Priređuje:"
   },
   "programSharing": {
     "publish": "Objavi",
@@ -1156,6 +1157,7 @@
     "getProgram": "Preuzmi",
     "loadError": "Tvoj kanal trenutno ne može da se otvori.",
     "settingsHint": "Tvoj kanal pokazuje ko si i šta objavljuješ: njegovo ime, logo i baner vide se na tvojim kursevima.",
-    "edit": "Uredi moj kanal"
+    "edit": "Uredi moj kanal",
+    "publishedBy": "Izdaje:"
   }
 }

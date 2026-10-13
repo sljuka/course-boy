@@ -3,7 +3,6 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import { shortPublisherId } from "@/lib/maintainers-queries";
-import type { CourseSummary } from "@/lib/course-package";
 import type { PublisherEntry } from "@/lib/publishers";
 import { queryClient } from "@/lib/query-client";
 import { useAppState } from "@/lib/use-app-state";
@@ -58,19 +57,4 @@ export function usePublisherDisplay(): (publisherId: string, courseName?: string
 export function usePublisherName(): (publisherId: string) => string {
   const display = usePublisherDisplay();
   return useCallback((publisherId: string) => display(publisherId), [display]);
-}
-
-// Who published an imported course, as one line: its publisher first, then
-// the other maintainers of one maintained together ("Ana (4y9dgb89…), Marko
-// (k3x8…)"), and their full Publisher IDs (for a tooltip). Null for your own
-// course, or one that doesn't say.
-export function useCoursePublishers(course: Pick<CourseSummary, "publishedBy">) {
-  const { t } = useTranslation();
-  const display = usePublisherDisplay();
-  if (course.publishedBy.length === 0) return null;
-  const names = course.publishedBy.map((publisher) => display(publisher.publisherId, publisher.name));
-  return {
-    name: names.reduce((joined, next) => t("publishers.twoSources", { first: joined, second: next })),
-    publisherIds: course.publishedBy.map((publisher) => publisher.publisherId).join("\n"),
-  };
 }

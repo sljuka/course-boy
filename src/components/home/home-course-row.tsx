@@ -9,7 +9,7 @@ import { StatusIcon } from "@/components/ui/status-icon";
 import type { CourseSummary } from "@/lib/course-package";
 import type { CourseProgressSummary } from "@/lib/course-progress";
 import { getLocaleFlag } from "@/lib/locale-flags";
-import { useCoursePublishers } from "@/lib/publishers-queries";
+import { PublishedBy } from "@/components/publishers/publisher-name";
 import type { CourseUpdateInfo } from "@/lib/sharing";
 
 // One course in Home's table view: where the student is in it, its star, the
@@ -28,7 +28,6 @@ export function HomeCourseRow({
 }) {
   const { t } = useTranslation();
   const progressLabel = useCourseProgressLabel(summary, isStarted);
-  const publisher = useCoursePublishers(course);
 
   return (
     <ListRow>
@@ -47,9 +46,9 @@ export function HomeCourseRow({
             : t("courseUpdates.availableBadge", { version: update.version })}
         </Badge>
       )}
-      {publisher && (
-        <ListRowMeta align="end" className="max-w-40" data-testid="course-publisher" fill title={publisher.publisherIds}>
-          {t("publishers.by", { name: publisher.name })}
+      {course.publishedBy.length > 0 && (
+        <ListRowMeta align="end" className="max-w-40" data-testid="course-publisher" fill>
+          <PublishedBy publishers={course.publishedBy} />
         </ListRowMeta>
       )}
       <ListRowMeta align="end" className="w-28" data-testid="course-progress-label">

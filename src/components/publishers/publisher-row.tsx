@@ -2,6 +2,7 @@ import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import { OpenChannelButton } from "@/components/channels/open-channel-button";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ListRow, ListRowActions, ListRowLink, ListRowMeta } from "@/components/ui/list-row";
@@ -54,6 +55,12 @@ export function PublisherRow({ entry, onOpen }: { entry: PublisherEntry; onOpen:
         {rest.length > 0 && (
           <ListRowActions>
             <CollapsibleTrigger data-testid="publisher-more">{t("publishers.more", { count: rest.length })}</CollapsibleTrigger>
+          </ListRowActions>
+        )}
+        {/* Their channel (SLJ-31), when one of their courses names it. */}
+        {entry.channel && (
+          <ListRowActions>
+            <OpenChannelButton channel={entry.channel} testId="publisher-open-channel" />
           </ListRowActions>
         )}
         {/* Only while open: an empty full-width line would still add height.

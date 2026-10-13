@@ -409,7 +409,12 @@ async function start() {
       const sourceBuffer = await read(SOURCE_FILE_KEY).catch(() => null)
       const source = sourceBuffer ? JSON.parse(sourceBuffer.toString()) : null
       if (!isValidCourseId(manifest.id)) throw new Error('This code is not a course')
-      return { manifest, publisherId: typeof source?.publisher?.id === 'string' ? source.publisher.id : null }
+      return {
+        manifest,
+        publisherId: typeof source?.publisher?.id === 'string' ? source.publisher.id : null,
+        // The name the course carries (SLJ-126), checked and capped by main.
+        publisherName: typeof source?.publisher?.name === 'string' ? source.publisher.name : null,
+      }
     } finally {
       if (!open) {
         await swarm.leave(drive.discoveryKey).catch(() => {})

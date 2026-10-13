@@ -526,7 +526,10 @@ programs/<program-id>/assets/<file>    # its logo and banner, content-addressed 
   order, each `{ code, courseId, snapshot }`. `code` is the course's share code (null
   for one of your own not published yet); the `snapshot` (titles and descriptions per
   language, languages, version, publisher) lets the program's page show the course before
-  it's imported. `isProgramManifest` checks every field on read and save; a newer
+  it's imported. Its `publisherId` and `publisherName` (optional) credit whoever
+  published the course (SLJ-126): read from the course's `source.json` when it's added by
+  code, and set to the curator's own when the program is published, for their courses in
+  it. `isProgramManifest` checks every field on read and save; a newer
   `formatVersion` is told apart (`isNewerProgramFormat`).
 - **`theme`:** one palette named after the app's own color variables
   (`PROGRAM_THEME_COLORS`: `background`, `foreground`, `primary`, `card`, `sidebar`, …),

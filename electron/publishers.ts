@@ -17,7 +17,12 @@
 //
 // No Electron dependency: unit-tested in publishers.test.ts.
 
-import { normalizePublisherName, type PublisherEntry, type PublisherSource } from '../src/lib/publishers'
+import {
+  normalizePublisherName,
+  type PublisherChannel,
+  type PublisherEntry,
+  type PublisherSource,
+} from '../src/lib/publishers'
 
 export type PublishersState = {
   // By publisher id: what the teacher added.
@@ -28,8 +33,14 @@ export type PublishersState = {
 }
 
 // A publisher the app knows from somewhere else, and where from. `name`: the
-// Publisher name that course or program carries, if any.
-export type KnownPublisher = { name?: string | null; publisherId: string; source: PublisherSource }
+// Publisher name that course or program carries, if any; `channel`: the
+// channel it names (SLJ-31), or the followed channel itself.
+export type KnownPublisher = {
+  channel?: PublisherChannel | null
+  name?: string | null
+  publisherId: string
+  source: PublisherSource
+}
 
 export type PublishersDeps = {
   known(locale: string): Promise<KnownPublisher[]>
@@ -72,7 +83,7 @@ export function createPublishers(deps: PublishersDeps) {
       const entryFor = (publisherId: string) => {
         let entry = byId.get(publisherId)
         if (!entry) {
-          entry = { claimedName: null, label: entries[publisherId]?.label ?? null, publisherId, sources: [] }
+          entry = { channel: null, claimedName: null, label: entries[publisherId]?.label ?? null, publisherId, sources: [] }
           byId.set(publisherId, entry)
         }
         return entry
@@ -80,10 +91,12 @@ export function createPublishers(deps: PublishersDeps) {
       for (const [publisherId, added] of Object.entries(entries)) {
         entryFor(publisherId).sources.push({ addedAt: added.addedAt, kind: 'manual' })
       }
-      for (const { name, publisherId, source } of await deps.known(locale)) {
+      for (const { channel, name, publisherId, source } of await deps.known(locale)) {
         if (!isPublisherId(publisherId) || (hidden.includes(publisherId) && !entries[publisherId])) continue
         const entry = entryFor(publisherId)
         entry.claimedName ??= normalizePublisherName(name) || null
+        // One that's here wins over one only named.
+        if (channel && (!entry.channel || (!entry.channel.programId && channel.programId))) entry.channel = channel
         const duplicate = entry.sources.some(
           (existing) => existing.kind === source.kind && 'id' in existing && 'id' in source && existing.id === source.id,
         )
