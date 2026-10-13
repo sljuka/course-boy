@@ -22,7 +22,7 @@ export function ProgramProgressIcon({ courseIds }: { courseIds: string[] }) {
     <StatusIcon
       aria-label={t(`programs.progress.${status}`)}
       data-status={status}
-      data-testid="program-progress"
+      data-testid="program-progress-icon"
       status={STATUS_ICONS[status]}
     />
   );

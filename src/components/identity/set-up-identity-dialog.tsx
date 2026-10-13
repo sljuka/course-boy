@@ -70,8 +70,10 @@ export function SetUpIdentityDialog({
       {
         onSuccess: async (result) => {
           if (!("ok" in result)) return;
-          // Before onDone: the first Publish carries it.
+          // Before onDone: the first Publish carries it. Their channel (SLJ-31)
+          // starts with that name.
           await savePublisherName(shownPublisherName);
+          await window.channels.own().catch(() => null);
           close();
           onDone?.();
         },

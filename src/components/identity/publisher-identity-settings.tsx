@@ -1,42 +1,34 @@
-import { FileKey, FolderOpen, KeyRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { FileKey, FolderOpen, KeyRound, Radio } from "lucide-react";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { CopyableCode } from "@/components/copyable-code";
 import { IdentitySafetyTips } from "@/components/identity/identity-safety-tips";
-import { PublisherNameField } from "@/components/identity/publisher-name-field";
 import { RestoreIdentityDialog } from "@/components/identity/restore-identity-dialog";
 import { RestoredCoursesList } from "@/components/identity/restored-courses-list";
 import { SetUpIdentityDialog } from "@/components/identity/set-up-identity-dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldTitle } from "@/components/ui/field";
 import { useIdentityRestoreStatusQuery, useIdentityStatusQuery } from "@/lib/publisher-identity-queries";
-import { usePublisherNamePreference } from "@/lib/publisher-name-queries";
 
-// Saved when the field is left, so typing doesn't put courses online again
-// on every key.
-function PublisherNameSetting({ publisherId }: { publisherId: string | null }) {
-  const [saved, save] = usePublisherNamePreference();
-  const [value, setValue] = useState(saved);
-  useEffect(() => setValue(saved), [saved]);
-
+// Your channel (SLJ-31): its name is what students see on your courses.
+// Edited on its own page.
+function ChannelSetting() {
+  const { t } = useTranslation();
   return (
-    <PublisherNameField
-      onBlur={() => {
-        if (value.trim() !== saved) void save(value);
-      }}
-      onChange={setValue}
-      publisherId={publisherId}
-      value={value}
-    />
+    <div className="flex flex-col gap-1">
+      <FieldDescription>{t("channels.settingsHint")}</FieldDescription>
+      <div>
+        <Button data-testid="open-my-channel" nativeButton={false} render={<Link to="/my-channel" />} size="sm" variant="secondary">
+          <Radio aria-hidden="true" />
+          {t("channels.edit")}
+        </Button>
+      </div>
+    </div>
   );
 }
 
-// Settings → Sharing → Publishing identity (SLJ-55). Before it's set up:
-// what it's for, "Set up your publishing identity" (the same wizard as the
-// first Publish), and "Restore from a file…" for a teacher who published from
-// another computer. Set up: "Open identity file" shows the file to copy (it's
-// the backup), with how to keep it safe; after a restore, the courses found.
 export function PublisherIdentitySettings() {
   const { t } = useTranslation();
   const { data: status } = useIdentityStatusQuery();
@@ -55,7 +47,7 @@ export function PublisherIdentitySettings() {
           <FieldTitle>{t("publisherIdentity.settingsTitle")}</FieldTitle>
           <FieldDescription>{t("publisherIdentity.settingsDescription")}</FieldDescription>
           <FieldDescription>{t("publisherIdentity.fileNote")}</FieldDescription>
-          <PublisherNameSetting publisherId={status.publisherId} />
+          <ChannelSetting />
           {/* What another teacher needs to invite you to maintain a course (SLJ-67). */}
           {status.publisherId && (
             <div className="flex flex-col gap-1">

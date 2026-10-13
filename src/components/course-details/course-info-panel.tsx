@@ -1,6 +1,8 @@
 import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ChannelListingToggle } from "@/components/channels/channel-listing-toggle";
+import { CourseChannelLink } from "@/components/channels/course-channel-link";
 import { PanelCard } from "@/components/ui/panel-card";
 import { PropertyList, PropertyRow } from "@/components/ui/property-list";
 import type { CourseDetails } from "@/lib/course-package";
@@ -12,6 +14,7 @@ import { useCourseSharingQuery } from "@/lib/sharing-queries";
 import { formatBytes } from "@/lib/transfer-progress";
 import { useAppState } from "@/lib/use-app-state";
 import { useCoursePublishers } from "@/lib/publishers-queries";
+import { useCourseChannelQuery } from "@/lib/channel-queries";
 import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-panel";
 
 const contentRatingKeys = {
@@ -45,6 +48,7 @@ export function CourseInfoCard({
   const lessonCount = course.sections.reduce((count, section) => count + section.lessons.length, 0);
   // Who published it (SLJ-108): their name in Publishers, else the short id.
   const publisher = useCoursePublishers(course);
+  const { data: channel } = useCourseChannelQuery(isImported ? course.id : undefined);
 
   return (
     <PanelCard title={t("courseInfo.title")} variant={variant}>
@@ -89,7 +93,13 @@ export function CourseInfoCard({
             </span>
           </PropertyRow>
         )}
+        {isImported && channel?.code && (
+          <PropertyRow label={t("channels.channel")}>
+            <CourseChannelLink courseId={course.id} />
+          </PropertyRow>
+        )}
       </PropertyList>
+      {course.distribution === "local" && <ChannelListingToggle courseId={course.id} />}
     </PanelCard>
   );
 }

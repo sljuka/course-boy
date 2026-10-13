@@ -56,6 +56,7 @@ describe('launch', () => {
   // This is the only automated check that they do.
   it('exposes the full preload bridge surface', async () => {
     const surface = await harness.page.evaluate(() => ({
+      channels: Object.keys(window.channels ?? {}).sort(),
       courses: Object.keys(window.courses ?? {}).sort(),
       maintainers: Object.keys(window.maintainers ?? {}).sort(),
       preferences: Object.keys(window.preferences ?? {}).sort(),
@@ -66,6 +67,7 @@ describe('launch', () => {
       sharing: Object.keys(window.sharing ?? {}).sort(),
     }))
 
+    expect(surface.channels).toEqual(['getForCourse', 'own', 'setCourseListed'])
     expect(surface.courses).toEqual([
       // `applySvgPreset` was already missing from this list before this
       // change — a genuine, working method that this contract-1 check just
@@ -243,7 +245,7 @@ describe('sidebar by role', () => {
     await waitFor(harness.page, () => Boolean(document.querySelector('#settings-role-teacher')))
     await harness.page.click('label[for="settings-role-teacher"]')
     await waitFor(harness.page, () => document.querySelectorAll('[data-sidebar=menu-button]').length > 1)
-    expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses', 'My programs', 'Publishers'])
+    expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses', 'My programs', 'My channel', 'Publishers'])
     const prefs = await harness.page.evaluate(() => window.preferences.get())
     expect(prefs.role).toBe('teacher')
 

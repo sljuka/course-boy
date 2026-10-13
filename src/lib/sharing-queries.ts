@@ -95,6 +95,8 @@ export function useImportCourseMutation() {
         queryClient.invalidateQueries({ queryKey: ["programs"] }),
         // Its publisher is in Publishers now (SLJ-108).
         queryClient.invalidateQueries({ queryKey: ["publishers"] }),
+        // A channel just followed checks its courses (SLJ-31).
+        queryClient.invalidateQueries({ queryKey: ["channels"] }),
       ]);
     },
   });

@@ -104,6 +104,7 @@ export async function listPrograms(
             description,
             distribution: (await isImported(entry.name)) ? "imported" : "local",
             id: manifest.id,
+            kind: manifest.kind ?? "program",
             logo: manifest.logo,
             newCourseCount: newCourseIds(
               manifest.id,
@@ -132,11 +133,17 @@ async function writeProgram(manifest: ProgramManifest): Promise<void> {
   await writeFileAtomic(path.join(directory, PROGRAM_FILENAME), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
-export async function createProgram(input: { locale: Locale; title: string }): Promise<{ programId: string }> {
+// `kind: "channel"`: a channel (SLJ-31), stored the same way.
+export async function createProgram(input: {
+  kind?: "channel";
+  locale: Locale;
+  title: string;
+}): Promise<{ programId: string }> {
   const programId = createCourseId();
   await writeProgram({
     banner: null,
     courses: [],
+    ...(input.kind === "channel" ? { kind: "channel" as const, programs: [] } : {}),
     defaultLocale: input.locale,
     formatVersion: PROGRAM_FORMAT_VERSION,
     id: programId,
@@ -154,12 +161,21 @@ export async function createProgram(input: { locale: Locale; title: string }): P
 // (a replaced logo) stay until it's published (phase 2), like a course's
 // unused assets until a version is cut: removing them on every save could
 // delete a just-picked image before the program points at it.
-export async function updateProgram(manifest: ProgramManifest): Promise<void> {
+//
+// A channel (SLJ-31) stays a channel, and its courses are main's to keep
+// (electron/channels.ts, from "Show on my channel"): the editor's copy of
+// them is ignored, so a save never undoes a listing made meanwhile.
+// `fromChannels`: that update, from main.
+export async function updateProgram(manifest: ProgramManifest, { fromChannels = false } = {}): Promise<void> {
   if (await isImported(manifest.id)) {
     throw new Error("An imported program can't be edited");
   }
-  await readProgram(manifest.id);
-  await writeProgram({ ...manifest, formatVersion: PROGRAM_FORMAT_VERSION, updatedAt: new Date().toISOString() });
+  const current = await readProgram(manifest.id);
+  const channel =
+    current.kind === "channel"
+      ? { courses: fromChannels ? manifest.courses : current.courses, kind: "channel" as const, programs: manifest.programs ?? [] }
+      : { kind: undefined, programs: undefined };
+  await writeProgram({ ...manifest, ...channel, formatVersion: PROGRAM_FORMAT_VERSION, updatedAt: new Date().toISOString() });
 }
 
 // Picks an image (the OS dialog) and stores it in the program's assets/;

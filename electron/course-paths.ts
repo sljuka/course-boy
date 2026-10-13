@@ -2835,23 +2835,36 @@ export async function readImportedCourseVersion(courseId: string): Promise<strin
   }
 }
 
-// Who the current version of an imported course says published it: the
-// publisher, then the other maintainers of a course maintained together (its
-// source.json, see publishersFromSource). Empty when it isn't imported here.
-export async function readImportedCoursePublishers(courseId: string): Promise<CoursePublisher[]> {
+// The source.json of an imported course's current version (where it's shared
+// from, who published it, its channel), or null when it isn't imported here.
+// Remote data: callers check every field.
+async function readImportedCourseSource(courseId: string): Promise<unknown> {
   const courseRootPath = await resolveImportedCourseRoot(courseId);
-  if (!courseRootPath) return [];
+  if (!courseRootPath) return null;
 
   const { publishedVersion } = await readCourseReleaseState(courseRootPath);
   const folders = publishedVersion ? [path.join(courseRootPath, "versions", publishedVersion), courseRootPath] : [courseRootPath];
   for (const folder of folders) {
     try {
-      return publishersFromSource(JSON.parse(await fs.readFile(path.join(folder, "source.json"), "utf8")));
+      return JSON.parse(await fs.readFile(path.join(folder, "source.json"), "utf8"));
     } catch {
       // Not in this folder (an import not moved into versions/ yet): the next.
     }
   }
-  return [];
+  return null;
+}
+
+// Who the current version of an imported course says published it: the
+// publisher, then the other maintainers of a course maintained together (see
+// publishersFromSource). Empty when it isn't imported here.
+export async function readImportedCoursePublishers(courseId: string): Promise<CoursePublisher[]> {
+  return publishersFromSource(await readImportedCourseSource(courseId));
+}
+
+// The channel an imported course says it's shown on (SLJ-31): its code, or null.
+export async function readImportedCourseChannelCode(courseId: string): Promise<string | null> {
+  const code = ((await readImportedCourseSource(courseId)) as { channel?: { driveKey?: unknown } } | null)?.channel?.driveKey;
+  return typeof code === "string" && /^[a-z0-9]{52,64}$/i.test(code) ? code : null;
 }
 
 // The versions of an imported course kept on this device, newest first.

@@ -1342,3 +1342,32 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   another snapshot. `e2e/sharing-built-in.e2e.mjs` runs the whole path: adopt, publish,
   snapshot, an install from before moving over with its progress, then the next version
   arriving as an update.
+
+### Channels: a publisher's home (SLJ-31 phase 1, 2026-10-13)
+
+- **What:** each teacher has a channel (My channel, in the sidebar): a name, description,
+  logo, banner and colors, the courses they show on it (newest first) and their programs.
+  Students open it from a course's page ("Open channel"), see what's on it, get courses
+  and programs from it, and follow it (Home → Channels; changes arrive on their own, new
+  courses marked New, as in a program).
+- **Built on programs:** a channel is a program marked `kind: "channel"`, so it reuses the
+  program drive, code, images, theme, following and updates. The UI never calls it a
+  program. `electron/channels.ts` keeps the profile's own: created the first time it's
+  needed, named from the Publisher name given at the identity setup (now "Channel name",
+  the nickname to start with), and rebuilt from "Show on my channel" whenever a course
+  goes online or its listing changes.
+- **"Show on my channel":** a checkbox after Publish and on the course's page. On at a
+  course's first publish, off for courses published before channels, so nothing already
+  out there became findable without its teacher choosing it.
+- **Checked, not claimed:** a listed course's `source.json` names the channel
+  (`channel.driveKey`); the channel is signed by its publisher and lists the course back.
+  A student's course page links the channel only once both agree; before the channel is
+  here it offers "Open channel", and it says so when the channel doesn't list the course.
+- **The name** courses carry (`publisher.name`, shown "Ana (4y9dgb89…)") is the channel's:
+  publishing the channel puts the teacher's courses online again with it.
+- **Phase 2 (SLJ-125):** channels run by several people, like a school, on the
+  maintained-together machinery. Phase 1 has one channel per profile and one channel per
+  course.
+- **Tests:** `electron/channels.test.ts`; `e2e/sharing-channels.e2e.mjs` (a first publish
+  lands on the channel, a student opens it from the course and sees it checked, a course
+  shown later reaches them).

@@ -484,7 +484,8 @@
     "favorites": "Omiljeni",
     "myPrograms": "Moji programi",
     "approvals": "Odobrenja",
-    "publishers": "Izdavači"
+    "publishers": "Izdavači",
+    "myChannel": "Moj kanal"
   },
   "testEditor": {
     "tagsTooltip": "Oznake su korisne za obeležavanje zadataka. Koriste se za nasumičan izbor zadataka. Oznake se podešavaju u korenskom folderu kursa.",
@@ -697,7 +698,8 @@
       "imported": "Uvezeni",
       "started": "Započeti",
       "finished": "Završeni",
-      "programs": "Programi"
+      "programs": "Programi",
+      "channels": "Kanali"
     },
     "newCourse": "Novi kurs",
     "importFailed": "Uvoz nije uspeo",
@@ -798,10 +800,10 @@
     "gateDescription": "Ovaj profil objavljuje kurseve u tvoje ime, pa traži tvoju lozinku kad se otvori. I bez nje možeš da učiš, praviš i štampaš kurseve, a tvoji kursevi ostaju na mreži. Čeka samo objavljivanje.",
     "gateForgotten": "Zaboravljena lozinka? Ne može da se povrati. Otvori bez objavljivanja i nastavi da učiš, praviš i štampaš kurseve.",
     "openWithoutPublishing": "Otvori bez objavljivanja",
-    "publisherName": "Ime izdavača (nije obavezno)",
+    "publisherName": "Ime kanala",
     "publisherNamePlaceholder": "Na primer: Ana Petrović",
-    "publisherNameHint": "Učenici vide da tvoje kurseve i programe izdaje {{example}}. Ostavi prazno da se prikazuje samo tvoj ID izdavača.",
-    "publisherNameHintNone": "Uz tvoje kurseve i programe prikazuje se samo tvoj ID izdavača: {{example}}. Dodaj ime da se prikaže uz njega.",
+    "publisherNameHint": "Na tvom kanalu učenici vide ko si i sve što objavljuješ. Tvoje kurseve izdaje {{example}}. Možeš da koristiš svoj nadimak.",
+    "publisherNameHintNone": "Bez imena, učenici vide samo tvoj ID izdavača: {{example}}. Možeš da koristiš svoj nadimak i kasnije ga promeniš na kanalu.",
     "yourPublisherId": "Tvoj ID izdavača",
     "yourPublisherIdHint": "Kao imejl adresa: slobodno ga deli. Drugi nastavnici ga koriste da te pozovu da održavaš kurs. Tvoj identitet izdavača (datoteka i njena lozinka) je tajni deo; njega nikad ne deli."
   },
@@ -1131,5 +1133,29 @@
     "copyId": "Kopiraj ID izdavača",
     "twoSources": "{{first}}, {{second}}",
     "more": "i još {{count}}"
+  },
+  "channels": {
+    "channel": "Kanal",
+    "untitled": "Kanal bez imena",
+    "name": "Ime kanala",
+    "namePlaceholder": "Na primer: Ana Petrović",
+    "nameHint": "Ono što učenici vide na tvom kanalu i na svakom kursu koji na njemu prikazuješ. Možeš da koristiš svoj nadimak.",
+    "courses": "Kursevi",
+    "coursesHint": "Tvoji objavljeni kursevi na kojima je čekirano „Prikaži na mom kanalu”, najnoviji prvi. Menja se na stranici kursa ili odmah posle objavljivanja.",
+    "noCourses": "Na tvom kanalu još nema kurseva. Objavi kurs ili čekiraj „Prikaži na mom kanalu” na nekom već objavljenom.",
+    "noCoursesYet": "Na ovom kanalu još nema kurseva.",
+    "programs": "Programi",
+    "programsHint": "Tvoji objavljeni programi koje prikazuješ na kanalu.",
+    "noPrograms": "Još nemaš programe.",
+    "showProgram": "Prikaži {{title}} na mom kanalu",
+    "publishProgramFirst": "Prvo ga objavi",
+    "showOnChannel": "Prikaži na mom kanalu",
+    "showOnChannelHint": "Učenici koji otvore tvoj kanal tamo vide ovaj kurs.",
+    "open": "Otvori kanal",
+    "doesNotList": "{{title}} (ne navodi ovaj kurs)",
+    "getProgram": "Preuzmi",
+    "loadError": "Tvoj kanal trenutno ne može da se otvori.",
+    "settingsHint": "Tvoj kanal pokazuje ko si i šta objavljuješ: njegovo ime, logo i baner vide se na tvojim kursevima.",
+    "edit": "Uredi moj kanal"
   }
 }

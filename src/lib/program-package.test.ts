@@ -41,6 +41,19 @@ describe("isProgramManifest", () => {
     expect(isProgramManifest(program({ banner: null, courses: [], logo: null, theme: null }))).toBe(true)
   })
 
+  // SLJ-31: a channel is a program marked "channel", which can list programs.
+  it("accepts a channel with its programs, and refuses another kind or a bad entry", () => {
+    const listed = {
+      code: "55cgbt6rwrz5zzzy6i4rb9sn8i13api9trbba5ke1uuxg8s5ngpo",
+      programId: "k3m7abcdefgh2346",
+      snapshot: { locales: { en: { description: "", title: "Cypherpunks" } } },
+    }
+    expect(isProgramManifest(program({ kind: "channel", programs: [listed] }))).toBe(true)
+    expect(isProgramManifest({ ...program(), kind: "playlist" })).toBe(false)
+    expect(isProgramManifest(program({ kind: "channel", programs: [{ ...listed, programId: "../x" }] }))).toBe(false)
+    expect(isProgramManifest(program({ kind: "channel", programs: [{ ...listed, code: "nope" }] }))).toBe(false)
+  })
+
   it("accepts a course of your own not published yet (no code)", () => {
     const [course] = program().courses
     expect(isProgramManifest(program({ courses: [{ ...course, code: null }] }))).toBe(true)

@@ -21,6 +21,7 @@ export const Home = ({ view }: { view: CourseListView }) => {
         placeholder={t("courseSearch.placeholder")}
         value={query}
       />
+      <HomeProgramList kind="channel" query={query} />
       <HomeProgramList query={query} />
       <HomeCourseList query={query} showBundledCourses={showBundledCourses} view={view} />
     </>

@@ -47,8 +47,10 @@ import {
   uploadProgramImage,
 } from './program-paths'
 import { createProgramSharing, type ProgramSharingState } from './program-sharing'
-import { isProgramManifest, programCourseFromManifest, type PeekCourseResult } from '../src/lib/program-package'
+import { isProgramManifest, localizeProgram, programCourseFromManifest, type PeekCourseResult, type ProgramManifest } from '../src/lib/program-package'
 import { createCourseSharing, type CourseSharing, type CourseSharingState } from './course-sharing'
+import { createChannels, describeForStudent, type ChannelsService } from './channels'
+import type { ChannelForCourse } from '../src/lib/channels'
 import { normalizePublisherName } from '../src/lib/publishers'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import { createIdentityRestoreService, type IdentityRestoreState } from './identity-restore'
@@ -82,6 +84,7 @@ import {
   listPublishedLocalCourseIds,
   migrateImportedCourse,
   readBundledCourseSources,
+  readImportedCourseChannelCode,
   readImportedCoursePublishers,
   readImportedCourseVersion,
   switchImportedCourseVersion,
@@ -285,6 +288,18 @@ function openProfileServices(dataDir: string) {
     },
   })
 
+  // The channel (SLJ-31), created after the services it builds on; read
+  // lazily by the ones that need its name or code.
+  let channels: ChannelsService | null = null
+  // The name this teacher's courses carry: their channel's, else (no channel
+  // yet) the Publisher name they gave at the identity setup.
+  const ownPublisherName = async () => {
+    const channelId = programSharingStore.get('ownChannelId')
+    const channel = channelId ? await readProgram(channelId).catch(() => null) : null
+    const title = channel ? localizeProgram(channel, channel.defaultLocale).title : ''
+    return normalizePublisherName(title) || normalizePublisherName(preferencesStore.get('publisherName'))
+  }
+
   // Programs online (SLJ-32): yours published, imported ones followed.
   const programSharingStore = new Store<ProgramSharingState>({
     cwd: dataDir,
@@ -305,8 +320,8 @@ function openProfileServices(dataDir: string) {
     worker: {
       followCourse: whileOpen(followCourse),
       getPeers: whileOpen(getPeers),
-      publishProgram: whileOpen((programId: string, programPath: string, publicIndex: number) =>
-        publishProgram(programId, programPath, publicIndex, normalizePublisherName(preferencesStore.get('publisherName'))),
+      publishProgram: whileOpen(async (programId: string, programPath: string, publicIndex: number) =>
+        publishProgram(programId, programPath, publicIndex, await ownPublisherName()),
       ),
       seedProgram: whileOpen(seedProgram),
       stopSharing: whileOpen(stopSharing),
@@ -349,7 +364,7 @@ function openProfileServices(dataDir: string) {
     name: 'maintainers',
   })
   const maintainers = createMaintainers({
-    ownPublisherName: () => normalizePublisherName(preferencesStore.get('publisherName')),
+    ownPublisherName,
     courseOnDevice: async (courseId) =>
       (await listCourses(await ensureLocalCoursesRoot())).some((candidate) => candidate.id === courseId),
     createPreviewPath: async (hash, basePath) => {
@@ -403,6 +418,7 @@ function openProfileServices(dataDir: string) {
     hasConsent: () => publisherIdentity.exists(),
     listInstalledVersions: listImportedCourseVersions,
     listPublishedCourseIds: listPublishedLocalCourseIds,
+    onShared: () => void channels?.sync(),
     readInstalledVersion: readImportedCourseVersion,
     switchInstalledVersion: switchImportedCourseVersion,
     store: {
@@ -440,7 +456,8 @@ function openProfileServices(dataDir: string) {
         const { driveKey, publicId } = await publishCourse(
           courseId,
           publicIndexFor(courseId),
-          normalizePublisherName(preferencesStore.get('publisherName')),
+          await ownPublisherName(),
+          channels?.codeForCourse(courseId) ?? '',
         )
         courseSharingStore.set('published', {
           ...courseSharingStore.get('published'),
@@ -561,7 +578,51 @@ function openProfileServices(dataDir: string) {
     store: { read: () => publishersStore.store, write: (state) => (publishersStore.store = state) },
   })
 
+  channels = createChannels({
+    canPublish: () => !publisherIdentity.isLocked(),
+    channelCode: (programId) => programSharingStore.get('published')[programId]?.code ?? null,
+    courseEntry: async (courseId, code) => {
+      const coursesRoot = await ensureLocalCoursesRoot()
+      const course = (await listCourses(coursesRoot)).find((candidate) => candidate.id === courseId)
+      if (!course) return null
+      const locales: ProgramManifest['courses'][number]['snapshot']['locales'] = {}
+      for (const courseLocale of course.supportedLocales) {
+        const inLocale = (await listCourses(coursesRoot, courseLocale)).find((candidate) => candidate.id === courseId)
+        locales[courseLocale] = { description: inLocale?.description ?? '', title: inLocale?.title ?? course.title }
+      }
+      return {
+        code,
+        courseId,
+        snapshot: {
+          locales,
+          publisherId: publisherIdentity.publisherId(),
+          supportedLocales: course.supportedLocales,
+          version: course.publishedVersion,
+        },
+      }
+    },
+    createChannel: async (title) => {
+      const locale = preferencesStore.get('locale')
+      return (await createProgram({ kind: 'channel', locale: isLocale(locale) ? locale : 'en', title })).programId
+    },
+    // The name given at the identity setup (even none), else the nickname.
+    initialName: () => {
+      const given = preferencesStore.get('publisherName')
+      return typeof given === 'string'
+        ? normalizePublisherName(given)
+        : normalizePublisherName(preferencesStore.get('nickname')) || normalizePublisherName(getActiveProfile()?.name)
+    },
+    publish: (programId) => programSharing.publish(programId),
+    publishedCourses: () => courseSharing.publishedCourses(),
+    readChannel: (programId) => readProgram(programId).catch(() => null),
+    readOwnChannelId: () => programSharingStore.get('ownChannelId') ?? null,
+    reshareCourses: (courseIds) => courseIds.forEach((courseId) => courseSharing.onPublished(courseId)),
+    writeChannel: (manifest) => updateProgram(manifest, { fromChannels: true }),
+    writeOwnChannelId: (programId) => programSharingStore.set('ownChannelId', programId),
+  })
+
   return {
+    channels,
     close() {
       closed = true
       courseSharing.stop()
@@ -576,6 +637,7 @@ function openProfileServices(dataDir: string) {
     previews,
     previewsRoot,
     programSharing,
+    programSharingStore,
     identityFilePath,
     identityRestore,
     identityRestoreStore,
@@ -957,7 +1019,11 @@ ipcMain.handle('programs:publish', async (_event, programId: unknown) => {
     throw new Error('The publisher identity is locked: unlock it to publish')
   }
   await readProgram(programId)
-  return profile.programSharing.publish(programId)
+  const result = await profile.programSharing.publish(programId)
+  // Your channel (SLJ-31): your courses carry its name, so they go online
+  // again with the new one.
+  if (programId === profile.programSharingStore.get('ownChannelId')) profile.courseSharing.onConsentGiven()
+  return result
 })
 
 ipcMain.handle('programs:get-sharing', async (_event, programId: unknown) => {
@@ -1182,10 +1248,61 @@ ipcMain.handle('courses:publish-version', async (_event, input: PublishCourseVer
   if (profile.publisherIdentity.isLocked()) {
     throw new Error('The publisher identity is locked: unlock it to publish')
   }
+  // "Show on my channel" (SLJ-31): as chosen, else on at a course's first publish.
+  const isFirstPublish = !profile.courseSharingStore.get('published')[input.courseId]
   await publishLocalCourseVersion(input)
+  if (typeof input.showOnChannel === 'boolean' || isFirstPublish) {
+    profile.courseSharing.setListedOnChannel(input.courseId, input.showOnChannel ?? true)
+  }
   // Publish puts the version online; that runs in the background and can't make
-  // Publish fail (see electron/course-sharing.ts).
+  // Publish fail (see electron/course-sharing.ts). Once it's online, the
+  // channel updates (courseSharing's onShared).
   profile.courseSharing.onPublished(input.courseId)
+})
+
+// Channels (SLJ-31): the profile's own (created the first time it's asked
+// for), whether a course of ours is shown on it, and an imported course's.
+ipcMain.handle('channels:own', () => profile.channels.own())
+
+ipcMain.handle('channels:set-course-listed', async (_event, input: { courseId?: unknown; listed?: unknown }) => {
+  if (typeof input?.courseId !== 'string' || !isValidCourseId(input.courseId) || typeof input.listed !== 'boolean') {
+    throw new Error('Invalid input')
+  }
+  profile.courseSharing.setListedOnChannel(input.courseId, input.listed)
+  await profile.channels.sync()
+  // Online again, so its source.json names the channel (or no longer does).
+  if (profile.courseSharing.getInfo(input.courseId).code) profile.courseSharing.onPublished(input.courseId)
+})
+
+ipcMain.handle('channels:get-for-course', async (_event, courseId: unknown): Promise<ChannelForCourse | null> => {
+  if (typeof courseId !== 'string' || !isValidCourseId(courseId)) throw new Error('Invalid course id')
+  const locale = profile.preferencesStore.get('locale')
+  const titleOf = (manifest: ProgramManifest) => localizeProgram(manifest, isLocale(locale) ? locale : manifest.defaultLocale).title
+
+  // Ours: our channel, and whether the course is shown on it.
+  const published = profile.courseSharingStore.get('published')[courseId]
+  if (published) {
+    const programId = profile.programSharingStore.get('ownChannelId') ?? null
+    const channel = programId ? await readProgram(programId).catch(() => null) : null
+    const listed = published.onChannel === true
+    return {
+      code: programId ? (profile.programSharingStore.get('published')[programId]?.code ?? null) : null,
+      listed,
+      programId: channel ? programId : null,
+      title: channel ? titleOf(channel) : null,
+      verified: listed,
+    }
+  }
+
+  // Imported: the channel its source.json names, checked once it's here.
+  const code = await readImportedCourseChannelCode(courseId)
+  const followed = Object.entries(profile.programSharingStore.get('followed')).find(([, entry]) => entry.driveKey === code)
+  const manifest = followed ? await readProgram(followed[0]).catch(() => null) : null
+  return describeForStudent(
+    code,
+    courseId,
+    followed && manifest?.kind === 'channel' ? { manifest, programId: followed[0], title: titleOf(manifest) } : null,
+  )
 })
 
 ipcMain.handle('sharing:get-creator-key', () => {

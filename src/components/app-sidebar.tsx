@@ -1,4 +1,4 @@
-import { BookOpen, Home, Library } from "lucide-react";
+import { BookOpen, Home, Library, Radio } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -39,6 +39,7 @@ const sidebarGroups: readonly {
     items: [
       { href: "/my-courses", icon: BookOpen, id: "myCourses" },
       { href: "/my-programs", icon: Library, id: "myPrograms" },
+      { href: "/my-channel", icon: Radio, id: "myChannel" },
     ],
     label: "teaching",
     roles: ["teacher"],

@@ -22,7 +22,8 @@ export function MyProgramsPage() {
   const { locale } = useAppState();
   const { data: programs = [], isLoading } = useProgramsQuery(locale);
   const [isCreating, setIsCreating] = useState(false);
-  const own = programs.filter((program) => program.distribution === "local");
+  // A channel (SLJ-31) is stored as a program but has its own page.
+  const own = programs.filter((program) => program.distribution === "local" && program.kind === "program");
 
   return (
     <Page

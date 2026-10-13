@@ -15,6 +15,11 @@ import { isLocale, type Locale } from "./i18n";
 // No versions and no draft: a program is its latest list. Publishing (phase 2)
 // puts its current state online, and students' copies update on their own.
 // See docs/contracts.md §5.
+//
+// A channel (SLJ-31) is stored and shared the same way, marked
+// `kind: "channel"`: a publisher's home, with their name, description, logo,
+// banner and colors, the courses they chose to show on it (newest first) and
+// their programs (`programs`). The app never shows a channel as a program.
 
 export const PROGRAM_FORMAT_VERSION = 1;
 
@@ -81,8 +86,21 @@ export const REQUIRED_PROGRAM_THEME_COLORS = ["background", "foreground", "prima
 export type ProgramTheme = Record<(typeof REQUIRED_PROGRAM_THEME_COLORS)[number], string> &
   Partial<Record<ProgramThemeColor, string>>;
 
+// A program listed on a channel: its code and what it showed when listed.
+export type ChannelProgram = {
+  code: string;
+  programId: string;
+  snapshot: { locales: Partial<Record<Locale, LocalizedProgramMetadata>> };
+};
+
+export type ProgramKind = "channel" | "program";
+
 export type ProgramManifest = {
   courses: ProgramCourse[];
+  // "channel" for a channel (SLJ-31); unset for a program.
+  kind?: "channel";
+  // A channel's programs; unset for a program.
+  programs?: ChannelProgram[];
   defaultLocale: Locale;
   formatVersion: typeof PROGRAM_FORMAT_VERSION;
   id: string;
@@ -103,6 +121,7 @@ export type ProgramSummary = {
   description: string;
   distribution: "imported" | "local";
   id: string;
+  kind: ProgramKind;
   logo: string | null;
   // An imported program's courses added since the student last opened it.
   newCourseCount: number;
@@ -165,6 +184,17 @@ function isProgramCourse(value: unknown): value is ProgramCourse {
   );
 }
 
+function isChannelProgram(value: unknown): value is ChannelProgram {
+  const entry = value as Partial<ChannelProgram> | null;
+  return (
+    Boolean(entry) &&
+    typeof entry?.code === "string" &&
+    /^[a-z0-9]{52,64}$/i.test(entry.code) &&
+    isValidProgramId(entry.programId) &&
+    isLocalesMap(entry.snapshot?.locales)
+  );
+}
+
 const THEME_COLOR_SET = new Set<string>(PROGRAM_THEME_COLORS);
 
 export function isProgramTheme(value: unknown): value is ProgramTheme {
@@ -198,6 +228,11 @@ export function isProgramManifest(value: unknown): value is ProgramManifest {
     manifest.courses.length <= MAX_COURSES &&
     manifest.courses.every(isProgramCourse) &&
     new Set(manifest.courses.map((course) => course.courseId)).size === manifest.courses.length &&
+    (manifest.kind === undefined || manifest.kind === "channel") &&
+    (manifest.programs === undefined ||
+      (Array.isArray(manifest.programs) &&
+        manifest.programs.length <= MAX_COURSES &&
+        manifest.programs.every(isChannelProgram))) &&
     typeof manifest.updatedAt === "string"
   );
 }

@@ -154,6 +154,12 @@ interface Window {
     markSeen: (programId: string) => Promise<void>
     peekCourse: (code: string) => Promise<import('../src/lib/program-package').PeekCourseResult>
   }
+  // Channels (SLJ-31): the profile's own, and a course's.
+  channels: {
+    own: () => Promise<{ programId: string }>
+    setCourseListed: (input: { courseId: string; listed: boolean }) => Promise<void>
+    getForCourse: (courseId: string) => Promise<import('../src/lib/channels').ChannelForCourse | null>
+  }
   progress: {
     get: () => Promise<import('../src/lib/course-progress').CourseProgressState>
     recordOpened: (courseId: string) => Promise<void>

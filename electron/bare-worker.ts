@@ -152,15 +152,19 @@ export function isCancelledError(error: unknown): boolean {
 // the publisher's courses (given at its first Publish, the same ever after);
 // its public id and the drive key (the course's code) follow from it and the
 // identity. Needs the identity: fails with `code` LOCKED without it.
-// `publisherName`: the teacher's Publisher name, written into the course's
-// source.json next to their Publisher ID; empty to leave it out.
+// `publisherName`: the name the teacher's courses carry (their channel's),
+// written into the course's source.json next to their Publisher ID;
+// `channelCode`: the channel the course is shown on (SLJ-31). Empty to leave
+// either out.
 export async function publishCourse(
   courseId: string,
   publicIndex: number,
   publisherName: string,
+  channelCode: string,
 ): Promise<{ driveKey: string; publicId: string }> {
   const coursePath = await resolveSharedCoursePackagePath(courseId)
   return sendCommand<{ driveKey: string; publicId: string }>(CMD_PUBLISH_COURSE, {
+    channelCode,
     courseId,
     coursePath,
     publicIndex,

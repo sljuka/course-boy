@@ -82,6 +82,7 @@ export function usePublishWithConsent(courseId: string): {
         }
         onClose={() => setPublishedVersion(null)}
         open={publishedVersion !== null}
+        showChannelListing={!isShared}
         title={
           isShared
             ? t("maintainers.sentTitle", { version: publishedVersion ?? "" })

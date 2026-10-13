@@ -564,6 +564,21 @@ programs/<program-id>/assets/<file>    # its logo and banner, content-addressed 
   numbers, once the courses' search is done (`identity-restore.ts`). Each lands as your own
   program without the drive's `source.json` (`landRestoredProgram`) and is shared again by
   its code.
+- **Channels (SLJ-31)** are programs marked `"kind": "channel"`, with `programs` (the
+  programs shown on it: `{ code, programId, snapshot: { locales } }`) beside `courses`.
+  Never listed as programs (My programs, Home's Programs); shown at `/channels/<id>`, and
+  the profile's own edited at My channel (`program-sharing` store `ownChannelId`, created
+  by `channels:own` the first time it's needed). Its `courses` are main's to keep
+  (`electron/channels.ts`, newest first): a published course is on it when its
+  `course-sharing` `published[id].onChannel` is true (set at its first publish unless
+  turned off, never for courses published before channels; `channels:set-course-listed`
+  changes it), and `updateProgram` keeps them over an editor save (`fromChannels` is
+  main's own update). A listed course's `source.json` gains `"channel": { "driveKey" }`
+  once the channel has a code (the worker's `writeSourceFile`; listed courses go online
+  again when the channel first does). A student checks the claim against the channel:
+  `channels:get-for-course` says `verified` only when the followed channel lists the
+  course. The channel's name is the name the teacher's courses carry (`publisher.name`),
+  so publishing the channel puts their courses online again.
 - **Stars.** A starred program is kept in the student's progress store, beside the courses
   (`course-progress.json` `programs`, `progress:set-program-favorite`). It shows in the
   sidebar's Favorites and under Home's `:favorites`.

@@ -484,7 +484,8 @@
     "favorites": "Favorites",
     "myPrograms": "My programs",
     "approvals": "Approvals",
-    "publishers": "Publishers"
+    "publishers": "Publishers",
+    "myChannel": "My channel"
   },
   "testEditor": {
     "tagsTooltip": "Tags are useful for marking exercises. They are used for exercise randomization. Tags can be configured in the course root folder.",
@@ -697,7 +698,8 @@
       "imported": "Imported",
       "started": "Started",
       "finished": "Finished",
-      "programs": "Programs"
+      "programs": "Programs",
+      "channels": "Channels"
     },
     "newCourse": "New course",
     "importFailed": "Import failed",
@@ -798,10 +800,10 @@
     "gateDescription": "This profile publishes courses in your name, so it asks for your password when it opens. Without it you can still learn, make and print courses, and your courses stay online. Only publishing waits.",
     "gateForgotten": "Forgot it? It can't be recovered. Open without publishing to keep learning, making and printing courses.",
     "openWithoutPublishing": "Open without publishing",
-    "publisherName": "Publisher name (optional)",
+    "publisherName": "Channel name",
     "publisherNamePlaceholder": "For example: Ana Petrović",
-    "publisherNameHint": "Students see your courses and programs as published by {{example}}. Leave it empty to show only your Publisher ID.",
-    "publisherNameHintNone": "Your courses and programs show only your Publisher ID: {{example}}. Add a name to show it next to it.",
+    "publisherNameHint": "Your channel is where students see who you are and everything you publish. Your courses show as published by {{example}}. You can use your nickname.",
+    "publisherNameHintNone": "Without a name, students see only your Publisher ID: {{example}}. You can use your nickname, and change it later on your channel.",
     "yourPublisherId": "Your Publisher ID",
     "yourPublisherIdHint": "Like an email address: share it freely. Other teachers use it to invite you to maintain a course. Your publishing identity (the file and its password) is the secret part; never share that."
   },
@@ -1131,5 +1133,29 @@
     "copyId": "Copy Publisher ID",
     "twoSources": "{{first}}, {{second}}",
     "more": "and {{count}} more"
+  },
+  "channels": {
+    "channel": "Channel",
+    "untitled": "Unnamed channel",
+    "name": "Channel name",
+    "namePlaceholder": "For example: Ana Petrović",
+    "nameHint": "What students see on your channel and on every course you show on it. You can use your nickname.",
+    "courses": "Courses",
+    "coursesHint": "Your published courses with “Show on my channel” ticked, newest first. Change it on each course's page, or right after Publish.",
+    "noCourses": "No courses on your channel yet. Publish a course, or tick “Show on my channel” on one you've published.",
+    "noCoursesYet": "No courses on this channel yet.",
+    "programs": "Programs",
+    "programsHint": "Your published programs to show on your channel.",
+    "noPrograms": "You have no programs yet.",
+    "showProgram": "Show {{title}} on my channel",
+    "publishProgramFirst": "Publish it first",
+    "showOnChannel": "Show on my channel",
+    "showOnChannelHint": "Students who open your channel see this course there.",
+    "open": "Open channel",
+    "doesNotList": "{{title}} (doesn't list this course)",
+    "getProgram": "Get",
+    "loadError": "Your channel can't be opened right now.",
+    "settingsHint": "Your channel shows who you are and what you publish: its name, logo and banner appear on your courses.",
+    "edit": "Edit my channel"
   }
 }

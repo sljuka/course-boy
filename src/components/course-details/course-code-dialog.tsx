@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { ChannelListingToggle } from "@/components/channels/channel-listing-toggle";
 import { CourseCode } from "@/components/course-details/course-code";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
@@ -14,11 +15,13 @@ import {
 
 // Shows a course's code: after Publish ("Published 0.2") and from the course
 // page ("Share"), which also says which version the code gives (`version`).
+// `showChannelListing`: after Publish, "Show on my channel" (SLJ-31).
 export function CourseCodeDialog({
   courseId,
   description,
   onClose,
   open,
+  showChannelListing = false,
   title,
   version,
 }: {
@@ -26,6 +29,7 @@ export function CourseCodeDialog({
   description: string;
   onClose: () => void;
   open: boolean;
+  showChannelListing?: boolean;
   title: string;
   version?: string | null;
 }) {
@@ -42,6 +46,7 @@ export function CourseCodeDialog({
           <CardDescription data-testid="shared-version">{t("courseSharing.sharedVersion", { version })}</CardDescription>
         )}
         <CourseCode courseId={courseId} />
+        {showChannelListing && <ChannelListingToggle courseId={courseId} />}
         <DialogFooter>
           <Button onClick={onClose} variant="secondary">
             {t("courseSharing.done")}

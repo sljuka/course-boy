@@ -14,6 +14,8 @@ export type ProgramSharingState = {
   // its page, or when it was imported); any other is shown as new.
   followed: Record<string, { driveKey: string; followedSince: string; publisherId: string; seenCourseIds?: string[] }>
   nextPublicIndex?: number
+  // This profile's own channel (SLJ-31), once it has one.
+  ownChannelId?: string
   published: Record<string, { code?: string; publicId?: string; publicIndex: number; publishedAt?: string }>
 }
 

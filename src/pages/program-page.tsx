@@ -1,8 +1,9 @@
-import { Download, Library, Pencil, Share2 } from "lucide-react";
+import { Download, Library, Pencil, Radio, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 
+import { ChannelProgramList } from "@/components/channels/channel-program-list";
 import { ViewOptionsMenu } from "@/components/my-courses/view-options-menu";
 import { Page } from "@/components/page/page";
 import { ProgramCodeDialog } from "@/components/programs/program-code";
@@ -67,6 +68,10 @@ export function ProgramPage() {
   if (!program) return null;
 
   const { description, title } = localizeProgram(program, locale);
+  // A channel (SLJ-31) is shown here too: a publisher's courses and programs.
+  const isChannel = program.kind === "channel";
+  const KindIcon = isChannel ? Radio : Library;
+  const untitled = isChannel ? t("channels.untitled") : t("programs.untitled");
   // Yours (not imported): the page is the editor's preview, with a way back.
   const isOwn = programs.some((candidate) => candidate.id === program.id && candidate.distribution === "local");
   const courseOf = (courseId: string) => courses.find((candidate) => candidate.id === courseId);
@@ -116,7 +121,7 @@ export function ProgramPage() {
             <Button
               data-testid="program-edit"
               nativeButton={false}
-              render={<Link to={`/my-programs/${program.id}`} />}
+              render={<Link to={isChannel ? "/my-channel" : `/my-programs/${program.id}`} />}
               size="sm"
               title={t("programs.edit")}
               variant="secondary"
@@ -131,7 +136,7 @@ export function ProgramPage() {
       crumbActions={<ProgramFavoriteToggle programId={program.id} />}
       breadcrumbs={[
         // Your own program: back to My programs (and its editor, from Edit).
-        ...(isOwn
+        ...(isOwn && !isChannel
           ? [
               {
                 icon: Library,
@@ -140,10 +145,10 @@ export function ProgramPage() {
               },
             ]
           : []),
-        { icon: Library, label: title || t("programs.untitled") },
+        { icon: KindIcon, label: title || untitled },
       ]}
     >
-      <div className="flex flex-col gap-6" data-testid="program-page">
+      <div className="flex flex-col gap-6" data-testid={isChannel ? "channel-page" : "program-page"}>
         <div className="flex flex-col">
           <CoverBanner src={program.banner ? programAssetUrl(program.id, program.banner) : null} />
           <div className="flex flex-wrap items-end gap-4 px-6">
@@ -151,12 +156,12 @@ export function ProgramPage() {
               {program.logo ? (
                 <img alt="" src={programAssetUrl(program.id, program.logo)} />
               ) : (
-                <Library aria-hidden="true" className="size-10!" />
+                <KindIcon aria-hidden="true" className="size-10!" />
               )}
             </CoverLogo>
             <div className="flex min-w-0 flex-col gap-1 pb-1">
               <CardTitle data-testid="program-title" size="lg">
-                {title || t("programs.untitled")}
+                {title || untitled}
               </CardTitle>
               <CardDescription data-testid="program-progress">
                 {finished > 0
@@ -173,6 +178,7 @@ export function ProgramPage() {
         </div>
         {description && <CardDescription className="max-w-3xl whitespace-pre-line">{description}</CardDescription>}
 
+        {isChannel && <CardTitle>{t("channels.courses")}</CardTitle>}
         <ol className={PROGRAM_COURSES_LAYOUT[view]} data-testid="program-course-list">
           {program.courses.map((entry, index) => (
             <ProgramCourseRow
@@ -187,7 +193,12 @@ export function ProgramPage() {
             />
           ))}
         </ol>
-        {program.courses.length === 0 && <CardDescription>{t("programs.noCourses")}</CardDescription>}
+        {program.courses.length === 0 && (
+          <CardDescription>{isChannel ? t("channels.noCoursesYet") : t("programs.noCourses")}</CardDescription>
+        )}
+        {isChannel && (program.programs ?? []).length > 0 && (
+          <ChannelProgramList entries={program.programs ?? []} onImport={startImport} pendingFor={pendingFor} />
+        )}
       </div>
       <ProgramCodeDialog
         description={t(isOwn ? "programSharing.shareDescription" : "programSharing.shareDescriptionImported")}

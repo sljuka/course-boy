@@ -1,4 +1,4 @@
-import { BookOpen, Library } from "lucide-react";
+import { BookOpen, Library, Radio } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "react-router-dom";
 
@@ -49,8 +49,8 @@ export function AppSidebarFavorites() {
       .filter((program) => progress?.programs?.[program.id]?.favorite === true)
       .map((program) => ({
         favoritedAt: progress?.programs?.[program.id]?.favoritedAt ?? "",
-        href: `/programs/${program.id}`,
-        icon: Library,
+        href: `/${program.kind === "channel" ? "channels" : "programs"}/${program.id}`,
+        icon: program.kind === "channel" ? Radio : Library,
         id: program.id,
         title: program.title || t("programs.untitled"),
       })),

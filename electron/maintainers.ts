@@ -207,7 +207,7 @@ export type MaintainersDeps = {
   now?: () => number
   // This teacher's Publisher name ("" for none): put in their mailbox for the
   // other maintainers, and into the shared course's source.json.
-  ownPublisherName?: () => string
+  ownPublisherName?: () => string | Promise<string>
   store: { read(): MaintainersState; write(state: MaintainersState): void }
 }
 
@@ -528,7 +528,7 @@ export function createMaintainers(deps: MaintainersDeps) {
     // proposer still waiting was replaced by it.
     const current = new Map<string, string>()
     let ownMailbox: MailboxContents | null = null
-    const ownName = normalizePublisherName(deps.ownPublisherName?.())
+    const ownName = normalizePublisherName(await deps.ownPublisherName?.())
     const names: Record<string, string> = {}
     for (const member of involved(record)) {
       const isSelf = member.mailboxKey === self.mailboxKey

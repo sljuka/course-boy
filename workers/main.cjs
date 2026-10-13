@@ -318,13 +318,16 @@ async function start() {
 
   // `kind`: "program" for a program's drive (SLJ-32); a course's says nothing.
   // `publisherName`: the teacher's Publisher name, if they give one; only a
-  // claim, shown next to the Publisher ID.
-  async function writeSourceFile(drive, publicId, kind, publisherName) {
+  // claim, shown next to the Publisher ID. `channelCode`: the channel a
+  // course is shown on (SLJ-31), true once the channel lists it back.
+  async function writeSourceFile(drive, publicId, kind, publisherName, channelCode) {
     const creator = creatorKeyPair(requireIdentity())
     const name = typeof publisherName === 'string' ? publisherName.trim() : ''
+    const channel = typeof channelCode === 'string' && /^[a-z0-9]{52,64}$/i.test(channelCode) ? channelCode : null
     const source = Buffer.from(
       JSON.stringify(
         {
+          ...(channel ? { channel: { driveKey: channel } } : {}),
           driveKey: IdEncoding.normalize(drive.key),
           ...(kind ? { kind } : {}),
           publicId,
@@ -343,12 +346,12 @@ async function start() {
 
   // `publicIndex`: the course's number among this publisher's courses, given
   // by main at its first Publish; its public id (and so its code) follows.
-  async function publishCourse(courseId, coursePath, publicIndex, publisherName) {
+  async function publishCourse(courseId, coursePath, publicIndex, publisherName, channelCode) {
     const publicId = publicCourseId(requireIdentity(), publicIndex)
     const { discovery, drive } = await openPublishedDrive(courseId, publicId)
 
     await mirrorVersionIntoDrive(coursePath, drive)
-    await writeSourceFile(drive, publicId, undefined, publisherName)
+    await writeSourceFile(drive, publicId, undefined, publisherName, channelCode)
     await discovery.flushed()
 
     return { drive, publicId }
@@ -1506,10 +1509,10 @@ async function start() {
     }
 
     if (req.command === CMD_PUBLISH_COURSE) {
-      const { courseId, coursePath, publicIndex, publisherName } = JSON.parse(req.data.toString())
+      const { channelCode, courseId, coursePath, publicIndex, publisherName } = JSON.parse(req.data.toString())
 
       try {
-        const { drive, publicId } = await publishCourse(courseId, coursePath, publicIndex, publisherName)
+        const { drive, publicId } = await publishCourse(courseId, coursePath, publicIndex, publisherName, channelCode)
         req.reply(JSON.stringify({ driveKey: IdEncoding.normalize(drive.key), publicId }))
       } catch (error) {
         if (error.code !== 'LOCKED') console.error('[worker] failed to publish course:', error)

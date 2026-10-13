@@ -1,4 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
+import type { ChannelForCourse } from '../src/lib/channels'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import type { ApprovalsList, MaintainersInfo, ProposalReview } from '../src/lib/maintainers'
 import type { PublisherEntry } from '../src/lib/publishers'
@@ -209,6 +210,19 @@ contextBridge.exposeInMainWorld('programs', {
   },
   peekCourse(code: string) {
     return ipcRenderer.invoke('programs:peek-course', code) as Promise<PeekCourseResult>
+  },
+})
+
+// Channels (SLJ-31): the profile's own, and a course's.
+contextBridge.exposeInMainWorld('channels', {
+  own() {
+    return ipcRenderer.invoke('channels:own') as Promise<{ programId: string }>
+  },
+  setCourseListed(input: { courseId: string; listed: boolean }) {
+    return ipcRenderer.invoke('channels:set-course-listed', input) as Promise<void>
+  },
+  getForCourse(courseId: string) {
+    return ipcRenderer.invoke('channels:get-for-course', courseId) as Promise<ChannelForCourse | null>
   },
 })
 

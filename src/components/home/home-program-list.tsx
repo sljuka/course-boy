@@ -1,4 +1,4 @@
-import { Library } from "lucide-react";
+import { Library, Radio } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -9,6 +9,7 @@ import { ListGroup, ListGroupContent, ListGroupHeader } from "@/components/ui/li
 import { ListRow, ListRowActions, ListRowLink, ListRowMeta } from "@/components/ui/list-row";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { parseCourseSearchQuery } from "@/lib/course-search-query";
+import type { ProgramKind } from "@/lib/program-package";
 import { useProgramsQuery } from "@/lib/program-queries";
 import { useAppState } from "@/lib/use-app-state";
 
@@ -17,7 +18,9 @@ import { useAppState } from "@/lib/use-app-state";
 // how many courses its publisher added since the student last looked, and its
 // star. Hidden when there are none, or the
 // search matches none (`:favorites` keeps only starred programs).
-export function HomeProgramList({ query }: { query: string }) {
+// `kind: "channel"`: Home's Channels group instead (SLJ-31), the channels the
+// student follows, each opening its page.
+export function HomeProgramList({ kind = "program", query }: { kind?: ProgramKind; query: string }) {
   const { t } = useTranslation();
   const { locale } = useAppState();
   const { data: programs = [] } = useProgramsQuery(locale);
@@ -27,28 +30,29 @@ export function HomeProgramList({ query }: { query: string }) {
   const imported = programs.filter(
     (program) =>
       program.distribution === "imported" &&
+      program.kind === kind &&
       (!favoritesOnly || progress?.programs?.[program.id]?.favorite === true) &&
       (!text || [program.title, program.description].some((value) => value.toLowerCase().includes(text))),
   );
   if (imported.length === 0) return null;
 
   return (
-    <ListGroup data-testid="home-group-programs">
+    <ListGroup data-testid={kind === "channel" ? "home-group-channels" : "home-group-programs"}>
       <ListGroupHeader
         count={imported.length}
-        icon={<Library aria-hidden="true" className="size-4" />}
-        title={t("home.groups.programs")}
+        icon={kind === "channel" ? <Radio aria-hidden="true" className="size-4" /> : <Library aria-hidden="true" className="size-4" />}
+        title={kind === "channel" ? t("home.groups.channels") : t("home.groups.programs")}
       />
       <ListGroupContent>
         {imported.map((program) => (
-          <ListRow data-testid="home-program" key={program.id}>
+          <ListRow data-testid={kind === "channel" ? "home-channel" : "home-program"} key={program.id}>
             <ProgramProgressIcon courseIds={program.courseIds} />
             {/* Above the row's stretched link, so it toggles instead of opening the program. */}
             <ListRowActions>
               <ProgramFavoriteToggle programId={program.id} />
             </ListRowActions>
-            <ListRowLink render={<Link to={`/programs/${program.id}`} />}>
-              {program.title || t("programs.untitled")}
+            <ListRowLink render={<Link to={`/${kind === "channel" ? "channels" : "programs"}/${program.id}`} />}>
+              {program.title || (kind === "channel" ? t("channels.untitled") : t("programs.untitled"))}
             </ListRowLink>
             {program.newCourseCount > 0 && (
               <Badge data-testid="home-program-new" variant="info">

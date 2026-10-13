@@ -109,6 +109,9 @@ display was already off when the run started.
   A program (an ordered set of courses, SLJ-32) is published the same way with its own
   code, imported through the same box, and followed: students get its changes on their
   own (`electron/program-sharing.ts`).
+  A channel (SLJ-31) is stored and shared as a program marked `kind: "channel"`: one
+  per profile (My channel), listing the courses its teacher shows on it
+  (`electron/channels.ts`); a listed course's `source.json` names the channel.
   The built-in course is a published course too (SLJ-115): the app ships a snapshot and
   `courses/bundled.json` holds its code, and the maintainer updates it with
   `scripts/built-in-course.mjs` (adopt, publish, snapshot).
@@ -131,9 +134,12 @@ Two terms for the publisher, kept apart (SLJ-67):
 - **Publisher ID**: the public part (its public key). Described as "like an email
   address: share it freely". Others use it to invite you to maintain a course.
 
-- **Publisher name**: optional, the name their courses and programs carry (Settings →
-  Sharing; the identity setup suggests the profile name). Students see it with the
-  Publisher ID, "Ana (4y9dgb89…)", since anyone can call themselves anything.
+- **Channel**: a publisher's home (SLJ-31), with a name, description, logo and banner,
+  the courses they chose to show on it and their programs. Students open it from a
+  course and follow it. Its name is what their courses carry, shown with the Publisher
+  ID: "Ana (4y9dgb89…)", since a course alone can claim anything; the channel listing
+  the course back is what makes it true. The identity setup asks for the channel's name
+  (the nickname to start with, and it says the nickname is fine).
 
 Not "private/public id", and none of these in user-facing copy: key, public key, private
 key, signature (outside the identity explainer), multisig, quorum, maintainer key,

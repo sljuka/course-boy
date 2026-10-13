@@ -1,9 +1,10 @@
-import { Ellipsis, Eye, Globe, ImagePlus, Library, Share2, Trash2, X } from "lucide-react";
+import { Ellipsis, Eye, Globe, ImagePlus, Library, Radio, Share2, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { AppStatusBarEnd } from "@/components/app-frame/app-status-bar-end";
+import { ChannelContentsEditor } from "@/components/channels/channel-contents-editor";
 import { LocalesTabs } from "@/components/locales-tabs";
 import { Page } from "@/components/page/page";
 import { ProgramCoursesEditor } from "@/components/programs/program-courses-editor";
@@ -18,7 +19,7 @@ import { CoverBanner, CoverLogo } from "@/components/ui/cover-banner";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { EditorStatusBar } from "@/components/ui/editor-status-bar";
-import { Field, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,7 +37,10 @@ import { useEntityAutosave } from "@/lib/use-entity-autosave";
 
 // The editor for one of your programs (SLJ-32): its header (banner, logo),
 // languages, title and description per language, colors and courses. Saves
-// itself a few seconds after each change, like the course editor.
+// itself a few seconds after each change, like the course editor. Your
+// channel (SLJ-31) is edited here too (My channel): named rather than titled,
+// its courses chosen on each course ("Show on my channel"), its programs
+// ticked, and never removed.
 export function ProgramEditorPage() {
   const { programId } = useParams();
   const { data: program, error } = useProgramQuery(programId);
@@ -55,7 +59,7 @@ export function ProgramEditorPage() {
   return <ProgramEditor initial={program} key={program.id} />;
 }
 
-function ProgramEditor({ initial }: { initial: ProgramManifest }) {
+export function ProgramEditor({ initial }: { initial: ProgramManifest }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [seed] = useState(initial);
@@ -121,7 +125,9 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
     }));
   }
 
-  const title = program.locales[program.defaultLocale]?.title || t("programs.untitled");
+  const isChannel = program.kind === "channel";
+  const title =
+    program.locales[program.defaultLocale]?.title || (isChannel ? t("channels.untitled") : t("programs.untitled"));
 
   return (
     <Page
@@ -130,7 +136,7 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
           <Button
             data-testid="program-preview"
             nativeButton={false}
-            render={<Link to={`/programs/${program.id}`} />}
+            render={<Link to={isChannel ? `/channels/${program.id}` : `/programs/${program.id}`} />}
             size="sm"
             title={t("programs.preview")}
             variant="secondary"
@@ -163,18 +169,24 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
                   {t("programSharing.share")}
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => setIsConfirmingRemove(true)} variant="destructive">
-                <Trash2 aria-hidden="true" />
-                {t("programs.remove")}
-              </DropdownMenuItem>
+              {!isChannel && (
+                <DropdownMenuItem onClick={() => setIsConfirmingRemove(true)} variant="destructive">
+                  <Trash2 aria-hidden="true" />
+                  {t("programs.remove")}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </>
       }
-      breadcrumbs={[
-        { icon: Library, label: t("sidebar.myPrograms"), to: "/my-programs" },
-        { icon: Library, label: title },
-      ]}
+      breadcrumbs={
+        isChannel
+          ? [{ icon: Radio, label: t("sidebar.myChannel") }]
+          : [
+              { icon: Library, label: t("sidebar.myPrograms"), to: "/my-programs" },
+              { icon: Library, label: title },
+            ]
+      }
     >
       <div className="flex flex-col gap-8" data-testid="program-editor">
         {publishing.error && (
@@ -242,14 +254,17 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
           renderContent={(locale) => (
             <FieldGroup className="pt-2">
               <Field>
-                <FieldLabel htmlFor={`program-title-${locale}`}>{t("programs.title")}</FieldLabel>
+                <FieldLabel htmlFor={`program-title-${locale}`}>
+                  {isChannel ? t("channels.name") : t("programs.title")}
+                </FieldLabel>
                 <Input
                   data-testid={`program-title-${locale}`}
                   id={`program-title-${locale}`}
                   onChange={(event) => setLocalized(locale, "title", event.target.value)}
-                  placeholder={t("programs.titlePlaceholder")}
+                  placeholder={isChannel ? t("channels.namePlaceholder") : t("programs.titlePlaceholder")}
                   value={program.locales[locale]?.title ?? ""}
                 />
+                {isChannel && <FieldDescription>{t("channels.nameHint")}</FieldDescription>}
               </Field>
               <Field>
                 <FieldLabel htmlFor={`program-description-${locale}`}>{t("programs.description")}</FieldLabel>
@@ -267,11 +282,20 @@ function ProgramEditor({ initial }: { initial: ProgramManifest }) {
 
         <ProgramThemeEditor onChange={(theme) => update({ theme })} theme={program.theme} />
 
-        <ProgramCoursesEditor
-          courses={program.courses}
-          locale={activeLocale}
-          onChange={(courses) => update({ courses })}
-        />
+        {isChannel ? (
+          <ChannelContentsEditor
+            channelId={program.id}
+            locale={activeLocale}
+            onProgramsChange={(programs) => update({ programs })}
+            programs={program.programs ?? []}
+          />
+        ) : (
+          <ProgramCoursesEditor
+            courses={program.courses}
+            locale={activeLocale}
+            onChange={(courses) => update({ courses })}
+          />
+        )}
       </div>
 
       <AppStatusBarEnd>

@@ -149,7 +149,9 @@ export type CourseSharingState = {
   // course's number among the publisher's courses, given at its first Publish,
   // and `publicId` the public id derived from it (SLJ-55); the code follows
   // from them.
-  published: Record<string, { code?: string; publicId?: string; publicIndex?: number }>
+  // `onChannel`: shown on the teacher's channel (SLJ-31); unset for courses
+  // published before channels, which aren't.
+  published: Record<string, { code?: string; onChannel?: boolean; publicId?: string; publicIndex?: number }>
   followed: Record<string, FollowedCourse>
 }
 
@@ -197,6 +199,8 @@ export type CourseSharingDeps = {
   readInstalledVersion(courseId: string): Promise<string | null>
   switchInstalledVersion(courseId: string, version: string): Promise<void>
   listPublishedCourseIds(): Promise<string[]>
+  // A course of ours went online (its code is known): its channel updates.
+  onShared?: (courseId: string) => void
   now?: () => Date
   setTimer?: (callback: () => void, delayMs: number) => { cancel(): void }
   store: CourseSharingStore
@@ -258,6 +262,7 @@ export function createCourseSharing(deps: CourseSharingDeps) {
       }))
       statuses.set(courseId, 'shared')
       clearRetry(courseId)
+      deps.onShared?.(courseId)
     } catch (error) {
       console.error(`[course-sharing] sharing ${courseId} failed:`, error)
       statuses.set(courseId, 'waiting')
@@ -538,6 +543,21 @@ export function createCourseSharing(deps: CourseSharingDeps) {
     // After a version is published: share it in the background.
     onPublished(courseId: string): void {
       void shareCourse(courseId)
+    },
+
+    // "Show on my channel" (SLJ-31), for a course of ours.
+    setListedOnChannel(courseId: string, listed: boolean): void {
+      updateState((state) => ({
+        ...state,
+        published: { ...state.published, [courseId]: { ...state.published[courseId], onChannel: listed } },
+      }))
+    },
+
+    // Our published courses that have a code, and whether each is on our channel.
+    publishedCourses(): { code: string; courseId: string; listed: boolean | undefined }[] {
+      return Object.entries(deps.store.read().published)
+        .filter(([, entry]) => Boolean(entry.code))
+        .map(([courseId, entry]) => ({ code: entry.code!, courseId, listed: entry.onChannel }))
     },
 
     // The teacher just gave the sharing consent: share everything already published.

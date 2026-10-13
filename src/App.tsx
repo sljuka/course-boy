@@ -25,6 +25,7 @@ import { DraftDetailPage } from "@/pages/draft-detail-page";
 import { DraftLessonPreviewPage } from "@/pages/draft-lesson-preview-page";
 import { DraftTestPreviewPage } from "@/pages/draft-test-preview-page";
 import { HomePage } from "@/pages/home-page";
+import { MyChannelPage } from "@/pages/my-channel-page";
 import { MyProgramsPage } from "@/pages/my-programs-page";
 import { ApprovalReviewPage } from "@/pages/approval-review-page";
 import { ApprovalsPage } from "@/pages/approvals-page";
@@ -69,11 +70,14 @@ const AppRoutes = () => {
           <Route element={<SettingsPage />} path="/settings" />
           <Route element={<CourseDetailPage />} path="/courses/:courseId" />
           <Route element={<ProgramPage />} path="/programs/:programId" />
+          {/* A channel (SLJ-31) is stored as a program, and shown by the same page. */}
+          <Route element={<ProgramPage />} path="/channels/:programId" />
           <Route element={<PublishersPage />} path="/publishers" />
           {/* Teacher-only pages; see RoleRoute. */}
           <Route element={<RoleRoute roles="teacher" />}>
             <Route element={<MyCoursesPage />} path="/my-courses" />
             <Route element={<MyProgramsPage />} path="/my-programs" />
+            <Route element={<MyChannelPage />} path="/my-channel" />
             <Route element={<ApprovalsPage />} path="/approvals" />
             <Route element={<ApprovalReviewPage />} path="/approvals/:publicId/:hash" />
             <Route element={<ProgramEditorPage />} path="/my-programs/:programId" />

@@ -105,7 +105,7 @@ describe('programs online', () => {
     })
     // Nothing is new in a program just imported, and nothing in it is started.
     expect(await page.locator('[data-testid="home-program-new"]').count()).toBe(0)
-    expect(await page.locator('[data-testid="home-program"] [data-testid="program-progress"]').getAttribute('data-status')).toBe('not-started')
+    expect(await page.locator('[data-testid="home-program"] [data-testid="program-progress-icon"]').getAttribute('data-status')).toBe('not-started')
 
     await page.locator('[data-testid="home-program"] a').first().click()
     await page.locator('[data-testid="program-page"]').waitFor()

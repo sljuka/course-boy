@@ -803,6 +803,9 @@ export type RevertCourseDraftInput = {
 
 export type PublishCourseVersionInput = {
   courseId: string;
+  // "Show on my channel" (SLJ-31). Unset: on at a course's first publish,
+  // unchanged after.
+  showOnChannel?: boolean;
   version: string;
 };
 
