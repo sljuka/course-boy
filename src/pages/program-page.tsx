@@ -1,4 +1,4 @@
-import { Download, Library, Pencil, Radio, Share2 } from "lucide-react";
+import { Download, Home, Library, Pencil, Radio, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
@@ -19,6 +19,7 @@ import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { useCoursesQuery } from "@/lib/course-queries";
 import { localizeProgram } from "@/lib/program-package";
 import { usePublishersQuery } from "@/lib/publishers-queries";
+import { useCourseAvailability } from "@/lib/course-availability-queries";
 import { programAssetUrl, useProgramQuery, useProgramSharingQuery, useProgramsQuery } from "@/lib/program-queries";
 import { queryClient } from "@/lib/query-client";
 import { useImportCourseMutation, usePendingImports } from "@/lib/sharing-queries";
@@ -41,6 +42,11 @@ export function ProgramPage() {
   const { data: sharing, isFetchedAfterMount } = useProgramSharingQuery(programId);
   const { data: progress } = useCourseProgressQuery();
   const { data: publishers } = usePublishersQuery();
+  const availability = useCourseAvailability(
+    (program?.courses ?? [])
+      .filter((entry) => entry.code && !courses.some((candidate) => candidate.id === entry.courseId))
+      .map((entry) => entry.code!),
+  );
   const pendingImports = usePendingImports();
   const importMutation = useImportCourseMutation();
   const [isSharing, setIsSharing] = useState(false);
@@ -83,6 +89,14 @@ export function ProgramPage() {
     : publishers?.find((entry) => entry.sources.some((source) => source.kind === "program" && source.id === program.id));
   const courseOf = (courseId: string) => courses.find((candidate) => candidate.id === courseId);
   const pendingFor = (code: string | null) => pendingImports.find((pending) => code && pending.code === code);
+  // Not here yet (SLJ-127): who has each online right now.
+  const missingCodes = program.courses
+    .filter((entry) => entry.code && !courseOf(entry.courseId) && !pendingFor(entry.code))
+    .map((entry) => entry.code!);
+  const availableNow = program.courses.filter(
+    (entry) => courseOf(entry.courseId) || (entry.code && (availability[entry.code] ?? 0) > 0),
+  ).length;
+  const isChecking = missingCodes.some((code) => availability[code] === undefined);
   // Courses Import all would get: shared, not here, not already coming.
   const importable = program.courses.filter(
     (entry) => entry.code && !courseOf(entry.courseId) && !pendingFor(entry.code),
@@ -143,15 +157,23 @@ export function ProgramPage() {
       crumbActions={<ProgramFavoriteToggle programId={program.id} />}
       breadcrumbs={[
         // Your own program: back to My programs (and its editor, from Edit).
-        ...(isOwn && !isChannel
+        // A channel: under Home, where followed channels are listed, or under
+        // My channel when it's yours (SLJ-31).
+        ...(isChannel
           ? [
-              {
-                icon: Library,
-                label: t("sidebar.myPrograms"),
-                to: "/my-programs",
-              },
+              isOwn
+                ? { icon: Radio, label: t("sidebar.myChannel"), to: "/my-channel" }
+                : { icon: Home, label: t("sidebar.home"), to: "/" },
             ]
-          : []),
+          : isOwn
+            ? [
+                {
+                  icon: Library,
+                  label: t("sidebar.myPrograms"),
+                  to: "/my-programs",
+                },
+              ]
+            : []),
         { icon: KindIcon, label: title || untitled },
       ]}
     >
@@ -176,6 +198,11 @@ export function ProgramPage() {
                   <PublisherName name={curator.claimedName} publisherId={curator.publisherId} />
                 </CardDescription>
               )}
+              {missingCodes.length > 0 && !isChecking && (
+                <CardDescription data-testid="program-availability">
+                  {t("availability.summary", { available: availableNow, total: program.courses.length })}
+                </CardDescription>
+              )}
               <CardDescription data-testid="program-progress">
                 {finished > 0
                   ? t("programSharing.finishedCount", {
@@ -195,6 +222,7 @@ export function ProgramPage() {
         <ol className={PROGRAM_COURSES_LAYOUT[view]} data-testid="program-course-list">
           {program.courses.map((entry, index) => (
             <ProgramCourseRow
+              availability={entry.code ? availability[entry.code] : undefined}
               course={courseOf(entry.courseId)}
               entry={entry}
               index={index}

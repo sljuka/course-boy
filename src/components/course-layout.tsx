@@ -113,6 +113,14 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
         type: "course",
       },
   );
+  // The explorer as a drawer (narrow windows): kept open here, across the
+  // pages it opens. A pick in it closes it ("show me the page"); selecting
+  // what was just added doesn't, so the teacher sees it and can keep adding.
+  const [isExplorerDrawerOpen, setIsExplorerDrawerOpen] = useState(false);
+  const handleExplorerSelection = useCallback((selection: StructureSelection) => {
+    setSelectedNode(selection);
+    if (!selection.keepPanelOpen) setIsExplorerDrawerOpen(false);
+  }, []);
   const courseDetailsQuery = useCourseDetailsQuery(courseId, locale);
   // Course metadata now hydrates directly from the course-details query —
   // there is no aggregate draft snapshot to reconcile it against. Each
@@ -159,12 +167,12 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
           <ExplorerPanelContent
             courseId={courseId ?? ""}
             courseTitle={courseTitle}
-            onSelectionChange={setSelectedNode}
+            onSelectionChange={handleExplorerSelection}
             sections={sections ?? []}
             selectedNodeId={selectedNode.id}
           />
         ),
-        dismissKey: selectedNode.id,
+        drawer: { onOpenChange: setIsExplorerDrawerOpen, open: isExplorerDrawerOpen },
         label: t("explorer.title"),
         onOpenChange: (open) => updateExplorerPanel({ open }),
         open: explorerPanel.open,
@@ -193,6 +201,8 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
       courseId,
       courseTitle,
       explorerPanel.open,
+      handleExplorerSelection,
+      isExplorerDrawerOpen,
       isCoursePage,
       sections,
       selectedNode.id,

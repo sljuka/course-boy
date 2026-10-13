@@ -471,7 +471,8 @@
       "changed": "Uncommitted changes",
       "published": "Published",
       "local": "Local only"
-    }
+    },
+    "none": "You haven't made a course yet."
   },
   "sidebar": {
     "createCourse": "Create new course",
@@ -1159,5 +1160,12 @@
     "settingsHint": "Your channel shows who you are and what you publish: its name, logo and banner appear on your courses.",
     "edit": "Edit my channel",
     "publishedBy": "Published by"
+  },
+  "availability": {
+    "checking": "Checking who has it…",
+    "available": "Available · {{count}} online",
+    "unavailable": "Not available right now",
+    "importAnyway": "Nobody who has it is online. You can still import it: it downloads once someone who has it comes online.",
+    "summary": "{{available}} of {{total}} courses available right now"
   }
 }

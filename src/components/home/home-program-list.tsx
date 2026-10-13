@@ -7,6 +7,7 @@ import { ProgramProgressIcon } from "@/components/programs/program-progress-icon
 import { Badge } from "@/components/ui/badge";
 import { ListGroup, ListGroupContent, ListGroupHeader } from "@/components/ui/list-group";
 import { ListRow, ListRowActions, ListRowLink, ListRowMeta } from "@/components/ui/list-row";
+import { StatusIcon } from "@/components/ui/status-icon";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { parseCourseSearchQuery } from "@/lib/course-search-query";
 import type { ProgramKind } from "@/lib/program-package";
@@ -46,7 +47,13 @@ export function HomeProgramList({ kind = "program", query }: { kind?: ProgramKin
       <ListGroupContent>
         {imported.map((program) => (
           <ListRow data-testid={kind === "channel" ? "home-channel" : "home-program"} key={program.id}>
-            <ProgramProgressIcon courseIds={program.courseIds} />
+            {/* A channel isn't something to finish (SLJ-31): a red target, like an
+                imported course's. */}
+            {kind === "channel" ? (
+              <StatusIcon data-testid="home-channel-icon" status="channel" />
+            ) : (
+              <ProgramProgressIcon courseIds={program.courseIds} />
+            )}
             {/* Above the row's stretched link, so it toggles instead of opening the program. */}
             <ListRowActions>
               <ProgramFavoriteToggle programId={program.id} />

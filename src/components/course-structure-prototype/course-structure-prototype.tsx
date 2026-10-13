@@ -268,21 +268,21 @@ export function CourseStructurePrototype({
     try {
       if (pendingCreate.type === "section") {
         const result = await createSectionMutation.mutateAsync({ courseId, title });
-        onSelectionChange?.({ id: result.sectionId, title, type: "section" });
+        onSelectionChange?.({ id: result.sectionId, keepPanelOpen: true, title, type: "section" });
       } else if (pendingCreate.type === "document") {
         const result = await createLessonMutation.mutateAsync({
           courseId,
           sectionId: pendingCreate.sectionId,
           title,
         });
-        onSelectionChange?.({ id: result.lessonId, title, type: "document" });
+        onSelectionChange?.({ id: result.lessonId, keepPanelOpen: true, title, type: "document" });
       } else {
         const result = await createSectionTestMutation.mutateAsync({
           courseId,
           sectionId: pendingCreate.sectionId,
           title,
         });
-        onSelectionChange?.({ id: result.testId, title, type: "test" });
+        onSelectionChange?.({ id: result.testId, keepPanelOpen: true, title, type: "test" });
       }
 
       cancelPendingCreate();

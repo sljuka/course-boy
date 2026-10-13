@@ -147,7 +147,9 @@ function PanelToggle({
   side: "left" | "right";
 }) {
   const { t } = useTranslation();
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isLocalSheetOpen, setIsLocalSheetOpen] = useState(false);
+  const isSheetOpen = panel.drawer?.open ?? isLocalSheetOpen;
+  const setIsSheetOpen = panel.drawer?.onOpenChange ?? setIsLocalSheetOpen;
   const lastDismissKey = useRef(panel.dismissKey);
 
   // Picking something in the drawer (its dismiss key changes) closes it.
@@ -156,21 +158,21 @@ function PanelToggle({
       lastDismissKey.current = panel.dismissKey;
       setIsSheetOpen(false);
     }
-  }, [panel.dismissKey]);
+  }, [panel.dismissKey, setIsSheetOpen]);
 
   // Widening the window back to inline panels drops the drawer.
   useEffect(() => {
-    if (!isMobile) {
+    if (!isMobile && isSheetOpen) {
       setIsSheetOpen(false);
     }
-  }, [isMobile]);
+  }, [isMobile, isSheetOpen, setIsSheetOpen]);
 
   return (
     <>
       <Button
         aria-label={panel.toggleLabel}
         aria-pressed={isMobile ? isSheetOpen : panel.open}
-        onClick={() => (isMobile ? setIsSheetOpen((open) => !open) : panel.onOpenChange(!panel.open))}
+        onClick={() => (isMobile ? setIsSheetOpen(!isSheetOpen) : panel.onOpenChange(!panel.open))}
         shape="circle"
         size="icon-sm"
         title={panel.toggleLabel}

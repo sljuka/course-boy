@@ -266,7 +266,10 @@ export function localizeProgram(
   );
 }
 
-export type PeekCourseResult = { course: ProgramCourse } | { notFound: true };
+// `peers` (SLJ-127): how many people who have the course this device reached,
+// i.e. who it could be downloaded from right now. `notFound`: nobody had it
+// online within the lookup's time.
+export type PeekCourseResult = { course: ProgramCourse; peers: number } | { notFound: true };
 
 // A course's entry in a program from its course.json, fetched by its code from
 // someone else's computer (a curator adding another publisher's course): only

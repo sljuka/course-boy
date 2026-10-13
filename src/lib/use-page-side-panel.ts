@@ -18,6 +18,10 @@ export type PageSidePanelValue = {
   // As a drawer (narrow windows), the panel closes whenever this changes, e.g.
   // the explorer's selection: picking something is "done, show me the page".
   dismissKey?: unknown;
+  // As a drawer: its open state kept by the layout, so it stays open while the
+  // page under it changes (the explorer adding an item opens that item's
+  // page). Unset: the page keeps it, closed again on every new page.
+  drawer?: { onOpenChange: (open: boolean) => void; open: boolean };
   onOpenChange: (open: boolean) => void;
   // Inline (wide windows) only; a drawer starts closed and never changes it.
   open: boolean;

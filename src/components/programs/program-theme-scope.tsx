@@ -11,7 +11,7 @@ import { useAppState } from "@/lib/use-app-state";
 // Recolors the whole window with a program's theme (SLJ-32) while the reader
 // is on the program's page or in one of its courses (its page, lessons and
 // tests), and with the editor's unsaved theme while a teacher edits one (a
-// live preview). Leaving puts the app's own colors back. Off entirely when
+// live preview). The same for a channel (SLJ-31): its page, and My channel. Leaving puts the app's own colors back. Off entirely when
 // Settings → Interface → "Use program colors" is off.
 //
 // The program stays "active" from its page into its courses: a course that
@@ -24,9 +24,12 @@ export function ProgramThemeScope({ children }: { children: ReactNode }) {
   const [enabled] = useProgramThemesPreference();
   const { data: activeProgram } = useProgramQuery(activeProgramId ?? undefined);
 
-  const programPage = matchPath("/programs/:programId", pathname)?.params.programId;
+  // A channel (SLJ-31) is a program underneath: its page and My channel too.
+  const programPage =
+    matchPath("/programs/:programId", pathname)?.params.programId ??
+    matchPath("/channels/:programId", pathname)?.params.programId;
   const courseId = matchPath("/courses/:courseId/*", pathname)?.params.courseId;
-  const isEditor = Boolean(matchPath("/my-programs/:programId", pathname));
+  const isEditor = Boolean(matchPath("/my-programs/:programId", pathname) || matchPath("/my-channel", pathname));
 
   useEffect(() => {
     if (programPage) {

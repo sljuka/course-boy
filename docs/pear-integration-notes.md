@@ -1384,4 +1384,9 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   label you gave them in Publishers, else the one their course carries), "4y9dgb89…"
   without, the full Publisher ID on hover. Home, course cards, the course page, program
   rows and the curator use it.
-- Later: saying when a program's course is out of reach (nobody who has it online).
+- **Can it be downloaded now? (SLJ-127):** a program's or channel's page checks each course
+  not here yet (`programs:peek-course`, which now also returns `peers`; three at a time,
+  again every minute, `useCourseAvailability`): "Available · N online" (who this
+  computer reached, so at least that many), or "Not available right now", and the header
+  says "N of M courses available right now". Import stays offered either way: it waits,
+  and downloads once someone who has the course comes online (while the app stays open).

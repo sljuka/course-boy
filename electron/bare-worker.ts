@@ -230,7 +230,7 @@ export async function seedProgram(programId: string, driveKey: string): Promise<
 // it. Fails with `code` NOT_FOUND when nobody sharing it is online.
 export async function peekCourse(
   driveKey: string,
-): Promise<{ manifest: unknown; publisherId: string | null; publisherName?: string | null }> {
+): Promise<{ manifest: unknown; peers?: number; publisherId: string | null; publisherName?: string | null }> {
   return sendCommand(CMD_PEEK_COURSE, { driveKey })
 }
 

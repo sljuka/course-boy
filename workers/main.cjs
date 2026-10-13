@@ -411,6 +411,9 @@ async function start() {
       if (!isValidCourseId(manifest.id)) throw new Error('This code is not a course')
       return {
         manifest,
+        // How many people this device reached who have it (SLJ-127): who it
+        // could be downloaded from right now.
+        peers: drive.core.peers.length,
         publisherId: typeof source?.publisher?.id === 'string' ? source.publisher.id : null,
         // The name the course carries (SLJ-126), checked and capped by main.
         publisherName: typeof source?.publisher?.name === 'string' ? source.publisher.name : null,

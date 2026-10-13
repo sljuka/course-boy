@@ -618,8 +618,23 @@ describe('narrow windows', () => {
 
       // The explorer opens as a drawer from its toggle.
       await page.getByRole('button', { name: 'Show or hide explorer' }).click()
-      await page.getByRole('dialog', { name: 'Explorer' }).waitFor()
-      await page.keyboard.press('Escape')
+      const explorer = page.getByRole('dialog', { name: 'Explorer' })
+      await explorer.waitFor()
+
+      // Adding something keeps it open (the new item is shown where it went);
+      // picking something closes it ("show me the page").
+      await explorer.getByRole('button', { name: 'Add section' }).first().click()
+      await page.keyboard.type('Drawn')
+      await page.keyboard.press('Enter')
+      await explorer.getByText('Drawn', { exact: true }).waitFor({ timeout: 15_000 })
+      await page.waitForTimeout(500)
+      expect(await explorer.isVisible()).toBe(true)
+      await explorer.getByText('Drawn', { exact: true }).click()
+      await explorer.waitFor({ state: 'detached', timeout: 10_000 })
+      // Back to the course's own page (it has both side panels).
+      await page.getByRole('button', { name: 'Show or hide explorer' }).click()
+      await explorer.getByText('E2E Probe Course', { exact: true }).click()
+      await explorer.waitFor({ state: 'detached', timeout: 10_000 })
 
       await setWidth(960)
       await expect.poll(async () => (await layout()).sidebarLinks).toBe(0)
@@ -1995,6 +2010,25 @@ describe('programs', () => {
     await page.locator('[data-testid="program-color-background"]').fill('#101820')
     await expect.poll(rootTheme, { timeout: 10_000 }).toEqual({ background: '#101820', dark: true })
 
+    // A channel (SLJ-31) too: its page, and My channel's live preview.
+    const channelId = await page.evaluate(async () => {
+      const { programId } = await window.channels.own()
+      const channel = await window.programs.get(programId)
+      await window.programs.update({ ...channel, theme: { background: '#0b0f0c', foreground: '#d1fae5', primary: '#22c55e' } })
+      return programId
+    })
+    await page.evaluate((id) => {
+      location.hash = `#/channels/${id}`
+    }, channelId)
+    await page.locator('[data-testid="channel-page"]').waitFor({ timeout: 15_000 })
+    await expect.poll(rootTheme, { timeout: 10_000 }).toEqual({ background: '#0b0f0c', dark: true })
+    await page.evaluate(() => {
+      location.hash = '#/my-channel'
+    })
+    await page.locator('[data-testid="program-color-background"]').waitFor({ timeout: 15_000 })
+    await page.locator('[data-testid="program-color-background"]').fill('#202830')
+    await expect.poll(rootTheme, { timeout: 10_000 }).toEqual({ background: '#202830', dark: true })
+
     // "Use program colors" off: the program's page keeps the app's colors.
     await page.evaluate(() => {
       location.hash = '#/settings'
@@ -2111,7 +2145,8 @@ describe('course list views', () => {
     await page.locator('[data-testid="course-card"]').first().waitFor({ timeout: 15_000 })
     expect(await page.locator('[data-testid="course-card-compact"]').count()).toBe(0)
 
-    const programId = await page.evaluate(async () => (await window.programs.list('en'))[0]?.id)
+    // A program, not a channel (SLJ-31: listed alongside, with no courses here).
+    const programId = await page.evaluate(async () => (await window.programs.list('en')).find((program) => program.kind === 'program')?.id)
     expect(programId).toBeTruthy()
     await page.evaluate((id) => {
       location.hash = `#/programs/${id}`

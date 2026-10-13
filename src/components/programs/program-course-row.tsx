@@ -28,6 +28,7 @@ import { useAppState } from "@/lib/use-app-state";
 // `view` (SLJ-64): a row ("table"), a full-width card ("list") or a small
 // card for the wrapping grid ("cards"), with the same contents.
 export function ProgramCourseRow({
+  availability,
   course,
   entry,
   index,
@@ -36,6 +37,9 @@ export function ProgramCourseRow({
   pendingImport,
   view = "table",
 }: {
+  // Not here yet (SLJ-127): how many people have it online right now (0:
+  // nobody), or undefined while that's being checked.
+  availability?: number;
   course: CourseSummary | undefined;
   entry: ProgramCourse;
   index: number;
@@ -80,17 +84,20 @@ export function ProgramCourseRow({
       ) : pendingImport ? (
         <ProgramCourseImport pendingImport={pendingImport} />
       ) : entry.code ? (
-        <ListRowActions>
-          <Button
-            data-testid="program-course-import"
-            onClick={() => onImport(entry.code!)}
-            size="xs"
-            variant="secondary"
-          >
-            <Download aria-hidden="true" />
-            {t("programSharing.importCourse")}
-          </Button>
-        </ListRowActions>
+        <>
+          <CourseAvailabilityLabel peers={availability} />
+          <ListRowActions>
+            <Button
+              data-testid="program-course-import"
+              onClick={() => onImport(entry.code!)}
+              size="xs"
+              variant="secondary"
+            >
+              <Download aria-hidden="true" />
+              {t("programSharing.importCourse")}
+            </Button>
+          </ListRowActions>
+        </>
       ) : (
         <Badge data-testid="program-course-missing" variant="outline">
           {t("programSharing.notShared")}
@@ -140,6 +147,28 @@ export function ProgramCourseRow({
         {status}
       </ListRow>
     </li>
+  );
+}
+
+// Whether a course not here yet can be downloaded right now (SLJ-127). Import
+// stays offered when nobody has it online: it waits, and downloads once
+// someone who has it comes online.
+function CourseAvailabilityLabel({ peers }: { peers: number | undefined }) {
+  const { t } = useTranslation();
+  if (peers === undefined) {
+    return <ListRowMeta data-testid="program-course-availability" data-state="checking">{t("availability.checking")}</ListRowMeta>;
+  }
+  if (peers === 0) {
+    return (
+      <ListRowMeta data-state="unavailable" data-testid="program-course-availability" title={t("availability.importAnyway")}>
+        {t("availability.unavailable")}
+      </ListRowMeta>
+    );
+  }
+  return (
+    <ListRowMeta data-state="available" data-testid="program-course-availability">
+      {t("availability.available", { count: peers })}
+    </ListRowMeta>
   );
 }
 

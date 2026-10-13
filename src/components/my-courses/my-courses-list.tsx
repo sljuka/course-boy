@@ -53,10 +53,19 @@ export function MyCoursesList({ query, view }: { query: string; view: CourseList
   }
 
   if (groups.every((group) => group.courses.length === 0)) {
+    // No courses of yours at all (not just none matching the search): the
+    // way to make the first one, right under the text.
+    const hasNone = !courses.some((course) => course.distribution === "local");
     return (
       <Card className="overflow-hidden">
-        <CardContent className="py-10">
-          <CardDescription>{t("myCourses.empty")}</CardDescription>
+        <CardContent className="flex flex-col items-start gap-3 py-10">
+          <CardDescription>{hasNone ? t("myCourses.none") : t("myCourses.empty")}</CardDescription>
+          {hasNone && (
+            <Button data-testid="empty-create-course" nativeButton={false} render={<Link to="/courses/new" />} size="sm">
+              <Plus aria-hidden="true" />
+              {t("sidebar.createCourse")}
+            </Button>
+          )}
         </CardContent>
       </Card>
     );

@@ -83,6 +83,13 @@ describe('channels', () => {
     await student.locator('[data-testid="open-course-channel"]').click({ timeout: 30_000 })
     await student.locator('[data-testid="channel-page"]').waitFor({ timeout: 60_000 })
     await waitForText(student, CHANNEL_NAME)
+    // Under Home, where followed channels are listed.
+    await waitFor(
+      student,
+      (name) =>
+        [...document.querySelectorAll('[data-slot=breadcrumb-item]')].map((item) => item.textContent).join(' > ') === `Home > ${name}`,
+      { arg: CHANNEL_NAME },
+    )
     channelId = await student.evaluate(() => location.hash.split('/').pop())
     expect(await student.locator('[data-testid="program-course"]').count()).toBe(1)
 

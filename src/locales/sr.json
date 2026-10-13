@@ -471,7 +471,8 @@
       "changed": "Nesačuvane izmene",
       "published": "Objavljen",
       "local": "Samo na ovom uređaju"
-    }
+    },
+    "none": "Još nemaš nijedan kurs."
   },
   "sidebar": {
     "createCourse": "Napravi novi kurs",
@@ -1159,5 +1160,12 @@
     "settingsHint": "Tvoj kanal pokazuje ko si i šta objavljuješ: njegovo ime, logo i baner vide se na tvojim kursevima.",
     "edit": "Uredi moj kanal",
     "publishedBy": "Izdaje:"
+  },
+  "availability": {
+    "checking": "Proverava se ko ga ima…",
+    "available": "Dostupno · na mreži: {{count}}",
+    "unavailable": "Trenutno nije dostupno",
+    "importAnyway": "Niko ko ga ima nije na mreži. Ipak možeš da ga uvezeš: preuzeće se čim se pojavi neko ko ga ima.",
+    "summary": "Trenutno dostupno: {{available}} od {{total}} kurseva"
   }
 }

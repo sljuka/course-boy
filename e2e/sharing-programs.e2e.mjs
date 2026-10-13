@@ -122,6 +122,14 @@ describe('programs online', () => {
     // The second course wasn't published when the program was.
     expect(await rows.nth(1).locator('[data-testid="program-course-missing"]').count()).toBe(1)
 
+    // SLJ-127: the curator is online with the first course, so it can be
+    // downloaded now; the page says how many of its courses can.
+    await waitFor(
+      page,
+      () => document.querySelector('[data-testid="program-course"] [data-testid="program-course-availability"]')?.getAttribute('data-state') === 'available',
+      { timeout: 60_000 },
+    )
+    await page.locator('[data-testid="program-availability"]').waitFor({ timeout: 30_000 })
     await rows.nth(0).locator('[data-testid="program-course-import"]').click()
     await waitFor(page, () => document.querySelector('[data-testid="program-course"] a')?.textContent?.includes('E2E Program Course One'), {
       timeout: 30_000,

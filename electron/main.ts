@@ -1068,14 +1068,15 @@ ipcMain.handle('programs:mark-seen', async (_event, programId: unknown) => {
 })
 
 // Someone else's course for a program, by its code: its titles and
-// descriptions, without importing it.
+// descriptions, without importing it, and how many people have it online
+// right now (SLJ-127: whether a program's course can be downloaded).
 ipcMain.handle('programs:peek-course', async (_event, code: unknown) => {
   if (typeof code !== 'string' || !/^[a-z0-9]{52,64}$/i.test(code.trim())) throw new Error('Invalid code')
   try {
-    const { manifest, publisherId, publisherName } = await peekCourse(code.trim())
+    const { manifest, peers, publisherId, publisherName } = await peekCourse(code.trim())
     const course = programCourseFromManifest(code.trim(), manifest, publisherId, publisherName ?? null)
     if (!course) throw new Error('This code is not a course')
-    return { course } satisfies PeekCourseResult
+    return { course, peers: typeof peers === 'number' ? peers : 0 } satisfies PeekCourseResult
   } catch (error) {
     if ((error as { code?: string }).code === 'NOT_FOUND') return { notFound: true } satisfies PeekCourseResult
     throw error
