@@ -13,8 +13,7 @@ import { cn } from "@/lib/utils"
 // `done`: a green circle with a check (finished). For proposals (SLJ-109):
 // `pending` is the same pie, never spinning (how many approved so far),
 // `attention` a red circle with "!" (changes asked for), `canceled` a grey
-// circle with a cross (replaced). `notStarted`: a red ring (a program the
-// student hasn't begun; started is `changed`, finished `done`).
+// circle with a cross (replaced).
 // `channel`: the published target in red, a followed channel (SLJ-31).
 const statusIconVariants = cva("size-3.5 shrink-0", {
   variants: {
@@ -27,7 +26,6 @@ const statusIconVariants = cva("size-3.5 shrink-0", {
       pending: "text-info",
       attention: "text-destructive",
       canceled: "text-muted-foreground",
-      notStarted: "text-destructive",
       channel: "text-destructive",
     },
   },
@@ -108,8 +106,6 @@ function StatusIcon({ className, progress, status, ...props }: StatusIconProps) 
           <circle cx="7" cy="7" fill="currentColor" r="6.5" />
           <path d="m4.9 4.9 4.2 4.2m0-4.2-4.2 4.2" fill="none" stroke="var(--background)" strokeLinecap="round" strokeWidth="1.5" />
         </>
-      ) : status === "notStarted" ? (
-        <circle cx="7" cy="7" fill="none" r="6" stroke="currentColor" strokeWidth="1.5" />
       ) : status === "published" || status === "channel" ? (
         <>
           <circle cx="7" cy="7" fill="none" r="6" stroke="currentColor" strokeWidth="1.5" />
