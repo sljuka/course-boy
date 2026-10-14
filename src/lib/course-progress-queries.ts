@@ -54,3 +54,13 @@ export function useSetProgramFavoriteMutation() {
     onSuccess: refresh,
   });
 }
+
+// Start a course over (the course page's ⋯ menu): its progress is cleared,
+// its star kept. Unlike recording, the student asked for this, so a failure
+// shows.
+export function useClearCourseProgressMutation() {
+  return useMutation({
+    mutationFn: (courseId: string) => window.progress.clearCourse(courseId),
+    onSuccess: refresh,
+  });
+}

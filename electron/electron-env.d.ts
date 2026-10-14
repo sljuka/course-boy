@@ -179,6 +179,7 @@ interface Window {
     recordTestResult: (input: import('../src/lib/course-progress').RecordTestResultInput) => Promise<void>
     setFavorite: (input: { courseId: string; favorite: boolean }) => Promise<void>
     setProgramFavorite: (input: { favorite: boolean; programId: string }) => Promise<void>
+    clearCourse: (courseId: string) => Promise<void>
   }
   profiles: {
     getState: () => Promise<import('../src/lib/profiles').ProfilesState>

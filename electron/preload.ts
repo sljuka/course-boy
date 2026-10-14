@@ -285,6 +285,9 @@ contextBridge.exposeInMainWorld('progress', {
   setProgramFavorite(input: { favorite: boolean; programId: string }) {
     return ipcRenderer.invoke('progress:set-program-favorite', input) as Promise<void>
   },
+  clearCourse(courseId: string) {
+    return ipcRenderer.invoke('progress:clear-course', courseId) as Promise<void>
+  },
 })
 
 // Courses maintained by several publishers (SLJ-11).

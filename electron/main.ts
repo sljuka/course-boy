@@ -1194,6 +1194,11 @@ ipcMain.handle('progress:set-favorite', (_event, input: { courseId?: unknown; fa
   profile.courseProgress.setFavorite(input.courseId, input.favorite)
 })
 
+ipcMain.handle('progress:clear-course', (_event, courseId: unknown) => {
+  if (!isId(courseId)) throw new Error('Invalid course id')
+  profile.courseProgress.clearCourse(courseId)
+})
+
 // Courses maintained by several publishers (SLJ-11). Signing needs the
 // publishing identity unlocked; the worker refuses otherwise (LOCKED).
 const isPublicId = (value: unknown): value is string => typeof value === 'string' && /^[a-z2-7]{16}$/.test(value)

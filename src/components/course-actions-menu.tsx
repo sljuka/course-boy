@@ -1,8 +1,9 @@
-import { EyeOff, FolderOpen, MoreHorizontal, Trash2 } from "lucide-react";
+import { EyeOff, FolderOpen, MoreHorizontal, RotateCcw, Trash2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import { ClearProgressDialog } from "@/components/course-progress/clear-progress-dialog";
 import { RemoveCourseDialog } from "@/components/course-search/remove-course-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { CourseDistribution } from "@/lib/course-package";
+import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { useShowBundledCourses } from "@/lib/show-bundled-courses-queries";
 
 // A course's own menu (⋯), at the end of the page's action bar: after Publish
@@ -20,7 +22,8 @@ import { useShowBundledCourses } from "@/lib/show-bundled-courses-queries";
 // `items`, and Discard changes through `destructiveItems`), after Share on the
 // course details page. Remove course asks first, then leaves for `afterRemovePath` (the
 // course is gone). The bundled course offers Hide instead. An imported course
-// also offers Open in file system.
+// also offers Open in file system. Clear course progress (before Remove)
+// starts the course over, keeping its star; it's off while there's none.
 export function CourseActionsMenu({
   afterRemovePath,
   course,
@@ -38,6 +41,10 @@ export function CourseActionsMenu({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
+  const [isClearProgressOpen, setIsClearProgressOpen] = useState(false);
+  const { data: progress } = useCourseProgressQuery();
+  const courseProgress = progress?.courses[course.id];
+  const hasProgress = Boolean(courseProgress?.startedAt) || Object.keys(courseProgress?.steps ?? {}).length > 0;
   const [, setShowBundledCourses] = useShowBundledCourses();
   // The bundled course (Getting Started) is hidden, not deleted: the same
   // switch as Settings' "Show Getting Started course", so it can come back.
@@ -50,6 +57,7 @@ export function CourseActionsMenu({
           render={
             <Button
               aria-label={t("courseSearch.courseMenuLabel", { title: course.title })}
+              data-testid="course-actions-menu"
               shape="circle"
               size="icon-sm"
               title={t("courseSearch.courseMenuLabel", { title: course.title })}
@@ -74,6 +82,14 @@ export function CourseActionsMenu({
               {t("courseSearch.openInFileSystem")}
             </DropdownMenuItem>
           )}
+          <DropdownMenuItem
+            data-testid="clear-course-progress"
+            disabled={!hasProgress}
+            onClick={() => setIsClearProgressOpen(true)}
+          >
+            <RotateCcw aria-hidden="true" />
+            {t("courseSearch.clearProgress")}
+          </DropdownMenuItem>
           {isBundled ? (
             <DropdownMenuItem
               onClick={() => {
@@ -95,6 +111,10 @@ export function CourseActionsMenu({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <ClearProgressDialog
+        course={isClearProgressOpen ? course : null}
+        onOpenChange={setIsClearProgressOpen}
+      />
       <RemoveCourseDialog
         course={isRemoveOpen ? course : null}
         onOpenChange={setIsRemoveOpen}

@@ -103,6 +103,24 @@ export function createCourseProgress({ now = () => new Date(), store }: { now?: 
       store.write({ ...state, programs })
     },
 
+    // The student starts the course over: lessons done, test results and
+    // when it was started and last opened are cleared. The star stays: it's
+    // not progress.
+    clearCourse(courseId: string) {
+      const state = store.read()
+      const course = state.courses[courseId]
+
+      if (!course) return
+      const { favorite, favoritedAt } = course
+      const courses = { ...state.courses }
+      if (favorite) {
+        courses[courseId] = { favorite, favoritedAt, steps: {} }
+      } else {
+        delete courses[courseId]
+      }
+      store.write({ ...state, courses })
+    },
+
     // The course was removed: its progress goes with it.
     forgetCourse(courseId: string) {
       const state = store.read()

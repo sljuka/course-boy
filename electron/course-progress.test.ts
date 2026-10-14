@@ -92,4 +92,22 @@ describe('course progress (SLJ-50)', () => {
 
     expect(Object.keys(state().courses)).toEqual(['c2'])
   })
+
+  it('clears the progress of a course, keeping its star', () => {
+    const { progress, state } = setup()
+
+    progress.setFavorite('c1', true)
+    progress.recordOpened('c1')
+    progress.recordStepDone('c1', 'lesson-a')
+    progress.recordTestResult('c1', 'test-a', { correct: 1, longestStreak: 1, total: 2 })
+    progress.recordOpened('c2')
+
+    progress.clearCourse('c1')
+    progress.clearCourse('c2')
+    progress.clearCourse('never-opened')
+
+    expect(state().courses).toEqual({
+      c1: { favorite: true, favoritedAt: '2026-10-07T10:00:00.000Z', steps: {} },
+    })
+  })
 })

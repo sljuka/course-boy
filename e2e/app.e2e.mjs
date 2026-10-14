@@ -125,7 +125,7 @@ describe('launch', () => {
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
     expect(surface.publishers).toEqual(['list', 'remove', 'save'])
     expect(surface.programs).toEqual(['create', 'get', 'getSharing', 'list', 'markSeen', 'peekCourse', 'publish', 'remove', 'update', 'uploadImage'])
-    expect(surface.progress).toEqual(['get', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite', 'setProgramFavorite'])
+    expect(surface.progress).toEqual(['clearCourse', 'get', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite', 'setProgramFavorite'])
     expect(surface.profiles).toEqual(['create', 'getRemovalSummary', 'getState', 'open', 'openCoursesFolder', 'removeCurrent', 'switchProfile'])
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',
@@ -1907,6 +1907,26 @@ describe('course progress', () => {
     await page.locator('[data-testid="course-progress-label"]').waitFor({ timeout: 15_000 })
     expect(await page.locator('[data-testid="step-progress-done"]').count()).toBe(3)
     expect((await page.locator('[data-testid="step-progress-streak"]').innerText()).trim()).toBe('1/2')
+
+    // Clear course progress (the ⋯ menu, before Remove course): the course
+    // starts over, its star stays.
+    await page.locator('[data-testid="course-favorite"]').first().click()
+    await expect.poll(() => courseProgress()?.favorite, { timeout: 15_000 }).toBe(true)
+    await page.click('[data-testid="course-actions-menu"]')
+    await page.locator('[data-testid="clear-course-progress"]').waitFor()
+    const menuItems = await page.getByRole('menuitem').evaluateAll((items) => items.map((item) => item.dataset.testid ?? ''))
+    expect(menuItems.indexOf('clear-course-progress')).toBe(menuItems.length - 2)
+    await page.click('[data-testid="clear-course-progress"]')
+    await page.click('[data-testid="confirm-clear-progress"]')
+    await expect.poll(() => courseProgress(), { timeout: 15_000 }).toMatchObject({ favorite: true, steps: {} })
+    expect(courseProgress().startedAt).toBeUndefined()
+    await expect.poll(() => page.locator('[data-testid="step-progress-done"]').count(), { timeout: 15_000 }).toBe(0)
+    await page.click('[data-testid="course-actions-menu"]')
+    expect(await page.locator('[data-testid="clear-course-progress"]').getAttribute('aria-disabled')).toBe('true')
+    await page.keyboard.press('Escape')
+    // Unstarred again: the favorites below start from none.
+    await page.locator('[data-testid="course-favorite"]').first().click()
+    await expect.poll(() => courseProgress()?.favorite, { timeout: 15_000 }).toBe(false)
 
     // Starring a course from its page saves it; it stays in its own group on
     // Home, and the :favorites search filter shows only starred courses.
