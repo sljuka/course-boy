@@ -28,22 +28,26 @@ export function InteractiveTestPlayer({
   currentIndex,
   exerciseAnswers,
   exerciseResults,
+  graded = false,
   onContinueAfterExercise,
+  onFinishGradedTest,
   onIndexChange,
   onSubmitExercise,
   onUpdateExerciseAnswer,
-  strictAdvancement,
 }: {
   activeTestExercises: CourseExercise[];
   activeTestInstances: ExerciseInstance[];
   currentIndex: number;
   exerciseAnswers: string[];
   exerciseResults: ExerciseResult[];
+  // A graded test (SLJ-135): no answer is checked as it's given; Next moves
+  // on, and the last exercise's button finishes the test.
+  graded?: boolean;
   onContinueAfterExercise: () => void;
+  onFinishGradedTest?: () => void;
   onIndexChange: (index: number) => void;
   onSubmitExercise: (index: number) => void;
   onUpdateExerciseAnswer: (index: number, value: string) => void;
-  strictAdvancement: boolean;
 }) {
   const { t } = useTranslation();
   const answerContainerRef = useRef<HTMLDivElement>(null);
@@ -69,11 +73,17 @@ export function InteractiveTestPlayer({
   const instance = activeTestInstances[currentIndex];
   const result = exerciseResults[currentIndex];
   const isLast = currentIndex === total - 1;
-  const hasSubmitted = Boolean(result?.isCorrect) || result?.feedback != null;
-  const canAdvance = Boolean(result?.isCorrect) || !strictAdvancement;
-  const isPrimaryActionDisabled = hasSubmitted && !canAdvance;
+  const hasSubmitted = !graded && (Boolean(result?.isCorrect) || result?.feedback != null);
+  // A practice test moves on only after a correct answer.
+  const isPrimaryActionDisabled = hasSubmitted && !result?.isCorrect;
 
   function handlePrimaryAction() {
+    if (graded) {
+      if (isLast) onFinishGradedTest?.();
+      else onIndexChange(currentIndex + 1);
+      return;
+    }
+
     if (!hasSubmitted) {
       onSubmitExercise(currentIndex);
       return;
@@ -131,6 +141,11 @@ export function InteractiveTestPlayer({
         const targetTagName = (event.target as HTMLElement).tagName;
 
         if (targetTagName === "BUTTON" || targetTagName === "A" || targetTagName === "TEXTAREA") {
+          return;
+        }
+
+        // Finishing a graded test takes the button: a stray Enter mustn't.
+        if (graded && isLast) {
           return;
         }
 
@@ -215,9 +230,15 @@ export function InteractiveTestPlayer({
           onClick={handlePrimaryAction}
           size="lg"
           type="button"
-          variant={result.isCorrect ? "success" : "secondary"}
+          variant={graded ? (isLast ? "default" : "secondary") : result.isCorrect ? "success" : "secondary"}
         >
-          {result.isCorrect ? t("continue") : t("courseDetails.checkAnswer")}
+          {graded
+            ? isLast
+              ? t("courseDetails.finishTest")
+              : t("courseDetails.nextQuestion")
+            : result.isCorrect
+              ? t("continue")
+              : t("courseDetails.checkAnswer")}
         </Button>
       </div>
     </form>

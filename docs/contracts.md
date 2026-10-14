@@ -302,6 +302,21 @@ exercise exists), then gains `template`/`exercises`/`structure` once the author 
 `test` file pairs are untouched, read and written through the exact same paths they always
 were.
 
+**Graded tests (SLJ-135)** add optional fields, all missing on a practice test, so older
+files read as practice tests and an older app reads a graded test as one:
+
+- a test's `graded: true`, and its own `gradeBands` (only on a graded test the teacher
+  gave its own; otherwise the course's apply);
+- an exercise's `points` (a whole number 1–100), written only when it isn't the default
+  10 (`DEFAULT_EXERCISE_POINTS`);
+- `course.json`'s `gradeBands`, written only once the teacher changes them.
+
+`gradeBands` is a list of `{ min, color }` (1 to 8, each `min` a distinct whole percent,
+`color` one of `GRADE_BAND_COLORS`), checked by `isGradeBands`; the rules for points,
+percentages and bands live in [src/lib/grade-bands.ts](../src/lib/grade-bands.ts:1). A
+test's older `strictAdvancement` field is no longer read: every practice test moves on only
+after a correct answer.
+
 **Course ids are opaque and random**: 16 lowercase base32 characters (`a–z`, `2–7`),
 80 random bits, created by `createCourseId` in
 [src/lib/course-id.ts](../src/lib/course-id.ts:1). The id is the course folder name,
@@ -817,7 +832,9 @@ besides IPC, and the same rules hold:
   a body with `[matko-block]` markers passes through), a test is a list of
   `multiple_choice`, `number` or `fill_in` questions (`fill_in` is the `missing-word` kind:
   a text with `{{name}}` blanks and each blank's accepted answers). Tests made in the app
-  with other kinds read as `{ type, editable: false }`. `add_image` copies an image file
+  with other kinds read as `{ type, editable: false }`. A question can carry `points`, and
+  a test `graded` (SLJ-135); replacing a test's questions keeps whether it's graded, its
+  own grade bands and its mnemonics setting unless the call sets `graded`. `add_image` copies an image file
   from this computer into the course (`uploadCourseAssetFromBytes`, image types only, at
   most 10 MB) and returns its `image` block for the agent to place in the lesson's blocks.
   `update_section_test` renames a section test through the editor's own

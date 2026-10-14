@@ -28,8 +28,10 @@ export const CourseTestContent = ({
   activeTestInstances,
   exerciseAnswers,
   exerciseResults,
+  graded = false,
   isTestPassed,
   onContinueAfterExercise,
+  onFinishGradedTest,
   onSubmitExercise,
   onUpdateExerciseAnswer,
   printAnswerStyle,
@@ -42,8 +44,11 @@ export const CourseTestContent = ({
   activeTestInstances: ExerciseInstance[];
   exerciseAnswers: string[];
   exerciseResults: ExerciseResult[];
+  // A graded test (SLJ-135): "Finish test" instead of "Check answers".
+  graded?: boolean;
   isTestPassed: boolean;
   onContinueAfterExercise: () => void;
+  onFinishGradedTest?: () => void;
   onSubmitExercise: () => void;
   onUpdateExerciseAnswer: (index: number, value: string) => void;
   printAnswerStyle: CoursePrintAnswerStyle;
@@ -82,7 +87,9 @@ export const CourseTestContent = ({
   });
 
   function handlePrimaryAction() {
-    if (isTestPassed) {
+    if (graded) {
+      onFinishGradedTest?.();
+    } else if (isTestPassed) {
       onContinueAfterExercise();
     } else {
       onSubmitExercise();
@@ -108,6 +115,11 @@ export const CourseTestContent = ({
         const targetTagName = (event.target as HTMLElement).tagName;
 
         if (targetTagName === "BUTTON" || targetTagName === "A" || targetTagName === "TEXTAREA") {
+          return;
+        }
+
+        // Finishing a graded test takes the button: a stray Enter mustn't.
+        if (graded) {
           return;
         }
 
@@ -183,7 +195,7 @@ export const CourseTestContent = ({
             onClick={handlePrimaryAction}
             size="lg"
           >
-            {isTestPassed ? t("continue") : t("courseDetails.checkAnswers")}
+            {graded ? t("courseDetails.finishTest") : isTestPassed ? t("continue") : t("courseDetails.checkAnswers")}
           </Button>
         </div>
       </div>

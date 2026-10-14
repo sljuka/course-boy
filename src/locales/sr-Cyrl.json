@@ -132,7 +132,17 @@
     "noSectionsTitle": "За почетак",
     "testLabel": "Тест",
     "noSections": "Овај курс још нема секција.",
-    "sectionIntro": "Увод"
+    "sectionIntro": "Увод",
+    "finishTest": "Заврши тест",
+    "nextQuestion": "Даље",
+    "gradedResultTitle": "Твој резултат",
+    "gradedPercent": "{{percent}}%",
+    "gradedPoints": "{{points}}/{{maxPoints}} бодова",
+    "newBest": "Нови најбољи!",
+    "tryAgain": "Покушај поново",
+    "finishTestDialogTitle": "Завршити тест?",
+    "finishTestDialogDescription": "Питања без одговора: {{count}}. Рачунају се као нетачна.",
+    "keepGoing": "Настави"
   },
   "courseVersions": {
     "actionErrorTitle": "Нешто није у реду",
@@ -502,7 +512,27 @@
   },
   "testEditor": {
     "tagsTooltip": "Ознаке су корисне за обележавање задатака. Користе се за насумичан избор задатака. Ознаке се подешавају у коренском фолдеру курса.",
-    "moreOptions": "Прикажи још опција"
+    "moreOptions": "Прикажи још опција",
+    "testType": "Врста теста",
+    "practice": "Тест за вежбу",
+    "practiceDescription": "Показује да ли је сваки одговор тачан. У интерактивном режиму ученик иде даље после тачног одговора.",
+    "graded": "Тест са оценом",
+    "gradedDescription": "Тест не показује да ли је одговор тачан после сваког питања. На крају показује резултат.",
+    "points": "Бодови",
+    "pointsHelp": "Добијају се за тачно решен задатак у тесту са оценом.",
+    "pointsInvalid": "Цео број од 1 до 100.",
+    "description": "Опис",
+    "descriptionPlaceholder": "Додај кратак опис теста",
+    "ownGradeBands": "Користи опсеге оцена само за овај тест",
+    "ownGradeBandsHelp": "Важи само за тест са оценом: боја резултата на крају. Ако није означено, важе опсези оцена курса.",
+    "randomize": "Укључи насумичан избор задатака",
+    "randomizeHelp": "Сваки покушај насумично бира задатке по ознакама: од сваке ознаке онолико колико каже њено правило. Ознаке се додају на страници курса.",
+    "ruleTag": "Ознака",
+    "ruleTagPlaceholder": "Изабери ознаку",
+    "ruleCount": "Број задатака",
+    "addRule": "Додај још означених задатака",
+    "ruleShortage": "Потребно је {{count}} задатака са ознаком „{{tag}}”, а има их само {{available}}.",
+    "randomizeNeedsTags": "Може се укључити када курс има {{count}} или више ознака."
   },
   "theme": {
     "switchToDark": "Пребаци на тамну тему",
@@ -603,7 +633,8 @@
       "tags": "Измењене ознаке курса",
       "defaultLocale": "Измењен главни језик",
       "serbianScript": "Измењено генерисање ћирилице и латинице",
-      "mnemonics": "Промењене мнемотехнике"
+      "mnemonics": "Промењене мнемотехнике",
+      "gradeBands": "Измењени опсези оцена"
     },
     "language": {
       "added": "Додат језик: {{language}}",
@@ -911,7 +942,9 @@
     "done": "Урађено",
     "streak": "{{streak}}/{{total}}",
     "streakLabel": "Најбољи низ: {{streak}} од {{total}} тачних из прве заредом",
-    "streakDetails": "Најбољи низ · најбољи резултат {{correct}}/{{total}} · покушаји: {{attempts}}"
+    "streakDetails": "Најбољи низ · најбољи резултат {{correct}}/{{total}} · покушаји: {{attempts}}",
+    "score": "{{points}}/{{maxPoints}}",
+    "scoreDetails": "Најбољи резултат · {{percent}}% · покушаја: {{attempts}}"
   },
   "programs": {
     "new": "Нови програм",
@@ -1209,5 +1242,29 @@
     "newAccessCode": "Нови приступни код",
     "newAccessCodeHint": "Агенти који користе тренутни код неће моћи да се повежу док се не подесе са новим.",
     "newAccessCodeAction": "Нови код"
+  },
+  "gradeBands": {
+    "title": "Опсези оцена",
+    "courseHelp": "Боја резултата теста са оценом: сваки опсег од свог процента навише. Тест са оценом може имати и своје.",
+    "minLabel": "Опсег {{index}}: од процента",
+    "andUp": "% и више",
+    "colorLabel": "Опсег {{index}}: боја",
+    "removeBand": "Уклони опсег {{index}}",
+    "addBand": "Додај опсег",
+    "below": "Испод {{min}}%",
+    "invalid": "Сваки опсег треба свој проценат, цео број од 1 до 100.",
+    "summaryBand": "{{min}}% и више: {{color}}",
+    "colors": {
+      "gold": "Златна",
+      "green": "Зелена",
+      "yellow": "Жута",
+      "orange": "Наранџаста",
+      "red": "Црвена",
+      "purple": "Љубичаста",
+      "blue": "Плава",
+      "grey": "Сива"
+    },
+    "belowColorLabel": "Испод {{min}}%: боја",
+    "belowSummary": "Испод {{min}}%: {{color}}"
   }
 }

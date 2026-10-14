@@ -149,6 +149,22 @@ export function useTestPlayerState(
     setIsTestPassed(false);
   }
 
+  // A graded test (SLJ-135) grades nothing while it's taken: this grades
+  // every answer as it stands, for "Finish test", without showing anything.
+  function gradeAll(): ExerciseResult[] {
+    return activeTestExercises.map((exercise, index) =>
+      deriveExerciseResult(exercise, activeTestInstances[index], exerciseAnswers[index] ?? "", t),
+    );
+  }
+
+  // Try again: a new attempt, with a new pick of exercises (if the test picks
+  // them at random) and new numbers.
+  function restart() {
+    resetExerciseState();
+    const selectedExercises = activeLesson ? buildTestExerciseSequence(activeLesson) : [];
+    if (selectedExercises.length > 0) hydrateExercises(selectedExercises);
+  }
+
   function refreshExercises() {
     if (activeTestExercises.length === 0) {
       return;
@@ -223,10 +239,12 @@ export function useTestPlayerState(
     exerciseAnswers,
     exerciseResults,
     firstTryCorrect,
+    gradeAll,
     isInteractiveMode,
     isPrintHintVisible,
     isTestPassed,
     refreshExercises,
+    restart,
     setIsInteractiveMode,
     setIsPrintHintVisible,
     submitExercise,

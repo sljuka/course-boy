@@ -329,6 +329,10 @@ function diffCourseManifest(
     changes.push({ field: "serbianScript", kind: "edited", target: "course" });
   }
 
+  if (JSON.stringify(before.gradeBands ?? null) !== JSON.stringify(after.gradeBands ?? null)) {
+    changes.push({ field: "gradeBands", kind: "edited", target: "course" });
+  }
+
   return changes;
 }
 

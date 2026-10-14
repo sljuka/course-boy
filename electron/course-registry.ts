@@ -53,6 +53,7 @@ import {
   resolveSharedTestForPlayer,
 } from "../src/lib/exercise-kinds/registry";
 import { hasValidExerciseMedia } from "../src/lib/exercise-media";
+import { isExercisePoints, isGradeBands } from "../src/lib/grade-bands";
 import { promptGaps, titleGaps, writtenLocales } from "../src/lib/course-gaps";
 
 type CourseRecord = {
@@ -177,7 +178,8 @@ function isRawCourseManifest(value: unknown): value is RawCourseManifest {
     (typeof manifest.serbianScript === "undefined" ||
       (isSerbianScriptSetting(manifest.serbianScript) &&
         manifest.supportedLocales.includes("sr") &&
-        manifest.supportedLocales.includes("sr-Cyrl")))
+        manifest.supportedLocales.includes("sr-Cyrl"))) &&
+    (typeof manifest.gradeBands === "undefined" || isGradeBands(manifest.gradeBands))
   );
 }
 
@@ -348,17 +350,23 @@ function isSharedTestDefinitionShape(
       return false;
     }
 
-    return getExerciseKindRuntime(kind).isValid(typedExercise) && hasValidExerciseMedia(typedExercise);
+    return (
+      getExerciseKindRuntime(kind).isValid(typedExercise) &&
+      hasValidExerciseMedia(typedExercise) &&
+      (typeof typedExercise.points === "undefined" || isExercisePoints(typedExercise.points))
+    );
   });
 
   if (!exercisesAreValid) {
     return false;
   }
 
-  if (
-    typeof test.strictAdvancement !== "undefined" &&
-    typeof test.strictAdvancement !== "boolean"
-  ) {
+  // Graded tests (SLJ-135). An older file's `strictAdvancement` isn't read.
+  if (typeof test.graded !== "undefined" && typeof test.graded !== "boolean") {
+    return false;
+  }
+
+  if (typeof test.gradeBands !== "undefined" && !isGradeBands(test.gradeBands)) {
     return false;
   }
 
@@ -1320,6 +1328,7 @@ export async function getCourseDetails(
     builtin: courseRecord.manifest.builtin,
     createdAt: courseRecord.manifest.createdAt ?? null,
     entrySectionId: sectionIds[0] ?? null,
+    gradeBands: courseRecord.manifest.gradeBands ?? null,
     lessonIds,
     locales: courseRecord.manifest.locales,
     sections,

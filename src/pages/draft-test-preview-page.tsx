@@ -74,6 +74,7 @@ export function DraftTestPreviewPage() {
         kind: "lesson",
       },
       courseId: "preview",
+      courseGradeBands: course?.gradeBands ?? null,
       courseTitle: course?.title ?? "",
       exitPlayer: closePreview,
       isPreview: true,
@@ -84,7 +85,7 @@ export function DraftTestPreviewPage() {
       sectionTitle: section?.title ?? "",
       status: "ready",
     };
-  }, [course?.title, courseId, navigate, section?.title, state]);
+  }, [course?.gradeBands, course?.title, courseId, navigate, section?.title, state]);
 
   if (!courseId) {
     return <Navigate replace to="/my-courses" />;

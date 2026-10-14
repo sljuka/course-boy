@@ -89,6 +89,7 @@ import {
 import { getProfileDataDir } from "./profile-context";
 import { publishersFromSource, type CoursePublisher } from "../src/lib/publishers";
 import { parseMnemonics } from "../src/lib/mnemonics";
+import { isGradeBands, sortGradeBands } from "../src/lib/grade-bands";
 
 // The bundled "Getting Started with Matko" course. Its id follows the same
 // random format as every other course (see src/lib/course-id.ts); it was
@@ -2231,10 +2232,26 @@ export async function updateLocalCourseDraftMetadata(
     }),
   ) as CourseManifest["locales"];
 
-  const { serbianScript: previousSerbianScript, ...manifestWithoutSerbianScript } = manifest;
+  const {
+    gradeBands: previousGradeBands,
+    serbianScript: previousSerbianScript,
+    ...manifestWithoutSerbianScript
+  } = manifest;
+  // Grade bands (SLJ-135): omitted keeps the course's, null goes back to the
+  // defaults (dropped from the file).
+  if (input.gradeBands !== undefined && input.gradeBands !== null && !isGradeBands(input.gradeBands)) {
+    throw new Error("Invalid grade bands");
+  }
+  const gradeBands =
+    input.gradeBands === undefined
+      ? previousGradeBands
+      : input.gradeBands === null
+        ? undefined
+        : sortGradeBands(input.gradeBands);
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifestWithoutSerbianScript,
+    ...(gradeBands ? { gradeBands } : {}),
     contentRating: normalizeContentRating(input.contentRating),
     defaultLocale: input.defaultLocale,
     descriptiveTags: input.descriptiveTags,

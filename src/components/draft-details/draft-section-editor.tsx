@@ -149,7 +149,7 @@ export function DraftSectionEditor({
         locales={supportedLocales}
         onActiveLocaleChange={setActiveSectionLocale}
         renderContent={(locale) => (
-          <FieldSet className="pt-2">
+          <FieldSet>
             <FieldLegend className="sr-only">{getLocaleLabel(locale, t)}</FieldLegend>
             <FieldGroup>
               <Field>

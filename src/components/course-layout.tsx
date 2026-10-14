@@ -30,6 +30,7 @@ import type {
   CourseVersionBadge,
   LocalizedCourseMetadata,
 } from "@/lib/course-package";
+import type { GradeBand } from "@/lib/grade-bands";
 import type { EntityAutosaveStatus } from "@/lib/use-entity-autosave";
 import { useAppState } from "@/lib/use-app-state";
 import { useSidePanelPreference } from "@/lib/explorer-panel-queries";
@@ -43,6 +44,8 @@ type CourseLayoutOutletContext = {
   contentRating: ContentRating;
   courseDescriptiveTags: CourseTagDefinition[];
   courseDescription: string;
+  // Graded tests' grade bands (SLJ-135); null: the defaults.
+  courseGradeBands: GradeBand[] | null;
   courseSections: CourseSectionPreview[];
   courseTitle: string;
   defaultLocale: Locale;
@@ -253,6 +256,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
                   courseDescriptiveTags:
                     courseDetailsQuery.data?.descriptiveTags ?? [],
                   courseDescription,
+                  courseGradeBands: courseDetailsQuery.data?.gradeBands ?? null,
                   courseSections: courseDetailsQuery.data?.sections ?? [],
                   courseTitle,
                   defaultLocale,

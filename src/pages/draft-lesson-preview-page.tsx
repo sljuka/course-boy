@@ -65,6 +65,7 @@ export function DraftLessonPreviewPage() {
       // while an exercise's assets are already fully resolved earlier, in
       // `resolveSharedTestForPlayer`.
       courseId,
+      courseGradeBands: course?.gradeBands ?? null,
       courseTitle: course?.title ?? "",
       exitPlayer: closePreview,
       isPreview: true,
@@ -79,7 +80,7 @@ export function DraftLessonPreviewPage() {
       sectionTitle: section?.title ?? "",
       status: "ready",
     };
-  }, [course?.title, courseId, navigate, section?.title, state]);
+  }, [course?.gradeBands, course?.title, courseId, navigate, section?.title, state]);
 
   if (!courseId) {
     return <Navigate replace to="/my-courses" />;

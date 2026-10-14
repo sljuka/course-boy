@@ -232,6 +232,38 @@ describe("the tools", () => {
     expect(changed).toHaveBeenCalled();
   });
 
+  it("make a graded test with points, and keep it graded when only its questions are replaced (SLJ-135)", async () => {
+    const { courseId } = await call<{ courseId: string }>("create_course", { title: "Exam" });
+    const { sectionId } = await call<{ sectionId: string }>("create_section", { courseId, title: "Final" });
+    const question = { correct: [0], options: ["4", "5"], prompt: "2 + 2?", type: "multiple_choice" };
+    const { testId } = await call<{ testId: string }>("create_section_test", {
+      courseId,
+      graded: true,
+      questions: [{ ...question, points: 25 }],
+      sectionId,
+      title: "Final exam",
+    });
+
+    expect(await call("read_section_test", { courseId, sectionId, testId })).toEqual({
+      graded: true,
+      questions: [{ ...question, points: 25 }],
+      title: "Final exam",
+    });
+
+    await call("set_section_test_questions", { courseId, questions: [question], sectionId, testId });
+    expect(await call("read_section_test", { courseId, sectionId, testId })).toEqual({
+      graded: true,
+      questions: [question],
+      title: "Final exam",
+    });
+
+    await call("set_section_test_questions", { courseId, graded: false, questions: [question], sectionId, testId });
+    expect(await call("read_section_test", { courseId, sectionId, testId })).toEqual({
+      questions: [question],
+      title: "Final exam",
+    });
+  });
+
   it("rename a section test in one language, keeping the others", async () => {
     const { courseId } = await call<{ courseId: string }>("create_course", { title: "Days" });
     const { sectionId } = await call<{ sectionId: string }>("create_section", { courseId, title: "Week" });

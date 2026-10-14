@@ -1,21 +1,12 @@
 import { Fragment, type ReactNode, useEffect, useState } from "react";
-import { Check, Play, Plus } from "lucide-react";
+import { Play, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Card, CardContent, CardDescription } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Eyebrow } from "@/components/ui/eyebrow";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -24,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { LocaleTabsList } from "@/components/locales-tabs";
@@ -37,6 +27,8 @@ import {
 } from "@/components/ui/tooltip";
 import { ExerciseMediaField } from "@/components/exercise-media-field";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
+import { TestMoreOptions } from "@/components/test-more-options";
+import { TestTypeField } from "@/components/test-type-field";
 import { GeneratedLocaleNotice } from "@/components/generated-locale-notice";
 import { PageContent } from "@/components/page-content";
 import {
@@ -44,17 +36,14 @@ import {
   listExerciseKindEditors,
 } from "@/components/exercise-kinds/registry";
 import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
-import {
-  countMatchingExercises,
-  toggleExerciseTag,
-} from "@/components/test-editor-prototype-logic";
+import { hasTestMoreOptionsSet, toggleExerciseTag } from "@/components/test-editor-prototype-logic";
 import type {
-  BlueprintRule,
   CourseTagDefinition,
   TestEditorState,
   TestExercise,
 } from "@/components/test-editor-prototype-types";
 import type { ExerciseKind } from "@/lib/course-package";
+import type { GradeBand } from "@/lib/grade-bands";
 import { buildDraftTestPreviewPath } from "@/lib/course-utils";
 import type { Locale } from "@/lib/i18n";
 import {
@@ -63,6 +52,8 @@ import {
 } from "@/lib/use-serbian-script";
 
 type TestEditorPrototypeProps = {
+  // Where a graded test's own bands start from (SLJ-135); null: the defaults.
+  courseGradeBands: GradeBand[] | null;
   courseId: string;
   descriptiveTags: CourseTagDefinition[];
   // Always provided by the single current caller (draft-test-editor.tsx),
@@ -93,6 +84,7 @@ type TestEditorPrototypeProps = {
 };
 
 export function TestEditorPrototype({
+  courseGradeBands,
   courseId,
   descriptiveTags,
   initialState,
@@ -110,24 +102,17 @@ export function TestEditorPrototype({
   const [draftExerciseKind, setDraftExerciseKind] =
     useState<ExerciseKind>("numeric");
   const [draftExercise, setDraftExercise] = useState<TestExercise | null>(null);
-  // Which accordion sections are expanded is pure UI state, not test
-  // content — it must not live in `TestEditorState`. That state is only
-  // ever saved/reloaded through `SharedTestDefinition`, which has no field
-  // for it, so persisting it there was a dead write: the moment any real
-  // edit's autosave landed and invalidated this test's query, `DraftTestEditor`
-  // unmounted this whole subtree while refetching and remounted it with the
-  // accordion state re-seeded to `[]`, silently closing it right after a
-  // teacher opened it — the same "invalidate → unmount → remount → lose
-  // unpersisted state" shape as the blueprint and title bugs fixed earlier.
-  const [selectedAdvancedSections, setSelectedAdvancedSections] = useState<
-    string[]
-  >([]);
   // `initialState` is only ever read here, at mount — the single caller
   // (draft-test-editor.tsx) owns the persisted value and re-mounts this
   // component (via a fresh `key`, through its own loading-state gate)
   // whenever it has a genuinely different one to seed from, rather than
   // this component watching for it to change under it.
   const [state, setState] = useState<TestEditorState>(initialState);
+  // Whether "Show more options" is open is UI state, not test content: it
+  // must not live in `TestEditorState`, which is only saved through
+  // `SharedTestDefinition` (a dead write there once closed sections right
+  // after a save). It starts open when something in it is set.
+  const [isMoreOptionsOpen, setIsMoreOptionsOpen] = useState(() => hasTestMoreOptionsSet(initialState));
 
   // A teacher fills in a randomization rule per tag themselves (see
   // `addBlueprintRule`) — this used to auto-populate one per descriptive tag
@@ -164,54 +149,11 @@ export function TestEditorPrototype({
     }));
   }
 
-  function updateBlueprintRule(
-    ruleId: string,
-    nextRule: Partial<BlueprintRule>,
-  ) {
-    setState((currentState) => ({
-      ...currentState,
-      blueprint: currentState.blueprint.map((rule) =>
-        rule.id === ruleId ? { ...rule, ...nextRule } : rule,
-      ),
-    }));
-  }
 
-  function addBlueprintRule() {
-    const fallbackTagId = descriptiveTags[0]?.id ?? "";
 
-    setState((currentState) => ({
-      ...currentState,
-      blueprint: [
-        ...currentState.blueprint,
-        {
-          count: 1,
-          id: `rule_${Math.random().toString(36).slice(2, 8)}`,
-          tagId: fallbackTagId,
-        },
-      ],
-    }));
-  }
 
-  function toggleBlueprintUsage() {
-    setState((currentState) => ({
-      ...currentState,
-      useBlueprint: !currentState.useBlueprint,
-    }));
-  }
 
-  function toggleShowMnemonics() {
-    setState((currentState) => ({
-      ...currentState,
-      showMnemonics: !currentState.showMnemonics,
-    }));
-  }
 
-  function toggleStrictAdvancement() {
-    setState((currentState) => ({
-      ...currentState,
-      strictAdvancement: !currentState.strictAdvancement,
-    }));
-  }
 
   function startAddExercise() {
     setIsAddingExercise(true);
@@ -358,163 +300,31 @@ export function TestEditorPrototype({
 
         {isStandalone && (
           <Field>
-            <FieldLabel htmlFor="test-description">Description</FieldLabel>
+            <FieldLabel htmlFor="test-description">{t("testEditor.description")}</FieldLabel>
             <Textarea
               className="min-h-0 resize-none overflow-hidden"
               id="test-description"
               onChange={(event) => setDescription(event.target.value)}
-              placeholder="Add a short test description"
+              placeholder={t("testEditor.descriptionPlaceholder")}
               rows={1}
               value={state.description}
             />
           </Field>
         )}
 
-        <Accordion
-          multiple
-          onValueChange={(value) =>
-            setSelectedAdvancedSections(value as string[])
-          }
-          value={selectedAdvancedSections}
-        >
-          <AccordionItem value="advanced">
-            <div className="flex items-center gap-2">
-              <AccordionTrigger className="flex-none">
-                Exercise randomization
-              </AccordionTrigger>
-              {state.useBlueprint && (
-                <Badge variant="success">
-                  <Check aria-hidden="true" className="h-3 w-3" />
-                  On
-                </Badge>
-              )}
-            </div>
-            <AccordionContent>
-              <div className="flex flex-col gap-4">
-                <CardDescription>
-                  Exercise randomization selects a random part of the exercises
-                  to show the student, based on the tags of the exercises.
-                </CardDescription>
+        <TestTypeField
+          graded={state.graded}
+          onGradedChange={(graded) => setState((currentState) => ({ ...currentState, graded }))}
+        />
 
-                <div className="flex items-center gap-2">
-                  <Label>
-                    <Checkbox
-                      checked={state.useBlueprint}
-                      onCheckedChange={toggleBlueprintUsage}
-                    />
-                    Enable exercise randomization
-                  </Label>
-                  <InfoTooltip>
-                    Exercises are going to be randomly selected based on the
-                    rules defined below. Rules are defined using course tags
-                    which can be added on the course root page.
-                  </InfoTooltip>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  {state.blueprint.map((rule) => {
-                    const available = countMatchingExercises(
-                      state.exercises,
-                      rule.tagId,
-                    );
-                    const isInvalid = available < rule.count;
-
-                    return (
-                      <div key={rule.id}>
-                        <div className="flex items-center gap-2">
-                          <Select
-                            disabled={!state.useBlueprint}
-                            onValueChange={(value) =>
-                              updateBlueprintRule(rule.id, {
-                                tagId: value ?? "",
-                              })
-                            }
-                            value={rule.tagId ?? undefined}
-                          >
-                            <SelectTrigger className="w-56">
-                              <SelectValue placeholder="Select tag" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {descriptiveTags.map((tag) => (
-                                <SelectItem key={tag.id} value={tag.id}>
-                                  {tag.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            className="w-20"
-                            disabled={!state.useBlueprint}
-                            min={1}
-                            onChange={(event) =>
-                              updateBlueprintRule(rule.id, {
-                                count: Math.max(
-                                  1,
-                                  Number(event.target.value) || 1,
-                                ),
-                              })
-                            }
-                            type="number"
-                            value={rule.count}
-                          />
-                        </div>
-                        {state.useBlueprint && rule.tagId && isInvalid && (
-                          <CardDescription className="text-warning">
-                            Need {rule.count} exercises tagged "
-                            {descriptiveTags.find(
-                              (tag) => tag.id === rule.tagId,
-                            )?.label ?? rule.tagId}
-                            ", but only {available}{" "}
-                            {available === 1 ? "is" : "are"} available.
-                          </CardDescription>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Button
-                      disabled={!state.useBlueprint}
-                      onClick={addBlueprintRule}
-                      size="sm"
-                      variant="secondary"
-                    >
-                      <Plus aria-hidden="true" className="h-4 w-4" />
-                      Add more tagged exercises
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-
-        <div className="flex items-center gap-2">
-          <Label>
-            <Checkbox
-              checked={state.strictAdvancement}
-              onCheckedChange={toggleStrictAdvancement}
-            />
-            Require a correct answer before moving on in interactive mode
-          </Label>
-          <InfoTooltip>
-            When on, a student must answer each exercise correctly before
-            interactive mode lets them move to the next one. When off, they can
-            move on regardless and come back to fix answers later.
-          </InfoTooltip>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Label>
-            <Checkbox
-              checked={state.showMnemonics}
-              data-testid="test-show-mnemonics"
-              onCheckedChange={toggleShowMnemonics}
-            />
-            {t("mnemonics.showInTest")}
-          </Label>
-          <InfoTooltip>{t("mnemonics.showInTestHelp")}</InfoTooltip>
-        </div>
+        <TestMoreOptions
+          courseGradeBands={courseGradeBands}
+          descriptiveTags={descriptiveTags}
+          onOpenChange={setIsMoreOptionsOpen}
+          open={isMoreOptionsOpen}
+          state={state}
+          updateState={setState}
+        />
 
         <Separator />
 

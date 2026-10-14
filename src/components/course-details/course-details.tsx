@@ -206,7 +206,10 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
             </div>
             <div className="overflow-x-auto pb-2">
               <CoursePreviewStrip
-                items={buildSectionPreviewItems(section, { introTitle: t("courseDetails.sectionIntro") })}
+                items={buildSectionPreviewItems(section, {
+                  courseGradeBands: resolvedCourse.gradeBands,
+                  introTitle: t("courseDetails.sectionIntro"),
+                })}
                 onSelect={handlePreviewItemSelect}
                 progress={courseProgress}
               />

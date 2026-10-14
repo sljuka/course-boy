@@ -132,7 +132,17 @@
     "noSectionsTitle": "Getting started",
     "testLabel": "Test",
     "noSections": "This course has no sections yet.",
-    "sectionIntro": "Introduction"
+    "sectionIntro": "Introduction",
+    "finishTest": "Finish test",
+    "nextQuestion": "Next",
+    "gradedResultTitle": "Your score",
+    "gradedPercent": "{{percent}}%",
+    "gradedPoints": "{{points}}/{{maxPoints}} points",
+    "newBest": "New best!",
+    "tryAgain": "Try again",
+    "finishTestDialogTitle": "Finish the test?",
+    "finishTestDialogDescription": "Questions without an answer: {{count}}. They count as wrong.",
+    "keepGoing": "Keep going"
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
@@ -502,7 +512,27 @@
   },
   "testEditor": {
     "tagsTooltip": "Tags are useful for marking exercises. They are used for exercise randomization. Tags can be configured in the course root folder.",
-    "moreOptions": "Show more options"
+    "moreOptions": "Show more options",
+    "testType": "Test type",
+    "practice": "Practice test",
+    "practiceDescription": "Shows whether each answer is right. In interactive mode the student moves on after a correct answer.",
+    "graded": "Graded test",
+    "gradedDescription": "The test does not give feedback after each answer. It shows the score at the end.",
+    "points": "Points",
+    "pointsHelp": "Awarded for correctly solving the exercise in a graded test.",
+    "pointsInvalid": "A whole number from 1 to 100.",
+    "description": "Description",
+    "descriptionPlaceholder": "Add a short test description",
+    "ownGradeBands": "Use test-specific grade bands",
+    "ownGradeBandsHelp": "Only used in a graded test: the colour of its score at the end. Unticked, the course's grade bands apply.",
+    "randomize": "Enable exercise randomization",
+    "randomizeHelp": "Each attempt picks exercises at random by their tags: as many with each tag as its rule says. Tags are added on the course page.",
+    "ruleTag": "Tag",
+    "ruleTagPlaceholder": "Select tag",
+    "ruleCount": "Number of exercises",
+    "addRule": "Add more tagged exercises",
+    "ruleShortage": "Needs {{count}} exercises tagged “{{tag}}”, but only {{available}} have it.",
+    "randomizeNeedsTags": "It can be turned on once the course has {{count}} or more tags."
   },
   "theme": {
     "switchToDark": "Switch to dark theme",
@@ -603,7 +633,8 @@
       "tags": "Changed the course tags",
       "defaultLocale": "Changed the main language",
       "serbianScript": "Changed which Serbian script is generated",
-      "mnemonics": "Changed the mnemonics"
+      "mnemonics": "Changed the mnemonics",
+      "gradeBands": "Changed the grade bands"
     },
     "language": {
       "added": "Added language: {{language}}",
@@ -911,7 +942,9 @@
     "done": "Done",
     "streak": "{{streak}}/{{total}}",
     "streakLabel": "Best streak: {{streak}} of {{total}} right first time in a row",
-    "streakDetails": "Best streak · best score {{correct}}/{{total}} · attempts: {{attempts}}"
+    "streakDetails": "Best streak · best score {{correct}}/{{total}} · attempts: {{attempts}}",
+    "score": "{{points}}/{{maxPoints}}",
+    "scoreDetails": "Best score · {{percent}}% · attempts: {{attempts}}"
   },
   "programs": {
     "new": "New program",
@@ -1209,5 +1242,29 @@
     "newAccessCode": "New access code",
     "newAccessCodeHint": "Agents using the current code can't connect any more until they're set up with the new one.",
     "newAccessCodeAction": "New code"
+  },
+  "gradeBands": {
+    "title": "Grade bands",
+    "courseHelp": "The colour of a graded test's score: each band from its percentage up. A graded test can also have its own.",
+    "minLabel": "Band {{index}}: from percent",
+    "andUp": "% and up",
+    "colorLabel": "Band {{index}}: colour",
+    "removeBand": "Remove band {{index}}",
+    "addBand": "Add band",
+    "below": "Below {{min}}%",
+    "invalid": "Each band needs its own percentage, a whole number from 1 to 100.",
+    "summaryBand": "{{min}}% and up: {{color}}",
+    "colors": {
+      "gold": "Gold",
+      "green": "Green",
+      "yellow": "Yellow",
+      "orange": "Orange",
+      "red": "Red",
+      "purple": "Purple",
+      "blue": "Blue",
+      "grey": "Grey"
+    },
+    "belowColorLabel": "Below {{min}}%: colour",
+    "belowSummary": "Below {{min}}%: {{color}}"
   }
 }

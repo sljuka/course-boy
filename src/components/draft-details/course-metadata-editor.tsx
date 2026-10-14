@@ -92,10 +92,14 @@ import {
   useEntityAutosave,
   useForwardAutosaveStatus,
 } from "@/lib/use-entity-autosave";
+import { DEFAULT_GRADE_BANDS, type GradeBand } from "@/lib/grade-bands";
+import { GradeBandsEditor } from "@/components/grade-bands-editor";
 
 type CourseMetadataDraft = {
   contentRating: ContentRating;
   descriptiveTags: CourseTagDefinition[];
+  // Null: the defaults (SLJ-135).
+  gradeBands: GradeBand[] | null;
   localizedCourse: Partial<Record<Locale, LocalizedCourseMetadata>>;
   serbianScript: SerbianScriptSetting | null;
   supportedLocales: Locale[];
@@ -114,6 +118,7 @@ function withSerbianLocales(supportedLocales: Locale[], serbianScript: SerbianSc
 
 export function CourseMetadataEditor({
   contentRating,
+  courseGradeBands,
   courseId,
   courseSections,
   defaultLocale,
@@ -124,6 +129,7 @@ export function CourseMetadataEditor({
   versionBadge,
 }: {
   contentRating: ContentRating;
+  courseGradeBands: GradeBand[] | null;
   courseId: string;
   courseSections: CourseSectionPreview[];
   defaultLocale: Locale;
@@ -142,6 +148,7 @@ export function CourseMetadataEditor({
   const [seed] = useState<CourseMetadataDraft>(() => ({
     contentRating,
     descriptiveTags,
+    gradeBands: courseGradeBands,
     localizedCourse,
     serbianScript,
     supportedLocales,
@@ -183,6 +190,7 @@ export function CourseMetadataEditor({
           value.localizedCourse[locale] ?? { description: "", title: "" },
         ]),
       ),
+      gradeBands: value.gradeBands,
       serbianScript: value.serbianScript,
       supportedLocales: value.supportedLocales,
     }),
@@ -384,7 +392,7 @@ export function CourseMetadataEditor({
         </>
       }
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         <LocalesTabs
           activeLocale={activeCourseLocale}
           getIsIncomplete={(locale) =>
@@ -393,7 +401,7 @@ export function CourseMetadataEditor({
           locales={draft.supportedLocales}
           onActiveLocaleChange={setActiveCourseLocale}
           renderContent={(locale) => (
-            <FieldSet className="pt-2">
+            <FieldSet>
               <FieldLegend className="sr-only">
                 {getLocaleLabel(locale, t)}
               </FieldLegend>
@@ -593,6 +601,24 @@ export function CourseMetadataEditor({
                 </SelectContent>
               </Select>
             </Field>
+
+            <Accordion>
+              <AccordionItem value="grade-bands">
+                <div className="flex items-center gap-1">
+                  <AccordionTrigger className="flex-none" data-testid="course-grade-bands-toggle">
+                    {t("gradeBands.title")}
+                  </AccordionTrigger>
+                  <InfoTooltip aria-label={t("gradeBands.courseHelp")}>{t("gradeBands.courseHelp")}</InfoTooltip>
+                </div>
+                <AccordionContent>
+                  <GradeBandsEditor
+                    idPrefix="course"
+                    onChange={(gradeBands) => setDraft((current) => ({ ...current, gradeBands }))}
+                    value={draft.gradeBands ?? DEFAULT_GRADE_BANDS}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             <Accordion>
               <AccordionItem value="descriptive-tags">

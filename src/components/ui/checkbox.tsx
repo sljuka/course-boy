@@ -5,12 +5,15 @@ import { CheckIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+// Disabled: a muted fill and border, faded when ticked. Base UI marks
+// it `data-disabled` (it's a <span>, so `:disabled` never matches). A `Label`
+// around it greys out with it.
 function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "flex size-5 shrink-0 items-center justify-center rounded-md border border-input outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[checked]:border-primary data-[checked]:bg-primary aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:data-[checked]:bg-primary",
+        "flex size-5 shrink-0 items-center justify-center rounded-md border border-input outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 data-disabled:cursor-not-allowed data-disabled:border-muted-foreground/60 data-disabled:bg-muted data-disabled:data-[checked]:opacity-50 data-[checked]:border-primary data-[checked]:bg-primary aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:data-[checked]:bg-primary",
         className
       )}
       {...props}

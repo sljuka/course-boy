@@ -128,6 +128,7 @@ const EXAMPLE_EXERCISE: RegionLabelCourseExercise = {
 
 const EXAMPLE_TEST: CourseTest = {
   exercises: [EXAMPLE_EXERCISE],
+  graded: false,
   id: "example",
 };
 

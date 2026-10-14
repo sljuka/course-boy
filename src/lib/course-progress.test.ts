@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   isBetterAttempt,
   nextSpree,
+  scoreGradedAttempt,
   scoreTestAttempt,
   spreeLevel,
   summarizeCourseProgress,
@@ -52,7 +53,28 @@ describe("scoreTestAttempt", () => {
   })
 })
 
+describe("scoreGradedAttempt", () => {
+  it("adds up the points of the exercises solved correctly, out of all of them", () => {
+    expect(
+      scoreGradedAttempt([
+        { isCorrect: true, points: 10 },
+        { isCorrect: false, points: 30 },
+        { isCorrect: true, points: 5 },
+      ]),
+    ).toEqual({ correct: 2, longestStreak: 1, maxPoints: 45, points: 15, total: 3 });
+  });
+});
+
 describe("isBetterAttempt", () => {
+  it("compares graded attempts by their share of the points", () => {
+    expect(
+      isBetterAttempt(
+        { correct: 1, longestStreak: 1, maxPoints: 40, points: 30, total: 2 },
+        { correct: 2, longestStreak: 2, maxPoints: 60, points: 40, total: 3 },
+      ),
+    ).toBe(true);
+  });
+
   it("prefers a higher share right, then a longer streak", () => {
     expect(isBetterAttempt({ correct: 8, longestStreak: 2, total: 10 }, { correct: 7, longestStreak: 7, total: 10 })).toBe(true)
     expect(isBetterAttempt({ correct: 7, longestStreak: 5, total: 10 }, { correct: 7, longestStreak: 3, total: 10 })).toBe(true)

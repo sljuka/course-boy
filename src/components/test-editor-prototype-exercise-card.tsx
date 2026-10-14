@@ -36,6 +36,7 @@ import { getTagAccentStyle, Tag } from "@/components/ui/tag";
 import type { CourseTagDefinition, TestExercise } from "@/components/test-editor-prototype-types";
 import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import { ExerciseMediaField } from "@/components/exercise-media-field";
+import { ExercisePointsField } from "@/components/exercise-points-field";
 import type { Locale } from "@/lib/i18n";
 import { useComboboxAnchor } from "@/components/ui/use-combobox-anchor";
 
@@ -272,12 +273,18 @@ export function ExercisePromptCard({
                 exercise={exercise}
                 locale={locale}
                 moreOptions={
-                  <ExerciseMediaField
-                    courseId={courseId}
-                    exercise={exercise}
-                    locale={locale}
-                    onChange={(updater) => onExerciseChange(exercise.id, updater)}
-                  />
+                  <>
+                    <ExercisePointsField
+                      exercise={exercise}
+                      onChange={(updater) => onExerciseChange(exercise.id, updater)}
+                    />
+                    <ExerciseMediaField
+                      courseId={courseId}
+                      exercise={exercise}
+                      locale={locale}
+                      onChange={(updater) => onExerciseChange(exercise.id, updater)}
+                    />
+                  </>
                 }
                 onChange={(updater) => onExerciseChange(exercise.id, updater)}
               />

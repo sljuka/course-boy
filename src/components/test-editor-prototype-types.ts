@@ -1,6 +1,7 @@
 import type { Locale } from "@/lib/i18n";
 import type { ExerciseMediaKind } from "@/lib/exercise-media";
 import type { CourseTagDefinition } from "@/lib/course-tags";
+import type { GradeBand } from "@/lib/grade-bands";
 
 type BlueprintRule = {
   count: number;
@@ -182,23 +183,27 @@ type RegionLabelTestExercise = {
   viewBox?: string;
 };
 
-type TestExercise =
+// Points (SLJ-135) are the same for every kind: undefined is the default.
+type TestExercise = (
   | NumericTestExercise
   | MultipleChoiceTestExercise
   | WordTypeTestExercise
   | MissingWordTestExercise
   | RegionPickerTestExercise
   | RegionMarkerTestExercise
-  | RegionLabelTestExercise;
+  | RegionLabelTestExercise
+) & { points?: number };
 
 type TestEditorState = {
   activeExerciseId: string;
   blueprint: BlueprintRule[];
   description: string;
   exercises: TestExercise[];
+  // A graded test (SLJ-135), and its own grade bands (null: the course's).
+  graded: boolean;
+  gradeBands: GradeBand[] | null;
   selectedLocale: Locale;
   showMnemonics: boolean;
-  strictAdvancement: boolean;
   useBlueprint: boolean;
 };
 

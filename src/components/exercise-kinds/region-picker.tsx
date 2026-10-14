@@ -77,6 +77,7 @@ const EXAMPLE_EXERCISE: RegionPickerCourseExercise = {
 
 const EXAMPLE_TEST: CourseTest = {
   exercises: [EXAMPLE_EXERCISE],
+  graded: false,
   id: "example",
 };
 

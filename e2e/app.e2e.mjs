@@ -1042,6 +1042,100 @@ describe('commit needs sections with content', () => {
 
 // SLJ-45: a section's summary (one line, for lists) and intro (a page students
 // see first when they start the section).
+// SLJ-135: a graded test gives no feedback while it's taken, asks before
+// finishing with questions left empty, and ends with the score (points of the
+// questions solved, out of all of them) in its grade band's colour.
+describe('graded test', () => {
+  it('a teacher makes a test graded, and a student finishes it with a score that stays on the course page', async () => {
+    const { page } = harness
+    const exercise = (prompt, formula, extra = {}) => ({
+      kind: 'numeric',
+      locales: { en: { prompt } },
+      solution: { formula, precision: 0 },
+      tags: [],
+      variables: {},
+      ...extra,
+    })
+    const ids = await page.evaluate(
+      async (exercises) => {
+        const { courseId } = await window.courses.createDraft({
+          defaultLocale: 'en',
+          locales: { en: { description: '', title: 'E2E Graded Course' } },
+          supportedLocales: ['en'],
+        })
+        const { sectionId } = await window.courses.createSection({ courseId, title: 'Exams' })
+        const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Final exam' })
+        await window.courses.saveSectionTest({ courseId, sectionId, test: { exercises, template: '' }, testId })
+        return { courseId, sectionId, testId }
+      },
+      [exercise('What is 1 plus 1?', '2', { points: 30 }), exercise('What is 2 plus 2?', '4')],
+    )
+    const testFile = path.join(DATA_DIR, 'courses', ids.courseId, 'draft', ids.sectionId, `${ids.testId}.json`)
+    const readTest = () => JSON.parse(fs.readFileSync(testFile, 'utf8'))
+    const button = (name) => page.getByRole('button', { exact: true, name })
+
+    // The editor: Graded test instead of Practice test. The points stay.
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await page.getByText('Final exam', { exact: true }).first().click()
+    await page.locator('[data-testid="test-type-graded"]').click()
+    await expect.poll(() => readTest().graded, { timeout: 15_000 }).toBe(true)
+    expect(readTest().exercises.map((saved) => saved.points)).toEqual([30, undefined])
+
+    // Under "Show more options": bands of its own, starting from the
+    // course's; unticked again, the course's apply (none in the file).
+    await page.locator('[data-testid="test-more-options"]').click()
+    await page.locator('[data-testid="test-own-grade-bands"]').click()
+    await page.locator('[data-testid="test-grade-bands"]').waitFor()
+    await expect.poll(() => readTest().gradeBands?.map((band) => band.min), { timeout: 15_000 }).toEqual([95, 85, 55])
+    await page.locator('[data-testid="test-own-grade-bands"]').click()
+    await page.locator('[data-testid="grade-bands-summary"]').waitFor()
+    await expect.poll(() => readTest().gradeBands, { timeout: 15_000 }).toBeUndefined()
+
+    // Taking it: no checking along the way, Next moves on.
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    const answer = page.getByPlaceholder('Type the result')
+    await answer.waitFor({ timeout: 15_000 })
+    expect(await button('Check answer').count()).toBe(0)
+    expect(await page.locator('[data-testid="course-spree"]').count()).toBe(0)
+    await answer.fill('2')
+    await button('Next').click()
+    await waitForText(page, 'What is 2 plus 2?')
+
+    // Finishing with the second left empty asks first; it counts as wrong.
+    await button('Finish test').click()
+    const dialog = page.locator('[data-testid="finish-graded-test-dialog"]')
+    await dialog.waitFor()
+    expect(await dialog.innerText()).toContain('Questions without an answer: 1.')
+    await dialog.getByRole('button', { exact: true, name: 'Finish test' }).click()
+
+    // 30 of 40 points: 75%, yellow in the default bands (55%+).
+    await page.locator('[data-testid="graded-test-result"]').waitFor()
+    expect(await page.locator('[data-testid="graded-test-points"]').innerText()).toBe('30/40 points')
+    const percent = page.locator('[data-testid="graded-test-percent"]')
+    expect(await percent.innerText()).toBe('75%')
+    expect(await percent.getAttribute('data-tone')).toBe('yellow')
+    await expect
+      .poll(() => page.evaluate((id) => window.progress.get().then((state) => state.courses[id]?.steps), ids.courseId))
+      .toMatchObject({ [ids.testId]: { test: { best: { maxPoints: 40, points: 30 } } } })
+
+    // Try again starts over, from the first question.
+    await button('Try again').click()
+    await waitForText(page, 'What is 1 plus 1?')
+    expect(await answer.inputValue()).toBe('')
+
+    // The course page shows the best score, in its band's colour.
+    await button('Close course').click()
+    const score = page.locator('[data-testid="step-progress-score"]')
+    await score.waitFor({ timeout: 15_000 })
+    expect(await score.innerText()).toBe('30/40')
+    expect(await score.getAttribute('data-tone')).toBe('yellow')
+  })
+})
+
 describe('rename from the explorer', () => {
   it('Rename opens a section, a document or a test with its title field focused, and the new title is saved', async () => {
     const { page } = harness

@@ -19,7 +19,11 @@ function createId(prefix: string) {
 export function toSharedTestExerciseDefinition(
   exercise: TestExercise,
 ): SharedTestExerciseDefinition {
-  const shared = getExerciseKindEditor(exercise.kind).toShared(exercise);
+  // Points are the same for every kind, and only written when set (SLJ-135).
+  const kindShared = getExerciseKindEditor(exercise.kind).toShared(exercise);
+  const shared = (
+    exercise.points !== undefined ? { ...kindShared, points: exercise.points } : kindShared
+  ) as SharedTestExerciseDefinition;
   const media = "media" in exercise ? exercise.media : undefined;
 
   if (!media || !supportsExerciseMedia(exercise.kind)) {
@@ -54,7 +58,10 @@ export function fromSharedTestExerciseDefinition(
   // `kind` field at all — default it to "numeric", same as the backend's
   // read-time normalization in electron/course-registry.ts.
   const kind = definition.kind ?? "numeric";
-  const exercise = getExerciseKindEditor(kind).fromShared(definition);
+  const kindExercise = getExerciseKindEditor(kind).fromShared(definition);
+  const exercise = (
+    definition.points !== undefined ? { ...kindExercise, points: definition.points } : kindExercise
+  ) as TestExercise;
   const media = "media" in definition ? definition.media : undefined;
 
   if (!media || !supportsExerciseMedia(kind)) {
@@ -82,8 +89,10 @@ export function toSharedTestDefinition(testState: TestEditorState): SharedTestDe
 
   return {
     exercises: testState.exercises.map(toSharedTestExerciseDefinition),
+    ...(testState.graded ? { graded: true } : {}),
+    // Its own bands only on a graded test that has them.
+    ...(testState.graded && testState.gradeBands ? { gradeBands: testState.gradeBands } : {}),
     ...(testState.showMnemonics ? { showMnemonics: true } : {}),
-    strictAdvancement: testState.strictAdvancement,
     template: testState.description,
     ...(structure ? { structure } : {}),
   };
@@ -105,9 +114,10 @@ export function fromSharedTestDefinition(
     blueprint,
     description: definition.template,
     exercises,
+    graded: definition.graded ?? false,
+    gradeBands: definition.gradeBands ?? null,
     selectedLocale: supportedLocales[0] ?? "en",
     showMnemonics: definition.showMnemonics ?? false,
-    strictAdvancement: definition.strictAdvancement ?? true,
     // Presence, not length: a teacher can enable randomization before
     // adding any rule yet, and `toSharedTestDefinition` above already
     // writes `structure: []` (not `undefined`) in that case — deriving

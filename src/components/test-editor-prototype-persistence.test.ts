@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  fromSharedTestDefinition,
   fromSharedTestExerciseDefinition,
+  toSharedTestDefinition,
   toSharedTestExerciseDefinition,
 } from "@/components/test-editor-prototype-persistence"
 import type {
@@ -11,6 +13,43 @@ import type {
   WordTypeTestExercise,
 } from "@/components/test-editor-prototype-types"
 import type { SharedTestExerciseDefinition } from "@/lib/course-package"
+
+describe("graded tests (SLJ-135)", () => {
+  const exercise: NumericTestExercise = {
+    kind: "numeric",
+    id: "ex_points",
+    locales: { en: { answerPlaceholder: "", hint: "", prompt: "1 + 1?" } },
+    solution: "2",
+    solutionSpace: "md",
+    tagIds: [],
+    variables: [],
+  }
+
+  it("keeps an exercise's points only when they aren't the default", () => {
+    expect(toSharedTestExerciseDefinition({ ...exercise, points: 30 })).toMatchObject({ points: 30 })
+    expect(toSharedTestExerciseDefinition(exercise)).not.toHaveProperty("points")
+    expect(fromSharedTestExerciseDefinition(toSharedTestExerciseDefinition({ ...exercise, points: 30 })).points).toBe(30)
+  })
+
+  it("round-trips a graded test and its own grade bands, and drops the bands on a practice test", () => {
+    const state = fromSharedTestDefinition(
+      { exercises: [], graded: true, gradeBands: [{ color: "gold", min: 90 }], template: "" },
+      ["en"],
+    )
+
+    expect(state.graded).toBe(true)
+    expect(toSharedTestDefinition(state)).toMatchObject({ graded: true, gradeBands: [{ color: "gold", min: 90 }] })
+    expect(toSharedTestDefinition({ ...state, graded: false })).not.toHaveProperty("gradeBands")
+    expect(toSharedTestDefinition({ ...state, graded: false })).not.toHaveProperty("graded")
+  })
+
+  it("reads an older test's strictAdvancement as a practice test", () => {
+    const legacy = { exercises: [], strictAdvancement: false, template: "" } as Parameters<typeof fromSharedTestDefinition>[0]
+
+    expect(fromSharedTestDefinition(legacy, ["en"]).graded).toBe(false)
+    expect(toSharedTestDefinition(fromSharedTestDefinition(legacy, ["en"]))).not.toHaveProperty("strictAdvancement")
+  })
+})
 
 describe("exercise kind persistence", () => {
   it("round-trips a single-answer multiple-choice exercise", () => {

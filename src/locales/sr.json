@@ -132,7 +132,17 @@
     "noSectionsTitle": "Za početak",
     "testLabel": "Test",
     "noSections": "Ovaj kurs još nema sekcija.",
-    "sectionIntro": "Uvod"
+    "sectionIntro": "Uvod",
+    "finishTest": "Završi test",
+    "nextQuestion": "Dalje",
+    "gradedResultTitle": "Tvoj rezultat",
+    "gradedPercent": "{{percent}}%",
+    "gradedPoints": "{{points}}/{{maxPoints}} bodova",
+    "newBest": "Novi najbolji!",
+    "tryAgain": "Pokušaj ponovo",
+    "finishTestDialogTitle": "Završiti test?",
+    "finishTestDialogDescription": "Pitanja bez odgovora: {{count}}. Računaju se kao netačna.",
+    "keepGoing": "Nastavi"
   },
   "courseVersions": {
     "actionErrorTitle": "Nešto nije u redu",
@@ -502,7 +512,27 @@
   },
   "testEditor": {
     "tagsTooltip": "Oznake su korisne za obeležavanje zadataka. Koriste se za nasumičan izbor zadataka. Oznake se podešavaju u korenskom folderu kursa.",
-    "moreOptions": "Prikaži još opcija"
+    "moreOptions": "Prikaži još opcija",
+    "testType": "Vrsta testa",
+    "practice": "Test za vežbu",
+    "practiceDescription": "Pokazuje da li je svaki odgovor tačan. U interaktivnom režimu učenik ide dalje posle tačnog odgovora.",
+    "graded": "Test sa ocenom",
+    "gradedDescription": "Test ne pokazuje da li je odgovor tačan posle svakog pitanja. Na kraju pokazuje rezultat.",
+    "points": "Bodovi",
+    "pointsHelp": "Dobijaju se za tačno rešen zadatak u testu sa ocenom.",
+    "pointsInvalid": "Ceo broj od 1 do 100.",
+    "description": "Opis",
+    "descriptionPlaceholder": "Dodaj kratak opis testa",
+    "ownGradeBands": "Koristi opsege ocena samo za ovaj test",
+    "ownGradeBandsHelp": "Važi samo za test sa ocenom: boja rezultata na kraju. Ako nije označeno, važe opsezi ocena kursa.",
+    "randomize": "Uključi nasumičan izbor zadataka",
+    "randomizeHelp": "Svaki pokušaj nasumično bira zadatke po oznakama: od svake oznake onoliko koliko kaže njeno pravilo. Oznake se dodaju na stranici kursa.",
+    "ruleTag": "Oznaka",
+    "ruleTagPlaceholder": "Izaberi oznaku",
+    "ruleCount": "Broj zadataka",
+    "addRule": "Dodaj još označenih zadataka",
+    "ruleShortage": "Potrebno je {{count}} zadataka sa oznakom „{{tag}}”, a ima ih samo {{available}}.",
+    "randomizeNeedsTags": "Može se uključiti kada kurs ima {{count}} ili više oznaka."
   },
   "theme": {
     "switchToDark": "Prebaci na tamnu temu",
@@ -603,7 +633,8 @@
       "tags": "Izmenjene oznake kursa",
       "defaultLocale": "Izmenjen glavni jezik",
       "serbianScript": "Izmenjeno generisanje ćirilice i latinice",
-      "mnemonics": "Promenjene mnemotehnike"
+      "mnemonics": "Promenjene mnemotehnike",
+      "gradeBands": "Izmenjeni opsezi ocena"
     },
     "language": {
       "added": "Dodat jezik: {{language}}",
@@ -911,7 +942,9 @@
     "done": "Urađeno",
     "streak": "{{streak}}/{{total}}",
     "streakLabel": "Najbolji niz: {{streak}} od {{total}} tačnih iz prve zaredom",
-    "streakDetails": "Najbolji niz · najbolji rezultat {{correct}}/{{total}} · pokušaji: {{attempts}}"
+    "streakDetails": "Najbolji niz · najbolji rezultat {{correct}}/{{total}} · pokušaji: {{attempts}}",
+    "score": "{{points}}/{{maxPoints}}",
+    "scoreDetails": "Najbolji rezultat · {{percent}}% · pokušaja: {{attempts}}"
   },
   "programs": {
     "new": "Novi program",
@@ -1209,5 +1242,29 @@
     "newAccessCode": "Novi pristupni kod",
     "newAccessCodeHint": "Agenti koji koriste trenutni kod neće moći da se povežu dok se ne podese sa novim.",
     "newAccessCodeAction": "Novi kod"
+  },
+  "gradeBands": {
+    "title": "Opsezi ocena",
+    "courseHelp": "Boja rezultata testa sa ocenom: svaki opseg od svog procenta naviše. Test sa ocenom može imati i svoje.",
+    "minLabel": "Opseg {{index}}: od procenta",
+    "andUp": "% i više",
+    "colorLabel": "Opseg {{index}}: boja",
+    "removeBand": "Ukloni opseg {{index}}",
+    "addBand": "Dodaj opseg",
+    "below": "Ispod {{min}}%",
+    "invalid": "Svaki opseg treba svoj procenat, ceo broj od 1 do 100.",
+    "summaryBand": "{{min}}% i više: {{color}}",
+    "colors": {
+      "gold": "Zlatna",
+      "green": "Zelena",
+      "yellow": "Žuta",
+      "orange": "Narandžasta",
+      "red": "Crvena",
+      "purple": "Ljubičasta",
+      "blue": "Plava",
+      "grey": "Siva"
+    },
+    "belowColorLabel": "Ispod {{min}}%: boja",
+    "belowSummary": "Ispod {{min}}%: {{color}}"
   }
 }

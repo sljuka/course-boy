@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import { Info, Map, RotateCcw, Upload, X, ZoomIn } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -54,6 +55,7 @@ export function RegionLabelExerciseFields({
   courseId,
   exercise,
   locale,
+  moreOptions,
   onChange,
 }: FieldsComponentProps<RegionLabelTestExercise>) {
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
@@ -288,6 +290,9 @@ export function RegionLabelExerciseFields({
           </div>
         )}
       </Field>
+      {moreOptions && (
+        <ExerciseMoreOptions defaultOpen={hasMoreOptionsSet(exercise)}>{moreOptions}</ExerciseMoreOptions>
+      )}
     </>
   );
 }

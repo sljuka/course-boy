@@ -1,6 +1,6 @@
 import { Plus, X } from "lucide-react";
 
-import { ExerciseMoreOptions } from "@/components/exercise-kinds/exercise-more-options";
+import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
@@ -165,7 +165,7 @@ export function MultipleChoiceExerciseFields({
         )}
       </Field>
       {moreOptions && (
-        <ExerciseMoreOptions defaultOpen={Boolean(exercise.media)}>{moreOptions}</ExerciseMoreOptions>
+        <ExerciseMoreOptions defaultOpen={hasMoreOptionsSet(exercise)}>{moreOptions}</ExerciseMoreOptions>
       )}
     </>
   );

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { ExerciseMoreOptions } from "@/components/exercise-kinds/exercise-more-options";
+import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -137,7 +137,7 @@ export function MissingWordExerciseFields({
         </Card>
       )}
       {moreOptions && (
-        <ExerciseMoreOptions defaultOpen={Boolean(exercise.media)}>{moreOptions}</ExerciseMoreOptions>
+        <ExerciseMoreOptions defaultOpen={hasMoreOptionsSet(exercise)}>{moreOptions}</ExerciseMoreOptions>
       )}
     </>
   );

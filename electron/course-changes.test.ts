@@ -186,6 +186,41 @@ describe("computeCourseChanges", () => {
     expect(await course.changes()).toEqual([{ kind: "added", locale: "sr", target: "language" }]);
   });
 
+  // SLJ-135: the course's grade bands are kept highest first, kept when a
+  // save doesn't send them, dropped by null (the defaults), refused when
+  // invalid, and listed as one change.
+  it("stores grade bands, keeps them when not sent, and lists them as one change", async () => {
+    const course = await seedCutCourse();
+    const save = (gradeBands?: unknown) =>
+      updateLocalCourseDraftMetadata({
+        contentRating: "all-ages",
+        courseId: course.courseId,
+        defaultLocale: "en",
+        descriptiveTags: [],
+        locales: { en: { description: "", title: "Numbers" } },
+        supportedLocales: ["en"],
+        ...(gradeBands === undefined ? {} : { gradeBands: gradeBands as never }),
+      });
+    const stored = async () =>
+      JSON.parse(await fs.readFile(path.join(course.draftDir, "course.json"), "utf8")).gradeBands;
+
+    await save([
+      { color: "blue", min: 0 },
+      { color: "gold", min: 90 },
+    ]);
+    expect(await stored()).toEqual([
+      { color: "gold", min: 90 },
+      { color: "blue", min: 0 },
+    ]);
+    await save();
+    expect(await stored()).toHaveLength(2);
+    expect(await course.changes()).toEqual([{ field: "gradeBands", kind: "edited", target: "course" }]);
+
+    await expect(save([{ color: "pink", min: 50 }])).rejects.toThrow("Invalid grade bands");
+    await save(null);
+    expect(await stored()).toBeUndefined();
+  });
+
   // SLJ-37: mnemonics live in each language's metadata; saving keeps only
   // valid rows, keeps them across saves that don't send them, and a change is
   // its own entry when cutting a version.

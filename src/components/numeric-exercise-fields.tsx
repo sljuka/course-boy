@@ -4,7 +4,7 @@ import { Plus, TriangleAlert, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
-import { ExerciseMoreOptions } from "@/components/exercise-kinds/exercise-more-options";
+import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Input } from "@/components/ui/input";
@@ -251,7 +251,7 @@ export function NumericExerciseFields({
         )}
       </Field>
 
-      <ExerciseMoreOptions defaultOpen={Boolean(exercise.media)}>
+      <ExerciseMoreOptions defaultOpen={hasMoreOptionsSet(exercise)}>
           <Field>
             <FieldLabel htmlFor={`exercise-answer-placeholder-${exercise.id}-${locale}`}>
               Result input placeholder

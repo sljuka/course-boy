@@ -46,7 +46,8 @@ the profile's folder (an `electron-store` file, like `config.json` and `course-s
 read and written only by `electron/course-progress.ts` and reached from the renderer through
 `window.progress`. Per course: started and last-opened times, the favorite star, and per step
 (a lesson, or a test by its own id) when it was done and, for a test, the latest and best
-first-try score with its longest streak and the number of attempts; and the course's spree
+first-try score with its longest streak and the number of attempts (a graded test's attempt
+also has its `points` out of `maxPoints`, SLJ-135, and its best is the higher share of points); and the course's spree
 (SLJ-134: first-try right answers in a row across its tests in interactive mode, written after
 each answer, and the best one). "Finished" is never
 stored: `summarizeCourseProgress` (`src/lib/course-progress.ts`) works it out against the

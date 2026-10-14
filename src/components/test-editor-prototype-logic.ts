@@ -23,9 +23,10 @@ function createInitialState(locales: Locale[]): TestEditorState {
     blueprint: [] satisfies BlueprintRule[],
     description: "",
     exercises: [],
+    graded: false,
+    gradeBands: null,
     selectedLocale: locales[0] ?? "en",
     showMnemonics: false,
-    strictAdvancement: true,
     useBlueprint: false,
   };
 }
@@ -194,11 +195,9 @@ function normalizeDraftTestData(
               : "",
           blueprint: normalizedBlueprint,
           exercises: normalizedExercises,
+          graded: draftState.graded === true,
+          gradeBands: draftState.gradeBands ?? null,
           showMnemonics: draftState.showMnemonics === true,
-          strictAdvancement:
-            typeof draftState.strictAdvancement === "boolean"
-              ? draftState.strictAdvancement
-              : true,
         } satisfies TestEditorState,
       ];
     }),
@@ -233,10 +232,17 @@ function toggleExerciseTag(
   };
 }
 
+// Whether anything under the test's "Show more options" (SLJ-135) differs
+// from a plain test, so it starts open and the teacher sees it.
+function hasTestMoreOptionsSet(state: TestEditorState): boolean {
+  return state.useBlueprint || state.showMnemonics || (state.graded && state.gradeBands !== null);
+}
+
 export {
   countMatchingExercises,
   createInitialState,
   createInitialCourseTags,
+  hasTestMoreOptionsSet,
   normalizeDraftTestData,
   toggleExerciseTag,
 };

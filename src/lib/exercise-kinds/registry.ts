@@ -112,7 +112,11 @@ export function resolveSharedExerciseForPlayer(
       )
     : undefined;
 
-  return media ? { ...resolved, media } : resolved;
+  // Points too (SLJ-135): kept only when set, like the file.
+  const points = (exercise as { points?: number }).points;
+  const withPoints = typeof points === "number" ? { ...resolved, points } : resolved;
+
+  return media ? { ...withPoints, media } : withPoints;
 }
 
 export function resolveSharedTestForPlayer(
@@ -131,8 +135,9 @@ export function resolveSharedTestForPlayer(
       ),
     ),
     id: testId,
+    graded: sharedTest.graded ?? false,
+    ...(sharedTest.gradeBands ? { gradeBands: sharedTest.gradeBands } : {}),
     showMnemonics: sharedTest.showMnemonics ?? false,
-    strictAdvancement: sharedTest.strictAdvancement ?? true,
     structure: sharedTest.structure,
   };
 }

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { ExerciseMoreOptions } from "@/components/exercise-kinds/exercise-more-options";
+import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import { Check, Plus, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -302,7 +302,7 @@ export function WordTypeExerciseFields({
         )}
       </Field>
       {moreOptions && (
-        <ExerciseMoreOptions defaultOpen={Boolean(exercise.media)}>{moreOptions}</ExerciseMoreOptions>
+        <ExerciseMoreOptions defaultOpen={hasMoreOptionsSet(exercise)}>{moreOptions}</ExerciseMoreOptions>
       )}
     </>
   );

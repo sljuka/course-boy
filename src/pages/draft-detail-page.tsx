@@ -16,6 +16,7 @@ export function DraftDetailPage() {
   const {
     contentRating,
     courseDescriptiveTags,
+    courseGradeBands,
     courseSections,
     defaultLocale,
     isCourseDetailsLoading,
@@ -44,6 +45,7 @@ export function DraftDetailPage() {
     return (
       <CourseMetadataEditor
         contentRating={contentRating}
+        courseGradeBands={courseGradeBands}
         courseId={courseId}
         courseSections={courseSections}
         defaultLocale={defaultLocale}
@@ -60,6 +62,7 @@ export function DraftDetailPage() {
     return (
       <DraftTestEditor
         key={selectedNode.id}
+        courseGradeBands={courseGradeBands}
         courseId={courseId}
         courseSections={courseSections}
         defaultLocale={defaultLocale}

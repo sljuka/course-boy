@@ -1,4 +1,5 @@
 import type { CourseExerciseMedia, SharedExerciseMedia } from "@/lib/exercise-media";
+import type { GradeBand } from "@/lib/grade-bands";
 import type { Locale } from "@/lib/i18n";
 import type { CourseMnemonic } from "@/lib/mnemonics";
 import type { CourseAssetKind } from "@/lib/course-asset-id";
@@ -31,6 +32,9 @@ export type CourseManifest = {
   createdAt?: string;
   defaultLocale: Locale;
   descriptiveTags?: CourseTagDefinition[];
+  // Graded tests' grade bands (SLJ-135, lib/grade-bands.ts); missing until
+  // the teacher changes them: the defaults.
+  gradeBands?: GradeBand[];
   id: string;
   locales: Record<Locale, LocalizedCourseMetadata>;
   // Write Serbian in one script, generate the other (SLJ-17). Only on a
@@ -271,14 +275,23 @@ export type RegionLabelCourseExercise = {
   viewBox?: string;
 };
 
-export type CourseExercise =
+// What every exercise kind can have.
+export type ExercisePointsField = {
+  // Earned for solving it correctly in a graded test (SLJ-135); missing
+  // means `DEFAULT_EXERCISE_POINTS` (lib/grade-bands.ts).
+  points?: number;
+};
+
+export type CourseExercise = (
   | NumericCourseExercise
   | MultipleChoiceCourseExercise
   | WordTypeCourseExercise
   | MissingWordCourseExercise
   | RegionPickerCourseExercise
   | RegionMarkerCourseExercise
-  | RegionLabelCourseExercise;
+  | RegionLabelCourseExercise
+) &
+  ExercisePointsField;
 
 export type CourseTestStructureRule = {
   count: number;
@@ -287,11 +300,14 @@ export type CourseTestStructureRule = {
 
 export type CourseTest = {
   exercises: CourseExercise[];
+  // A graded test (SLJ-135): no feedback after each answer, a score at the
+  // end. Otherwise a practice test: feedback after each answer, and
+  // interactive mode moves on only after a correct one.
+  graded: boolean;
+  // The test's own grade bands, when the teacher set them for this test;
+  // otherwise the course's apply (`resolveGradeBands`).
+  gradeBands?: GradeBand[];
   id: string;
-  // Whether interactive mode requires a correct answer before advancing to
-  // the next exercise. Undefined (e.g. a test saved before this setting
-  // existed) means strict — see `resolveSharedTestForPlayer`.
-  strictAdvancement?: boolean;
   // Show the course's mnemonics in this test's prompts (SLJ-37). Off unless
   // the teacher turns it on: a badge could give an answer away.
   showMnemonics?: boolean;
@@ -389,20 +405,25 @@ export type SharedRegionLabelTestExerciseDefinition = {
   tags: string[];
 };
 
-export type SharedTestExerciseDefinition =
+export type SharedTestExerciseDefinition = (
   | SharedNumericTestExerciseDefinition
   | SharedMultipleChoiceTestExerciseDefinition
   | SharedWordTypeTestExerciseDefinition
   | SharedMissingWordTestExerciseDefinition
   | SharedRegionPickerTestExerciseDefinition
   | SharedRegionMarkerTestExerciseDefinition
-  | SharedRegionLabelTestExerciseDefinition;
+  | SharedRegionLabelTestExerciseDefinition
+) &
+  ExercisePointsField;
 
 export type SharedTestDefinition = {
   exercises: SharedTestExerciseDefinition[];
+  // See `CourseTest.graded` and `.gradeBands`; missing means a practice test
+  // (older files may still carry `strictAdvancement`, no longer read).
+  graded?: boolean;
+  gradeBands?: GradeBand[];
   // See `CourseTest.showMnemonics`; missing means off.
   showMnemonics?: boolean;
-  strictAdvancement?: boolean;
   structure?: CourseTestStructureRule[];
   template: string;
 };
@@ -540,6 +561,8 @@ export type CourseDetails = CourseSummary & {
   // the package doesn't say.
   createdAt: string | null;
   entrySectionId: string | null;
+  // The course's grade bands (SLJ-135), or null for the defaults.
+  gradeBands: GradeBand[] | null;
   lessonIds: string[];
   locales: Record<Locale, LocalizedCourseMetadata>;
   sections: CourseSectionPreview[];
@@ -695,6 +718,8 @@ export type UpdateCourseDraftMetadataInput = {
   // Choosing a source adds both Serbian locales and regenerates the other
   // script across the whole draft.
   serbianScript?: SerbianScriptSetting | null;
+  // Omitted: keep the course's. null: back to the defaults (SLJ-135).
+  gradeBands?: GradeBand[] | null;
   supportedLocales: Locale[];
 };
 
@@ -765,7 +790,15 @@ export type CourseChange =
   | {
       kind: "edited";
       target: "course";
-      field: "contentRating" | "defaultLocale" | "description" | "mnemonics" | "serbianScript" | "tags" | "title";
+      field:
+        | "contentRating"
+        | "defaultLocale"
+        | "description"
+        | "gradeBands"
+        | "mnemonics"
+        | "serbianScript"
+        | "tags"
+        | "title";
     }
   | { kind: "added" | "removed"; target: "language"; locale: string }
   | { kind: "added" | "removed"; target: "files"; count: number };

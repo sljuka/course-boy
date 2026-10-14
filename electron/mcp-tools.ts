@@ -11,6 +11,7 @@ import type {
   SharedTestExerciseDefinition,
 } from "../src/lib/course-package";
 import { isValidCourseId } from "../src/lib/course-id";
+import { DEFAULT_EXERCISE_POINTS, MAX_EXERCISE_POINTS, MIN_EXERCISE_POINTS } from "../src/lib/grade-bands";
 import { isLocale, type Locale } from "../src/lib/i18n";
 import { BLOCK_MARKER_PATTERN, blockMarker } from "../src/lib/lesson-block-markers";
 import { extractMissingWordVariableNames, missingWordTextFromSegments } from "../src/lib/missing-word-markup";
@@ -22,6 +23,8 @@ import {
   createLocalCourseSectionTest,
   cutLocalCourseVersion,
   ensureLocalCoursesRoot,
+  getLocalCourseLessonTestDraft,
+  getLocalCourseSectionTestDraft,
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
   updateLocalCourseLessonMetadata,
@@ -86,6 +89,15 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 // ─── Tests: a list of questions ─────────────────────────────────────────────
 
+// A graded test's points for a question (SLJ-135).
+const points = z
+  .number()
+  .int()
+  .min(MIN_EXERCISE_POINTS)
+  .max(MAX_EXERCISE_POINTS)
+  .optional()
+  .describe(`Points for solving it in a graded test (default ${DEFAULT_EXERCISE_POINTS})`);
+
 const questionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("multiple_choice"),
@@ -93,6 +105,7 @@ const questionSchema = z.discriminatedUnion("type", [
     options: z.array(z.string().min(1)).min(2),
     correct: z.array(z.number().int().min(0)).min(1).describe("0-based indexes of the correct options"),
     hint: z.string().optional(),
+    points,
   }),
   z.object({
     type: z.literal("number"),
@@ -113,6 +126,7 @@ const questionSchema = z.discriminatedUnion("type", [
       .optional()
       .describe("Whole-number variables used in the prompt and formula"),
     hint: z.string().optional(),
+    points,
   }),
   z.object({
     type: z.literal("fill_in"),
@@ -131,114 +145,138 @@ const questionSchema = z.discriminatedUnion("type", [
       )
       .describe("Each blank named in the text, with its accepted answers"),
     hint: z.string().optional(),
+    points,
   }),
 ]);
 
 type Question = z.infer<typeof questionSchema>;
 
-export function testFromQuestions(questions: Question[], locale: Locale): SharedTestDefinition {
+// `kept`: the settings of the test being replaced that the questions don't
+// carry (whether it's graded, its own grade bands, mnemonics), kept unless the
+// call says otherwise.
+export function testFromQuestions(
+  questions: Question[],
+  locale: Locale,
+  kept: Pick<SharedTestDefinition, "graded" | "gradeBands" | "showMnemonics"> = {},
+): SharedTestDefinition {
   const exercises = questions.map((question): SharedTestExerciseDefinition => {
-    const hint = question.hint?.trim() ? { hint: question.hint.trim() } : {};
-
-    if (question.type === "multiple_choice") {
-      const correct = [...new Set(question.correct)].sort((left, right) => left - right);
-      if (correct.some((index) => index >= question.options.length)) {
-        throw new Error(`"${question.prompt}": a correct option index is past the last option`);
-      }
-      return {
-        correctOptionIndexes: correct,
-        kind: "multiple-choice",
-        locales: { [locale]: { ...hint, options: question.options, prompt: question.prompt } },
-        selectionMode: correct.length > 1 ? "multiple" : "single",
-        tags: [],
-      };
-    }
-
-    if (question.type === "fill_in") {
-      const named = extractMissingWordVariableNames(question.text);
-      if (named.length === 0) throw new Error(`"${question.prompt}": the text has no {{blank}} to fill in`);
-      const missing = named.filter((name) => !(name in question.blanks));
-      if (missing.length > 0) throw new Error(`"${question.prompt}": no answers for the blank ${missing.join(", ")}`);
-      const unused = Object.keys(question.blanks).filter((name) => !named.includes(name));
-      if (unused.length > 0) throw new Error(`"${question.prompt}": the text has no blank ${unused.join(", ")}`);
-      return {
-        kind: "missing-word",
-        locales: {
-          [locale]: {
-            ...hint,
-            prompt: question.prompt,
-            text: question.text,
-            variables: named.map((name) => ({
-              answers: question.blanks[name].answers,
-              matchCase: question.blanks[name].matchCase ?? false,
-              name,
-            })),
-          },
-        },
-        tags: [],
-      };
-    }
-
-    const variables = Object.fromEntries(
-      Object.entries(question.variables ?? {}).map(([name, range]) => {
-        if (range.min > range.max) throw new Error(`"${question.prompt}": variable ${name} has min above max`);
-        return [name, { max: range.max, min: range.min, type: "integer" as const }];
-      }),
-    );
-    return {
-      kind: "numeric",
-      locales: { [locale]: { ...hint, prompt: question.prompt } },
-      solution: { formula: question.answer, precision: question.decimals ?? 0 },
-      tags: [],
-      variables,
-    };
+    const exercise = exerciseFromQuestion(question, locale);
+    return question.points === undefined ? exercise : { ...exercise, points: question.points };
   });
 
-  return { exercises, template: "" };
+  return {
+    exercises,
+    ...(kept.graded ? { graded: true } : {}),
+    ...(kept.graded && kept.gradeBands ? { gradeBands: kept.gradeBands } : {}),
+    ...(kept.showMnemonics ? { showMnemonics: true } : {}),
+    template: "",
+  };
+}
+
+function exerciseFromQuestion(question: Question, locale: Locale): SharedTestExerciseDefinition {
+  const hint = question.hint?.trim() ? { hint: question.hint.trim() } : {};
+
+  if (question.type === "multiple_choice") {
+    const correct = [...new Set(question.correct)].sort((left, right) => left - right);
+    if (correct.some((index) => index >= question.options.length)) {
+      throw new Error(`"${question.prompt}": a correct option index is past the last option`);
+    }
+    return {
+      correctOptionIndexes: correct,
+      kind: "multiple-choice",
+      locales: { [locale]: { ...hint, options: question.options, prompt: question.prompt } },
+      selectionMode: correct.length > 1 ? "multiple" : "single",
+      tags: [],
+    };
+  }
+
+  if (question.type === "fill_in") {
+    const named = extractMissingWordVariableNames(question.text);
+    if (named.length === 0) throw new Error(`"${question.prompt}": the text has no {{blank}} to fill in`);
+    const missing = named.filter((name) => !(name in question.blanks));
+    if (missing.length > 0) throw new Error(`"${question.prompt}": no answers for the blank ${missing.join(", ")}`);
+    const unused = Object.keys(question.blanks).filter((name) => !named.includes(name));
+    if (unused.length > 0) throw new Error(`"${question.prompt}": the text has no blank ${unused.join(", ")}`);
+    return {
+      kind: "missing-word",
+      locales: {
+        [locale]: {
+          ...hint,
+          prompt: question.prompt,
+          text: question.text,
+          variables: named.map((name) => ({
+            answers: question.blanks[name].answers,
+            matchCase: question.blanks[name].matchCase ?? false,
+            name,
+          })),
+        },
+      },
+      tags: [],
+    };
+  }
+
+  const variables = Object.fromEntries(
+    Object.entries(question.variables ?? {}).map(([name, range]) => {
+      if (range.min > range.max) throw new Error(`"${question.prompt}": variable ${name} has min above max`);
+      return [name, { max: range.max, min: range.min, type: "integer" as const }];
+    }),
+  );
+  return {
+    kind: "numeric",
+    locales: { [locale]: { ...hint, prompt: question.prompt } },
+    solution: { formula: question.answer, precision: question.decimals ?? 0 },
+    tags: [],
+    variables,
+  };
 }
 
 // A saved test as questions, for the kinds the tools can write; other kinds
 // (made in the app) are named so the agent knows they're there.
 export function questionsFromTest(test: CourseTest | null): unknown[] {
-  return (test?.exercises ?? []).map((exercise: CourseExercise) => {
-    if (exercise.kind === "multiple-choice") {
-      return {
-        correct: exercise.correctOptionIndexes,
-        options: exercise.options,
-        prompt: exercise.prompt,
-        type: "multiple_choice",
-        ...(exercise.hint ? { hint: exercise.hint } : {}),
-      };
-    }
-    if (exercise.kind === "numeric") {
-      return {
-        answer: exercise.formula,
-        decimals: exercise.precision,
-        prompt: exercise.prompt,
-        type: "number",
-        ...(Object.keys(exercise.variables).length > 0
-          ? {
-              variables: Object.fromEntries(
-                Object.entries(exercise.variables).map(([name, variable]) => [name, { max: variable.max, min: variable.min }]),
-              ),
-            }
-          : {}),
-        ...(exercise.hint ? { hint: exercise.hint } : {}),
-      };
-    }
-    if (exercise.kind === "missing-word") {
-      return {
-        blanks: Object.fromEntries(
-          exercise.variables.map((variable) => [variable.name, { answers: variable.answers, matchCase: variable.matchCase }]),
-        ),
-        prompt: exercise.prompt,
-        text: missingWordTextFromSegments(exercise.segments),
-        type: "fill_in",
-        ...(exercise.hint ? { hint: exercise.hint } : {}),
-      };
-    }
-    return { prompt: "prompt" in exercise ? exercise.prompt : "", type: exercise.kind, editable: false };
-  });
+  return (test?.exercises ?? []).map((exercise: CourseExercise) => ({
+    ...questionFromExercise(exercise),
+    ...(exercise.points !== undefined ? { points: exercise.points } : {}),
+  }));
+}
+
+function questionFromExercise(exercise: CourseExercise): Record<string, unknown> {
+  if (exercise.kind === "multiple-choice") {
+    return {
+      correct: exercise.correctOptionIndexes,
+      options: exercise.options,
+      prompt: exercise.prompt,
+      type: "multiple_choice",
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  if (exercise.kind === "numeric") {
+    return {
+      answer: exercise.formula,
+      decimals: exercise.precision,
+      prompt: exercise.prompt,
+      type: "number",
+      ...(Object.keys(exercise.variables).length > 0
+        ? {
+            variables: Object.fromEntries(
+              Object.entries(exercise.variables).map(([name, variable]) => [name, { max: variable.max, min: variable.min }]),
+            ),
+          }
+        : {}),
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  if (exercise.kind === "missing-word") {
+    return {
+      blanks: Object.fromEntries(
+        exercise.variables.map((variable) => [variable.name, { answers: variable.answers, matchCase: variable.matchCase }]),
+      ),
+      prompt: exercise.prompt,
+      text: missingWordTextFromSegments(exercise.segments),
+      type: "fill_in",
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  return { prompt: "prompt" in exercise ? exercise.prompt : "", type: exercise.kind, editable: false };
 }
 
 // ─── The tools ──────────────────────────────────────────────────────────────
@@ -251,6 +289,22 @@ const language = z
   .optional()
   .describe('A language code the course supports ("en", "sr", "sr-Cyrl"); default: the course\'s main language');
 const questions = z.array(questionSchema).min(1);
+const graded = z
+  .boolean()
+  .optional()
+  .describe(
+    "A graded test (no feedback after each answer; the score at the end, from each question's points) instead of a practice test. Omitted when replacing questions: the test stays as it was.",
+  );
+
+// What a test being replaced keeps (testFromQuestions), with `graded` as the
+// call says if it says.
+function keptTestSettings(previous: SharedTestDefinition | null, graded: boolean | undefined) {
+  return {
+    graded: graded ?? previous?.graded,
+    gradeBands: previous?.gradeBands,
+    showMnemonics: previous?.showMnemonics,
+  };
+}
 
 function result(value: unknown) {
   return { content: [{ text: JSON.stringify(value, null, 2), type: "text" as const }] };
@@ -365,7 +419,12 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         .find((section) => section.id === args.sectionId)
         ?.lessons.find((candidate) => candidate.id === args.lessonId);
       if (!lesson) throw new Error(`No lesson "${args.lessonId}" in section "${args.sectionId}"`);
-      return { content: lessonBodyToMarkdown(lesson.body), questions: questionsFromTest(lesson.test), title: lesson.title };
+      return {
+        content: lessonBodyToMarkdown(lesson.body),
+        ...(lesson.test?.graded ? { graded: true } : {}),
+        questions: questionsFromTest(lesson.test),
+        title: lesson.title,
+      };
     }),
   );
 
@@ -383,7 +442,7 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         .find((section) => section.id === args.sectionId)
         ?.tests.find((candidate) => candidate.id === args.testId);
       if (!test) throw new Error(`No test "${args.testId}" in section "${args.sectionId}"`);
-      return { questions: questionsFromTest(test.test), title: test.title };
+      return { ...(test.test?.graded ? { graded: true } : {}), questions: questionsFromTest(test.test), title: test.title };
     }),
   );
 
@@ -578,51 +637,88 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
     {
       description:
         "Sets the test students take after a lesson, replacing any it had. Questions are multiple choice or a number (optionally with variables, so every student gets their own numbers).",
-      inputSchema: { courseId, language, lessonId, questions, sectionId },
+      inputSchema: { courseId, graded, language, lessonId, questions, sectionId },
     },
-    write(async (args: { courseId: string; language?: string; lessonId: string; questions: Question[]; sectionId: string }) => {
-      const locale = await courseLanguage(args.courseId, args.language);
-      await updateLocalCourseLessonTest({
-        courseId: args.courseId,
-        lessonId: args.lessonId,
-        sectionId: args.sectionId,
-        test: testFromQuestions(args.questions, locale),
-      });
-      return null;
-    }),
+    write(
+      async (args: {
+        courseId: string;
+        graded?: boolean;
+        language?: string;
+        lessonId: string;
+        questions: Question[];
+        sectionId: string;
+      }) => {
+        const locale = await courseLanguage(args.courseId, args.language);
+        const previous = await getLocalCourseLessonTestDraft({
+          courseId: args.courseId,
+          lessonId: args.lessonId,
+          sectionId: args.sectionId,
+        });
+        await updateLocalCourseLessonTest({
+          courseId: args.courseId,
+          lessonId: args.lessonId,
+          sectionId: args.sectionId,
+          test: testFromQuestions(args.questions, locale, keptTestSettings(previous, args.graded)),
+        });
+        return null;
+      },
+    ),
   );
 
   server.registerTool(
     "create_section_test",
     {
       description: "Adds a test of its own at the end of a section (not tied to a lesson), with its questions. Returns its id.",
-      inputSchema: { courseId, language, questions, sectionId, title: z.string().min(1) },
+      inputSchema: { courseId, graded, language, questions, sectionId, title: z.string().min(1) },
     },
-    write(async (args: { courseId: string; language?: string; questions: Question[]; sectionId: string; title: string }) => {
-      const locale = await courseLanguage(args.courseId, args.language);
-      const test = testFromQuestions(args.questions, locale);
-      const created = await createLocalCourseSectionTest({ courseId: args.courseId, sectionId: args.sectionId, title: args.title });
-      await updateLocalCourseSectionTest({ courseId: args.courseId, sectionId: args.sectionId, test, testId: created.testId });
-      return created;
-    }),
+    write(
+      async (args: {
+        courseId: string;
+        graded?: boolean;
+        language?: string;
+        questions: Question[];
+        sectionId: string;
+        title: string;
+      }) => {
+        const locale = await courseLanguage(args.courseId, args.language);
+        const test = testFromQuestions(args.questions, locale, { graded: args.graded });
+        const created = await createLocalCourseSectionTest({ courseId: args.courseId, sectionId: args.sectionId, title: args.title });
+        await updateLocalCourseSectionTest({ courseId: args.courseId, sectionId: args.sectionId, test, testId: created.testId });
+        return created;
+      },
+    ),
   );
 
   server.registerTool(
     "set_section_test_questions",
     {
       description: "Replaces a section test's questions.",
-      inputSchema: { courseId, language, questions, sectionId, testId: z.string() },
+      inputSchema: { courseId, graded, language, questions, sectionId, testId: z.string() },
     },
-    write(async (args: { courseId: string; language?: string; questions: Question[]; sectionId: string; testId: string }) => {
-      const locale = await courseLanguage(args.courseId, args.language);
-      await updateLocalCourseSectionTest({
-        courseId: args.courseId,
-        sectionId: args.sectionId,
-        test: testFromQuestions(args.questions, locale),
-        testId: args.testId,
-      });
-      return null;
-    }),
+    write(
+      async (args: {
+        courseId: string;
+        graded?: boolean;
+        language?: string;
+        questions: Question[];
+        sectionId: string;
+        testId: string;
+      }) => {
+        const locale = await courseLanguage(args.courseId, args.language);
+        const previous = await getLocalCourseSectionTestDraft({
+          courseId: args.courseId,
+          sectionId: args.sectionId,
+          testId: args.testId,
+        });
+        await updateLocalCourseSectionTest({
+          courseId: args.courseId,
+          sectionId: args.sectionId,
+          test: testFromQuestions(args.questions, locale, keptTestSettings(previous, args.graded)),
+          testId: args.testId,
+        });
+        return null;
+      },
+    ),
   );
 
   server.registerTool(

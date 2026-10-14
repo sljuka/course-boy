@@ -1179,11 +1179,17 @@ ipcMain.handle('progress:record-test-result', (_event, input: RecordTestResultIn
   ) {
     throw new Error('Invalid test result')
   }
+  // A graded test's score (SLJ-135): both or neither.
+  const isGraded = result.points !== undefined || result.maxPoints !== undefined
+  if (isGraded && (!isCount(result.points) || !isCount(result.maxPoints) || result.points > result.maxPoints)) {
+    throw new Error('Invalid test result')
+  }
   // A preview's progress isn't kept (SLJ-67).
   if (profile.previews.has(input.courseId)) return
   profile.courseProgress.recordTestResult(input.courseId, input.stepId, {
     correct: result.correct,
     longestStreak: result.longestStreak,
+    ...(isGraded ? { maxPoints: result.maxPoints, points: result.points } : {}),
     total: result.total,
   })
 })

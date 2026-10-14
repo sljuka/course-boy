@@ -18,16 +18,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { ExerciseStepper } from "@/components/test-player/exercise-stepper";
+import { FinishGradedTestDialog } from "@/components/test-player/finish-graded-test-dialog";
+import { GradedTestResult } from "@/components/test-player/graded-test-result";
 import { InteractiveTestPlayer } from "@/components/test-player/interactive-test-player";
 import { TestPlayerPrintHint } from "@/components/test-player/test-player-print-hint";
-import { useTestPlayerState } from "@/components/test-player/use-test-player-state";
+import { type ExerciseResult, useTestPlayerState } from "@/components/test-player/use-test-player-state";
 import type { CourseMnemonic } from "@/lib/mnemonics";
 import { defaultTestPrintOptions } from "@/lib/print-options";
 import { PromptMnemonicsContext } from "@/lib/prompt-mnemonics-context";
 import { useCourseMnemonics } from "@/lib/use-course-mnemonics";
 import { buildLessonPath } from "@/lib/course-utils";
-import { recordTestResult, useCourseSpree } from "@/lib/course-progress-queries";
-import { scoreTestAttempt } from "@/lib/course-progress";
+import { recordTestResult, useCourseProgressQuery, useCourseSpree } from "@/lib/course-progress-queries";
+import { isBetterAttempt, scoreGradedAttempt, scoreTestAttempt } from "@/lib/course-progress";
+import { exercisePoints, resolveGradeBands } from "@/lib/grade-bands";
 import { useStartTestsInteractivePreference } from "@/lib/start-tests-interactive-preference";
 import { resolveTestIdForLesson } from "@/lib/course-test-id";
 
@@ -97,37 +100,86 @@ function TestPlayerContent({
   const activeItem = playerState.activeStep.item;
   const { shown: shownMnemonics } = useCourseMnemonics(playerState.courseId);
   const spree = useCourseSpree({ courseId: playerState.courseId, isPreview: playerState.isPreview });
+  const progressQuery = useCourseProgressQuery();
+  // A graded test (SLJ-135): no feedback while it's taken, a score at the end.
+  const isGraded = activeItem.test?.graded === true;
+  const gradeBands = resolveGradeBands(activeItem.test?.gradeBands, playerState.courseGradeBands);
+  const [gradedResult, setGradedResult] = useState<{ isNewBest: boolean; maxPoints: number; points: number } | null>(
+    null,
+  );
+  // "Finish test" with questions unanswered: the grading, waiting for the
+  // student to confirm.
+  const [pendingFinish, setPendingFinish] = useState<ExerciseResult[] | null>(null);
   const {
     activeTestExercises,
     activeTestInstances,
     exerciseAnswers,
     exerciseResults,
     firstTryCorrect,
+    gradeAll,
     isInteractiveMode,
     isPrintHintVisible,
     isTestPassed,
     refreshExercises,
+    restart,
     setIsInteractiveMode,
     setIsPrintHintVisible,
     submitExercise,
     submitSingleExercise,
     testFeedback,
     updateExerciseAnswer,
-  } = useTestPlayerState(activeItem, { onFirstTry: spree.recordFirstTry, startInteractive });
+  } = useTestPlayerState(activeItem, {
+    // A graded test gives no feedback, so it has no spree to grow or end.
+    onFirstTry: isGraded ? undefined : spree.recordFirstTry,
+    startInteractive,
+  });
+  // A lesson's test is kept under its own step id, the one course summaries
+  // list it by.
+  const stepId = playerState.activeStep.kind === "lesson" ? resolveTestIdForLesson(activeItem.id) : activeItem.id;
 
-  // Continue after the test: it's done, with this attempt's first-try score
-  // (SLJ-50). A teacher's preview records nothing. A lesson's test is kept
-  // under its own step id, the one course summaries list it by.
+  // Continue after a practice test: it's done, with this attempt's first-try
+  // score (SLJ-50). A teacher's preview records nothing.
   function continueAfterTest() {
     if (!playerState.isPreview) {
-      recordTestResult({
-        courseId: playerState.courseId,
-        result: scoreTestAttempt(firstTryCorrect),
-        stepId:
-          playerState.activeStep.kind === "lesson" ? resolveTestIdForLesson(activeItem.id) : activeItem.id,
-      });
+      recordTestResult({ courseId: playerState.courseId, result: scoreTestAttempt(firstTryCorrect), stepId });
     }
     playerState.moveToNextStep();
+  }
+
+  function finishGradedTest() {
+    const results = gradeAll();
+    if (results.some((result) => !result.isAnswered)) {
+      setPendingFinish(results);
+      return;
+    }
+    completeGradedTest(results);
+  }
+
+  // The score is kept the moment the test is finished, so closing the
+  // player from the results card doesn't lose it.
+  function completeGradedTest(results: ExerciseResult[]) {
+    setPendingFinish(null);
+    const result = scoreGradedAttempt(
+      results.map((exerciseResult, index) => ({
+        isCorrect: exerciseResult.isCorrect,
+        points: exercisePoints(activeTestExercises[index] ?? {}),
+      })),
+    );
+    const previousBest = progressQuery.data?.courses[playerState.courseId]?.steps[stepId]?.test?.best;
+    if (!playerState.isPreview) {
+      recordTestResult({ courseId: playerState.courseId, result, stepId });
+    }
+    setGradedResult({
+      isNewBest: Boolean(previousBest && isBetterAttempt(result, previousBest)),
+      maxPoints: result.maxPoints ?? 0,
+      points: result.points ?? 0,
+    });
+  }
+
+  function tryGradedTestAgain() {
+    restart();
+    setCurrentExerciseIndex(0);
+    setGradedResult(null);
   }
 
   function startInteractiveMode() {
@@ -163,8 +215,15 @@ function TestPlayerContent({
   const mnemonicsToggle = allowsMnemonics ? <MnemonicsToggle courseId={playerState.courseId} /> : null;
 
   // X leaves the test in both modes; interactive mode reaches paper mode
-  // through its own two buttons.
-  const toolbarActions = isInteractiveMode ? (
+  // through its own two buttons. A graded test's results card has only X.
+  const toolbarActions = gradedResult ? (
+    <CoursePlayerActions
+      isRefreshingAvailable={false}
+      onClose={playerState.exitPlayer}
+      onRefreshExercise={refreshExercises}
+      printControl={null}
+    />
+  ) : isInteractiveMode ? (
     <CoursePlayerActions
       isRefreshingAvailable={false}
       mnemonicsToggle={mnemonicsToggle}
@@ -234,7 +293,8 @@ function TestPlayerContent({
       // No breadcrumbs in the test player (either mode): only the action bar,
       // with the test's own controls — and, in interactive mode, the stepper.
       header={
-        !isInteractiveMode && (
+        !isInteractiveMode &&
+        !gradedResult && (
           <PageHeader
             className="print:hidden"
             title={
@@ -274,11 +334,14 @@ function TestPlayerContent({
       // Interactive mode centres its one exercise in the page body's height.
       className={isInteractiveMode ? "min-h-full" : undefined}
       // Interactive mode: the course's spree in the corner (SLJ-134).
-      actionBarStart={isInteractiveMode && <CourseSpree best={spree.best} current={spree.current} />}
+      actionBarStart={
+        isInteractiveMode && !isGraded && !gradedResult && <CourseSpree best={spree.best} current={spree.current} />
+      }
       // Interactive mode steps through one exercise at a time; its stepper
       // sits centred in the action bar.
       actionBarCenter={
-        isInteractiveMode && (
+        isInteractiveMode &&
+        !gradedResult && (
           <ExerciseStepper
             currentIndex={currentExerciseIndex}
             onSelectStep={setCurrentExerciseIndex}
@@ -296,18 +359,28 @@ function TestPlayerContent({
         title={activeItem.title}
       />
       <PromptMnemonicsContext.Provider value={allowsMnemonics ? shownMnemonics : NO_MNEMONICS}>
-        {isInteractiveMode ? (
+        {gradedResult ? (
+          <GradedTestResult
+            bands={gradeBands}
+            isNewBest={gradedResult.isNewBest}
+            maxPoints={gradedResult.maxPoints}
+            onContinue={playerState.moveToNextStep}
+            onTryAgain={tryGradedTestAgain}
+            points={gradedResult.points}
+          />
+        ) : isInteractiveMode ? (
           <InteractiveTestPlayer
             activeTestExercises={activeTestExercises}
             activeTestInstances={activeTestInstances}
             currentIndex={currentExerciseIndex}
             exerciseAnswers={exerciseAnswers}
             exerciseResults={exerciseResults}
+            graded={isGraded}
             onContinueAfterExercise={continueAfterTest}
+            onFinishGradedTest={finishGradedTest}
             onIndexChange={setCurrentExerciseIndex}
             onSubmitExercise={submitSingleExercise}
             onUpdateExerciseAnswer={updateExerciseAnswer}
-            strictAdvancement={activeItem.test?.strictAdvancement ?? true}
           />
         ) : (
           <>
@@ -323,8 +396,10 @@ function TestPlayerContent({
               activeTestInstances={activeTestInstances}
               exerciseAnswers={exerciseAnswers}
               exerciseResults={exerciseResults}
+              graded={isGraded}
               isTestPassed={isTestPassed}
               onContinueAfterExercise={continueAfterTest}
+              onFinishGradedTest={finishGradedTest}
               onSubmitExercise={submitExercise}
               onUpdateExerciseAnswer={updateExerciseAnswer}
               printAnswerStyle={printOptions.answerStyle}
@@ -336,6 +411,12 @@ function TestPlayerContent({
           </>
         )}
       </PromptMnemonicsContext.Provider>
+      <FinishGradedTestDialog
+        onConfirm={() => pendingFinish && completeGradedTest(pendingFinish)}
+        onOpenChange={(open) => !open && setPendingFinish(null)}
+        open={pendingFinish !== null}
+        unansweredCount={pendingFinish?.filter((result) => !result.isAnswered).length ?? 0}
+      />
     </Page>
   );
 }

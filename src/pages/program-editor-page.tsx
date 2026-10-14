@@ -188,7 +188,7 @@ export function ProgramEditor({ initial }: { initial: ProgramManifest }) {
             ]
       }
     >
-      <div className="flex flex-col gap-8" data-testid="program-editor">
+      <div className="flex flex-col gap-4" data-testid="program-editor">
         {publishing.error && (
           <Alert variant="destructive">
             <AlertTitle>{t("programSharing.publishFailed")}</AlertTitle>
@@ -252,7 +252,7 @@ export function ProgramEditor({ initial }: { initial: ProgramManifest }) {
           locales={program.supportedLocales}
           onActiveLocaleChange={setActiveLocale}
           renderContent={(locale) => (
-            <FieldGroup className="pt-2">
+            <FieldGroup>
               <Field>
                 <FieldLabel htmlFor={`program-title-${locale}`}>
                   {isChannel ? t("channels.name") : t("programs.title")}

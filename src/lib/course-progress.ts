@@ -20,6 +20,10 @@
 export type TestAttemptResult = {
   correct: number;
   longestStreak: number;
+  // A graded test's score (SLJ-135): the points of the exercises solved
+  // correctly, out of all of them. Missing for a practice test.
+  maxPoints?: number;
+  points?: number;
   total: number;
 };
 
@@ -138,10 +142,30 @@ export function scoreTestAttempt(firstTryCorrect: (boolean | null)[]): TestAttem
   };
 }
 
+// A graded test's attempt (SLJ-135): every exercise right or not as answered
+// at "Finish test", with its points.
+export function scoreGradedAttempt(exercises: { isCorrect: boolean; points: number }[]): TestAttemptResult {
+  return {
+    ...scoreTestAttempt(exercises.map((exercise) => exercise.isCorrect)),
+    maxPoints: exercises.reduce((sum, exercise) => sum + exercise.points, 0),
+    points: exercises.reduce((sum, exercise) => sum + (exercise.isCorrect ? exercise.points : 0), 0),
+  };
+}
+
+// The share of an attempt that was right: of the points in a graded test,
+// of the exercises otherwise.
+function attemptShare(attempt: TestAttemptResult): number {
+  if (attempt.maxPoints !== undefined && attempt.points !== undefined) {
+    return attempt.maxPoints > 0 ? attempt.points / attempt.maxPoints : 0;
+  }
+
+  return attempt.total > 0 ? attempt.correct / attempt.total : 0;
+}
+
 // Whether `next` beats `best`: a higher share right, then a longer streak.
 export function isBetterAttempt(next: TestAttemptResult, best: TestAttemptResult): boolean {
-  const nextShare = next.total > 0 ? next.correct / next.total : 0;
-  const bestShare = best.total > 0 ? best.correct / best.total : 0;
+  const nextShare = attemptShare(next);
+  const bestShare = attemptShare(best);
 
   return nextShare !== bestShare ? nextShare > bestShare : next.longestStreak > best.longestStreak;
 }

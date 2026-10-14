@@ -7,6 +7,7 @@ import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { buildLessonPath, buildLessonTestPath, introStepId } from "@/lib/course-utils";
 import { recordCourseOpened } from "@/lib/course-progress-queries";
 import { useAppState } from "@/lib/use-app-state";
+import type { GradeBand } from "@/lib/grade-bands";
 
 // A step in the player's overall sequence is either a document (a lesson,
 // which may itself carry an attached test reached via its own "Continue"
@@ -17,6 +18,8 @@ export type CoursePlayerStep =
 
 export type CoursePlayerReadyState = {
   activeStep: CoursePlayerStep;
+  // Graded tests' grade bands (SLJ-135); null: the defaults.
+  courseGradeBands: GradeBand[] | null;
   courseId: string;
   courseTitle: string;
   exitPlayer: () => void;
@@ -183,6 +186,7 @@ export function useCoursePlayer({
   return {
     activeStep: activeStepEntry,
     courseId,
+    courseGradeBands: course.gradeBands,
     courseTitle: course.title,
     exitPlayer,
     isPreview: false,

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import { ColorPickerField } from "@/components/color-picker-field";
 import { ColorSwatch } from "@/components/ui/color-swatch";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +70,7 @@ export function RegionPickerExerciseFields({
   courseId,
   exercise,
   locale,
+  moreOptions,
   onChange,
 }: FieldsComponentProps<RegionPickerTestExercise>) {
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
@@ -242,9 +243,7 @@ export function RegionPickerExerciseFields({
         )}
       </Field>
 
-      <Collapsible>
-        <CollapsibleTrigger>Show more options</CollapsibleTrigger>
-        <CollapsibleContent>
+      <ExerciseMoreOptions defaultOpen={hasMoreOptionsSet(exercise)}>
           <Field>
             <div className="flex items-center gap-2">
               <FieldLabel>Marker color</FieldLabel>
@@ -256,8 +255,8 @@ export function RegionPickerExerciseFields({
               />
             </div>
           </Field>
-        </CollapsibleContent>
-      </Collapsible>
+          {moreOptions}
+      </ExerciseMoreOptions>
     </>
   );
 }

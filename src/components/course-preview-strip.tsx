@@ -36,7 +36,7 @@ export function CoursePreviewStrip({
             item={item}
             key={`${item.kind}-${item.id}`}
             onSelect={onSelect}
-            status={<StepProgressBadge step={progress?.steps[item.id]} />}
+            status={<StepProgressBadge gradeBands={item.gradeBands} step={progress?.steps[item.id]} />}
             testLabel={testLabel}
             testNumber={lessonTestNumbers.get(item.id) ?? 0}
           />
