@@ -97,6 +97,49 @@ describe("questions", () => {
     ]);
   });
 
+  it("become fill-in exercises, with the blanks in the order the text names them", () => {
+    expect(
+      testFromQuestions(
+        [
+          {
+            blanks: { second: { answers: ["Tuesday"], matchCase: true }, first: { answers: ["Monday", "Mon"] } },
+            hint: "Days start with a capital letter.",
+            prompt: "Write the missing days",
+            text: "{{first}}, {{second}}, Wednesday",
+            type: "fill_in",
+          },
+        ],
+        "en",
+      ).exercises,
+    ).toEqual([
+      {
+        kind: "missing-word",
+        locales: {
+          en: {
+            hint: "Days start with a capital letter.",
+            prompt: "Write the missing days",
+            text: "{{first}}, {{second}}, Wednesday",
+            variables: [
+              { answers: ["Monday", "Mon"], matchCase: false, name: "first" },
+              { answers: ["Tuesday"], matchCase: true, name: "second" },
+            ],
+          },
+        },
+        tags: [],
+      },
+    ]);
+  });
+
+  it("refuse a fill-in whose blanks and answers don't match", () => {
+    const fillIn = { prompt: "Days", type: "fill_in" as const };
+
+    expect(() => testFromQuestions([{ ...fillIn, blanks: {}, text: "No blank here" }], "en")).toThrow("no {{blank}}");
+    expect(() => testFromQuestions([{ ...fillIn, blanks: {}, text: "{{d1}}" }], "en")).toThrow("no answers for the blank d1");
+    expect(() =>
+      testFromQuestions([{ ...fillIn, blanks: { d1: { answers: ["a"] }, d2: { answers: ["b"] } }, text: "{{d1}}" }], "en"),
+    ).toThrow("has no blank d2");
+  });
+
   it("refuse a correct option that doesn't exist", () => {
     expect(() =>
       testFromQuestions([{ correct: [2], options: ["a", "b"], prompt: "?", type: "multiple_choice" }], "en"),

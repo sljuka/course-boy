@@ -107,7 +107,10 @@ export function InteractiveTestPlayer({
         // entering interactive mode) — it doesn't retrigger on its own for
         // a step change, since the form's own identity/class list never
         // changes between steps. The per-step fade below is separate.
-        "page-fade-in mx-auto flex min-h-[calc(100vh-8rem)] w-full flex-col items-center justify-center gap-6 py-6 print:hidden",
+        // flex-1 fills the page body's height (the page gives it `min-h-full`
+        // in interactive mode) so the card is centred without a viewport-based
+        // min height, which overflowed the body and showed a needless scrollbar.
+        "page-fade-in mx-auto flex w-full flex-1 flex-col items-center justify-center gap-6 py-6 print:hidden",
         isRegionExercise ? "max-w-none" : "max-w-2xl",
       )}
       onKeyDown={(event) => {

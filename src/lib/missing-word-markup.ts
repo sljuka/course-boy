@@ -45,3 +45,8 @@ export function extractMissingWordVariableNames(text: string): string[] {
 
   return names;
 }
+
+/** The inverse of `parseMissingWordMarkup`: segments back to `{{name}}` markup. */
+export function missingWordTextFromSegments(segments: MissingWordSegment[]): string {
+  return segments.map((segment) => (segment.kind === "text" ? segment.value : `{{${segment.variableName}}}`)).join("");
+}

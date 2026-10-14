@@ -10,6 +10,7 @@ import type {
 import { isValidCourseId } from "../src/lib/course-id";
 import { isLocale, type Locale } from "../src/lib/i18n";
 import { BLOCK_MARKER_PATTERN, blockMarker } from "../src/lib/lesson-block-markers";
+import { extractMissingWordVariableNames, missingWordTextFromSegments } from "../src/lib/missing-word-markup";
 import type { ProgramCourse, ProgramTheme } from "../src/lib/program-package";
 import {
   createLocalCourseDraft,
@@ -104,6 +105,24 @@ const questionSchema = z.discriminatedUnion("type", [
       .describe("Whole-number variables used in the prompt and formula"),
     hint: z.string().optional(),
   }),
+  z.object({
+    type: z.literal("fill_in"),
+    prompt: z.string().min(1).describe('The instruction, e.g. "Write the missing day"'),
+    text: z
+      .string()
+      .min(1)
+      .describe('The text the student fills in, with a named blank for each typed answer: "Monday, {{d2}}, Wednesday"'),
+    blanks: z
+      .record(
+        z.string().regex(/^\w+$/),
+        z.object({
+          answers: z.array(z.string().trim().min(1)).min(1).describe("Every answer accepted for this blank"),
+          matchCase: z.boolean().optional().describe("Whether capital letters must match too (default false)"),
+        }),
+      )
+      .describe("Each blank named in the text, with its accepted answers"),
+    hint: z.string().optional(),
+  }),
 ]);
 
 type Question = z.infer<typeof questionSchema>;
@@ -122,6 +141,31 @@ export function testFromQuestions(questions: Question[], locale: Locale): Shared
         kind: "multiple-choice",
         locales: { [locale]: { ...hint, options: question.options, prompt: question.prompt } },
         selectionMode: correct.length > 1 ? "multiple" : "single",
+        tags: [],
+      };
+    }
+
+    if (question.type === "fill_in") {
+      const named = extractMissingWordVariableNames(question.text);
+      if (named.length === 0) throw new Error(`"${question.prompt}": the text has no {{blank}} to fill in`);
+      const missing = named.filter((name) => !(name in question.blanks));
+      if (missing.length > 0) throw new Error(`"${question.prompt}": no answers for the blank ${missing.join(", ")}`);
+      const unused = Object.keys(question.blanks).filter((name) => !named.includes(name));
+      if (unused.length > 0) throw new Error(`"${question.prompt}": the text has no blank ${unused.join(", ")}`);
+      return {
+        kind: "missing-word",
+        locales: {
+          [locale]: {
+            ...hint,
+            prompt: question.prompt,
+            text: question.text,
+            variables: named.map((name) => ({
+              answers: question.blanks[name].answers,
+              matchCase: question.blanks[name].matchCase ?? false,
+              name,
+            })),
+          },
+        },
         tags: [],
       };
     }
@@ -170,6 +214,17 @@ export function questionsFromTest(test: CourseTest | null): unknown[] {
               ),
             }
           : {}),
+        ...(exercise.hint ? { hint: exercise.hint } : {}),
+      };
+    }
+    if (exercise.kind === "missing-word") {
+      return {
+        blanks: Object.fromEntries(
+          exercise.variables.map((variable) => [variable.name, { answers: variable.answers, matchCase: variable.matchCase }]),
+        ),
+        prompt: exercise.prompt,
+        text: missingWordTextFromSegments(exercise.segments),
+        type: "fill_in",
         ...(exercise.hint ? { hint: exercise.hint } : {}),
       };
     }

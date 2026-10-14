@@ -815,8 +815,9 @@ besides IPC, and the same rules hold:
   rebinding).
 - **Simple formats for agents:** a lesson is Markdown (wrapped as one `markdown` block;
   a body with `[matko-block]` markers passes through), a test is a list of
-  `multiple_choice` or `number` questions. Tests made in the app with other kinds read as
-  `{ type, editable: false }`.
+  `multiple_choice`, `number` or `fill_in` questions (`fill_in` is the `missing-word` kind:
+  a text with `{{name}}` blanks and each blank's accepted answers). Tests made in the app
+  with other kinds read as `{ type, editable: false }`.
 - **After a write, main sends `mcp:changed`** and the window reads courses and programs
   again (`useRefreshOnAgentChanges`), so the open page shows the agent's work.
 

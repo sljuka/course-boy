@@ -214,6 +214,8 @@ export function TestPlayerView({
         )
       }
       actions={toolbarActions}
+      // Interactive mode centres its one exercise in the page body's height.
+      className={isInteractiveMode ? "min-h-full" : undefined}
       // Interactive mode steps through one exercise at a time; its stepper
       // sits centred in the action bar.
       actionBarCenter={
