@@ -98,6 +98,51 @@ function kindOf(existsBefore: boolean, existsAfter: boolean): "added" | "removed
   return !existsBefore ? "added" : !existsAfter ? "removed" : "edited";
 }
 
+// The ids listed under `fields` in a file on either side, in order (see
+// electron/course-order.ts), the first side's first.
+async function listedIds(sides: Side[], file: string, ...fields: string[]): Promise<string[]> {
+  const ids: string[] = [];
+
+  for (const side of sides) {
+    const json = await readJson(path.join(side.directoryPath, file));
+
+    for (const field of fields) {
+      const list = json?.[field];
+      if (Array.isArray(list)) ids.push(...list.filter((id): id is string => typeof id === "string"));
+    }
+  }
+
+  return [...new Set(ids)];
+}
+
+// `ids` by their place in `listed` (a lesson's test by its lesson's);
+// unlisted ones (older packages) after, by name, which for numbered ids is
+// their order.
+function inListedOrder(ids: string[], listed: string[]): string[] {
+  const place = (id: string) => {
+    const index = listed.indexOf(id.startsWith("test-") ? resolveLessonIdForTest(id) : id);
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  };
+
+  return [...ids].sort(
+    (left, right) => place(left) - place(right) || left.localeCompare(right, undefined, { numeric: true }),
+  );
+}
+
+// A section.json changed beyond the order of its lessons and tests (which
+// changes with every one added or removed, each reported on its own).
+async function isSectionEdited(before: Side, after: Side, sectionFile: string): Promise<boolean> {
+  const withoutOrder = (json: Record<string, unknown> | null) => {
+    const { lessonIds: _lessonIds, testIds: _testIds, ...rest } = json ?? {};
+    return JSON.stringify(rest);
+  };
+
+  return (
+    withoutOrder(await readJson(path.join(before.directoryPath, sectionFile))) !==
+    withoutOrder(await readJson(path.join(after.directoryPath, sectionFile)))
+  );
+}
+
 async function diffStructure(before: Side, after: Side, locale: string): Promise<CourseChange[]> {
   const paths = new Set([...Object.keys(before.hashes), ...Object.keys(after.hashes)]);
   // Only files inside folders (sections, assets/) are structure; top-level
@@ -114,10 +159,12 @@ async function diffStructure(before: Side, after: Side, locale: string): Promise
       locale,
     );
 
-  // Sections, in folder order.
-  const sections = [
-    ...new Set(changed.filter((file) => !file.startsWith(`${ASSETS_DIRECTORY}${path.sep}`)).map((file) => file.split(path.sep)[0])),
-  ].sort();
+  // Sections, in the course's order (the draft's, then the version's for
+  // removed ones).
+  const sections = inListedOrder(
+    [...new Set(changed.filter((file) => !file.startsWith(`${ASSETS_DIRECTORY}${path.sep}`)).map((file) => file.split(path.sep)[0]))],
+    await listedIds([after, before], "course.json", "sectionIds"),
+  );
 
   for (const section of sections) {
     const sectionFile = path.join(section, "section.json");
@@ -137,7 +184,7 @@ async function diffStructure(before: Side, after: Side, locale: string): Promise
     // Changed files this function doesn't know (a future file type): still a
     // change, reported as an edit of their section, so the list never says
     // "no changes" while the draft badge (which compares every file) says there are.
-    let hasOtherChange = changed.includes(sectionFile);
+    let hasOtherChange = changed.includes(sectionFile) && (await isSectionEdited(before, after, sectionFile));
 
     for (const file of changed.filter((candidate) => candidate.split(path.sep)[0] === section)) {
       const name = path.basename(file, path.extname(file));
@@ -148,7 +195,7 @@ async function diffStructure(before: Side, after: Side, locale: string): Promise
       } else if (name.startsWith("lesson-")) {
         lessonIds.add(name);
       } else if (name.startsWith("test-") || name.startsWith("section-test-")) {
-        // `test-NN-…` is a lesson's test; `section-test-NN-…` a standalone one.
+        // `test-…` is a lesson's test; `section-test-…` a standalone one.
         testIds.add(name);
       } else if (file !== sectionFile) {
         hasOtherChange = true;
@@ -169,7 +216,9 @@ async function diffStructure(before: Side, after: Side, locale: string): Promise
       });
     }
 
-    for (const lessonId of [...lessonIds].sort()) {
+    const sectionOrder = await listedIds([after, before], sectionFile, "lessonIds", "testIds");
+
+    for (const lessonId of inListedOrder([...lessonIds], sectionOrder)) {
       const lessonFile = path.join(section, `${lessonId}.json`);
       changes.push({
         kind: kindOf(has(before, lessonFile), has(after, lessonFile)),
@@ -179,7 +228,7 @@ async function diffStructure(before: Side, after: Side, locale: string): Promise
       });
     }
 
-    for (const testId of [...testIds].sort()) {
+    for (const testId of inListedOrder([...testIds], sectionOrder)) {
       const testFile = path.join(section, `${testId}.json`);
       const isStandalone = testId.startsWith("section-test-");
       const lessonId = isStandalone ? "" : resolveLessonIdForTest(testId);

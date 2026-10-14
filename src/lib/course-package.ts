@@ -37,6 +37,9 @@ export type CourseManifest = {
   // course supporting both `sr` and `sr-Cyrl`; missing means both are
   // written by hand. See `src/lib/serbian-script.ts`.
   serbianScript?: SerbianScriptSetting;
+  // The sections' ids in order (see electron/course-order.ts). Missing in
+  // older packages, which are ordered by the number in their ids.
+  sectionIds?: string[];
   slug: string;
   status: CourseStatus;
   supportedLocales: Locale[];
@@ -473,8 +476,12 @@ export type CourseSectionPreview = {
 
 export type StoredSectionDefinition = {
   id: string;
+  // The section's lessons and standalone tests in order (see
+  // electron/course-order.ts); missing in older packages.
+  lessonIds?: string[];
   locales: Record<Locale, LocalizedSectionMetadata>;
   slug: string;
+  testIds?: string[];
 };
 
 export type CourseSummary = {

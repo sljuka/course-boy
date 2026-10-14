@@ -25,6 +25,7 @@ import type {
   StoredSectionDefinition,
 } from "../src/lib/course-package";
 import { resolveTestIdForLesson } from "../src/lib/course-test-id";
+import { lessonFilePattern, orderIds, sectionDirectoryPattern, sectionTestFilePattern } from "./course-order";
 import { isLocale, type Locale } from "../src/lib/i18n";
 import { isSerbianScriptSetting } from "../src/lib/serbian-script";
 import { publishersFromSource, type CoursePublisher } from "../src/lib/publishers";
@@ -102,7 +103,6 @@ const iconMimeTypes: Record<string, string> = {
   ".svg": "image/svg+xml",
   ".webp": "image/webp",
 };
-const sectionDirectoryPattern = /^section-(\d{2})-[a-z0-9-]+$/;
 
 function isCourseStatus(value: unknown): value is CourseStatus {
   return value === "draft" || value === "published";
@@ -570,14 +570,12 @@ async function readSharedSectionDefinition(
   const directoryEntries = await fs.readdir(sectionDirectoryPath, {
     withFileTypes: true,
   });
-  const lessonIds = directoryEntries
-    .filter((entry) => entry.isFile() && /^lesson-\d{2}-.*\.json$/.test(entry.name))
-    .map((entry) => entry.name.replace(/\.json$/, ""))
-    .sort((leftLessonId, rightLessonId) => leftLessonId.localeCompare(rightLessonId, undefined, { numeric: true }));
-  const testIds = directoryEntries
-    .filter((entry) => entry.isFile() && /^section-test-\d{2}-.*\.json$/.test(entry.name))
-    .map((entry) => entry.name.replace(/\.json$/, ""))
-    .sort((leftTestId, rightTestId) => leftTestId.localeCompare(rightTestId, undefined, { numeric: true }));
+  const filesMatching = (pattern: RegExp) =>
+    directoryEntries
+      .filter((entry) => entry.isFile() && pattern.test(entry.name))
+      .map((entry) => entry.name.replace(/\.json$/, ""));
+  const lessonIds = orderIds(storedSection.lessonIds, filesMatching(lessonFilePattern));
+  const testIds = orderIds(storedSection.testIds, filesMatching(sectionTestFilePattern));
 
   if (lessonIds.length === 0 && testIds.length === 0) {
     if (courseRecord.manifest.status === "draft") {
@@ -589,7 +587,7 @@ async function readSharedSectionDefinition(
     }
 
     throw new Error(
-      `Section "${sectionId}" does not contain any lesson-xx-* or section-test-xx-* files`,
+      `Section "${sectionId}" does not contain any lessons or tests`,
     );
   }
 
@@ -1064,45 +1062,12 @@ async function readSharedSectionDefinitions(
     }
 
     throw new Error(
-      `Course "${courseRecord.manifest.id}" does not contain any section-xx-* directories`,
+      `Course "${courseRecord.manifest.id}" does not contain any sections`,
     );
-  }
-
-  const indexedSectionDirectories = sectionDirectories.map((sectionId) => {
-    const matchedPattern = sectionId.match(sectionDirectoryPattern);
-
-    if (!matchedPattern) {
-      throw new Error(
-        `Invalid section directory name "${sectionId}" in course "${courseRecord.manifest.id}"`,
-      );
-    }
-
-    return {
-      index: Number.parseInt(matchedPattern[1], 10),
-      sectionId,
-    };
-  });
-
-  const sectionIndexSet = new Set(indexedSectionDirectories.map(({ index }) => index));
-
-  if (sectionIndexSet.size !== indexedSectionDirectories.length) {
-    throw new Error(
-      `Course "${courseRecord.manifest.id}" contains duplicate section indexes`,
-    );
-  }
-
-  indexedSectionDirectories.sort((left, right) => left.index - right.index);
-
-  for (let index = 0; index < indexedSectionDirectories.length; index += 1) {
-    if (indexedSectionDirectories[index].index !== index + 1) {
-      throw new Error(
-        `Course "${courseRecord.manifest.id}" must use contiguous section indexes starting at 01`,
-      );
-    }
   }
 
   return Promise.all(
-    indexedSectionDirectories.map(({ sectionId }) =>
+    orderIds(courseRecord.manifest.sectionIds, sectionDirectories).map((sectionId) =>
       readSharedSectionDefinition(courseRecord, sectionId),
     ),
   );
@@ -1445,8 +1410,8 @@ async function readCourseVersionMeta(
 
 /**
  * Applies the same structural rules `readSharedSectionDefinitions` already
- * enforces for a non-draft package (at least one section, contiguous
- * indexes, each section has at least one lesson) to an arbitrary directory —
+ * enforces for a non-draft package (at least one section, each section has
+ * at least one lesson or test) to an arbitrary directory —
  * used as a cut-time gate so an immutable version snapshot is never created
  * from an incomplete draft. Does not read or write `status` on disk; the
  * override here is purely in-memory, to reuse the existing validation path.

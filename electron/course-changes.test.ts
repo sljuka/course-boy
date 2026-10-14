@@ -69,6 +69,22 @@ describe("computeCourseChanges", () => {
     expect(await computeCourseChanges(course.draftDir, null)).toEqual([]);
   });
 
+  it("doesn't call a section edited when only its list of lessons changed, and lists in course order", async () => {
+    const course = await seedCutCourse();
+
+    // "Zulu" after "Addition", and "Algebra" after "Basics": the course's order, not the names'.
+    await createLocalCourseLesson({ courseId: course.courseId, sectionId: course.sectionId, title: "Zulu" });
+    await createLocalCourseSection({ courseId: course.courseId, title: "Algebra" });
+    await deleteLocalCourseLesson({ courseId: course.courseId, lessonId: course.lessonId, sectionId: course.sectionId });
+
+    expect(await course.changes()).toEqual([
+      { kind: "added", section: "Basics", target: "lesson", title: "Zulu" },
+      // Removed ones come after the ones still there.
+      { kind: "removed", section: "Basics", target: "lesson", title: "Addition" },
+      { kind: "added", target: "section", title: "Algebra" },
+    ]);
+  });
+
   it("names added, edited and removed lessons and sections by their titles", async () => {
     const course = await seedCutCourse();
 

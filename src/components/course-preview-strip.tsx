@@ -21,6 +21,12 @@ export function CoursePreviewStrip({
 }: CoursePreviewStripProps) {
   const { t } = useTranslation();
   const testLabel = t("courseSearch.testTile", { index: "{{index}}" });
+  // Lesson tests are labelled "Test 1", "Test 2"… in the order shown.
+  const lessonTestNumbers = new Map(
+    items
+      .filter((item) => item.kind === "test" && item.id.startsWith("test-"))
+      .map((item, index) => [item.id, index + 1]),
+  );
 
   return (
     <div className="flex min-w-max gap-3">
@@ -32,6 +38,7 @@ export function CoursePreviewStrip({
             onSelect={onSelect}
             status={<StepProgressBadge step={progress?.steps[item.id]} />}
             testLabel={testLabel}
+            testNumber={lessonTestNumbers.get(item.id) ?? 0}
           />
         ) : (
           <LessonItem

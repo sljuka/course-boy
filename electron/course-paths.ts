@@ -3,6 +3,14 @@ import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { dialog, shell } from "electron";
+import {
+  createStructureId,
+  lessonFilePattern,
+  orderIds,
+  sectionDirectoryPattern,
+  sectionTestFilePattern,
+  slugForTitle,
+} from "./course-order";
 import type {
   ApplyCourseSvgPresetInput,
   CourseChangelogEntry,
@@ -26,6 +34,7 @@ import type {
   RevertCourseDraftInput,
   SaveLessonTestInput,
   SaveSectionTestInput,
+  StoredSectionDefinition,
   SharedTestDefinition,
   UpdateCourseDraftMetadataInput,
   LocalizedLessonMetadata,
@@ -942,7 +951,7 @@ async function regenerateSerbianScript(
 ): Promise<void> {
   const target = otherSerbianLocale(setting.source);
   const sectionEntries = (await fs.readdir(draftDirectoryPath, { withFileTypes: true })).filter(
-    (entry) => entry.isDirectory() && /^section-\d{2}-/.test(entry.name),
+    (entry) => entry.isDirectory() && sectionDirectoryPattern.test(entry.name),
   );
 
   for (const sectionEntry of sectionEntries) {
@@ -1062,20 +1071,49 @@ async function migrateNonBundledCoursesToDrafts(
   );
 }
 
-async function resolveNextSectionId(courseDirectoryPath: string, title: string) {
-  const directoryEntries = await fs.readdir(courseDirectoryPath, {
-    withFileTypes: true,
-  });
-  const sectionIndexes = directoryEntries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name.match(/^section-(\d{2})-[a-z0-9-]+$/))
-    .filter((match): match is RegExpMatchArray => Boolean(match))
-    .map((match) => Number.parseInt(match[1], 10))
-    .sort((left, right) => left - right);
-  const nextIndex = (sectionIndexes.at(-1) ?? 0) + 1;
-  const slug = slugifyCourseName(title) || "untitled-section";
+async function listSectionIds(courseDirectoryPath: string): Promise<string[]> {
+  const directoryEntries = await fs.readdir(courseDirectoryPath, { withFileTypes: true });
 
-  return `section-${String(nextIndex).padStart(2, "0")}-${slug}`;
+  return directoryEntries
+    .filter((entry) => entry.isDirectory() && sectionDirectoryPattern.test(entry.name))
+    .map((entry) => entry.name);
+}
+
+// Whether a lesson or test id is used anywhere in the course: ids are unique
+// within the course, not only within a section, since progress is kept by id.
+async function isItemIdTaken(courseDirectoryPath: string, itemId: string): Promise<boolean> {
+  const sectionIds = await listSectionIds(courseDirectoryPath);
+  const taken = await Promise.all(
+    sectionIds.map((sectionId) => pathExists(path.join(courseDirectoryPath, sectionId, `${itemId}.json`))),
+  );
+
+  return taken.some(Boolean);
+}
+
+async function readSectionDefinitionFile(sectionDirectoryPath: string): Promise<StoredSectionDefinition> {
+  return JSON.parse(await fs.readFile(path.join(sectionDirectoryPath, "section.json"), "utf8")) as StoredSectionDefinition;
+}
+
+// A section's lessons or standalone tests as listed in its section.json,
+// written back after one was created (`added`, put last) or removed. Unlisted
+// files (an older package) join the list in their old order first.
+async function updateSectionItemOrder(
+  sectionDirectoryPath: string,
+  field: "lessonIds" | "testIds",
+  manifest: CourseManifest,
+  added?: string,
+): Promise<void> {
+  const section = await readSectionDefinitionFile(sectionDirectoryPath);
+  const pattern = field === "lessonIds" ? lessonFilePattern : sectionTestFilePattern;
+  const onDisk = (await fs.readdir(sectionDirectoryPath, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && pattern.test(entry.name))
+    .map((entry) => entry.name.replace(/\.json$/, ""));
+
+  await writeCourseJsonFile(
+    path.join(sectionDirectoryPath, "section.json"),
+    { ...section, [field]: [...orderIds(section[field], onDisk.filter((id) => id !== added)), ...(added ? [added] : [])] },
+    manifest,
+  );
 }
 
 async function readStoredLocalizedTitle(
@@ -1108,7 +1146,7 @@ async function hasSiblingSectionWithTitle(
   });
   const sectionJsonPaths = directoryEntries
     .filter(
-      (entry) => entry.isDirectory() && /^section-\d{2}-[a-z0-9-]+$/.test(entry.name),
+      (entry) => entry.isDirectory() && sectionDirectoryPattern.test(entry.name),
     )
     .map((entry) => path.join(courseDirectoryPath, entry.name, "section.json"));
   const titles = await Promise.all(
@@ -1133,7 +1171,7 @@ async function hasSiblingLessonWithTitle(
   });
   const lessonJsonPaths = directoryEntries
     .filter(
-      (entry) => entry.isFile() && /^lesson-\d{2}-[a-z0-9-]+\.json$/.test(entry.name),
+      (entry) => entry.isFile() && lessonFilePattern.test(entry.name),
     )
     .map((entry) => path.join(sectionDirectoryPath, entry.name));
   const titles = await Promise.all(
@@ -1148,22 +1186,6 @@ async function hasSiblingLessonWithTitle(
   );
 }
 
-async function resolveNextLessonId(sectionDirectoryPath: string, title: string) {
-  const directoryEntries = await fs.readdir(sectionDirectoryPath, {
-    withFileTypes: true,
-  });
-  const lessonIndexes = directoryEntries
-    .filter((entry) => entry.isFile())
-    .map((entry) => entry.name.match(/^lesson-(\d{2})-[a-z0-9-]+\.json$/))
-    .filter((match): match is RegExpMatchArray => Boolean(match))
-    .map((match) => Number.parseInt(match[1], 10))
-    .sort((left, right) => left - right);
-  const nextIndex = (lessonIndexes.at(-1) ?? 0) + 1;
-  const slug = slugifyCourseName(title) || "untitled-lesson";
-
-  return `lesson-${String(nextIndex).padStart(2, "0")}-${slug}`;
-}
-
 async function hasSiblingSectionTestWithTitle(
   sectionDirectoryPath: string,
   defaultLocale: Locale,
@@ -1175,7 +1197,7 @@ async function hasSiblingSectionTestWithTitle(
   const sectionTestJsonPaths = directoryEntries
     .filter(
       (entry) =>
-        entry.isFile() && /^section-test-\d{2}-[a-z0-9-]+\.json$/.test(entry.name),
+        entry.isFile() && sectionTestFilePattern.test(entry.name),
     )
     .map((entry) => path.join(sectionDirectoryPath, entry.name));
   const titles = await Promise.all(
@@ -1190,22 +1212,6 @@ async function hasSiblingSectionTestWithTitle(
       existingTitle !== null &&
       normalizeTitleForComparison(existingTitle) === normalizedTarget,
   );
-}
-
-async function resolveNextSectionTestId(sectionDirectoryPath: string, title: string) {
-  const directoryEntries = await fs.readdir(sectionDirectoryPath, {
-    withFileTypes: true,
-  });
-  const testIndexes = directoryEntries
-    .filter((entry) => entry.isFile())
-    .map((entry) => entry.name.match(/^section-test-(\d{2})-[a-z0-9-]+\.json$/))
-    .filter((match): match is RegExpMatchArray => Boolean(match))
-    .map((match) => Number.parseInt(match[1], 10))
-    .sort((left, right) => left - right);
-  const nextIndex = (testIndexes.at(-1) ?? 0) + 1;
-  const slug = slugifyCourseName(title) || "untitled-test";
-
-  return `section-test-${String(nextIndex).padStart(2, "0")}-${slug}`;
 }
 
 function normalizeSupportedLocales(
@@ -1358,7 +1364,11 @@ export async function createLocalCourseSection(
     throw new Error(`A section titled "${normalizedTitle}" already exists`);
   }
 
-  const sectionId = await resolveNextSectionId(courseDirectoryPath, normalizedTitle);
+  const sectionSlug = slugForTitle(normalizedTitle, "untitled-section");
+  const sectionIdsBefore = await listSectionIds(courseDirectoryPath);
+  const sectionId = await createStructureId("section", sectionSlug, (id) =>
+    pathExists(path.join(courseDirectoryPath, id)),
+  );
   const sectionDirectoryPath = path.join(courseDirectoryPath, sectionId);
   const defaultLocale = manifest.defaultLocale;
   const localizedSectionMetadata = Object.fromEntries(
@@ -1378,14 +1388,17 @@ export async function createLocalCourseSection(
     path.join(sectionDirectoryPath, "section.json"),
     {
       id: sectionId,
-      slug: sectionId.replace(/^section-\d{2}-/, ""),
+      slug: sectionSlug,
       locales: localizedSectionMetadata,
+      lessonIds: [],
+      testIds: [],
     },
     manifest,
   );
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,
+    sectionIds: [...orderIds(manifest.sectionIds, sectionIdsBefore), sectionId],
     updatedAt: nowIso,
   });
 
@@ -1428,19 +1441,19 @@ export async function updateLocalCourseSection(
     throw new Error("Section data is invalid");
   }
 
-  // Like a test file, a section's own identity (id/slug) is preserved —
-  // only the locale content is ever replaced.
-  const existingIdentity = JSON.parse(existingFileContents) as {
-    id: string;
-    slug: string;
-  };
+  // Like a test file, a section's own identity (id/slug) and the order of
+  // its lessons and tests are preserved — only the locale content is ever
+  // replaced.
+  const existing = JSON.parse(existingFileContents) as StoredSectionDefinition;
 
   await writeCourseJsonFile(
     sectionDefinitionPath,
     {
-      id: existingIdentity.id,
-      slug: existingIdentity.slug,
+      id: existing.id,
+      slug: existing.slug,
       locales: input.locales,
+      ...(existing.lessonIds ? { lessonIds: existing.lessonIds } : {}),
+      ...(existing.testIds ? { testIds: existing.testIds } : {}),
     },
     manifest,
   );
@@ -1553,7 +1566,8 @@ export async function createLocalCourseLesson(
     );
   }
 
-  const lessonId = await resolveNextLessonId(sectionDirectoryPath, normalizedTitle);
+  const lessonSlug = slugForTitle(normalizedTitle, "untitled-lesson");
+  const lessonId = await createStructureId("lesson", lessonSlug, (id) => isItemIdTaken(courseDirectoryPath, id));
   const defaultLocale = manifest.defaultLocale;
   const localizedLessonMetadata = Object.fromEntries(
     manifest.supportedLocales.map((locale) => [
@@ -1571,11 +1585,12 @@ export async function createLocalCourseLesson(
     path.join(sectionDirectoryPath, `${lessonId}.json`),
     {
       id: lessonId,
-      slug: lessonId.replace(/^lesson-\d{2}-/, ""),
+      slug: lessonSlug,
       locales: localizedLessonMetadata,
     },
     manifest,
   );
+  await updateSectionItemOrder(sectionDirectoryPath, "lessonIds", manifest, lessonId);
 
   await Promise.all(
     manifest.supportedLocales.map(async (locale) => {
@@ -1844,7 +1859,8 @@ export async function createLocalCourseSectionTest(
     );
   }
 
-  const testId = await resolveNextSectionTestId(sectionDirectoryPath, normalizedTitle);
+  const testSlug = slugForTitle(normalizedTitle, "untitled-test");
+  const testId = await createStructureId("section-test", testSlug, (id) => isItemIdTaken(courseDirectoryPath, id));
   const localizedTestMetadata = Object.fromEntries(
     manifest.supportedLocales.map((locale) => [
       locale,
@@ -1861,11 +1877,12 @@ export async function createLocalCourseSectionTest(
     path.join(sectionDirectoryPath, `${testId}.json`),
     {
       id: testId,
-      slug: testId.replace(/^section-test-\d{2}-/, ""),
+      slug: testSlug,
       locales: localizedTestMetadata,
     },
     manifest,
   );
+  await updateSectionItemOrder(sectionDirectoryPath, "testIds", manifest, testId);
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,
@@ -2058,6 +2075,7 @@ export async function deleteLocalCourseSection(
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,
+    sectionIds: orderIds(manifest.sectionIds, await listSectionIds(courseDirectoryPath)),
     updatedAt: new Date().toISOString(),
   });
 }
@@ -2103,6 +2121,7 @@ export async function deleteLocalCourseLesson(
   const lessonTestId = resolveTestIdForLesson(input.lessonId);
 
   await fs.rm(path.join(sectionDirectoryPath, `${lessonTestId}.json`), { force: true });
+  await updateSectionItemOrder(sectionDirectoryPath, "lessonIds", manifest);
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,
@@ -2137,6 +2156,7 @@ export async function deleteLocalCourseSectionTest(
   }
 
   await fs.rm(testDefinitionPath, { force: true });
+  await updateSectionItemOrder(sectionDirectoryPath, "testIds", manifest);
 
   await writeCourseManifest(courseDirectoryPath, {
     ...manifest,

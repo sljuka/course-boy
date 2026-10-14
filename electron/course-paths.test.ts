@@ -11,8 +11,11 @@ import {
   createLocalCourseDraft,
   createLocalCourseLesson,
   createLocalCourseSection,
+  createLocalCourseSectionTest,
   createRecoveryStagingPath,
   cutLocalCourseVersion,
+  deleteLocalCourseLesson,
+  deleteLocalCourseSection,
   ensureLocalCoursesRoot,
   forgetLocalCoursesRootSetupForTests,
   getUnusedDraftAssets,
@@ -1359,5 +1362,61 @@ describe("built-in course as a published course", () => {
 
     expect(await fs.readdir(path.join(coursesRoot, BUILT_IN_ID))).toEqual(["draft"]);
     expect(await builtIn()).toMatchObject({ distribution: "local", isBuiltIn: false });
+  });
+});
+
+describe("section, lesson and test ids", () => {
+  it("never carry a number for their place, and are unique across the course's sections", async () => {
+    const { courseId } = await createLocalCourseDraft({
+      defaultLocale: "en",
+      locales: { en: { description: "", title: "Math" } },
+      supportedLocales: ["en"],
+    });
+    const addition = await createLocalCourseSection({ courseId, title: "Addition" });
+    const subtraction = await createLocalCourseSection({ courseId, title: "Subtraction" });
+    const first = await createLocalCourseLesson({ courseId, sectionId: addition.sectionId, title: "Introduction" });
+    const second = await createLocalCourseLesson({ courseId, sectionId: subtraction.sectionId, title: "Introduction" });
+    const test = await createLocalCourseSectionTest({ courseId, sectionId: addition.sectionId, title: "Review" });
+
+    expect(addition.sectionId).toMatch(/^section-addition-[a-z0-9]{4}$/);
+    expect(first.lessonId).toMatch(/^lesson-introduction-[a-z0-9]{4}$/);
+    expect(test.testId).toMatch(/^section-test-review-[a-z0-9]{4}$/);
+    expect(second.lessonId).not.toBe(first.lessonId);
+  });
+
+  it("keep their order in lists, updated by every create and delete, and read in that order", async () => {
+    const { courseId } = await createLocalCourseDraft({
+      defaultLocale: "en",
+      locales: { en: { description: "", title: "Math" } },
+      supportedLocales: ["en"],
+    });
+    const root = await ensureLocalCoursesRoot();
+    const draftDir = path.join(root, courseId, "draft");
+    const readJson = async (...parts: string[]) => JSON.parse(await fs.readFile(path.join(draftDir, ...parts), "utf8"));
+    // Titles whose slugs sort the other way round, so the order can only come from the lists.
+    const zebra = await createLocalCourseSection({ courseId, title: "Zebra" });
+    const apple = await createLocalCourseSection({ courseId, title: "Apple" });
+    const last = await createLocalCourseLesson({ courseId, sectionId: zebra.sectionId, title: "Zulu" });
+    const middle = await createLocalCourseLesson({ courseId, sectionId: zebra.sectionId, title: "Mike" });
+    const removed = await createLocalCourseLesson({ courseId, sectionId: zebra.sectionId, title: "Alpha" });
+    const review = await createLocalCourseSectionTest({ courseId, sectionId: zebra.sectionId, title: "Review" });
+
+    await deleteLocalCourseLesson({ courseId, lessonId: removed.lessonId, sectionId: zebra.sectionId });
+
+    expect((await readJson("course.json")).sectionIds).toEqual([zebra.sectionId, apple.sectionId]);
+    expect(await readJson(zebra.sectionId, "section.json")).toMatchObject({
+      lessonIds: [last.lessonId, middle.lessonId],
+      testIds: [review.testId],
+    });
+
+    await createLocalCourseLesson({ courseId, sectionId: apple.sectionId, title: "Anything" });
+    const details = await getCourseDetails(root, courseId, "en");
+    expect(details?.sections.map((section) => section.id)).toEqual([zebra.sectionId, apple.sectionId]);
+    expect(details?.sections[0].lessons.map((lesson) => lesson.id)).toEqual([last.lessonId, middle.lessonId]);
+
+    // Removing a section that isn't the last no longer leaves a gap that blocks the cut.
+    await deleteLocalCourseSection({ courseId, sectionId: zebra.sectionId });
+    expect((await readJson("course.json")).sectionIds).toEqual([apple.sectionId]);
+    await expect(cutLocalCourseVersion({ courseId, releaseType: "minor" })).resolves.toBeDefined();
   });
 });

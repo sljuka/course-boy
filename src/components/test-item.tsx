@@ -9,30 +9,31 @@ type TestItemProps = {
   onSelect?: (item: CoursePreviewStripItem) => void;
   status?: ReactNode;
   testLabel: string;
+  // Which lesson test this is in the strip, 1-based (for its label).
+  testNumber: number;
 };
 
 function formatPreviewItemTitle(
   item: CoursePreviewStripItem,
   testLabel: string,
+  testNumber: number,
 ): string {
-  const matchedIndex = item.id.match(/^test-(\d{2})-/);
-
-  // A lesson-attached test has no real title of its own (see docs/contracts.md)
-  // — its id matches this pattern and `item.title` is just that same id, so a
-  // numbered label is synthesized instead. A standalone test's id doesn't
-  // match (it's `section-test-XX-*`) and does carry a real title — use it.
-  if (!matchedIndex) {
+  // A lesson-attached test (`test-…`) has no real title of its own (see
+  // docs/contracts.md) — `item.title` is just its id, so a numbered label is
+  // synthesized instead, from its place in the strip (ids carry no number).
+  // A standalone test (`section-test-…`) does carry a real title — use it.
+  if (!item.id.startsWith("test-")) {
     return item.title;
   }
 
-  return testLabel.replace("{{index}}", matchedIndex[1]);
+  return testLabel.replace("{{index}}", String(testNumber));
 }
 
-export function TestItem({ item, onSelect, status, testLabel }: TestItemProps) {
+export function TestItem({ item, onSelect, status, testLabel, testNumber }: TestItemProps) {
   return (
     <PreviewTile
       item={item}
-      label={formatPreviewItemTitle(item, testLabel)}
+      label={formatPreviewItemTitle(item, testLabel, testNumber)}
       onSelect={onSelect}
       status={status}
     >

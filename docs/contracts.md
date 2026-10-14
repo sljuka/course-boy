@@ -173,6 +173,19 @@ courses/<course-id>/draft/<section>/...
 courses/<course-id>/draft/assets/<filename>
 ```
 
+**Ids never change; order is a list (2026-10-14).** A section's folder name, and a lesson's
+or standalone test's file name, is its id: set once when it's created, never changed by
+renaming or (later) reordering, because students' progress is kept under it, also across
+versions. New ids are `<kind>-<title slug>-<4 random characters>`
+(`section-addition-k3f9`, `lesson-introduction-x2pq`, `section-test-review-7hd0`), unique
+within the course (`createStructureId` in
+[electron/course-order.ts](../electron/course-order.ts:1)). The order is kept apart:
+`course.json` `sectionIds`, and each `section.json`'s `lessonIds` and `testIds`, updated by
+every create and delete. The reader goes by the lists (`orderIds`), puts anything on disk
+that isn't listed after them, and skips listed ids that are gone. Older packages have numbered
+ids (`section-01-welcome`, `lesson-02-foo`) and no lists; they are ordered by that number,
+as before. Release notes ignore a `section.json` change that only touches its lists.
+
 **Version numbers are two numbers, `major.minor` (2026-10-09).** `course.json`'s
 `version` (and `versionInfo` `{ major, minor, releaseType }`), the `versions/<x.y>/`
 folder names, `release.json`'s `publishedVersion` and changelog entries all use it
@@ -269,17 +282,17 @@ the player needs a real byte-range read to find it before it can play anything, 
 to support seeking within an already-playing video.
 
 A test file is a sibling of the lesson it belongs to, in the same section directory, with
-its filename fully derived from the lesson's: `lesson-01-foo.json` pairs with
-`test-01-foo.json`. This derivation (`resolveTestIdForLesson` /
+its filename fully derived from the lesson's: `lesson-foo-k3f9.json` pairs with
+`test-foo-k3f9.json`. This derivation (`resolveTestIdForLesson` /
 `resolveLessonIdForTest` in [src/lib/course-test-id.ts](../src/lib/course-test-id.ts:1)) is
 the only thing that ties a test to its lesson — there is no `testId` field stored
 anywhere, and a test has no independent identity or title. A lesson without a test simply
-has no `test-XX-*.json` file; `CourseLesson.test` is `null` in that case.
+has no `test-*.json` file; `CourseLesson.test` is `null` in that case.
 
 A **standalone test** (`CourseSectionTest` in
 [src/lib/course-package.ts](../src/lib/course-package.ts:1)) is the other, independent way a
 section can hold a test — no parent lesson, no document, its own real identity. Its file,
-`section-test-XX-slug.json`, is distinct from the `test-XX-*` naming above precisely so a
+`section-test-<slug>-<random>.json`, is distinct from the `test-*` naming above precisely so a
 directory scan can tell the two apart by filename alone, with no dependence on file
 *absence* to infer meaning. Unlike a lesson/test pair, there's no document to justify
 splitting metadata from content, so one file carries both: it's created with only
