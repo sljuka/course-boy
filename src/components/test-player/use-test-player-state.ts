@@ -57,7 +57,12 @@ function createEmptyResults(exercises: CourseExercise[]) {
   }));
 }
 
-export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
+// `startInteractive`: whether a test opens in interactive mode (SLJ-132; the
+// person's setting in the test player, paper mode for the editors' examples).
+export function useTestPlayerState(
+  activeLesson?: { test: CourseTest | null },
+  { startInteractive = false }: { startInteractive?: boolean } = {},
+) {
   const { t } = useTranslation();
   const [activeTestExercises, setActiveTestExercises] = useState<
     CourseExercise[]
@@ -74,9 +79,7 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
   // a fresh set of exercises (Refresh) starts a new attempt.
   const [firstTryCorrect, setFirstTryCorrect] = useState<(boolean | null)[]>([]);
   const [isPrintHintVisible, setIsPrintHintVisible] = useState(true);
-  const [isInteractiveHintVisible, setIsInteractiveHintVisible] =
-    useState(true);
-  const [isInteractiveMode, setIsInteractiveMode] = useState(false);
+  const [isInteractiveMode, setIsInteractiveMode] = useState(startInteractive);
 
   function resetExerciseState() {
     setActiveTestExercises([]);
@@ -86,7 +89,6 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     setFirstTryCorrect([]);
     setTestFeedback(null);
     setIsTestPassed(false);
-    setIsInteractiveMode(false);
   }
 
   function hydrateExercises(exercises: CourseExercise[]) {
@@ -107,8 +109,8 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
 
   useEffect(() => {
     resetExerciseState();
+    setIsInteractiveMode(startInteractive);
     setIsPrintHintVisible(true);
-    setIsInteractiveHintVisible(true);
 
     if (!activeLesson?.test || activeLesson.test.exercises.length === 0) {
       return;
@@ -121,7 +123,7 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     }
 
     hydrateExercises(selectedExercises);
-  }, [activeLesson]);
+  }, [activeLesson, startInteractive]);
 
   function updateExerciseAnswer(index: number, value: string) {
     setExerciseAnswers((currentAnswers) =>
@@ -207,12 +209,10 @@ export function useTestPlayerState(activeLesson?: { test: CourseTest | null }) {
     exerciseAnswers,
     exerciseResults,
     firstTryCorrect,
-    isInteractiveHintVisible,
     isInteractiveMode,
     isPrintHintVisible,
     isTestPassed,
     refreshExercises,
-    setIsInteractiveHintVisible,
     setIsInteractiveMode,
     setIsPrintHintVisible,
     submitExercise,

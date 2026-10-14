@@ -27,14 +27,20 @@ type PrintOptionsMenuTriggerProps = {
 export function PrintOptionsMenu({
   children,
   mode,
+  onOpenChange,
   onPrint,
   onPrintOptionsChange,
+  open,
   printOptions,
 }: {
   children: React.ReactElement<PrintOptionsMenuTriggerProps>;
   mode: "lesson" | "test";
+  // Optional: controlled from outside, e.g. the test player opening it after
+  // switching from interactive mode to paper mode (SLJ-132).
+  onOpenChange?: (open: boolean) => void;
   onPrint: () => void;
   onPrintOptionsChange: (nextOptions: CoursePrintOptions) => void;
+  open?: boolean;
   printOptions: CoursePrintOptions;
 }) {
   const { t } = useTranslation();
@@ -92,7 +98,7 @@ export function PrintOptionsMenu({
   }
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={onOpenChange} open={open}>
       <DropdownMenuTrigger render={children} />
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>

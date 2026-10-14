@@ -749,8 +749,10 @@ describe('learner flow: attend a course and complete its test', () => {
     expect(answerIdx).toBeGreaterThanOrEqual(0)
     expect(await fillIndex(harness.page, answerIdx, '7')).toBe('OK')
 
+    // Tests open in interactive mode (SLJ-132): a right answer turns
+    // "Check answer" into "Continue".
     expect(await clickText(harness.page, 'Check answer')).toContain('OK')
-    await waitForText(harness.page, 'Correct. You can continue to the next lesson.')
+    await harness.page.getByRole('button', { name: 'Continue' }).waitFor({ timeout: 15_000 })
 
     expect(await clickText(harness.page, 'Continue')).toContain('OK')
     await waitForText(harness.page, 'Course complete')
@@ -759,6 +761,64 @@ describe('learner flow: attend a course and complete its test', () => {
     // later describe blocks land back on normal app chrome.
     expect(await clickText(harness.page, 'Close course')).toContain('OK')
     await waitForText(harness.page, 'English')
+  })
+
+  // SLJ-132: interactive mode reaches paper mode by its Print and Paper mode
+  // buttons, X leaves the test, and Settings → Interface opens tests in paper
+  // mode instead.
+  it('opens a test in interactive mode, switches to paper mode, and follows the setting', async () => {
+    const { page } = harness
+    const openTest = () =>
+      page.evaluate(
+        ({ id, lessonId }) => {
+          location.hash = `#/courses/${id}/lessons/${lessonId}/test`
+        },
+        { id: attendCourseId, lessonId },
+      )
+    const button = (name) => page.getByRole('button', { exact: true, name })
+
+    await openTest()
+    await button('Paper mode').waitFor({ timeout: 15_000 })
+
+    // Print: paper mode, with the print options open.
+    await button('Print test').click()
+    await page.getByRole('menu').waitFor({ timeout: 15_000 })
+    expect(await page.getByRole('menu').innerText()).toContain('Print options')
+    await page.keyboard.press('Escape')
+    await button('Interactive mode').waitFor()
+
+    // Back to interactive, then Paper mode: the whole test on one page.
+    await button('Interactive mode').click()
+    await button('Paper mode').click()
+    await waitForText(page, 'Prefer paper? Print this test first.')
+
+    // X leaves the test from interactive mode too.
+    await button('Interactive mode').click()
+    await button('Close course').click()
+    await page.waitForFunction(() => !location.hash.endsWith('/test'), undefined, { timeout: 15_000 })
+
+    // Setting off: tests open in paper mode.
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    const setting = page.getByRole('checkbox', { name: /Start tests in interactive mode/ })
+    await setting.waitFor({ timeout: 15_000 })
+    expect(await setting.getAttribute('aria-checked')).toBe('true')
+    await setting.click()
+    await page.waitForFunction(async () => (await window.preferences.get()).startTestsInteractive === false)
+    await openTest()
+    await waitForText(page, 'Prefer paper? Print this test first.')
+    expect(await button('Paper mode').count()).toBe(0)
+
+    // Back on, for the cases after this one.
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await setting.click()
+    await page.waitForFunction(async () => (await window.preferences.get()).startTestsInteractive === true)
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
   })
 })
 
@@ -1751,13 +1811,10 @@ describe('exercise media', () => {
     expect(await image.getAttribute('src')).toBe(`matko-asset://${ids.courseId}/${imageFile}`)
     expect(await page.evaluate(() => document.querySelector('[data-testid="exercise-media"] img').naturalWidth)).toBe(1)
 
-    // The decorative video (the next exercise, when the test shows one at a time).
+    // The decorative video, on the next exercise: paper mode shows them all
+    // (tests open in interactive mode, one at a time; SLJ-132).
     const decorative = page.locator('[data-testid="exercise-media"][data-decorative]')
-    if ((await decorative.count()) === 0) {
-      await page.locator('input:visible').first().fill('3')
-      await clickText(page, 'Check answer')
-      await clickText(page, 'Next')
-    }
+    await page.click('[data-testid="test-paper-mode"]')
     await decorative.first().waitFor({ timeout: 15_000 })
     expect(await decorative.first().getAttribute('aria-hidden')).toBe('true')
     expect(await decorative.locator('video').getAttribute('controlslist')).toBe('nodownload')
@@ -1818,7 +1875,9 @@ describe('course progress', () => {
 
     // The test, all at once: the first answer right, the second wrong on the
     // first try and then fixed. The score counts first tries only.
-    // The test page's only inputs are its answers.
+    // The test page's only inputs are its answers. Tests open in interactive
+    // mode (SLJ-132); paper mode shows them all.
+    await page.click('[data-testid="test-paper-mode"]')
     const answers = page.locator('input:visible')
     await answers.first().waitFor({ timeout: 15_000 })
     await answers.nth(0).fill('4')

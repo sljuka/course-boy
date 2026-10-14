@@ -80,8 +80,6 @@
     "inlineExerciseCorrect": "Tačno!",
     "error": "Detalji kursa trenutno ne mogu da se učitaju.",
     "exerciseProgress": "Zadatak {{current}} od {{total}}",
-    "interactiveHintBody": "U interaktivnom režimu rešavaš zadatke jedan po jedan i dobijaš odgovor nakon svakog slanja. To je malo prijatniji način da radiš test.",
-    "interactiveHintTitle": "Probaj interaktivni režim",
     "incorrectAnswer": "Taj odgovor nije tačan. Možeš ponovo da pokušaš.",
     "incorrectAnswerWithHint": "Taj odgovor nije tačan. Pomoć: {{hint}}",
     "dismissPrintHint": "Zatvori savet za štampu",
@@ -104,6 +102,9 @@
     "printOptions": "Opcije štampe",
     "printNow": "Štampaj",
     "printCourse": "Štampaj kurs",
+    "interactiveMode": "Interaktivni režim",
+    "paperMode": "Režim za papir",
+    "printTest": "Štampaj test",
     "refreshExercise": "Osveži zadatak",
     "reviewExercise": "Pregledaj zadatak {{number}}",
     "sections": "Sekcije",
@@ -547,7 +548,9 @@
       "light": "Svetla",
       "dark": "Tamna",
       "useProgramThemes": "Koristi boje programa",
-      "useProgramThemesDescription": "Programi mogu da oboje aplikaciju svojom temom na svojoj stranici i u svojim kursevima. Isključi da svuda zadržiš svoje boje."
+      "useProgramThemesDescription": "Programi mogu da oboje aplikaciju svojom temom na svojoj stranici i u svojim kursevima. Isključi da svuda zadržiš svoje boje.",
+      "startTestsInteractive": "Pokreći testove u interaktivnom režimu",
+      "startTestsInteractiveDescription": "Testovi se otvaraju sa jednim zadatkom u isto vreme. Isključi da se otvaraju kao jedna stranica koju možeš da odštampaš."
     },
     "sharing": {
       "title": "Deljenje",

@@ -24,6 +24,7 @@ import { PERSONAS } from "@/lib/personas";
 import type { Persona, Theme, UserRole } from "@/lib/preferences";
 import { useProgramThemesPreference } from "@/lib/program-themes-preference";
 import { useShowBundledCourses } from "@/lib/show-bundled-courses-queries";
+import { useStartTestsInteractivePreference } from "@/lib/start-tests-interactive-preference";
 import { useAppState } from "@/lib/use-app-state";
 
 const roleOptions: UserRole[] = ["student", "teacher"];
@@ -42,6 +43,7 @@ export const SettingsPage = () => {
   const { persona, role, setPersona, setRole, setTheme, theme } = useAppState();
   const [showBundledCourses, setShowBundledCourses] = useShowBundledCourses();
   const [useProgramThemes, setUseProgramThemes] = useProgramThemesPreference();
+  const { setStartInteractive, startInteractive } = useStartTestsInteractivePreference();
   const [previousVersionsToKeep, setPreviousVersionsToKeep] = usePreviousVersionsToKeep();
 
   return (
@@ -139,6 +141,19 @@ export const SettingsPage = () => {
             <FieldContent>
               <FieldTitle>{t("settings.interface.useProgramThemes")}</FieldTitle>
               <FieldDescription>{t("settings.interface.useProgramThemesDescription")}</FieldDescription>
+            </FieldContent>
+          </Field>
+        </FieldLabel>
+        <FieldLabel htmlFor="settings-start-tests-interactive">
+          <Field orientation="horizontal">
+            <Checkbox
+              checked={startInteractive}
+              id="settings-start-tests-interactive"
+              onCheckedChange={(checked) => setStartInteractive(checked === true)}
+            />
+            <FieldContent>
+              <FieldTitle>{t("settings.interface.startTestsInteractive")}</FieldTitle>
+              <FieldDescription>{t("settings.interface.startTestsInteractiveDescription")}</FieldDescription>
             </FieldContent>
           </Field>
         </FieldLabel>

@@ -45,6 +45,9 @@ export type UserPreferences = {
   // and start at login (in the menu bar, no window).
   keepSharingInBackground?: boolean
   openAtLogin?: boolean
+  // A test opens in interactive mode, one question at a time (SLJ-132); on
+  // when unset. Off: it opens in paper mode.
+  startTestsInteractive?: boolean
   // Programs recolor the app with their theme on their page and in their
   // courses (SLJ-32); on when unset.
   useProgramThemes?: boolean

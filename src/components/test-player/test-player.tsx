@@ -1,4 +1,4 @@
-import { Play, Printer } from "lucide-react";
+import { FileText, Play, Printer } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate } from "react-router-dom";
@@ -15,7 +15,6 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
-import { AlertInteractiveMode } from "@/components/test-player/alert-interactive-mode";
 import { ExerciseStepper } from "@/components/test-player/exercise-stepper";
 import { InteractiveTestPlayer } from "@/components/test-player/interactive-test-player";
 import { TestPlayerPrintHint } from "@/components/test-player/test-player-print-hint";
@@ -27,6 +26,7 @@ import { useCourseMnemonics } from "@/lib/use-course-mnemonics";
 import { buildLessonPath } from "@/lib/course-utils";
 import { recordTestResult } from "@/lib/course-progress-queries";
 import { scoreTestAttempt } from "@/lib/course-progress";
+import { useStartTestsInteractivePreference } from "@/lib/start-tests-interactive-preference";
 import { resolveTestIdForLesson } from "@/lib/course-test-id";
 
 const NO_MNEMONICS: CourseMnemonic[] = [];
@@ -59,12 +59,39 @@ export function TestPlayerView({
 }: {
   playerState: CoursePlayerReadyState;
 }) {
+  // Waits for the setting, so a test doesn't open in one mode and jump to
+  // the other. Keyed by the test, so the next test starts afresh (its first
+  // exercise, its mode, the print menu closed).
+  const { isLoading, startInteractive } = useStartTestsInteractivePreference();
+
+  if (isLoading) {
+    return null;
+  }
+
+  return (
+    <TestPlayerContent
+      key={playerState.activeStep.item.id}
+      playerState={playerState}
+      startInteractive={startInteractive}
+    />
+  );
+}
+
+function TestPlayerContent({
+  playerState,
+  startInteractive,
+}: {
+  playerState: CoursePlayerReadyState;
+  startInteractive: boolean;
+}) {
   const { t } = useTranslation();
   const [printOptions, setPrintOptions] = useState(defaultTestPrintOptions);
   // Lifted up from `InteractiveTestPlayer` so the stepper can be rendered in
   // this component's own header row (same height as the close button)
   // instead of inside the player's centered content.
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  // Interactive mode's Print button lands in paper mode with this open.
+  const [isPrintMenuOpen, setIsPrintMenuOpen] = useState(false);
   const activeItem = playerState.activeStep.item;
   const { shown: shownMnemonics } = useCourseMnemonics(playerState.courseId);
   const {
@@ -73,19 +100,17 @@ export function TestPlayerView({
     exerciseAnswers,
     exerciseResults,
     firstTryCorrect,
-    isInteractiveHintVisible,
     isInteractiveMode,
     isPrintHintVisible,
     isTestPassed,
     refreshExercises,
-    setIsInteractiveHintVisible,
     setIsInteractiveMode,
     setIsPrintHintVisible,
     submitExercise,
     submitSingleExercise,
     testFeedback,
     updateExerciseAnswer,
-  } = useTestPlayerState(activeItem);
+  } = useTestPlayerState(activeItem, { startInteractive });
 
   // Continue after the test: it's done, with this attempt's first-try score
   // (SLJ-50). A teacher's preview records nothing. A lesson's test is kept
@@ -105,6 +130,12 @@ export function TestPlayerView({
   function startInteractiveMode() {
     setCurrentExerciseIndex(0);
     setIsInteractiveMode(true);
+  }
+
+  // Printing happens in paper mode: the interactive view isn't printed.
+  function printFromInteractiveMode() {
+    setIsInteractiveMode(false);
+    setIsPrintMenuOpen(true);
   }
 
   if (!activeItem.test || activeItem.test.exercises.length === 0) {
@@ -128,13 +159,38 @@ export function TestPlayerView({
   const allowsMnemonics = activeItem.test?.showMnemonics === true;
   const mnemonicsToggle = allowsMnemonics ? <MnemonicsToggle courseId={playerState.courseId} /> : null;
 
+  // X leaves the test in both modes; interactive mode reaches paper mode
+  // through its own two buttons.
   const toolbarActions = isInteractiveMode ? (
     <CoursePlayerActions
       isRefreshingAvailable={false}
       mnemonicsToggle={mnemonicsToggle}
-      onClose={() => setIsInteractiveMode(false)}
+      onClose={playerState.exitPlayer}
       onRefreshExercise={refreshExercises}
-      printControl={null}
+      printControl={
+        <div className="flex items-center gap-2">
+          <Button
+            aria-label={t("courseDetails.printTest")}
+            data-testid="test-print"
+            onClick={printFromInteractiveMode}
+            shape="circle"
+            size="icon-sm"
+            variant="subtle"
+          >
+            <Printer aria-hidden="true" />
+          </Button>
+          <Button
+            aria-label={t("courseDetails.paperMode")}
+            data-testid="test-paper-mode"
+            onClick={() => setIsInteractiveMode(false)}
+            shape="circle"
+            size="icon-sm"
+            variant="subtle"
+          >
+            <FileText aria-hidden="true" />
+          </Button>
+        </div>
+      }
     />
   ) : (
     <CoursePlayerActions
@@ -146,8 +202,10 @@ export function TestPlayerView({
         <div className="flex items-center gap-2">
           <PrintOptionsMenu
             mode="test"
+            onOpenChange={setIsPrintMenuOpen}
             onPrint={() => window.print()}
             onPrintOptionsChange={setPrintOptions}
+            open={isPrintMenuOpen}
             printOptions={printOptions}
           >
             <Button
@@ -160,7 +218,8 @@ export function TestPlayerView({
             </Button>
           </PrintOptionsMenu>
           <Button
-            aria-label={t("courseDetails.interactiveHintTitle")}
+            aria-label={t("courseDetails.interactiveMode")}
+            data-testid="test-interactive-mode"
             onClick={startInteractiveMode}
             shape="circle"
             size="icon-sm"
@@ -257,12 +316,6 @@ export function TestPlayerView({
                 onDismiss={() => setIsPrintHintVisible(false)}
                 onPrintOptionsChange={setPrintOptions}
                 printOptions={printOptions}
-              />
-            )}
-            {isInteractiveHintVisible && (
-              <AlertInteractiveMode
-                onDismiss={() => setIsInteractiveHintVisible(false)}
-                onStart={startInteractiveMode}
               />
             )}
             <CourseTestContent

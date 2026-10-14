@@ -213,6 +213,7 @@ type UserPreferences = {
   courseInfoPanel?: ExplorerPanelPreference
   showBundledCourses?: boolean
   useProgramThemes?: boolean
+  startTestsInteractive?: boolean
   showMnemonics?: boolean
   // SLJ-129: keep sharing when the window is closed (unset: not asked yet),
   // and start at login (in the menu bar, no window).
@@ -822,6 +823,9 @@ ipcMain.handle(
 
     if (typeof preferences.useProgramThemes === 'boolean') {
       profile.preferencesStore.set('useProgramThemes', preferences.useProgramThemes)
+    }
+    if (typeof preferences.startTestsInteractive === 'boolean') {
+      profile.preferencesStore.set('startTestsInteractive', preferences.startTestsInteractive)
     }
     if (typeof preferences.showBundledCourses === 'boolean') {
       profile.preferencesStore.set('showBundledCourses', preferences.showBundledCourses)

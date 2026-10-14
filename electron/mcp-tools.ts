@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -26,6 +29,7 @@ import {
   updateLocalCourseSection,
   updateLocalCourseSectionIntro,
   updateLocalCourseSectionTest,
+  uploadCourseAssetFromBytes,
 } from "./course-paths";
 import { getCourseDetails, listCourses } from "./course-registry";
 import { createProgram, listPrograms, readProgram, updateProgram } from "./program-paths";
@@ -74,6 +78,10 @@ export function lessonBodyToMarkdown(body: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
+// add_image copies a file the agent names; a bound keeps one mistaken path
+// from filling the course with a huge file.
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 // ─── Tests: a list of questions ─────────────────────────────────────────────
 
@@ -476,6 +484,40 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         sectionId: args.sectionId,
       });
       return null;
+    }),
+  );
+
+  server.registerTool(
+    "add_image",
+    {
+      description:
+        "Copies an image file from this computer into a course, for its lessons and section intros. Returns the Markdown block to put in a lesson: lesson text with an image is a list of blocks, each after its [matko-block] marker (\"[matko-block]: <> (markdown)\" before text).",
+      inputSchema: {
+        alt: z.string().min(1).describe("What the image shows, for students who can't see it"),
+        caption: z.string().optional().describe("Shown under the image, e.g. its author and licence"),
+        courseId,
+        filePath: z.string().min(1).describe("Absolute path of a .png, .jpg, .jpeg, .webp, .gif or .svg file"),
+      },
+    },
+    write(async (args: { alt: string; caption?: string; courseId: string; filePath: string }) => {
+      await ownCourse(args.courseId);
+      if (!path.isAbsolute(args.filePath)) throw new Error("The file path must be absolute");
+      const stat = await fs.stat(args.filePath);
+      if (!stat.isFile()) throw new Error(`"${args.filePath}" is not a file`);
+      if (stat.size > MAX_IMAGE_BYTES) throw new Error("The image is larger than 10 MB");
+      const data = await fs.readFile(args.filePath);
+      const uploaded = await uploadCourseAssetFromBytes({
+        courseId: args.courseId,
+        data: data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
+        filename: path.basename(args.filePath),
+        kind: "image",
+      });
+      // The image block's own format (lesson-content-markdown.ts), so quotes
+      // and brackets can't break out of it.
+      const alt = args.alt.replace(/[[\]]/g, "");
+      const caption = args.caption?.trim().replace(/"/g, "'");
+      const image = `![${alt}](${uploaded.path}${caption ? ` "${caption}"` : ""})`;
+      return { block: `${blockMarker("image")}\n${image}`, filename: uploaded.path };
     }),
   );
 

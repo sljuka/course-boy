@@ -152,6 +152,7 @@ describe("the tools", () => {
     const names = (await client.listTools()).tools.map((tool) => tool.name).sort();
 
     expect(names).toEqual([
+      "add_image",
       "commit_version",
       "create_course",
       "create_lesson",
@@ -228,6 +229,39 @@ describe("the tools", () => {
     });
     expect(await call("list_programs")).toEqual([{ courseCount: 1, description: "Start here", id: programId, title: "Maths" }]);
     expect(changed).toHaveBeenCalled();
+  });
+
+  it("copy an image into a course and give back its lesson block", async () => {
+    const { courseId } = await call<{ courseId: string }>("create_course", { title: "Pictures" });
+    const { sectionId } = await call<{ sectionId: string }>("create_section", { courseId, title: "One" });
+    const imagePath = path.join(userDataDir, "thor.png");
+    await fs.writeFile(imagePath, Buffer.from("not really a png"));
+
+    const { block, filename } = await call<{ block: string; filename: string }>("add_image", {
+      alt: "Thor [with] his hammer",
+      caption: 'Max Koch, "public domain"',
+      courseId,
+      filePath: imagePath,
+    });
+
+    expect(filename).toMatch(/^thor-[0-9a-f]+\.png$/);
+    expect(block).toBe(`[matko-block]: <> (image)\n![Thor with his hammer](${filename} "Max Koch, 'public domain'")`);
+    const { lessonId } = await call<{ lessonId: string }>("create_lesson", {
+      content: `[matko-block]: <> (markdown)\nThursday is Thor's day.\n\n${block}`,
+      courseId,
+      sectionId,
+      title: "Thursday",
+    });
+    expect(await call("read_lesson", { courseId, lessonId, sectionId })).toMatchObject({
+      content: `[matko-block]: <> (markdown)\nThursday is Thor's day.\n\n${block}`,
+    });
+  });
+
+  it("refuse an image path that isn't absolute or isn't a file", async () => {
+    const { courseId } = await call<{ courseId: string }>("create_course", { title: "Pictures" });
+
+    await expect(call("add_image", { alt: "x", courseId, filePath: "thor.png" })).rejects.toThrow("must be absolute");
+    await expect(call("add_image", { alt: "x", courseId, filePath: userDataDir })).rejects.toThrow("is not a file");
   });
 
   it("update titles, and rewrite a lesson in place", async () => {
