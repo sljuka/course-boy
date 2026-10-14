@@ -133,6 +133,7 @@ export function LessonPlayerView({
         </div>
       }
       actions={playerActions}
+      keepsActionBarInFullScreen
     >
       <PrintDocumentHeader
         courseTitle={playerState.courseTitle}

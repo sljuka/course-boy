@@ -1,8 +1,9 @@
-import { RotateCw, X } from "lucide-react";
+import { Maximize2, Minimize2, RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { PlayerIconButton } from "@/components/course-player/player-icon-button";
 import { RoleGuard } from "@/components/role-guard";
+import { IMMERSIVE_SHORTCUT_LABEL, useImmersiveMode } from "@/lib/use-immersive-mode";
 
 export const CoursePlayerActions = ({
   isRefreshingAvailable,
@@ -19,6 +20,8 @@ export const CoursePlayerActions = ({
   printControl: React.ReactNode;
 }) => {
   const { t } = useTranslation();
+  // Full screen (SLJ-133): the window and this page only, its action bar kept.
+  const immersive = useImmersiveMode();
 
   return (
     <>
@@ -31,6 +34,14 @@ export const CoursePlayerActions = ({
       </RoleGuard>
       {mnemonicsToggle}
       {printControl}
+      <PlayerIconButton
+        label={immersive.isImmersive ? t("courseDetails.exitFullScreen") : t("courseDetails.fullScreen")}
+        onClick={immersive.toggle}
+        shortcut={IMMERSIVE_SHORTCUT_LABEL}
+        testId="player-full-screen"
+      >
+        {immersive.isImmersive ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
+      </PlayerIconButton>
       <PlayerIconButton label={t("courseDetails.closeCourse")} onClick={onClose}>
         <X aria-hidden="true" />
       </PlayerIconButton>

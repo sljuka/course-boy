@@ -79,6 +79,8 @@
     "checkAnswers": "Провери одговоре",
     "checkExampleAnswer": "Провери пример одговора",
     "closeCourse": "Затвори курс",
+    "fullScreen": "Цео екран",
+    "exitFullScreen": "Изађи из целог екрана",
     "completedDescription": "Завршио си тренутни ток лекција за овај курс.",
     "completedTitle": "Курс је завршен",
     "correctAnswer": "Тачно. Можеш да наставиш на следећу лекцију.",

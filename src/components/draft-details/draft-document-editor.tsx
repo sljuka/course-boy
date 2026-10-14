@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Maximize2, Minimize2, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,7 @@ import { Button, ButtonLabel } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { IMMERSIVE_SHORTCUT_LABEL, isImmersiveShortcut, useImmersiveMode } from "@/lib/use-immersive-mode";
+import { IMMERSIVE_SHORTCUT_LABEL, useImmersiveMode, useImmersiveModeShortcut } from "@/lib/use-immersive-mode";
 import { useFocusTitleOnRename } from "@/components/draft-details/use-focus-title-on-rename";
 import type {
   CourseLesson,
@@ -169,17 +169,7 @@ function LoadedDraftDocumentEditor({
   // Full screen for writing (lib/immersive-mode.tsx): the button, ⌘⇧F /
   // Ctrl+Shift+F, and leaving it whenever this editor closes.
   const immersive = useImmersiveMode();
-  const { exit: exitImmersive, toggle: toggleImmersive } = immersive;
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (!isImmersiveShortcut(event)) return;
-      event.preventDefault();
-      toggleImmersive();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleImmersive]);
-  useEffect(() => exitImmersive, [exitImmersive]);
+  useImmersiveModeShortcut();
 
   function openPreview() {
     navigate(buildDraftLessonPreviewPath(courseId), {

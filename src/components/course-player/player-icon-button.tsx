@@ -2,16 +2,19 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // A round icon button in the player's action bar, its label both read out
-// (aria-label) and shown on hover (tooltip), like `MnemonicsToggle`.
+// (aria-label) and shown on hover (tooltip), like `MnemonicsToggle`, with
+// its keyboard shortcut if it has one.
 export function PlayerIconButton({
   children,
   label,
   onClick,
+  shortcut,
   testId,
 }: {
   children: React.ReactNode;
   label: string;
   onClick: () => void;
+  shortcut?: string;
   testId?: string;
 }) {
   return (
@@ -30,7 +33,7 @@ export function PlayerIconButton({
       >
         {children}
       </TooltipTrigger>
-      <TooltipContent>{label}</TooltipContent>
+      <TooltipContent>{shortcut ? `${label} (${shortcut})` : label}</TooltipContent>
     </Tooltip>
   );
 }

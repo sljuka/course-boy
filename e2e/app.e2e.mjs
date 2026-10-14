@@ -820,6 +820,41 @@ describe('learner flow: attend a course and complete its test', () => {
       location.hash = '#/'
     })
   })
+
+  // SLJ-133: full screen in the player keeps its action bar, carries on from
+  // a lesson to its test, and ends when the reader leaves the player.
+  it('takes a lesson and its test full screen, and leaves it on Close course', async () => {
+    const { app, page } = harness
+    const isWindowFullScreen = () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isFullScreen())
+    const button = (name) => page.getByRole('button', { exact: true, name })
+
+    await page.evaluate(
+      ({ id, lessonId }) => {
+        location.hash = `#/courses/${id}/lessons/${lessonId}`
+      },
+      { id: attendCourseId, lessonId },
+    )
+    await page.locator('[data-testid="player-full-screen"]').click()
+    await expect
+      .poll(isWindowFullScreen, {
+        message: "the window didn't go full screen: was the display off?",
+        timeout: 10_000,
+      })
+      .toBe(true)
+    // The action bar stays: Close course, the lesson's place in the section.
+    await button('Exit full screen').waitFor()
+    expect(await button('Close course').count()).toBe(1)
+    expect(await page.locator('[data-testid="lesson-progress"]').count()).toBe(1)
+
+    await button('Continue').click()
+    await button('Paper mode').waitFor({ timeout: 15_000 })
+    expect(await isWindowFullScreen()).toBe(true)
+    await button('Exit full screen').waitFor()
+
+    await button('Close course').click()
+    await expect.poll(isWindowFullScreen, { timeout: 10_000 }).toBe(false)
+    await page.locator('[data-testid="app-menu"]').waitFor({ timeout: 15_000 })
+  })
 })
 
 // SLJ-19: BlockNote's markdown import read a hard line break back with a space

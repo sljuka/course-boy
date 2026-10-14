@@ -37,6 +37,9 @@ type PageProps = {
   crumbActions?: ReactNode;
   // Skip the width cap — for canvases like the block editor that want the full width.
   fullBleed?: boolean;
+  // Full screen keeps the action bar (the course player's ✕, print and
+  // stepper) instead of hiding it with the other toolbars.
+  keepsActionBarInFullScreen?: boolean;
   // The page's own heading block (title, description, badges) at the top of
   // the scrolling content.
   header?: ReactNode;
@@ -63,10 +66,11 @@ export function Page({
   crumbActions,
   fullBleed,
   header,
+  keepsActionBarInFullScreen = false,
 }: PageProps) {
   const layoutBreadcrumbs = useLayoutBreadcrumbs();
-  // Full screen for writing: no toolbars or side panels, the content at a
-  // reading width (see lib/immersive-mode.tsx).
+  // Full screen: no toolbars (but the action bar, if the page keeps it) or
+  // side panels, the content at a reading width (see lib/immersive-mode.tsx).
   const { isImmersive } = useImmersiveMode();
   const layoutPanels = usePageSidePanels();
   const panels = isImmersive ? {} : layoutPanels;
@@ -75,7 +79,8 @@ export function Page({
   const trail = breadcrumbs ?? layoutBreadcrumbs ?? undefined;
   const hasToolbar = !isImmersive && Boolean(trail?.length || crumbActions);
   const hasActionBar =
-    !isImmersive && Boolean(panels.left || panels.right || actionBarStart || actionBarCenter || actions);
+    (!isImmersive || keepsActionBarInFullScreen) &&
+    Boolean(panels.left || panels.right || actionBarStart || actionBarCenter || actions);
 
   return (
     <>
@@ -115,7 +120,9 @@ export function Page({
             className={cn(
               "mx-auto flex w-full flex-col gap-4 p-4 sm:p-5 lg:p-6 print:block print:max-w-none print:p-0",
               !fullBleed && "max-w-6xl",
-              isImmersive && "max-w-5xl pt-10",
+              // Without a bar above it, the content keeps clear of the window's top edge.
+              isImmersive && "max-w-5xl",
+              isImmersive && !hasActionBar && "pt-10",
               className,
             )}
           >

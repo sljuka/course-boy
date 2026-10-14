@@ -79,6 +79,8 @@
     "checkAnswers": "Check answers",
     "checkExampleAnswer": "Check example answer",
     "closeCourse": "Close course",
+    "fullScreen": "Full screen",
+    "exitFullScreen": "Exit full screen",
     "completedDescription": "You finished the current lesson flow for this course.",
     "completedTitle": "Course complete",
     "correctAnswer": "Correct. You can continue to the next lesson.",
