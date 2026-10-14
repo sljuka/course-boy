@@ -1188,6 +1188,13 @@ ipcMain.handle('progress:record-test-result', (_event, input: RecordTestResultIn
   })
 })
 
+ipcMain.handle('progress:record-first-try', (_event, input: { courseId?: unknown; isCorrect?: unknown }) => {
+  if (!isId(input?.courseId) || typeof input.isCorrect !== 'boolean') throw new Error('Invalid first try')
+  // A preview's spree lasts for that sitting only (the renderer keeps it).
+  if (profile.previews.has(input.courseId)) return null
+  return profile.courseProgress.recordFirstTry(input.courseId, input.isCorrect)
+})
+
 ipcMain.handle('progress:set-favorite', (_event, input: { courseId?: unknown; favorite?: unknown }) => {
   if (!isId(input?.courseId) || typeof input.favorite !== 'boolean') throw new Error('Invalid favorite')
   if (profile.previews.has(input.courseId)) return

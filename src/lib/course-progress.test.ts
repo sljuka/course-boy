@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest"
 
-import { isBetterAttempt, scoreTestAttempt, summarizeCourseProgress, summarizeProgramProgress } from "@/lib/course-progress"
+import {
+  isBetterAttempt,
+  nextSpree,
+  scoreTestAttempt,
+  spreeLevel,
+  summarizeCourseProgress,
+  summarizeProgramProgress,
+} from "@/lib/course-progress"
 
 describe("summarizeCourseProgress", () => {
   const items = ["lesson-01-a", "test-01-a", "section-test-01-quiz"]
@@ -50,6 +57,22 @@ describe("isBetterAttempt", () => {
     expect(isBetterAttempt({ correct: 8, longestStreak: 2, total: 10 }, { correct: 7, longestStreak: 7, total: 10 })).toBe(true)
     expect(isBetterAttempt({ correct: 7, longestStreak: 5, total: 10 }, { correct: 7, longestStreak: 3, total: 10 })).toBe(true)
     expect(isBetterAttempt({ correct: 7, longestStreak: 3, total: 10 }, { correct: 7, longestStreak: 3, total: 10 })).toBe(false)
+  })
+})
+
+describe("nextSpree", () => {
+  it("grows on a right first try, ends on a wrong one, and keeps the best", () => {
+    expect(nextSpree(undefined, true)).toEqual({ best: 1, current: 1 })
+    expect(nextSpree(undefined, false)).toEqual({ best: 0, current: 0 })
+    expect(nextSpree({ best: 4, current: 4 }, true)).toEqual({ best: 5, current: 5 })
+    expect(nextSpree({ best: 5, current: 2 }, true)).toEqual({ best: 5, current: 3 })
+    expect(nextSpree({ best: 5, current: 3 }, false)).toEqual({ best: 5, current: 0 })
+  })
+})
+
+describe("spreeLevel", () => {
+  it("steps up at 1, 3, 6 and 10", () => {
+    expect([0, 1, 2, 3, 5, 6, 9, 10, 40].map(spreeLevel)).toEqual([0, 1, 1, 2, 2, 3, 3, 4, 4])
   })
 })
 

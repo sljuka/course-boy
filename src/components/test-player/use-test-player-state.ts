@@ -18,6 +18,8 @@ export type ExerciseResult = {
   // but `InteractiveTestPlayer` uses this to gate it behind a "Show hint"
   // button instead of revealing it immediately.
   hint: string | null;
+  // False when nothing was given (graded "not answered"): not a try.
+  isAnswered: boolean;
   isCorrect: boolean;
 };
 
@@ -33,11 +35,11 @@ export function deriveExerciseResult(
   const result = getExerciseKindRuntime(exercise.kind).grade(exercise, instance, rawAnswer);
 
   if (result.isCorrect) {
-    return { feedback: null, hint: null, isCorrect: true };
+    return { feedback: null, hint: null, isAnswered: true, isCorrect: true };
   }
 
   if (!result.isAnswered) {
-    return { feedback: t(result.noAnswerMessageKey), hint: null, isCorrect: false };
+    return { feedback: t(result.noAnswerMessageKey), hint: null, isAnswered: false, isCorrect: false };
   }
 
   return {
@@ -45,23 +47,30 @@ export function deriveExerciseResult(
       ? t("courseDetails.incorrectAnswerWithHint", { hint: exercise.hint })
       : t("courseDetails.incorrectAnswer"),
     hint: exercise.hint ?? null,
+    isAnswered: true,
     isCorrect: false,
   };
 }
 
-function createEmptyResults(exercises: CourseExercise[]) {
+function createEmptyResults(exercises: CourseExercise[]): ExerciseResult[] {
   return exercises.map(() => ({
     feedback: null,
     hint: null,
+    isAnswered: false,
     isCorrect: false,
   }));
 }
 
 // `startInteractive`: whether a test opens in interactive mode (SLJ-132; the
 // person's setting in the test player, paper mode for the editors' examples).
+// `onFirstTry`: each question's first try in interactive mode, right or not
+// (the course's spree, SLJ-134).
 export function useTestPlayerState(
   activeLesson?: { test: CourseTest | null },
-  { startInteractive = false }: { startInteractive?: boolean } = {},
+  {
+    onFirstTry,
+    startInteractive = false,
+  }: { onFirstTry?: (isCorrect: boolean) => void; startInteractive?: boolean } = {},
 ) {
   const { t } = useTranslation();
   const [activeTestExercises, setActiveTestExercises] = useState<
@@ -133,7 +142,7 @@ export function useTestPlayerState(
     );
     setExerciseResults((currentResults) =>
       currentResults.map((result, resultIndex) =>
-        resultIndex === index ? { feedback: null, hint: null, isCorrect: false } : result,
+        resultIndex === index ? { feedback: null, hint: null, isAnswered: false, isCorrect: false } : result,
       ),
     );
     setTestFeedback(null);
@@ -188,7 +197,12 @@ export function useTestPlayerState(
 
     const result = deriveExerciseResult(exercise, instance, exerciseAnswers[index] ?? "", t);
 
-    recordFirstTries([{ index, isCorrect: result.isCorrect }]);
+    // "Check answer" with nothing given (a stray Enter) isn't a try: it
+    // shows "not answered" but neither counts as wrong nor ends a spree.
+    if (result.isAnswered) {
+      if (firstTryCorrect[index] === null) onFirstTry?.(result.isCorrect);
+      recordFirstTries([{ index, isCorrect: result.isCorrect }]);
+    }
     setExerciseResults((currentResults) => {
       const nextResults = currentResults.map((currentResult, resultIndex) =>
         resultIndex === index ? result : currentResult,

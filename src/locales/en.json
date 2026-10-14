@@ -81,6 +81,7 @@
     "closeCourse": "Close course",
     "fullScreen": "Full screen",
     "exitFullScreen": "Exit full screen",
+    "spree": "Spree: {{current}} right on the first try in a row · best {{best}}",
     "completedDescription": "You finished the current lesson flow for this course.",
     "completedTitle": "Course complete",
     "correctAnswer": "Correct. You can continue to the next lesson.",

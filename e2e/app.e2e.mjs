@@ -125,7 +125,7 @@ describe('launch', () => {
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
     expect(surface.publishers).toEqual(['list', 'remove', 'save'])
     expect(surface.programs).toEqual(['create', 'get', 'getSharing', 'list', 'markSeen', 'peekCourse', 'publish', 'remove', 'update', 'uploadImage'])
-    expect(surface.progress).toEqual(['clearCourse', 'get', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite', 'setProgramFavorite'])
+    expect(surface.progress).toEqual(['clearCourse', 'get', 'recordFirstTry', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite', 'setProgramFavorite'])
     expect(surface.profiles).toEqual(['create', 'getRemovalSummary', 'getState', 'open', 'openCoursesFolder', 'removeCurrent', 'switchProfile'])
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',
@@ -854,6 +854,58 @@ describe('learner flow: attend a course and complete its test', () => {
     await button('Close course').click()
     await expect.poll(isWindowFullScreen, { timeout: 10_000 }).toBe(false)
     await page.locator('[data-testid="app-menu"]').waitFor({ timeout: 15_000 })
+  })
+
+  // SLJ-134: the course's spree, kept in the progress file. The first case
+  // above answered this course's one question right first time: a spree of 1.
+  it("keeps the course's spree across tests: right first tries grow it, a wrong one ends it", async () => {
+    const { page } = harness
+    const openTest = () =>
+      page.evaluate(
+        ({ id, lessonId }) => {
+          location.hash = `#/courses/${id}/lessons/${lessonId}/test`
+        },
+        { id: attendCourseId, lessonId },
+      )
+    const bolt = page.locator('[data-testid="course-spree"]')
+    const answer = page.getByPlaceholder('Type the result')
+    const checkAnswer = () => page.getByRole('button', { exact: true, name: 'Check answer' }).click()
+    const savedSpree = () => page.evaluate(async (id) => (await window.progress.get()).courses[id]?.spree, attendCourseId)
+
+    await openTest()
+    await bolt.waitFor({ timeout: 15_000 })
+    expect(await bolt.getAttribute('data-level')).toBe('1')
+    expect(await bolt.innerText()).toBe('1')
+
+    // Nothing typed isn't a try: the spree stays.
+    await checkAnswer()
+    await waitForText(page, 'Enter a valid answer before continuing.')
+    expect(await bolt.getAttribute('data-level')).toBe('1')
+
+    // Wrong first: the spree ends quietly (grey, no number); right on the
+    // second try doesn't start a new one.
+    await answer.fill('8')
+    await checkAnswer()
+    await expect.poll(() => bolt.getAttribute('data-level')).toBe('0')
+    expect(await bolt.innerText()).toBe('')
+    await answer.fill('7')
+    await checkAnswer()
+    await page.getByRole('button', { exact: true, name: 'Continue' }).waitFor()
+    expect(await bolt.getAttribute('data-level')).toBe('0')
+    await expect.poll(savedSpree).toEqual({ best: 1, current: 0 })
+
+    // The next test (here, the same one again): right first time grows it.
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    await openTest()
+    await answer.fill('7')
+    await checkAnswer()
+    await expect.poll(() => bolt.getAttribute('data-level')).toBe('1')
+    await expect.poll(savedSpree).toEqual({ best: 1, current: 1 })
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
   })
 })
 

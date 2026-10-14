@@ -1,7 +1,9 @@
 import {
   type CourseProgress,
   type CourseProgressState,
+  type CourseSpree,
   isBetterAttempt,
+  nextSpree,
   type TestAttemptResult,
 } from '../src/lib/course-progress'
 
@@ -72,6 +74,15 @@ export function createCourseProgress({ now = () => new Date(), store }: { now?: 
           },
         }
       })
+    },
+
+    // A first try at a question in interactive mode (SLJ-134): the course's
+    // spree grows by one if it was right, and is over if not.
+    recordFirstTry(courseId: string, isCorrect: boolean): CourseSpree {
+      const spree = nextSpree(store.read().courses[courseId]?.spree, isCorrect)
+
+      update(courseId, (course) => ({ ...course, spree }))
+      return spree
     },
 
     // Starred (with when, for the sidebar's order) or not.

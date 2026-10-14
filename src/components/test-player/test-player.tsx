@@ -8,6 +8,7 @@ import { MnemonicsToggle } from "@/components/course-player/mnemonics-toggle";
 import { PlayerIconButton } from "@/components/course-player/player-icon-button";
 import { PrintOptionsMenu } from "@/components/course-player/print-options-menu";
 import { CoursePlayerShell } from "@/components/course-player/course-player-shell";
+import { CourseSpree } from "@/components/course-player/course-spree";
 import { CourseTestContent } from "@/components/course-player/course-test-content";
 import { PrintDocumentHeader } from "@/components/course-player/print-document-header";
 import { useCoursePlayer, type CoursePlayerReadyState } from "@/components/course-player/use-course-player";
@@ -25,7 +26,7 @@ import { defaultTestPrintOptions } from "@/lib/print-options";
 import { PromptMnemonicsContext } from "@/lib/prompt-mnemonics-context";
 import { useCourseMnemonics } from "@/lib/use-course-mnemonics";
 import { buildLessonPath } from "@/lib/course-utils";
-import { recordTestResult } from "@/lib/course-progress-queries";
+import { recordTestResult, useCourseSpree } from "@/lib/course-progress-queries";
 import { scoreTestAttempt } from "@/lib/course-progress";
 import { useStartTestsInteractivePreference } from "@/lib/start-tests-interactive-preference";
 import { resolveTestIdForLesson } from "@/lib/course-test-id";
@@ -95,6 +96,7 @@ function TestPlayerContent({
   const [isPrintMenuOpen, setIsPrintMenuOpen] = useState(false);
   const activeItem = playerState.activeStep.item;
   const { shown: shownMnemonics } = useCourseMnemonics(playerState.courseId);
+  const spree = useCourseSpree({ courseId: playerState.courseId, isPreview: playerState.isPreview });
   const {
     activeTestExercises,
     activeTestInstances,
@@ -111,7 +113,7 @@ function TestPlayerContent({
     submitSingleExercise,
     testFeedback,
     updateExerciseAnswer,
-  } = useTestPlayerState(activeItem, { startInteractive });
+  } = useTestPlayerState(activeItem, { onFirstTry: spree.recordFirstTry, startInteractive });
 
   // Continue after the test: it's done, with this attempt's first-try score
   // (SLJ-50). A teacher's preview records nothing. A lesson's test is kept
@@ -271,6 +273,8 @@ function TestPlayerContent({
       keepsActionBarInFullScreen
       // Interactive mode centres its one exercise in the page body's height.
       className={isInteractiveMode ? "min-h-full" : undefined}
+      // Interactive mode: the course's spree in the corner (SLJ-134).
+      actionBarStart={isInteractiveMode && <CourseSpree best={spree.best} current={spree.current} />}
       // Interactive mode steps through one exercise at a time; its stepper
       // sits centred in the action bar.
       actionBarCenter={

@@ -100,6 +100,7 @@ describe('course progress (SLJ-50)', () => {
     progress.recordOpened('c1')
     progress.recordStepDone('c1', 'lesson-a')
     progress.recordTestResult('c1', 'test-a', { correct: 1, longestStreak: 1, total: 2 })
+    progress.recordFirstTry('c1', true)
     progress.recordOpened('c2')
 
     progress.clearCourse('c1')
@@ -109,5 +110,18 @@ describe('course progress (SLJ-50)', () => {
     expect(state().courses).toEqual({
       c1: { favorite: true, favoritedAt: '2026-10-07T10:00:00.000Z', steps: {} },
     })
+  })
+
+  it('keeps a spree per course (SLJ-134): right first tries in a row, and the best', () => {
+    const { progress, state } = setup()
+
+    expect(progress.recordFirstTry('c1', true)).toEqual({ best: 1, current: 1 })
+    progress.recordFirstTry('c1', true)
+    progress.recordFirstTry('c2', false)
+    expect(progress.recordFirstTry('c1', false)).toEqual({ best: 2, current: 0 })
+    progress.recordFirstTry('c1', true)
+
+    expect(state().courses.c1.spree).toEqual({ best: 2, current: 1 })
+    expect(state().courses.c2.spree).toEqual({ best: 0, current: 0 })
   })
 })

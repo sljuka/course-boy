@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
-import type { CourseProgressState, RecordTestResultInput } from "@/lib/course-progress";
+import { type CourseProgressState, type CourseSpree, nextSpree, type RecordTestResultInput } from "@/lib/course-progress";
 import { queryClient } from "@/lib/query-client";
 
 // The student's progress (SLJ-50), read once and refreshed after every
@@ -32,6 +33,33 @@ export function recordStepDone(courseId: string, stepId: string) {
 
 export function recordTestResult(input: RecordTestResultInput) {
   void window.progress.recordTestResult(input).then(refresh, logFailure);
+}
+
+// The course's spree (SLJ-134) and how to grow or end it. Shown straight
+// away (the cache is updated before the write), then refreshed from what was
+// saved. A teacher's preview keeps its spree for that sitting only.
+export function useCourseSpree({ courseId, isPreview }: { courseId: string; isPreview: boolean }) {
+  const progressQuery = useCourseProgressQuery();
+  const [previewSpree, setPreviewSpree] = useState<CourseSpree | undefined>(undefined);
+  const spree = isPreview ? previewSpree : progressQuery.data?.courses[courseId]?.spree;
+
+  function recordFirstTry(isCorrect: boolean) {
+    if (isPreview) {
+      setPreviewSpree((current) => nextSpree(current, isCorrect));
+      return;
+    }
+    queryClient.setQueryData<CourseProgressState>(courseProgressKey, (state) => {
+      if (!state) return state;
+      const course = state.courses[courseId] ?? { steps: {} };
+      return {
+        ...state,
+        courses: { ...state.courses, [courseId]: { ...course, spree: nextSpree(course.spree, isCorrect) } },
+      };
+    });
+    void window.progress.recordFirstTry({ courseId, isCorrect }).then(refresh, logFailure);
+  }
+
+  return { best: spree?.best ?? 0, current: spree?.current ?? 0, recordFirstTry };
 }
 
 // Defined once, not per render: a mutation's options changing on every

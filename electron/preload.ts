@@ -1,6 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { ChannelForCourse } from '../src/lib/channels'
-import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
+import type { CourseProgressState, CourseSpree, RecordTestResultInput } from '../src/lib/course-progress'
 import type { ApprovalsList, MaintainersInfo, ProposalReview } from '../src/lib/maintainers'
 import type { McpStatus } from '../src/lib/mcp'
 import type { PublisherEntry } from '../src/lib/publishers'
@@ -278,6 +278,9 @@ contextBridge.exposeInMainWorld('progress', {
   },
   recordTestResult(input: RecordTestResultInput) {
     return ipcRenderer.invoke('progress:record-test-result', input) as Promise<void>
+  },
+  recordFirstTry(input: { courseId: string; isCorrect: boolean }) {
+    return ipcRenderer.invoke('progress:record-first-try', input) as Promise<CourseSpree | null>
   },
   setFavorite(input: { courseId: string; favorite: boolean }) {
     return ipcRenderer.invoke('progress:set-favorite', input) as Promise<void>

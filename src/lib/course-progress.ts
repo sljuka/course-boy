@@ -36,11 +36,21 @@ export type StepProgress = {
   test?: TestProgress;
 };
 
+// The course's spree (SLJ-134): answers right on the first try in a row,
+// across all of the course's tests, in interactive mode. `best` is the
+// longest it has been.
+export type CourseSpree = {
+  best: number;
+  current: number;
+};
+
 export type CourseProgress = {
   favorite?: boolean;
   // When it was starred, so the sidebar's Favorites list them in that order.
   favoritedAt?: string;
   lastOpenedAt?: string;
+  // Missing until the first answer in interactive mode.
+  spree?: CourseSpree;
   startedAt?: string;
   steps: Record<string, StepProgress>;
 };
@@ -136,3 +146,21 @@ export function isBetterAttempt(next: TestAttemptResult, best: TestAttemptResult
   return nextShare !== bestShare ? nextShare > bestShare : next.longestStreak > best.longestStreak;
 }
 
+
+// The spree after one more first try: one longer if it was right, back to
+// none if not. The best is kept.
+export function nextSpree(spree: CourseSpree | undefined, isCorrect: boolean): CourseSpree {
+  const current = isCorrect ? (spree?.current ?? 0) + 1 : 0;
+
+  return { best: Math.max(spree?.best ?? 0, current), current };
+}
+
+// How brightly the spree's bolt glows: 0 none yet, then 1–2, 3–5, 6–9, 10+.
+export type SpreeLevel = 0 | 1 | 2 | 3 | 4;
+
+export function spreeLevel(current: number): SpreeLevel {
+  if (current >= 10) return 4;
+  if (current >= 6) return 3;
+  if (current >= 3) return 2;
+  return current >= 1 ? 1 : 0;
+}

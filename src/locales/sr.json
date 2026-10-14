@@ -81,6 +81,7 @@
     "closeCourse": "Zatvori kurs",
     "fullScreen": "Ceo ekran",
     "exitFullScreen": "Izađi iz celog ekrana",
+    "spree": "Niz: {{current}} tačnih iz prvog pokušaja zaredom · najbolji {{best}}",
     "completedDescription": "Završio si trenutni tok lekcija za ovaj kurs.",
     "completedTitle": "Kurs je završen",
     "correctAnswer": "Tačno. Možeš da nastaviš na sledeću lekciju.",

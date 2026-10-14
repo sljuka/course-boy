@@ -177,6 +177,11 @@ interface Window {
     recordOpened: (courseId: string) => Promise<void>
     recordStepDone: (input: { courseId: string; stepId: string }) => Promise<void>
     recordTestResult: (input: import('../src/lib/course-progress').RecordTestResultInput) => Promise<void>
+    // The course's spree after it, or null in a teacher's preview (not kept).
+    recordFirstTry: (input: {
+      courseId: string
+      isCorrect: boolean
+    }) => Promise<import('../src/lib/course-progress').CourseSpree | null>
     setFavorite: (input: { courseId: string; favorite: boolean }) => Promise<void>
     setProgramFavorite: (input: { favorite: boolean; programId: string }) => Promise<void>
     clearCourse: (courseId: string) => Promise<void>
