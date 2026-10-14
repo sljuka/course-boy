@@ -1136,6 +1136,66 @@ describe('graded test', () => {
   })
 })
 
+// SLJ-136: a final test with no exercises of its own includes the course's
+// other tests', picking a number of them round robin: one from each test.
+describe('final test', () => {
+  it('picks from the other tests of the course, one from each in turn', async () => {
+    const { page } = harness
+    const exercise = (prompt, formula) => ({
+      kind: 'numeric',
+      locales: { en: { prompt } },
+      solution: { formula, precision: 0 },
+      tags: [],
+      variables: {},
+    })
+    const ids = await page.evaluate(
+      async ({ first, second }) => {
+        const { courseId } = await window.courses.createDraft({
+          defaultLocale: 'en',
+          locales: { en: { description: '', title: 'E2E Final Test Course' } },
+          supportedLocales: ['en'],
+        })
+        const { sectionId } = await window.courses.createSection({ courseId, title: 'Everything' })
+        const save = async (title, test) => {
+          const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title })
+          await window.courses.saveSectionTest({ courseId, sectionId, test: { template: '', ...test }, testId })
+          return testId
+        }
+        await save('Adding', { exercises: first })
+        await save('Doubling', { exercises: second })
+        const finalId = await save('Final test', { exerciseCount: 2, exercises: [], includeCourseExercises: true })
+        return { courseId, finalId }
+      },
+      {
+        first: [exercise('Adding one: 1 plus 1?', '2'), exercise('Adding two: 2 plus 2?', '4')],
+        second: [exercise('Doubling: twice 3?', '6')],
+      },
+    )
+
+    // The editor shows the pool, and no "long test" note for 3 exercises.
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await page.getByText('Final test', { exact: true }).first().click()
+    await page.locator('[data-testid="course-exercise-pool"]').waitFor({ timeout: 15_000 })
+    expect(await page.locator('[data-testid="course-exercise-pool"]').innerText()).toBe(
+      'Exercises to pick from: 3 · Tests: 2',
+    )
+    expect(await page.locator('[data-testid="test-exercise-count"]').inputValue()).toBe('2')
+    expect(await page.locator('[data-testid="long-test-alert"]').count()).toBe(0)
+
+    // Two questions, one from each test.
+    await page.evaluate(({ courseId, finalId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${finalId}/test`
+    }, ids)
+    await page.getByRole('button', { exact: true, name: 'Paper mode' }).click()
+    await waitForText(page, 'Doubling: twice 3?')
+    const text = await bodyText(page)
+    expect(text.match(/Adding (one|two):/g)).toHaveLength(1)
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+  })
+})
+
 describe('rename from the explorer', () => {
   it('Rename opens a section, a document or a test with its title field focused, and the new title is saved', async () => {
     const { page } = harness

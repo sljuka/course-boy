@@ -317,6 +317,14 @@ percentages and bands live in [src/lib/grade-bands.ts](../src/lib/grade-bands.ts
 test's older `strictAdvancement` field is no longer read: every practice test moves on only
 after a correct answer.
 
+**Final tests (SLJ-136)** add two more optional test fields: `includeCourseExercises: true`
+(the test also uses the exercises of the course's other tests, except other tests that
+include them too) and `exerciseCount` (how many to pick round robin; missing: all, and never
+written with tag rules, which pick instead). Such a test is valid with no exercises of its
+own (`isSharedTestDefinitionShape`); an older app treats it as having none and hides it. The
+pool is built in the player from the course's current tests
+([src/lib/course-exercise-pool.ts](../src/lib/course-exercise-pool.ts:1)), never stored.
+
 **Course ids are opaque and random**: 16 lowercase base32 characters (`a–z`, `2–7`),
 80 random bits, created by `createCourseId` in
 [src/lib/course-id.ts](../src/lib/course-id.ts:1). The id is the course folder name,
@@ -834,7 +842,8 @@ besides IPC, and the same rules hold:
   a text with `{{name}}` blanks and each blank's accepted answers). Tests made in the app
   with other kinds read as `{ type, editable: false }`. A question can carry `points`, and
   a test `graded` (SLJ-135); replacing a test's questions keeps whether it's graded, its
-  own grade bands and its mnemonics setting unless the call sets `graded`. `add_image` copies an image file
+  own grade bands, whether it includes the course's other tests (and how many) and its
+  mnemonics setting unless the call sets `graded`. `add_image` copies an image file
   from this computer into the course (`uploadCourseAssetFromBytes`, image types only, at
   most 10 MB) and returns its `image` block for the agent to place in the lesson's blocks.
   `update_section_test` renames a section test through the editor's own

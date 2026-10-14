@@ -42,7 +42,7 @@ import type {
   TestEditorState,
   TestExercise,
 } from "@/components/test-editor-prototype-types";
-import type { ExerciseKind } from "@/lib/course-package";
+import type { CourseTest, ExerciseKind } from "@/lib/course-package";
 import type { GradeBand } from "@/lib/grade-bands";
 import { buildDraftTestPreviewPath } from "@/lib/course-utils";
 import type { Locale } from "@/lib/i18n";
@@ -54,6 +54,8 @@ import {
 type TestEditorPrototypeProps = {
   // Where a graded test's own bands start from (SLJ-135); null: the defaults.
   courseGradeBands: GradeBand[] | null;
+  // Every test in the course, as saved: a final test's pool (SLJ-136).
+  courseTests: CourseTest[];
   courseId: string;
   descriptiveTags: CourseTagDefinition[];
   // Always provided by the single current caller (draft-test-editor.tsx),
@@ -85,6 +87,7 @@ type TestEditorPrototypeProps = {
 
 export function TestEditorPrototype({
   courseGradeBands,
+  courseTests,
   courseId,
   descriptiveTags,
   initialState,
@@ -319,10 +322,12 @@ export function TestEditorPrototype({
 
         <TestMoreOptions
           courseGradeBands={courseGradeBands}
+          courseTests={courseTests}
           descriptiveTags={descriptiveTags}
           onOpenChange={setIsMoreOptionsOpen}
           open={isMoreOptionsOpen}
           state={state}
+          testId={selectedNode.id}
           updateState={setState}
         />
 

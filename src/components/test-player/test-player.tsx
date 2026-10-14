@@ -31,6 +31,7 @@ import { buildLessonPath } from "@/lib/course-utils";
 import { recordTestResult, useCourseProgressQuery, useCourseSpree } from "@/lib/course-progress-queries";
 import { isBetterAttempt, scoreGradedAttempt, scoreTestAttempt } from "@/lib/course-progress";
 import { exercisePoints, resolveGradeBands } from "@/lib/grade-bands";
+import { buildCourseExercisePool } from "@/lib/course-exercise-pool";
 import { useStartTestsInteractivePreference } from "@/lib/start-tests-interactive-preference";
 import { resolveTestIdForLesson } from "@/lib/course-test-id";
 
@@ -129,6 +130,7 @@ function TestPlayerContent({
     testFeedback,
     updateExerciseAnswer,
   } = useTestPlayerState(activeItem, {
+    courseTests: playerState.courseTests,
     // A graded test gives no feedback, so it has no spree to grow or end.
     onFirstTry: isGraded ? undefined : spree.recordFirstTry,
     startInteractive,
@@ -193,7 +195,12 @@ function TestPlayerContent({
     setIsPrintMenuOpen(true);
   }
 
-  if (!activeItem.test || activeItem.test.exercises.length === 0) {
+  // A final test (SLJ-136) has exercises when anything in its pool does.
+  const hasExercises = activeItem.test?.includeCourseExercises
+    ? buildCourseExercisePool(activeItem.test, playerState.courseTests).length > 0
+    : (activeItem.test?.exercises.length ?? 0) > 0;
+
+  if (!activeItem.test || !hasExercises) {
     // A lesson-attached test with nothing to show falls back to its own
     // document; a standalone test has no document to fall back to, so it
     // exits back to the course details page instead.

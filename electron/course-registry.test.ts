@@ -89,6 +89,19 @@ describe("isSharedTestDefinition", () => {
     expect(isSharedTestDefinition({ exercises: [numericExercise], template: "" })).toBe(true);
   });
 
+  // SLJ-136: a final test can have no exercises of its own; its count is a
+  // whole number.
+  it("accepts a final test without exercises of its own, and checks its count", () => {
+    expect(isSharedTestDefinition({ exercises: [], template: "" })).toBe(false);
+    expect(isSharedTestDefinition({ exercises: [], includeCourseExercises: true, template: "" })).toBe(true);
+    expect(
+      isSharedTestDefinition({ exerciseCount: 12, exercises: [], includeCourseExercises: true, template: "" }),
+    ).toBe(true);
+    expect(
+      isSharedTestDefinition({ exerciseCount: 0, exercises: [], includeCourseExercises: true, template: "" }),
+    ).toBe(false);
+  });
+
   it("accepts a numeric exercise with no `kind` field, defaulting to numeric", () => {
     const { kind: _kind, ...legacyExercise } = numericExercise;
 

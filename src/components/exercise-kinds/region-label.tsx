@@ -130,6 +130,7 @@ const EXAMPLE_TEST: CourseTest = {
   exercises: [EXAMPLE_EXERCISE],
   graded: false,
   id: "example",
+  includeCourseExercises: false,
 };
 
 const EXAMPLE_LESSON = { test: EXAMPLE_TEST };

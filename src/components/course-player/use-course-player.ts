@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
-import type { CourseLesson, CourseSectionTest } from "@/lib/course-package";
+import type { CourseLesson, CourseSectionTest, CourseTest } from "@/lib/course-package";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { buildLessonPath, buildLessonTestPath, introStepId } from "@/lib/course-utils";
 import { recordCourseOpened } from "@/lib/course-progress-queries";
 import { useAppState } from "@/lib/use-app-state";
 import type { GradeBand } from "@/lib/grade-bands";
+import { listCourseTests } from "@/lib/course-exercise-pool";
 
 // A step in the player's overall sequence is either a document (a lesson,
 // which may itself carry an attached test reached via its own "Continue"
@@ -21,6 +22,8 @@ export type CoursePlayerReadyState = {
   // Graded tests' grade bands (SLJ-135); null: the defaults.
   courseGradeBands: GradeBand[] | null;
   courseId: string;
+  // Every test in the course, in course order: a final test's pool (SLJ-136).
+  courseTests: CourseTest[];
   courseTitle: string;
   exitPlayer: () => void;
   // True only for the draft editor's "Preview test" route (see
@@ -69,6 +72,8 @@ export function useCoursePlayer({
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
     throwOnError: true,
   });
+
+  const courseTests = useMemo(() => (course ? listCourseTests(course.sections) : []), [course]);
 
   const stepSequence = useMemo(() => {
     if (!course) {
@@ -187,6 +192,7 @@ export function useCoursePlayer({
     activeStep: activeStepEntry,
     courseId,
     courseGradeBands: course.gradeBands,
+    courseTests,
     courseTitle: course.title,
     exitPlayer,
     isPreview: false,

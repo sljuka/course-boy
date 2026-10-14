@@ -1,4 +1,5 @@
-import type { CourseExercise, CourseTest } from "@/lib/course-package";
+import { buildCourseExercisePool, pickRoundRobin } from "@/lib/course-exercise-pool";
+import type { CourseExercise, CourseTest, CourseTestStructureRule } from "@/lib/course-package";
 import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
 import { replaceTemplateVariables } from "@/lib/template-variables";
 
@@ -61,22 +62,43 @@ function shuffleExercises(exercises: CourseExercise[]): CourseExercise[] {
 
 // Accepts either a lesson (its attached test) or a standalone CourseSectionTest
 // — both carry a `test: CourseTest | null`, and nothing here reads anything
-// else off either shape.
-export function buildTestExerciseSequence(lesson: {
-  test: CourseTest | null;
-}): CourseExercise[] {
-  if (!lesson.test) {
+// else off either shape. `courseTests`: every test in the course, in course
+// order (`listCourseTests`), for a final test that includes their exercises
+// (SLJ-136): the tag rules pick from all of them, else `exerciseCount` picked
+// round robin, else all.
+export function buildTestExerciseSequence(
+  lesson: { test: CourseTest | null },
+  courseTests: CourseTest[] = [],
+): CourseExercise[] {
+  const test = lesson.test;
+
+  if (!test) {
     return [];
   }
 
-  if (!lesson.test.structure || lesson.test.structure.length === 0) {
-    return lesson.test.exercises;
+  if (test.includeCourseExercises) {
+    const sources = buildCourseExercisePool(test, courseTests);
+    const exercises = sources.flatMap((source) => source.exercises);
+
+    if (test.structure && test.structure.length > 0) {
+      return pickByTagRules(exercises, test.structure);
+    }
+
+    return test.exerciseCount ? pickRoundRobin(sources, test.exerciseCount) : exercises;
   }
 
-  const remainingExercises = [...lesson.test.exercises];
+  if (!test.structure || test.structure.length === 0) {
+    return test.exercises;
+  }
+
+  return pickByTagRules(test.exercises, test.structure);
+}
+
+function pickByTagRules(exercises: CourseExercise[], structure: CourseTestStructureRule[]): CourseExercise[] {
+  const remainingExercises = [...exercises];
   const selectedExercises: CourseExercise[] = [];
 
-  for (const rule of lesson.test.structure) {
+  for (const rule of structure) {
     const matchingExercises = remainingExercises.filter((exercise) =>
       exercise.tags.includes(rule.tag),
     );
@@ -103,5 +125,5 @@ export function buildTestExerciseSequence(lesson: {
 
   // If literally nothing matched any rule, fall back to the full bank rather
   // than handing the student an empty test.
-  return selectedExercises.length > 0 ? selectedExercises : lesson.test.exercises;
+  return selectedExercises.length > 0 ? selectedExercises : exercises;
 }

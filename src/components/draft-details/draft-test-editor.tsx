@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { getLocaleLabel } from "@/components/draft-details/draft-locale-utils";
@@ -13,6 +13,7 @@ import {
 } from "@/components/test-editor-prototype-persistence";
 import type { TestEditorState } from "@/components/test-editor-prototype-types";
 import type { GradeBand } from "@/lib/grade-bands";
+import { listCourseTests } from "@/lib/course-exercise-pool";
 import {
   Field,
   FieldDescription,
@@ -24,6 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import type {
   CourseSectionPreview,
+  CourseTest,
   LocalizedSectionMetadata,
   SaveLessonTestInput,
   SaveSectionTestInput,
@@ -137,6 +139,7 @@ export function DraftTestEditor({
   setSelectedNode: (selection: StructureSelection) => void;
   supportedLocales: Locale[];
 }) {
+  const courseTests = useMemo(() => listCourseTests(courseSections), [courseSections]);
   const standaloneSection = courseSections.find((section) =>
     section.tests.some((test) => test.id === selectedNode.id),
   );
@@ -187,6 +190,7 @@ export function DraftTestEditor({
     return (
       <DraftStandaloneTestEditor
         courseGradeBands={courseGradeBands}
+        courseTests={courseTests}
         courseId={courseId}
         defaultLocale={defaultLocale}
         descriptiveTags={descriptiveTags}
@@ -204,6 +208,7 @@ export function DraftTestEditor({
   return (
     <DraftLessonTestEditor
       courseGradeBands={courseGradeBands}
+      courseTests={courseTests}
       courseId={courseId}
       descriptiveTags={descriptiveTags}
       initialSharedTest={lessonTestDraftQuery.data ?? null}
@@ -218,6 +223,7 @@ export function DraftTestEditor({
 
 function DraftStandaloneTestEditor({
   courseGradeBands,
+  courseTests,
   courseId,
   defaultLocale,
   descriptiveTags,
@@ -231,6 +237,7 @@ function DraftStandaloneTestEditor({
 }: {
   // Where a graded test's own bands start from (SLJ-135); null: the defaults.
   courseGradeBands: GradeBand[] | null;
+  courseTests: CourseTest[];
   courseId: string;
   defaultLocale: Locale;
   descriptiveTags: CourseTagDefinition[];
@@ -370,6 +377,7 @@ function DraftStandaloneTestEditor({
   return (
     <TestEditorPrototype
       courseGradeBands={courseGradeBands}
+      courseTests={courseTests}
       courseId={courseId}
       descriptiveTags={descriptiveTags}
       initialState={testState}
@@ -387,6 +395,7 @@ function DraftStandaloneTestEditor({
 
 function DraftLessonTestEditor({
   courseGradeBands,
+  courseTests,
   courseId,
   descriptiveTags,
   initialSharedTest,
@@ -398,6 +407,7 @@ function DraftLessonTestEditor({
 }: {
   // Where a graded test's own bands start from (SLJ-135); null: the defaults.
   courseGradeBands: GradeBand[] | null;
+  courseTests: CourseTest[];
   courseId: string;
   descriptiveTags: CourseTagDefinition[];
   initialSharedTest: SharedTestDefinition | null;
@@ -437,6 +447,7 @@ function DraftLessonTestEditor({
   return (
     <TestEditorPrototype
       courseGradeBands={courseGradeBands}
+      courseTests={courseTests}
       courseId={courseId}
       descriptiveTags={descriptiveTags}
       initialState={testState}

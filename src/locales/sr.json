@@ -532,7 +532,15 @@
     "ruleCount": "Broj zadataka",
     "addRule": "Dodaj još označenih zadataka",
     "ruleShortage": "Potrebno je {{count}} zadataka sa oznakom „{{tag}}”, a ima ih samo {{available}}.",
-    "randomizeNeedsTags": "Može se uključiti kada kurs ima {{count}} ili više oznaka."
+    "randomizeNeedsTags": "Može se uključiti kada kurs ima {{count}} ili više oznaka.",
+    "includeCourseExercises": "Uključi zadatke iz ostalih testova ovog kursa",
+    "includeCourseExercisesHelp": "Svaki pokušaj može da koristi i zadatke iz ostalih testova kursa. Sa nasumičnim izborom, pravila po oznakama biraju iz svih njih; bez njega, podesi koliko zadataka da se izabere.",
+    "coursePool": "Zadataka za izbor: {{exercises}} · Testova: {{tests}}",
+    "exerciseCount": "Broj zadataka",
+    "exerciseCountAll": "Svi",
+    "exerciseCountHelp": "Biraju se redom iz svakog testa, tako da je svaki test zastupljen. Prazno: svi.",
+    "exerciseCountFromRules": "Određuju ga pravila nasumičnog izbora.",
+    "longTest": "Broj zadataka u ovom testu: {{count}}. Podesi broj zadataka ili uključi nasumičan izbor da bi test bio kraći."
   },
   "theme": {
     "switchToDark": "Prebaci na tamnu temu",

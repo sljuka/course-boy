@@ -532,7 +532,15 @@
     "ruleCount": "Number of exercises",
     "addRule": "Add more tagged exercises",
     "ruleShortage": "Needs {{count}} exercises tagged “{{tag}}”, but only {{available}} have it.",
-    "randomizeNeedsTags": "It can be turned on once the course has {{count}} or more tags."
+    "randomizeNeedsTags": "It can be turned on once the course has {{count}} or more tags.",
+    "includeCourseExercises": "Include exercises from other tests in this course",
+    "includeCourseExercisesHelp": "Each attempt can use the exercises of the course's other tests too. With randomization, the tag rules pick from all of them; without it, set how many to pick.",
+    "coursePool": "Exercises to pick from: {{exercises}} · Tests: {{tests}}",
+    "exerciseCount": "Number of exercises",
+    "exerciseCountAll": "All",
+    "exerciseCountHelp": "Picked in turn from each test, so every test is represented. Empty: all of them.",
+    "exerciseCountFromRules": "Set by the randomization rules.",
+    "longTest": "Number of exercises in this test: {{count}}. Set a number of exercises or turn on randomization to make it shorter."
   },
   "theme": {
     "switchToDark": "Switch to dark theme",

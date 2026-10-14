@@ -25,6 +25,8 @@ function createInitialState(locales: Locale[]): TestEditorState {
     exercises: [],
     graded: false,
     gradeBands: null,
+    includeCourseExercises: false,
+    exerciseCount: null,
     selectedLocale: locales[0] ?? "en",
     showMnemonics: false,
     useBlueprint: false,
@@ -197,6 +199,8 @@ function normalizeDraftTestData(
           exercises: normalizedExercises,
           graded: draftState.graded === true,
           gradeBands: draftState.gradeBands ?? null,
+          includeCourseExercises: draftState.includeCourseExercises === true,
+          exerciseCount: draftState.exerciseCount ?? null,
           showMnemonics: draftState.showMnemonics === true,
         } satisfies TestEditorState,
       ];
@@ -235,7 +239,12 @@ function toggleExerciseTag(
 // Whether anything under the test's "Show more options" (SLJ-135) differs
 // from a plain test, so it starts open and the teacher sees it.
 function hasTestMoreOptionsSet(state: TestEditorState): boolean {
-  return state.useBlueprint || state.showMnemonics || (state.graded && state.gradeBands !== null);
+  return (
+    state.useBlueprint ||
+    state.showMnemonics ||
+    state.includeCourseExercises ||
+    (state.graded && state.gradeBands !== null)
+  );
 }
 
 export {

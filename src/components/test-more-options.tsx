@@ -1,17 +1,27 @@
-import { Plus } from "lucide-react";
+import { Info, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { GradeBandsEditor, GradeBandsSummary } from "@/components/grade-bands-editor";
 import { countMatchingExercises } from "@/components/test-editor-prototype-logic";
 import type { BlueprintRule, CourseTagDefinition, TestEditorState } from "@/components/test-editor-prototype-types";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tag } from "@/components/ui/tag";
+import {
+  isExerciseCount,
+  LONG_TEST_EXERCISE_COUNT,
+  MAX_EXERCISE_COUNT,
+  summarizeCourseExercisePool,
+} from "@/lib/course-exercise-pool";
+import type { CourseTest } from "@/lib/course-package";
 import { type GradeBand, resolveGradeBands } from "@/lib/grade-bands";
 
 // Randomization picks exercises by their tags: offered once the course has
@@ -26,17 +36,22 @@ type UpdateState = (updater: (state: TestEditorState) => TestEditorState) => voi
 // mnemonics in the prompts.
 export function TestMoreOptions({
   courseGradeBands,
+  courseTests,
   descriptiveTags,
   open,
   onOpenChange,
   state,
+  testId,
   updateState,
 }: {
   courseGradeBands: GradeBand[] | null;
+  // Every test in the course, as saved: a final test's pool (SLJ-136).
+  courseTests: CourseTest[];
   descriptiveTags: CourseTagDefinition[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   state: TestEditorState;
+  testId: string;
   updateState: UpdateState;
 }) {
   const { t } = useTranslation();
@@ -87,6 +102,25 @@ export function TestMoreOptions({
             <div className="flex items-center gap-2">
               <Label>
                 <Checkbox
+                  checked={state.includeCourseExercises}
+                  data-testid="test-include-course-exercises"
+                  onCheckedChange={() =>
+                    updateState((current) => ({ ...current, includeCourseExercises: !current.includeCourseExercises }))
+                  }
+                />
+                {t("testEditor.includeCourseExercises")}
+              </Label>
+              <InfoTooltip>{t("testEditor.includeCourseExercisesHelp")}</InfoTooltip>
+            </div>
+            {state.includeCourseExercises && (
+              <CourseExercisesOptions courseTests={courseTests} state={state} testId={testId} updateState={updateState} />
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Label>
+                <Checkbox
                   checked={state.useBlueprint}
                   data-testid="test-randomize"
                   disabled={!canRandomize}
@@ -118,6 +152,67 @@ export function TestMoreOptions({
         </div>
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+// A final test's pool and how many of it each attempt picks: all of them,
+// a number picked round robin, or (with randomization) the tag rules' total.
+function CourseExercisesOptions({
+  courseTests,
+  state,
+  testId,
+  updateState,
+}: {
+  courseTests: CourseTest[];
+  state: TestEditorState;
+  testId: string;
+  updateState: UpdateState;
+}) {
+  const { t } = useTranslation();
+  const pool = summarizeCourseExercisePool(testId, state.exercises.length, courseTests);
+  const rulesTotal = state.blueprint.reduce((sum, rule) => sum + rule.count, 0);
+  const isLong = !state.useBlueprint && state.exerciseCount === null && pool.exercises > LONG_TEST_EXERCISE_COUNT;
+
+  return (
+    <div className="flex flex-col gap-3 pl-6">
+      <FieldDescription data-testid="course-exercise-pool">
+        {t("testEditor.coursePool", { exercises: pool.exercises, tests: pool.tests })}
+      </FieldDescription>
+      <Field>
+        <FieldLabel htmlFor="test-exercise-count">{t("testEditor.exerciseCount")}</FieldLabel>
+        {/* A vertical Field stretches its children: the wrapper takes that. */}
+        <div>
+          <Input
+            className="w-24"
+            data-testid="test-exercise-count"
+            disabled={state.useBlueprint}
+            id="test-exercise-count"
+            inputMode="numeric"
+            max={MAX_EXERCISE_COUNT}
+            min={1}
+            onChange={(event) => {
+              const count = Number(event.target.value);
+              updateState((current) => ({
+                ...current,
+                exerciseCount: event.target.value.trim() !== "" && isExerciseCount(count) ? count : null,
+              }));
+            }}
+            placeholder={t("testEditor.exerciseCountAll")}
+            type="number"
+            value={state.useBlueprint ? rulesTotal : (state.exerciseCount ?? "")}
+          />
+        </div>
+        <FieldDescription>
+          {state.useBlueprint ? t("testEditor.exerciseCountFromRules") : t("testEditor.exerciseCountHelp")}
+        </FieldDescription>
+      </Field>
+      {isLong && (
+        <Alert data-testid="long-test-alert" variant="info">
+          <Info aria-hidden="true" />
+          <AlertDescription>{t("testEditor.longTest", { count: pool.exercises })}</AlertDescription>
+        </Alert>
+      )}
+    </div>
   );
 }
 
@@ -156,19 +251,24 @@ function RandomizationRules({
     <div className="flex flex-col gap-3 pl-6">
       {state.blueprint.map((rule) => {
         const available = countMatchingExercises(state.exercises, rule.tagId);
-        const tagLabel = descriptiveTags.find((tag) => tag.id === rule.tagId)?.label ?? rule.tagId;
+        const selectedTag = descriptiveTags.find((tag) => tag.id === rule.tagId);
+        const tagLabel = selectedTag?.label ?? rule.tagId;
 
         return (
           <div className="flex flex-col gap-1" key={rule.id}>
             <div className="flex items-center gap-2">
               <Select onValueChange={(value) => updateRule(rule.id, { tagId: value ?? "" })} value={rule.tagId ?? undefined}>
                 <SelectTrigger aria-label={t("testEditor.ruleTag")} className="w-56">
-                  <SelectValue placeholder={t("testEditor.ruleTagPlaceholder")} />
+                  {/* The tag as it looks elsewhere, not its id (Base UI shows the
+                      value unless told otherwise). */}
+                  <SelectValue placeholder={t("testEditor.ruleTagPlaceholder")}>
+                    {selectedTag && <Tag color={selectedTag.color}>{selectedTag.label}</Tag>}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {descriptiveTags.map((tag) => (
                     <SelectItem key={tag.id} value={tag.id}>
-                      {tag.label}
+                      <Tag color={tag.color}>{tag.label}</Tag>
                     </SelectItem>
                   ))}
                 </SelectContent>

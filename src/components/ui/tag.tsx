@@ -115,6 +115,9 @@ function Tag({
     return (
       <Badge
         className={cn(tagVariants({ color, selected }), className)}
+        // Marks it for menus and selects, which recolour an item's contents
+        // when it's highlighted but leave a tag its own colours.
+        data-tag=""
         style={style}
         {...props}
       />

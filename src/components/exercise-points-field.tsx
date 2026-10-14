@@ -42,18 +42,21 @@ export function ExercisePointsField({
         <FieldLabel htmlFor={id}>{t("testEditor.points")}</FieldLabel>
         <InfoTooltip aria-label={t("testEditor.pointsHelp")}>{t("testEditor.pointsHelp")}</InfoTooltip>
       </div>
-      <Input
-        aria-invalid={!isValid}
-        className="w-24"
-        data-testid="exercise-points"
-        id={id}
-        inputMode="numeric"
-        max={MAX_EXERCISE_POINTS}
-        min={MIN_EXERCISE_POINTS}
-        onChange={(event) => update(event.target.value)}
-        type="number"
-        value={text}
-      />
+      {/* A vertical Field stretches its children: the wrapper takes that. */}
+      <div>
+        <Input
+          aria-invalid={!isValid}
+          className="w-24"
+          data-testid="exercise-points"
+          id={id}
+          inputMode="numeric"
+          max={MAX_EXERCISE_POINTS}
+          min={MIN_EXERCISE_POINTS}
+          onChange={(event) => update(event.target.value)}
+          type="number"
+          value={text}
+        />
+      </div>
       {!isValid && <FieldError>{t("testEditor.pointsInvalid")}</FieldError>}
     </Field>
   );

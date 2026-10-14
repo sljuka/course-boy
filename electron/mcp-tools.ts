@@ -152,12 +152,16 @@ const questionSchema = z.discriminatedUnion("type", [
 type Question = z.infer<typeof questionSchema>;
 
 // `kept`: the settings of the test being replaced that the questions don't
-// carry (whether it's graded, its own grade bands, mnemonics), kept unless the
-// call says otherwise.
+// carry (whether it's graded, its own grade bands, whether it includes the
+// course's other tests and how many, mnemonics), kept unless the call says
+// otherwise.
 export function testFromQuestions(
   questions: Question[],
   locale: Locale,
-  kept: Pick<SharedTestDefinition, "graded" | "gradeBands" | "showMnemonics"> = {},
+  kept: Pick<
+    SharedTestDefinition,
+    "exerciseCount" | "graded" | "gradeBands" | "includeCourseExercises" | "showMnemonics"
+  > = {},
 ): SharedTestDefinition {
   const exercises = questions.map((question): SharedTestExerciseDefinition => {
     const exercise = exerciseFromQuestion(question, locale);
@@ -168,6 +172,8 @@ export function testFromQuestions(
     exercises,
     ...(kept.graded ? { graded: true } : {}),
     ...(kept.graded && kept.gradeBands ? { gradeBands: kept.gradeBands } : {}),
+    ...(kept.includeCourseExercises ? { includeCourseExercises: true } : {}),
+    ...(kept.includeCourseExercises && kept.exerciseCount ? { exerciseCount: kept.exerciseCount } : {}),
     ...(kept.showMnemonics ? { showMnemonics: true } : {}),
     template: "",
   };
@@ -300,8 +306,10 @@ const graded = z
 // call says if it says.
 function keptTestSettings(previous: SharedTestDefinition | null, graded: boolean | undefined) {
   return {
+    exerciseCount: previous?.exerciseCount,
     graded: graded ?? previous?.graded,
     gradeBands: previous?.gradeBands,
+    includeCourseExercises: previous?.includeCourseExercises,
     showMnemonics: previous?.showMnemonics,
   };
 }

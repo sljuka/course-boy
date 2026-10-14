@@ -92,6 +92,11 @@ export function toSharedTestDefinition(testState: TestEditorState): SharedTestDe
     ...(testState.graded ? { graded: true } : {}),
     // Its own bands only on a graded test that has them.
     ...(testState.graded && testState.gradeBands ? { gradeBands: testState.gradeBands } : {}),
+    ...(testState.includeCourseExercises ? { includeCourseExercises: true } : {}),
+    // A count only where it picks: a final test without tag rules.
+    ...(testState.includeCourseExercises && !testState.useBlueprint && testState.exerciseCount
+      ? { exerciseCount: testState.exerciseCount }
+      : {}),
     ...(testState.showMnemonics ? { showMnemonics: true } : {}),
     template: testState.description,
     ...(structure ? { structure } : {}),
@@ -116,6 +121,8 @@ export function fromSharedTestDefinition(
     exercises,
     graded: definition.graded ?? false,
     gradeBands: definition.gradeBands ?? null,
+    includeCourseExercises: definition.includeCourseExercises ?? false,
+    exerciseCount: definition.exerciseCount ?? null,
     selectedLocale: supportedLocales[0] ?? "en",
     showMnemonics: definition.showMnemonics ?? false,
     // Presence, not length: a teacher can enable randomization before

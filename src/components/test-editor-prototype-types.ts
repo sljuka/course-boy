@@ -202,6 +202,10 @@ type TestEditorState = {
   // A graded test (SLJ-135), and its own grade bands (null: the course's).
   graded: boolean;
   gradeBands: GradeBand[] | null;
+  // A final test (SLJ-136): the course's other tests' exercises too, and how
+  // many to pick round robin (null: all).
+  includeCourseExercises: boolean;
+  exerciseCount: number | null;
   selectedLocale: Locale;
   showMnemonics: boolean;
   useBlueprint: boolean;

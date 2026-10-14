@@ -308,6 +308,11 @@ export type CourseTest = {
   // otherwise the course's apply (`resolveGradeBands`).
   gradeBands?: GradeBand[];
   id: string;
+  // A final test (SLJ-136): its exercises plus those of the course's other
+  // tests (`buildCourseExercisePool`), all of them or `exerciseCount` picked
+  // round robin, unless the tag rules (`structure`) pick.
+  includeCourseExercises: boolean;
+  exerciseCount?: number;
   // Show the course's mnemonics in this test's prompts (SLJ-37). Off unless
   // the teacher turns it on: a badge could give an answer away.
   showMnemonics?: boolean;
@@ -422,6 +427,10 @@ export type SharedTestDefinition = {
   // (older files may still carry `strictAdvancement`, no longer read).
   graded?: boolean;
   gradeBands?: GradeBand[];
+  // See `CourseTest.includeCourseExercises` and `.exerciseCount` (SLJ-136);
+  // missing means only the test's own exercises, all of them.
+  includeCourseExercises?: boolean;
+  exerciseCount?: number;
   // See `CourseTest.showMnemonics`; missing means off.
   showMnemonics?: boolean;
   structure?: CourseTestStructureRule[];

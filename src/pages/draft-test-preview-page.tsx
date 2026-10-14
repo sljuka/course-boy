@@ -10,6 +10,7 @@ import { TestPlayerView } from "@/components/test-player/test-player";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { resolveSharedTestForPlayer } from "@/lib/exercise-kinds/registry";
 import type { Locale } from "@/lib/i18n";
+import { listCourseTests } from "@/lib/course-exercise-pool";
 
 type DraftTestPreviewLocationState = {
   // The tree node the teacher had selected in the draft editor when they hit
@@ -57,7 +58,9 @@ export function DraftTestPreviewPage() {
       (locale, index, locales) => locales.indexOf(locale) === index,
     );
     const sharedTest = toSharedTestDefinition(testState);
-    const test = resolveSharedTestForPlayer(sharedTest, requestedLocales, "preview", courseId);
+    // Under its own id, so a final test's pool (SLJ-136) has the version
+    // being edited in place of the saved one, not both.
+    const test = resolveSharedTestForPlayer(sharedTest, requestedLocales, selectedNode?.id ?? "preview", courseId);
     const closePreview = () =>
       navigate(`/drafts/${courseId}`, { state: selectedNode ? { selectedNode } : undefined });
 
@@ -75,6 +78,7 @@ export function DraftTestPreviewPage() {
       },
       courseId: "preview",
       courseGradeBands: course?.gradeBands ?? null,
+      courseTests: course ? listCourseTests(course.sections) : [],
       courseTitle: course?.title ?? "",
       exitPlayer: closePreview,
       isPreview: true,
@@ -85,7 +89,7 @@ export function DraftTestPreviewPage() {
       sectionTitle: section?.title ?? "",
       status: "ready",
     };
-  }, [course?.gradeBands, course?.title, courseId, navigate, section?.title, state]);
+  }, [course, courseId, navigate, section?.title, state]);
 
   if (!courseId) {
     return <Navigate replace to="/my-courses" />;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
@@ -52,6 +52,8 @@ export function deriveExerciseResult(
   };
 }
 
+const NO_TESTS: CourseTest[] = [];
+
 function createEmptyResults(exercises: CourseExercise[]): ExerciseResult[] {
   return exercises.map(() => ({
     feedback: null,
@@ -64,14 +66,22 @@ function createEmptyResults(exercises: CourseExercise[]): ExerciseResult[] {
 // `startInteractive`: whether a test opens in interactive mode (SLJ-132; the
 // person's setting in the test player, paper mode for the editors' examples).
 // `onFirstTry`: each question's first try in interactive mode, right or not
-// (the course's spree, SLJ-134).
+// (the course's spree, SLJ-134). `courseTests`: every test in the course, for
+// a final test's pool (SLJ-136).
 export function useTestPlayerState(
   activeLesson?: { test: CourseTest | null },
   {
+    courseTests = NO_TESTS,
     onFirstTry,
     startInteractive = false,
-  }: { onFirstTry?: (isCorrect: boolean) => void; startInteractive?: boolean } = {},
+  }: { courseTests?: CourseTest[]; onFirstTry?: (isCorrect: boolean) => void; startInteractive?: boolean } = {},
 ) {
+  // Read when exercises are picked, not watched: the course refreshing in
+  // the background mustn't start a test over.
+  const courseTestsRef = useRef(courseTests);
+  useEffect(() => {
+    courseTestsRef.current = courseTests;
+  }, [courseTests]);
   const { t } = useTranslation();
   const [activeTestExercises, setActiveTestExercises] = useState<
     CourseExercise[]
@@ -121,11 +131,13 @@ export function useTestPlayerState(
     setIsInteractiveMode(startInteractive);
     setIsPrintHintVisible(true);
 
-    if (!activeLesson?.test || activeLesson.test.exercises.length === 0) {
+    // A final test (SLJ-136) can have no exercises of its own: what's
+    // picked decides.
+    if (!activeLesson?.test) {
       return;
     }
 
-    const selectedExercises = buildTestExerciseSequence(activeLesson);
+    const selectedExercises = buildTestExerciseSequence(activeLesson, courseTestsRef.current);
 
     if (selectedExercises.length === 0) {
       return;
@@ -161,7 +173,7 @@ export function useTestPlayerState(
   // them at random) and new numbers.
   function restart() {
     resetExerciseState();
-    const selectedExercises = activeLesson ? buildTestExerciseSequence(activeLesson) : [];
+    const selectedExercises = activeLesson ? buildTestExerciseSequence(activeLesson, courseTestsRef.current) : [];
     if (selectedExercises.length > 0) hydrateExercises(selectedExercises);
   }
 

@@ -19,6 +19,7 @@ import type { CourseLesson } from "@/lib/course-package";
 import { defaultLessonPrintOptions } from "@/lib/print-options";
 import { buildLessonTestPath } from "@/lib/course-utils";
 import { recordStepDone } from "@/lib/course-progress-queries";
+import { buildCourseExercisePool } from "@/lib/course-exercise-pool";
 
 // `CoursePlayerReadyState.activeStep` is a `{item: CourseLesson, kind: "lesson"} |
 // {item: CourseSectionTest, kind: "test"}` union — narrowed to the lesson
@@ -153,7 +154,11 @@ export function LessonPlayerView({
           if (!playerState.isPreview) {
             recordStepDone(playerState.courseId, lesson.id);
           }
-          if (!lesson.test || lesson.test.exercises.length === 0) {
+          // A final test (SLJ-136) has exercises when anything in its pool does.
+          const hasTest = lesson.test?.includeCourseExercises
+            ? buildCourseExercisePool(lesson.test, playerState.courseTests).length > 0
+            : (lesson.test?.exercises.length ?? 0) > 0;
+          if (!hasTest) {
             playerState.moveToNextStep();
             return;
           }

@@ -54,6 +54,7 @@ import {
 } from "../src/lib/exercise-kinds/registry";
 import { hasValidExerciseMedia } from "../src/lib/exercise-media";
 import { isExercisePoints, isGradeBands } from "../src/lib/grade-bands";
+import { isExerciseCount } from "../src/lib/course-exercise-pool";
 import { promptGaps, titleGaps, writtenLocales } from "../src/lib/course-gaps";
 
 type CourseRecord = {
@@ -330,7 +331,8 @@ function isSharedTestDefinitionShape(
   if (
     typeof test.template !== "string" ||
     !Array.isArray(test.exercises) ||
-    (requireExercises && test.exercises.length === 0)
+    // A final test (SLJ-136) can have no exercises of its own.
+    (requireExercises && test.exercises.length === 0 && test.includeCourseExercises !== true)
   ) {
     return false;
   }
@@ -367,6 +369,15 @@ function isSharedTestDefinitionShape(
   }
 
   if (typeof test.gradeBands !== "undefined" && !isGradeBands(test.gradeBands)) {
+    return false;
+  }
+
+  // Final tests (SLJ-136).
+  if (typeof test.includeCourseExercises !== "undefined" && typeof test.includeCourseExercises !== "boolean") {
+    return false;
+  }
+
+  if (typeof test.exerciseCount !== "undefined" && !isExerciseCount(test.exerciseCount)) {
     return false;
   }
 

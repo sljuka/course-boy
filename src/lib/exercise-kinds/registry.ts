@@ -137,6 +137,8 @@ export function resolveSharedTestForPlayer(
     id: testId,
     graded: sharedTest.graded ?? false,
     ...(sharedTest.gradeBands ? { gradeBands: sharedTest.gradeBands } : {}),
+    includeCourseExercises: sharedTest.includeCourseExercises ?? false,
+    ...(sharedTest.exerciseCount ? { exerciseCount: sharedTest.exerciseCount } : {}),
     showMnemonics: sharedTest.showMnemonics ?? false,
     structure: sharedTest.structure,
   };

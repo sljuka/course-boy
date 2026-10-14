@@ -66,6 +66,8 @@ export function DraftLessonPreviewPage() {
       // `resolveSharedTestForPlayer`.
       courseId,
       courseGradeBands: course?.gradeBands ?? null,
+      // A lesson preview plays no test.
+      courseTests: [],
       courseTitle: course?.title ?? "",
       exitPlayer: closePreview,
       isPreview: true,

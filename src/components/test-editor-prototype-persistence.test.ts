@@ -43,6 +43,18 @@ describe("graded tests (SLJ-135)", () => {
     expect(toSharedTestDefinition({ ...state, graded: false })).not.toHaveProperty("graded")
   })
 
+  it("writes a final test's count only when it picks (no tag rules) (SLJ-136)", () => {
+    const state = fromSharedTestDefinition(
+      { exerciseCount: 12, exercises: [], includeCourseExercises: true, template: "" },
+      ["en"],
+    )
+
+    expect(state).toMatchObject({ exerciseCount: 12, includeCourseExercises: true })
+    expect(toSharedTestDefinition(state)).toMatchObject({ exerciseCount: 12, includeCourseExercises: true })
+    expect(toSharedTestDefinition({ ...state, useBlueprint: true })).not.toHaveProperty("exerciseCount")
+    expect(toSharedTestDefinition({ ...state, includeCourseExercises: false })).not.toHaveProperty("exerciseCount")
+  })
+
   it("reads an older test's strictAdvancement as a practice test", () => {
     const legacy = { exercises: [], strictAdvancement: false, template: "" } as Parameters<typeof fromSharedTestDefinition>[0]
 
