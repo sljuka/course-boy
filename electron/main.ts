@@ -5,6 +5,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { copyFile, link, mkdir, open as openFile, readdir, readFile, rename, rm, stat as statFile } from 'node:fs/promises'
 import path from 'node:path'
 import Store from 'electron-store'
+import { createMcpService, type McpSettings } from './mcp-server'
+import type { McpStatus } from '../src/lib/mcp'
 import {
   cancelTransfer,
   checkUpdate,
@@ -603,30 +605,34 @@ function openProfileServices(dataDir: string) {
     store: { read: () => publishersStore.store, write: (state) => (publishersStore.store = state) },
   })
 
+  // A course of your own as an entry of a program or the channel: its code
+  // (once published) and its titles in every language it has.
+  async function ownCourseEntry(courseId: string, code: string | null): Promise<ProgramManifest['courses'][number] | null> {
+    const coursesRoot = await ensureLocalCoursesRoot()
+    const course = (await listCourses(coursesRoot)).find((candidate) => candidate.id === courseId)
+    if (!course) return null
+    const locales: ProgramManifest['courses'][number]['snapshot']['locales'] = {}
+    for (const courseLocale of course.supportedLocales) {
+      const inLocale = (await listCourses(coursesRoot, courseLocale)).find((candidate) => candidate.id === courseId)
+      locales[courseLocale] = { description: inLocale?.description ?? '', title: inLocale?.title ?? course.title }
+    }
+    return {
+      code,
+      courseId,
+      snapshot: {
+        locales,
+        publisherId: publisherIdentity.publisherId(),
+        publisherName: (await ownPublisherName()) || null,
+        supportedLocales: course.supportedLocales,
+        version: course.publishedVersion,
+      },
+    }
+  }
+
   channels = createChannels({
     canPublish: () => !publisherIdentity.isLocked(),
     channelCode: (programId) => programSharingStore.get('published')[programId]?.code ?? null,
-    courseEntry: async (courseId, code) => {
-      const coursesRoot = await ensureLocalCoursesRoot()
-      const course = (await listCourses(coursesRoot)).find((candidate) => candidate.id === courseId)
-      if (!course) return null
-      const locales: ProgramManifest['courses'][number]['snapshot']['locales'] = {}
-      for (const courseLocale of course.supportedLocales) {
-        const inLocale = (await listCourses(coursesRoot, courseLocale)).find((candidate) => candidate.id === courseId)
-        locales[courseLocale] = { description: inLocale?.description ?? '', title: inLocale?.title ?? course.title }
-      }
-      return {
-        code,
-        courseId,
-        snapshot: {
-          locales,
-          publisherId: publisherIdentity.publisherId(),
-          publisherName: (await ownPublisherName()) || null,
-          supportedLocales: course.supportedLocales,
-          version: course.publishedVersion,
-        },
-      }
-    },
+    courseEntry: ownCourseEntry,
     createChannel: async (title) => {
       const locale = preferencesStore.get('locale')
       return (await createProgram({ kind: 'channel', locale: isLocale(locale) ? locale : 'en', title })).programId
@@ -647,10 +653,28 @@ function openProfileServices(dataDir: string) {
     writeOwnChannelId: (programId) => programSharingStore.set('ownChannelId', programId),
   })
 
+  // SLJ-68: agents on this computer make courses and programs through MCP,
+  // when turned on in Settings → Agents. Its settings (the token too) stay in
+  // main: not in preferences, which the window reads wholesale.
+  const mcpStore = new Store<McpSettings>({ cwd: dataDir, defaults: { enabled: false, port: null, token: null }, name: 'mcp' })
+  const mcp = createMcpService({
+    appVersion: app.getVersion(),
+    store: { read: () => mcpStore.store, write: (settings) => (mcpStore.store = settings) },
+    tools: {
+      changed: () => win?.webContents.send('mcp:changed'),
+      ownCourseEntry: async (courseId) => {
+        const entry = await ownCourseEntry(courseId, courseSharing.getInfo(courseId).code ?? null)
+        if (!entry) throw new Error(`No course "${courseId}"`)
+        return entry
+      },
+    },
+  })
+
   return {
     channels,
     close() {
       closed = true
+      void mcp.stop()
       courseSharing.stop()
       identityRestore.stop()
       maintainers.stop()
@@ -660,6 +684,7 @@ function openProfileServices(dataDir: string) {
     courseSharing,
     courseSharingStore,
     maintainers,
+    mcp,
     previews,
     previewsRoot,
     programSharing,
@@ -1015,6 +1040,19 @@ ipcMain.handle('courses:remove', async (_event, courseId: string) => {
   await profile.courseSharing.forgetCourse(courseId)
   profile.courseProgress.forgetCourse(courseId)
 })
+
+// ─── Agents (SLJ-68) ────────────────────────────────────────────────────────
+// The MCP server's switch and token, in Settings → Agents.
+
+ipcMain.handle('mcp:get-status', () => profile.mcp.status() satisfies McpStatus)
+
+ipcMain.handle('mcp:set-enabled', (_event, enabled: unknown) => {
+  if (typeof enabled !== 'boolean') throw new Error('Invalid value')
+  if (!getActiveProfile()) throw new Error('No profile is open')
+  return profile.mcp.setEnabled(enabled)
+})
+
+ipcMain.handle('mcp:regenerate-token', () => profile.mcp.regenerateToken())
 
 // ─── Programs (SLJ-32) ──────────────────────────────────────────────────────
 // Phase 1: your own programs, on this device (electron/program-paths.ts).
@@ -1797,6 +1835,7 @@ function startProfile(): void {
 
   spawnBareWorker()
   const opened = profile
+  void opened.mcp.start()
   // Before sharing starts: an update interrupted by a crash must not leave a
   // course folder missing. (The publisher identity starts locked: published
   // courses are shared by their code until the password is given.)

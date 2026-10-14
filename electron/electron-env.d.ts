@@ -159,6 +159,13 @@ interface Window {
     isSupported: boolean
     onAskKeepSharing: (callback: () => void) => () => void
   }
+  // Agents (SLJ-68): the MCP server in Settings → Agents.
+  mcp: {
+    getStatus: () => Promise<import('../src/lib/mcp').McpStatus>
+    onChanged: (callback: () => void) => () => void
+    regenerateToken: () => Promise<import('../src/lib/mcp').McpStatus>
+    setEnabled: (enabled: boolean) => Promise<import('../src/lib/mcp').McpStatus>
+  }
   // Channels (SLJ-31): the profile's own, and a course's.
   channels: {
     own: () => Promise<{ programId: string }>

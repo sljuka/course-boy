@@ -792,6 +792,34 @@ fails loudly when something misses that, so these rules span files:
 Checked by `e2e/profiles.e2e.mjs`: a second profile doesn't see the first one's courses and
 has its own publisher identity, and switching back finds both again.
 
+## 11. Agents (MCP) reach courses through the same functions as the window
+
+Matko runs an MCP server for agents on the same computer (SLJ-68,
+[electron/mcp-server.ts](../electron/mcp-server.ts:1), tools in
+[electron/mcp-tools.ts](../electron/mcp-tools.ts:1)). It is a second way into main,
+besides IPC, and the same rules hold:
+
+- **A tool calls the function its IPC handler calls** (`course-paths.ts`,
+  `course-registry.ts`, `program-paths.ts`), never the files directly, so validation, the
+  draft-only rule and safe writes apply unchanged. A new tool for something the app can
+  do reuses that function; a new capability gets its function first.
+- **Only authoring.** No tool publishes, shares, touches maintainers or the publishing
+  identity, or removes anything: those stay with the person, in the app. Adding one is an
+  "Ask first" change. `mcp-tools.test.ts` lists the tools, so a new one is a visible diff.
+- **Off by default, per profile**, in Settings → Agents. Its settings (`enabled`, `port`,
+  `token`) are in the profile's `mcp.json`, kept by main and not in preferences, which
+  the window reads wholesale. It runs only for the open profile and stops on a switch.
+- **Only this computer, only with the token:** it listens on `127.0.0.1`, needs
+  `Authorization: Bearer <token>`, and refuses requests carrying an `Origin` header
+  (web pages) or a `Host` other than `127.0.0.1`/`localhost` with its port (DNS
+  rebinding).
+- **Simple formats for agents:** a lesson is Markdown (wrapped as one `markdown` block;
+  a body with `[matko-block]` markers passes through), a test is a list of
+  `multiple_choice` or `number` questions. Tests made in the app with other kinds read as
+  `{ type, editable: false }`.
+- **After a write, main sends `mcp:changed`** and the window reads courses and programs
+  again (`useRefreshOnAgentChanges`), so the open page shows the agent's work.
+
 ## Third-party extensions (not yet built)
 
 Raised as a "could we do a VSCode-style extension model?" question, not yet designed or

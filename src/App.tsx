@@ -42,6 +42,7 @@ import { SettingsPage } from "@/pages/settings-page";
 import { WelcomePage } from "@/pages/welcome-page";
 import { useAppState } from "@/lib/use-app-state";
 import { useProfilesStateQuery } from "@/lib/profiles-queries";
+import { useRefreshOnAgentChanges } from "@/lib/mcp-queries";
 
 const AppRoutes = () => {
   const { isLoaded } = useAppState();
@@ -145,8 +146,16 @@ const AppFrame = () => {
       <AppFrameStatusBar />
       {/* Asked by main when the window is closed (SLJ-129). */}
       <KeepSharingDialog />
+      <AgentChangesRefresher />
     </AppShell>
   );
+};
+
+// What an agent changed over MCP (SLJ-68) shows up on the open page.
+const AgentChangesRefresher = () => {
+  useRefreshOnAgentChanges();
+
+  return null;
 };
 
 const RecentlyViewedTracker = () => {

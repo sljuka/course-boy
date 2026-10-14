@@ -114,6 +114,10 @@ display was already off when the run started.
   A channel (SLJ-31) is stored and shared as a program marked `kind: "channel"`: one
   per profile (My channel), listing the courses its teacher shows on it
   (`electron/channels.ts`); a listed course's `source.json` names the channel.
+  Agents on the same computer (Claude Code, Claude Desktop, …) can make courses and
+  programs over MCP (SLJ-68, `electron/mcp-server.ts` + `electron/mcp-tools.ts`): off until
+  turned on in Settings → Agents, localhost with a token, authoring only (no publishing,
+  sharing, identity or removing). See contract 11 in docs/contracts.md.
   The built-in course is a published course too (SLJ-115): the app ships a snapshot and
   `courses/bundled.json` holds its code, and the maintainer updates it with
   `scripts/built-in-course.mjs` (adopt, publish, snapshot).

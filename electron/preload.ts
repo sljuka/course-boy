@@ -2,6 +2,7 @@ import { ipcRenderer, contextBridge } from 'electron'
 import type { ChannelForCourse } from '../src/lib/channels'
 import type { CourseProgressState, RecordTestResultInput } from '../src/lib/course-progress'
 import type { ApprovalsList, MaintainersInfo, ProposalReview } from '../src/lib/maintainers'
+import type { McpStatus } from '../src/lib/mcp'
 import type { PublisherEntry } from '../src/lib/publishers'
 import type { PeekCourseResult, ProgramManifest, ProgramSharingInfo, ProgramSummary } from '../src/lib/program-package'
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
@@ -239,6 +240,28 @@ contextBridge.exposeInMainWorld('background', {
     return () => {
       ipcRenderer.removeListener('background:ask-keep-sharing', listener)
     }
+  },
+})
+
+// Agents (SLJ-68): the MCP server's switch and token (Settings → Agents), and
+// main saying an agent changed courses or programs, so what's on screen is
+// read again. `onChanged` returns a function that stops listening.
+contextBridge.exposeInMainWorld('mcp', {
+  getStatus() {
+    return ipcRenderer.invoke('mcp:get-status') as Promise<McpStatus>
+  },
+  onChanged(callback: () => void) {
+    const listener = () => callback()
+    ipcRenderer.on('mcp:changed', listener)
+    return () => {
+      ipcRenderer.removeListener('mcp:changed', listener)
+    }
+  },
+  regenerateToken() {
+    return ipcRenderer.invoke('mcp:regenerate-token') as Promise<McpStatus>
+  },
+  setEnabled(enabled: boolean) {
+    return ipcRenderer.invoke('mcp:set-enabled', enabled) as Promise<McpStatus>
   },
 })
 

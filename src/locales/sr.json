@@ -1182,5 +1182,18 @@
     "settingKeepHint": "Kursevi koje praviš i uvoziš ostaju dostupni drugima dok Matko radi u traci menija.",
     "settingOpenAtLogin": "Pokreni pri prijavljivanju",
     "settingOpenAtLoginHint": "Pokreće Matka u traci menija kad se prijaviš, bez prozora."
+  },
+  "agents": {
+    "title": "Agenti",
+    "description": "AI agenti na ovom računaru, poput Claude Code-a, koji prave kurseve sa tobom.",
+    "enable": "Dozvoli agentima da prave kurseve i programe",
+    "enableHint": "Dok je Matko otvoren, agent može da pravi i menja tvoje kurseve, lekcije, testove i programe i da čuva nove verzije. Ne može ništa da objavi, podeli ili obriše, niti da koristi tvoj identitet za objavljivanje. Mogu da se povežu samo programi na ovom računaru, uz pristupni kod ispod.",
+    "notRunning": "Agenti trenutno ne mogu da se povežu: {{error}}",
+    "address": "Adresa",
+    "accessCode": "Pristupni kod",
+    "claudeCode": "Podesi Claude Code (pokreni ovo u terminalu)",
+    "newAccessCode": "Novi pristupni kod",
+    "newAccessCodeHint": "Agenti koji koriste trenutni kod neće moći da se povežu dok se ne podese sa novim.",
+    "newAccessCodeAction": "Novi kod"
   }
 }

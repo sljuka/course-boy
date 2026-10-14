@@ -1182,5 +1182,18 @@
     "settingKeepHint": "Keeps the courses you made and imported available to others while Matko runs in the menu bar.",
     "settingOpenAtLogin": "Open at login",
     "settingOpenAtLoginHint": "Starts Matko in the menu bar when you log in, without a window."
+  },
+  "agents": {
+    "title": "Agents",
+    "description": "AI agents on this computer, like Claude Code, making courses with you.",
+    "enable": "Let agents make courses and programs",
+    "enableHint": "While Matko is open, an agent can create and edit your courses, lessons, tests and programs, and commit versions. It can't publish, share or delete anything, or use your publishing identity. Only programs on this computer can connect, with the access code below.",
+    "notRunning": "Agents can't connect right now: {{error}}",
+    "address": "Address",
+    "accessCode": "Access code",
+    "claudeCode": "Set up Claude Code (run this in a terminal)",
+    "newAccessCode": "New access code",
+    "newAccessCodeHint": "Agents using the current code can't connect any more until they're set up with the new one.",
+    "newAccessCodeAction": "New code"
   }
 }

@@ -1,6 +1,7 @@
 import { Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { AgentsSettings } from "@/components/agents/agents-settings";
 import { BackgroundSettings } from "@/components/background/background-settings";
 import { PublisherIdentitySettings } from "@/components/identity/publisher-identity-settings";
 import { PageContent } from "@/components/page-content";
@@ -174,6 +175,14 @@ export const SettingsPage = () => {
         </Field>
         <BackgroundSettings />
         <PublisherIdentitySettings />
+      </SettingsSection>
+      {/* Agents on this computer making courses over MCP (SLJ-68). */}
+      <SettingsSection
+        data-testid="agents-settings"
+        description={t("agents.description")}
+        title={t("agents.title")}
+      >
+        <AgentsSettings />
       </SettingsSection>
       <SettingsSection data-testid="danger-zone" title={t("settings.dangerZone.title")} variant="danger">
         <RemoveProfileSetting />

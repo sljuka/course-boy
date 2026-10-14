@@ -60,6 +60,7 @@ describe('launch', () => {
       channels: Object.keys(window.channels ?? {}).sort(),
       courses: Object.keys(window.courses ?? {}).sort(),
       maintainers: Object.keys(window.maintainers ?? {}).sort(),
+      mcp: Object.keys(window.mcp ?? {}).sort(),
       preferences: Object.keys(window.preferences ?? {}).sort(),
       profiles: Object.keys(window.profiles ?? {}).sort(),
       programs: Object.keys(window.programs ?? {}).sort(),
@@ -70,6 +71,7 @@ describe('launch', () => {
 
     expect(surface.background).toEqual(['isSupported', 'onAskKeepSharing'])
     expect(surface.channels).toEqual(['getForCourse', 'own', 'setCourseListed'])
+    expect(surface.mcp).toEqual(['getStatus', 'onChanged', 'regenerateToken', 'setEnabled'])
     expect(surface.courses).toEqual([
       // `applySvgPreset` was already missing from this list before this
       // change — a genuine, working method that this contract-1 check just
