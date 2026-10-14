@@ -5,6 +5,7 @@ import { Navigate } from "react-router-dom";
 
 import { CoursePlayerActions } from "@/components/course-player/course-player-actions";
 import { MnemonicsToggle } from "@/components/course-player/mnemonics-toggle";
+import { PlayerIconButton } from "@/components/course-player/player-icon-button";
 import { PrintOptionsMenu } from "@/components/course-player/print-options-menu";
 import { CoursePlayerShell } from "@/components/course-player/course-player-shell";
 import { CourseTestContent } from "@/components/course-player/course-test-content";
@@ -169,26 +170,20 @@ function TestPlayerContent({
       onRefreshExercise={refreshExercises}
       printControl={
         <div className="flex items-center gap-2">
-          <Button
-            aria-label={t("courseDetails.printTest")}
-            data-testid="test-print"
+          <PlayerIconButton
+            label={t("courseDetails.printTest")}
             onClick={printFromInteractiveMode}
-            shape="circle"
-            size="icon-sm"
-            variant="subtle"
+            testId="test-print"
           >
             <Printer aria-hidden="true" />
-          </Button>
-          <Button
-            aria-label={t("courseDetails.paperMode")}
-            data-testid="test-paper-mode"
+          </PlayerIconButton>
+          <PlayerIconButton
+            label={t("courseDetails.paperMode")}
             onClick={() => setIsInteractiveMode(false)}
-            shape="circle"
-            size="icon-sm"
-            variant="subtle"
+            testId="test-paper-mode"
           >
             <FileText aria-hidden="true" />
-          </Button>
+          </PlayerIconButton>
         </div>
       }
     />

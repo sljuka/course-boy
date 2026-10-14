@@ -29,6 +29,7 @@ import {
   updateLocalCourseSection,
   updateLocalCourseSectionIntro,
   updateLocalCourseSectionTest,
+  updateLocalCourseSectionTestMetadata,
   uploadCourseAssetFromBytes,
 } from "./course-paths";
 import { getCourseDetails, listCourses } from "./course-registry";
@@ -618,6 +619,31 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         courseId: args.courseId,
         sectionId: args.sectionId,
         test: testFromQuestions(args.questions, locale),
+        testId: args.testId,
+      });
+      return null;
+    }),
+  );
+
+  server.registerTool(
+    "update_section_test",
+    {
+      description: "Renames a section test, in one of the course's languages.",
+      inputSchema: { courseId, language, sectionId, testId: z.string(), title: z.string().min(1) },
+    },
+    write(async (args: { courseId: string; language?: string; sectionId: string; testId: string; title: string }) => {
+      const locale = await courseLanguage(args.courseId, args.language);
+      const details = await ownCourse(args.courseId, locale);
+      const test = details.sections
+        .find((section) => section.id === args.sectionId)
+        ?.tests.find((candidate) => candidate.id === args.testId);
+      if (!test) throw new Error(`No test "${args.testId}" in section "${args.sectionId}"`);
+      // The app's rename writes every language's title at once: the others
+      // are kept as they are.
+      await updateLocalCourseSectionTestMetadata({
+        courseId: args.courseId,
+        locales: { ...test.locales, [locale]: { description: test.locales?.[locale]?.description ?? "", title: args.title } },
+        sectionId: args.sectionId,
         testId: args.testId,
       });
       return null;

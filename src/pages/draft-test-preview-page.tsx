@@ -7,6 +7,7 @@ import type { StructureSelection } from "@/components/course-structure-prototype
 import { toSharedTestDefinition } from "@/components/test-editor-prototype-persistence";
 import type { TestEditorState } from "@/components/test-editor-prototype-types";
 import { TestPlayerView } from "@/components/test-player/test-player";
+import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { resolveSharedTestForPlayer } from "@/lib/exercise-kinds/registry";
 import type { Locale } from "@/lib/i18n";
 
@@ -36,6 +37,15 @@ export function DraftTestPreviewPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as DraftTestPreviewLocationState | null;
+  // The course's and the section's names, for the printed header. The test
+  // is the selected node: a section's own test, or a lesson's.
+  const { data: course } = useCourseDetailsQuery(courseId, state?.testState.selectedLocale ?? "en");
+  const testId = state?.selectedNode?.id;
+  const section = course?.sections.find(
+    (candidate) =>
+      candidate.tests.some((test) => test.id === testId) ||
+      candidate.lessons.some((lesson) => lesson.id === testId),
+  );
 
   const previewPlayerState: CoursePlayerReadyState | undefined = useMemo(() => {
     if (!courseId || !state) {
@@ -64,17 +74,17 @@ export function DraftTestPreviewPage() {
         kind: "lesson",
       },
       courseId: "preview",
-      courseTitle: selectedNode?.title || "Test",
+      courseTitle: course?.title ?? "",
       exitPlayer: closePreview,
       isPreview: true,
       isSectionIntro: false,
       moveToNextStep: closePreview,
       progressCurrent: 1,
       progressTotal: 1,
-      sectionTitle: "",
+      sectionTitle: section?.title ?? "",
       status: "ready",
     };
-  }, [courseId, navigate, state]);
+  }, [course?.title, courseId, navigate, section?.title, state]);
 
   if (!courseId) {
     return <Navigate replace to="/my-courses" />;

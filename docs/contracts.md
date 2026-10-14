@@ -820,6 +820,9 @@ besides IPC, and the same rules hold:
   with other kinds read as `{ type, editable: false }`. `add_image` copies an image file
   from this computer into the course (`uploadCourseAssetFromBytes`, image types only, at
   most 10 MB) and returns its `image` block for the agent to place in the lesson's blocks.
+  `update_section_test` renames a section test through the editor's own
+  `updateLocalCourseSectionTestMetadata`, which writes every language's title at once, so
+  the tool passes the other languages' titles on unchanged.
 - **After a write, main sends `mcp:changed`** and the window reads courses and programs
   again (`useRefreshOnAgentChanges`), so the open page shows the agent's work.
 

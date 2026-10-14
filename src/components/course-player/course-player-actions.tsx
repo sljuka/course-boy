@@ -1,8 +1,8 @@
 import { RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { PlayerIconButton } from "@/components/course-player/player-icon-button";
 import { RoleGuard } from "@/components/role-guard";
-import { Button } from "@/components/ui/button";
 
 export const CoursePlayerActions = ({
   isRefreshingAvailable,
@@ -24,28 +24,16 @@ export const CoursePlayerActions = ({
     <>
       <RoleGuard roles="teacher">
         {isRefreshingAvailable && (
-          <Button
-            aria-label={t("courseDetails.refreshExercise")}
-            onClick={onRefreshExercise}
-            shape="circle"
-            size="icon-sm"
-            variant="subtle"
-          >
+          <PlayerIconButton label={t("courseDetails.refreshExercise")} onClick={onRefreshExercise}>
             <RotateCw aria-hidden="true" />
-          </Button>
+          </PlayerIconButton>
         )}
       </RoleGuard>
       {mnemonicsToggle}
       {printControl}
-      <Button
-        aria-label={t("courseDetails.closeCourse")}
-        onClick={onClose}
-        shape="circle"
-        size="icon-sm"
-        variant="subtle"
-      >
+      <PlayerIconButton label={t("courseDetails.closeCourse")} onClick={onClose}>
         <X aria-hidden="true" />
-      </Button>
+      </PlayerIconButton>
     </>
   );
 };

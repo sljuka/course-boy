@@ -170,6 +170,7 @@ describe("the tools", () => {
       "update_course",
       "update_program",
       "update_section",
+      "update_section_test",
       "write_lesson",
       "write_section_intro",
     ]);
@@ -229,6 +230,26 @@ describe("the tools", () => {
     });
     expect(await call("list_programs")).toEqual([{ courseCount: 1, description: "Start here", id: programId, title: "Maths" }]);
     expect(changed).toHaveBeenCalled();
+  });
+
+  it("rename a section test in one language, keeping the others", async () => {
+    const { courseId } = await call<{ courseId: string }>("create_course", { title: "Days" });
+    const { sectionId } = await call<{ sectionId: string }>("create_section", { courseId, title: "Week" });
+    const { testId } = await call<{ testId: string }>("create_section_test", {
+      courseId,
+      questions: [{ correct: [0], options: ["Monday", "Munday"], prompt: "Which is right?", type: "multiple_choice" }],
+      sectionId,
+      title: "Test: days",
+    });
+
+    await call("update_section_test", { courseId, sectionId, testId, title: "Recognising days" });
+
+    expect(await call("get_course", { courseId })).toMatchObject({
+      sections: [{ tests: [{ id: testId, questionCount: 1, title: "Recognising days" }] }],
+    });
+    await expect(call("update_section_test", { courseId, sectionId, testId: "section-test-missing", title: "x" })).rejects.toThrow(
+      'No test "section-test-missing"',
+    );
   });
 
   it("copy an image into a course and give back its lesson block", async () => {

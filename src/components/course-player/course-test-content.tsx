@@ -183,7 +183,7 @@ export const CourseTestContent = ({
             onClick={handlePrimaryAction}
             size="lg"
           >
-            {isTestPassed ? t("continue") : t("courseDetails.checkAnswer")}
+            {isTestPassed ? t("continue") : t("courseDetails.checkAnswers")}
           </Button>
         </div>
       </div>

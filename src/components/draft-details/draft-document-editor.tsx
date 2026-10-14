@@ -185,6 +185,7 @@ function LoadedDraftDocumentEditor({
     navigate(buildDraftLessonPreviewPath(courseId), {
       state: {
         body: blocksToMarkdown(document.activeBlocks),
+        locale: document.activeLocale,
         selectedNode,
         test: lesson.test,
       },

@@ -5,6 +5,8 @@ import { CoursePlayerPageLayout } from "@/components/course-player-page-layout";
 import type { StructureSelection } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import { LessonPlayerView, type LessonPlayerReadyState } from "@/components/lesson-player";
 import type { CourseTest } from "@/lib/course-package";
+import { useCourseDetailsQuery } from "@/lib/course-queries";
+import type { Locale } from "@/lib/i18n";
 
 type DraftLessonPreviewLocationState = {
   // The lesson document's markdown body, converted from the currently
@@ -13,6 +15,9 @@ type DraftLessonPreviewLocationState = {
   // handler. Mirrors how `DraftTestPreviewPage` previews live exercise
   // edits rather than only the last-saved content.
   body: string;
+  // The language being previewed: the course's and section's names in the
+  // printed header come in it.
+  locale?: Locale;
   selectedNode?: StructureSelection;
   test: CourseTest | null;
 };
@@ -28,6 +33,10 @@ export function DraftLessonPreviewPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = location.state as DraftLessonPreviewLocationState | null;
+  const { data: course } = useCourseDetailsQuery(courseId, state?.locale ?? "en");
+  const section = course?.sections.find((candidate) =>
+    candidate.lessons.some((lesson) => lesson.id === state?.selectedNode?.id),
+  );
 
   const previewPlayerState: LessonPlayerReadyState | undefined = useMemo(() => {
     if (!courseId || !state) {
@@ -56,7 +65,7 @@ export function DraftLessonPreviewPage() {
       // while an exercise's assets are already fully resolved earlier, in
       // `resolveSharedTestForPlayer`.
       courseId,
-      courseTitle: selectedNode?.title || "Document",
+      courseTitle: course?.title ?? "",
       exitPlayer: closePreview,
       isPreview: true,
       isSectionIntro: false,
@@ -67,10 +76,10 @@ export function DraftLessonPreviewPage() {
       moveToNextStep: closePreview,
       progressCurrent: 1,
       progressTotal: 1,
-      sectionTitle: "",
+      sectionTitle: section?.title ?? "",
       status: "ready",
     };
-  }, [courseId, navigate, state]);
+  }, [course?.title, courseId, navigate, section?.title, state]);
 
   if (!courseId) {
     return <Navigate replace to="/my-courses" />;
