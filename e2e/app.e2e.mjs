@@ -1196,6 +1196,50 @@ describe('final test', () => {
   })
 })
 
+// SLJ-131: the course editor's explorer is one element for all its pages. It
+// used to be mounted anew with every page, which lost a click that started
+// just before the page changed (and forgot collapsed sections).
+describe('course editor explorer', () => {
+  it('stays the same across pages, keeping a collapsed section collapsed', async () => {
+    const { page } = harness
+    const courseId = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Explorer Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section A' })
+      await window.courses.createLesson({ courseId, sectionId, title: 'Lesson A1' })
+      await window.courses.createSection({ courseId, title: 'Section B' })
+      return courseId
+    })
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, courseId)
+    const lessonA1 = page.getByText('Lesson A1', { exact: true })
+    await lessonA1.waitFor({ timeout: 15_000 })
+
+    // Collapse Section A with its chevron, and mark the explorer element.
+    await page
+      .getByText('Section A', { exact: true })
+      .locator('xpath=ancestor::div[contains(@class, "group/row")][1]')
+      .locator('button')
+      .first()
+      .click()
+    await lessonA1.waitFor({ state: 'detached' })
+    await page.evaluate(() => {
+      const row = [...document.querySelectorAll('div')].find((el) => el.textContent === 'Section B')
+      window.__explorerRow = row
+    })
+
+    // Another page: the same explorer, Section A still collapsed.
+    await page.getByText('Section B', { exact: true }).first().click()
+    await page.locator('[id^="draft-section-title-"]').first().waitFor()
+    expect(await page.evaluate(() => window.__explorerRow.isConnected)).toBe(true)
+    expect(await lessonA1.count()).toBe(0)
+  })
+})
+
 describe('rename from the explorer', () => {
   it('Rename opens a section, a document or a test with its title field focused, and the new title is saved', async () => {
     const { page } = harness

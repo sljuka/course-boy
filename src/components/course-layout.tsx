@@ -39,6 +39,7 @@ import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-
 import { SerbianScriptContext } from "@/lib/use-serbian-script";
 import type { Locale } from "@/lib/i18n";
 import { useImmersiveMode } from "@/lib/use-immersive-mode";
+import { usePersistentPanelContent } from "@/lib/use-persistent-panel-content";
 
 type CourseLayoutOutletContext = {
   contentRating: ContentRating;
@@ -163,18 +164,23 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   const isCoursePage = selectedNode.type === "course";
   // Full screen for writing (a document): no app sidebar, the page fills the window.
   const { isImmersive } = useImmersiveMode();
+  // One explorer for the whole editor, kept alive as its pages change
+  // (SLJ-131): a click that starts just before the page switches still lands,
+  // and collapsed sections stay collapsed.
+  const explorer = usePersistentPanelContent(
+    <ExplorerPanelContent
+      courseId={courseId ?? ""}
+      courseTitle={courseTitle}
+      onSelectionChange={handleExplorerSelection}
+      sections={sections ?? []}
+      selectedNodeId={selectedNode.id}
+    />,
+  );
+  const explorerOutlet = explorer.outlet;
   const sidePanels = useMemo<PageSidePanels>(
     () => ({
       left: {
-        content: (
-          <ExplorerPanelContent
-            courseId={courseId ?? ""}
-            courseTitle={courseTitle}
-            onSelectionChange={handleExplorerSelection}
-            sections={sections ?? []}
-            selectedNodeId={selectedNode.id}
-          />
-        ),
+        content: explorerOutlet,
         drawer: { onOpenChange: setIsExplorerDrawerOpen, open: isExplorerDrawerOpen },
         label: t("explorer.title"),
         onOpenChange: (open) => updateExplorerPanel({ open }),
@@ -202,13 +208,10 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
     [
       courseDetails,
       courseId,
-      courseTitle,
+      explorerOutlet,
       explorerPanel.open,
-      handleExplorerSelection,
       isExplorerDrawerOpen,
       isCoursePage,
-      sections,
-      selectedNode.id,
       t,
       updateExplorerPanel,
       updateVersionsPanel,
@@ -248,6 +251,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
         <PageSidePanelsContext.Provider value={sidePanels}>
         <LayoutBreadcrumbsContext.Provider value={breadcrumbs}>
         <PagePanel immersive={isImmersive}>
+          {explorer.portal}
           <div className="flex min-h-0 flex-1 flex-col">
             <Outlet
               context={

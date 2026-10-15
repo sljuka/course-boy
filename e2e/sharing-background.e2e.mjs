@@ -51,7 +51,9 @@ describe.skipIf(!isSupported)('keep sharing in the background', () => {
     await expect.poll(() => isWindowVisible(app)).toBe(true)
     await closeWindow(app)
     await expect.poll(() => isWindowVisible(app)).toBe(false)
-    expect(await page.locator('[data-testid="keep-sharing-dialog"]').count()).toBe(0)
+    // Not asked again. (The first dialog can still be in the page, closed:
+    // its closing animation was paused when the window hid.)
+    expect(await page.locator('[data-testid="keep-sharing-dialog"][data-open]').count()).toBe(0)
 
     // Turned off in Settings: closing quits.
     await app.evaluate(({ app }) => app.emit('activate'))

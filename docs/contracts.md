@@ -760,6 +760,11 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   preferences store (`explorerPanel`, `versionsPanel`), both validated in `main.ts` by
   `parseExplorerPanelPreference`; a new panel needs its key in `UserPreferences` on
   both sides and in that validation.
+  Each editor page draws its own `<Page>`, so a panel's content would be mounted anew with
+  every page. Content that must outlive a page (the explorer: a click that starts just
+  before the page changes, collapsed sections) is rendered once by the layout with
+  `usePersistentPanelContent` (`src/lib/use-persistent-panel-content.tsx`), and the panel
+  gets its `outlet`, which only moves that one element between pages (SLJ-131).
 - **Narrow windows turn the frame's side parts into drawers** (SLJ-26). Below
   `SIDE_PANELS_INLINE_MIN_WIDTH` (1280px) the editor's panels, and below
   `APP_SIDEBAR_INLINE_MIN_WIDTH` (1024px) the app sidebar, render as sheets that start
