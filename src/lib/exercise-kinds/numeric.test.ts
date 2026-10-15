@@ -88,6 +88,13 @@ describe("several solutions", () => {
     expect(grade(["", ""])).toMatchObject({ isAnswered: false, isCorrect: false });
   });
 
+  it("reviews each solution with its label, for the summary (SLJ-140)", () => {
+    expect(numericExerciseRuntime.review!(exercise, instance, encodeNumericAnswers(["12", "9"]))).toEqual([
+      { answer: "12", isCorrect: true, label: "Bob", solution: "12" },
+      { answer: "9", isCorrect: false, label: "Karol", solution: "10" },
+    ]);
+  });
+
   it("keeps a single answer as plain text, and several as a list", () => {
     expect(encodeNumericAnswers(["7"])).toBe("7");
     expect(decodeNumericAnswers("7", 1)).toEqual(["7"]);

@@ -44,7 +44,8 @@ export function InteractiveTestPlayer({
   // on, and the last exercise's button finishes the test.
   graded?: boolean;
   onContinueAfterExercise: () => void;
-  onFinishGradedTest?: () => void;
+  // `confirm`: ask first (Enter does, so a stray one can't end the test).
+  onFinishGradedTest?: (options: { confirm: boolean }) => void;
   onIndexChange: (index: number) => void;
   onSubmitExercise: (index: number) => void;
   onUpdateExerciseAnswer: (index: number, value: string) => void;
@@ -79,7 +80,7 @@ export function InteractiveTestPlayer({
 
   function handlePrimaryAction() {
     if (graded) {
-      if (isLast) onFinishGradedTest?.();
+      if (isLast) onFinishGradedTest?.({ confirm: false });
       else onIndexChange(currentIndex + 1);
       return;
     }
@@ -144,8 +145,11 @@ export function InteractiveTestPlayer({
           return;
         }
 
-        // Finishing a graded test takes the button: a stray Enter mustn't.
+        // Enter on a graded test's last question asks before finishing (a
+        // second Enter confirms): a stray one doesn't end the test.
         if (graded && isLast) {
+          event.preventDefault();
+          onFinishGradedTest?.({ confirm: true });
           return;
         }
 

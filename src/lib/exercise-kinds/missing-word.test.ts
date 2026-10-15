@@ -103,3 +103,26 @@ describe("missingWordExerciseRuntime.grade", () => {
     });
   });
 });
+
+// SLJ-140: the summary after a graded test.
+describe("missingWordExerciseRuntime.review", () => {
+  it("gives each blank's answer, the correct one, and up to four words before it", () => {
+    expect(
+      missingWordExerciseRuntime.review!(buildExercise(), instance, encodeMissingWordAnswers(["Paris", "Zagreb"])),
+    ).toEqual([
+      { answer: "Paris", isCorrect: true, label: "capital of France is", solution: "Paris" },
+      { answer: "Zagreb", isCorrect: false, label: "Capital of Serbia is", solution: "Belgrade" },
+    ]);
+    // The text between two blanks starts with the first one's punctuation.
+    const days = { ...buildExercise(), segments: [
+      { kind: "text" as const, value: "Monday, " },
+      { kind: "blank" as const, variableName: "c1" },
+      { kind: "text" as const, value: ", Wednesday, " },
+      { kind: "blank" as const, variableName: "c2" },
+    ] };
+    expect(missingWordExerciseRuntime.review!(days, instance, encodeMissingWordAnswers(["Paris", "Belgrade"])).map((part) => part.label)).toEqual([
+      "Monday,",
+      "Wednesday,",
+    ]);
+  });
+});

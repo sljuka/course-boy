@@ -216,6 +216,8 @@ type TestEditorState = {
   // The start screen (SLJ-137); null: the default (shown for a section
   // test, not a lesson's).
   showStartScreen: boolean | null;
+  // A graded test's summary after the test (SLJ-140).
+  showSummary: boolean;
   selectedLocale: Locale;
   showMnemonics: boolean;
   useBlueprint: boolean;

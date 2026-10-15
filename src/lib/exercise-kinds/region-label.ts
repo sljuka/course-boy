@@ -12,6 +12,7 @@ import {
   type GradeResult,
   type ResolveForPlayerContext,
   partShare,
+  type ReviewPart,
 } from "./types";
 
 const VIEW_BOX_PATTERN = /^-?\d+(\.\d+)?(\s+-?\d+(\.\d+)?){3}$/;
@@ -210,6 +211,23 @@ function grade(
   return { isAnswered: true, isCorrect: false, share: partShare(regionsRight, 0, exercise.regions.length) };
 }
 
+// Each numbered region: what was typed and its first accepted answer (SLJ-140).
+function review(exercise: RegionLabelCourseExercise, _instance: ExerciseInstance, rawAnswer: string): ReviewPart[] {
+  const answers = decodeRegionLabelAnswers(rawAnswer, exercise.regions.length);
+
+  return exercise.regions.map((region, index) => {
+    const typed = answers[index] ?? "";
+    return {
+      answer: typed.trim(),
+      isCorrect: region.answers.some(
+        (accepted) => normalizeForComparison(accepted, region.matchCase) === normalizeForComparison(typed, region.matchCase),
+      ),
+      label: `${index + 1}`,
+      solution: region.answers[0] ?? "",
+    };
+  });
+}
+
 export const regionLabelExerciseRuntime: ExerciseKindRuntime<
   SharedRegionLabelTestExerciseDefinition,
   RegionLabelCourseExercise
@@ -219,4 +237,5 @@ export const regionLabelExerciseRuntime: ExerciseKindRuntime<
   isValid,
   kind: "region-label",
   resolveForPlayer,
+  review,
 };

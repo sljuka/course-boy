@@ -328,6 +328,9 @@ export type CourseTest = {
   // A start screen before the first question in interactive mode (SLJ-137).
   // Missing: shown for a section test, not for a lesson's (just read).
   showStartScreen?: boolean;
+  // A graded test's summary of answers after the test (SLJ-140); missing
+  // means shown.
+  showSummary?: boolean;
   // Show the course's mnemonics in this test's prompts (SLJ-37). Off unless
   // the teacher turns it on: a badge could give an answer away.
   showMnemonics?: boolean;
@@ -463,6 +466,8 @@ export type SharedTestDefinition = {
   partialCredit?: boolean;
   // See `CourseTest.showStartScreen`; written only when it isn't the default.
   showStartScreen?: boolean;
+  // See `CourseTest.showSummary`; written only as `false`.
+  showSummary?: boolean;
   // See `CourseTest.showMnemonics`; missing means off.
   showMnemonics?: boolean;
   structure?: CourseTestStructureRule[];

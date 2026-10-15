@@ -20,6 +20,7 @@ import { CardDescription, CardTitle } from "@/components/ui/card";
 import { ExerciseStepper } from "@/components/test-player/exercise-stepper";
 import { FinishGradedTestDialog } from "@/components/test-player/finish-graded-test-dialog";
 import { GradedTestResult } from "@/components/test-player/graded-test-result";
+import { GradedTestSummary } from "@/components/test-player/graded-test-summary";
 import { PracticeTestResult, type PracticeTestResultValue } from "@/components/test-player/practice-test-result";
 import { TestStartScreen } from "@/components/test-player/test-start-screen";
 import { InteractiveTestPlayer } from "@/components/test-player/interactive-test-player";
@@ -99,6 +100,12 @@ function TestPlayerContent({
   // this component's own header row (same height as the close button)
   // instead of inside the player's centered content.
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
+  // The furthest question reached in this attempt: the stepper can jump back
+  // to it after going to an earlier one.
+  const [reachedExerciseIndex, setReachedExerciseIndex] = useState(0);
+  if (currentExerciseIndex > reachedExerciseIndex) {
+    setReachedExerciseIndex(currentExerciseIndex);
+  }
   // Interactive mode's Print button lands in paper mode with this open.
   const [isPrintMenuOpen, setIsPrintMenuOpen] = useState(false);
   const activeItem = playerState.activeStep.item;
@@ -108,9 +115,14 @@ function TestPlayerContent({
   // A graded test (SLJ-135): no feedback while it's taken, a score at the end.
   const isGraded = activeItem.test?.graded === true;
   const gradeBands = resolveGradeBands(activeItem.test?.gradeBands, playerState.courseGradeBands);
-  const [gradedResult, setGradedResult] = useState<{ isNewBest: boolean; maxPoints: number; points: number } | null>(
-    null,
-  );
+  const [gradedResult, setGradedResult] = useState<{
+    isNewBest: boolean;
+    maxPoints: number;
+    points: number;
+    // Each question's result, for the summary (SLJ-140).
+    results: ExerciseResult[];
+  } | null>(null);
+  const [isShowingSummary, setIsShowingSummary] = useState(false);
   // The end of a practice test: its results card.
   const [practiceResult, setPracticeResult] = useState<PracticeTestResultValue | null>(null);
   // The course spree's best when this attempt started, to tell a new best at
@@ -128,6 +140,7 @@ function TestPlayerContent({
   // "Finish test" with questions unanswered: the grading, waiting for the
   // student to confirm.
   const [pendingFinish, setPendingFinish] = useState<ExerciseResult[] | null>(null);
+  const [isFinishByEnter, setIsFinishByEnter] = useState(false);
   const {
     activeTestExercises,
     activeTestInstances,
@@ -186,14 +199,18 @@ function TestPlayerContent({
   function tryPracticeTestAgain() {
     restart();
     setCurrentExerciseIndex(0);
+    setReachedExerciseIndex(0);
     setPracticeResult(null);
     setSpreeBestAtStart(spree.best);
   }
 
-  function finishGradedTest() {
+  // Asks first when answers are empty, or when asked to (Enter): then Finish
+  // has the focus, so a second Enter confirms.
+  function finishGradedTest({ confirm }: { confirm: boolean }) {
     const results = gradeAll();
-    if (results.some((result) => !result.isAnswered)) {
+    if (confirm || results.some((result) => !result.isAnswered)) {
       setPendingFinish(results);
+      setIsFinishByEnter(confirm);
       return;
     }
     completeGradedTest(results);
@@ -219,12 +236,15 @@ function TestPlayerContent({
       isNewBest: Boolean(previousBest && isBetterAttempt(result, previousBest)),
       maxPoints: result.maxPoints ?? 0,
       points: result.points ?? 0,
+      results,
     });
   }
 
   function tryGradedTestAgain() {
+    setIsShowingSummary(false);
     restart();
     setCurrentExerciseIndex(0);
+    setReachedExerciseIndex(0);
     setGradedResult(null);
   }
 
@@ -401,6 +421,7 @@ function TestPlayerContent({
           <ExerciseStepper
             currentIndex={currentExerciseIndex}
             onSelectStep={setCurrentExerciseIndex}
+            reachedIndex={reachedExerciseIndex}
             total={activeTestExercises.length}
           />
         )
@@ -415,12 +436,23 @@ function TestPlayerContent({
         title={activeItem.title}
       />
       <PromptMnemonicsContext.Provider value={allowsMnemonics ? shownMnemonics : NO_MNEMONICS}>
-        {gradedResult ? (
+        {gradedResult && isShowingSummary ? (
+          <GradedTestSummary
+            answers={exerciseAnswers}
+            exercises={activeTestExercises}
+            instances={activeTestInstances}
+            onBack={() => setIsShowingSummary(false)}
+            onContinue={playerState.moveToNextStep}
+            partialCredit={activeItem.test?.partialCredit === true}
+            results={gradedResult.results}
+          />
+        ) : gradedResult ? (
           <GradedTestResult
             bands={gradeBands}
             isNewBest={gradedResult.isNewBest}
             maxPoints={gradedResult.maxPoints}
             onContinue={playerState.moveToNextStep}
+            onShowSummary={activeItem.test?.showSummary === false ? undefined : () => setIsShowingSummary(true)}
             onTryAgain={tryGradedTestAgain}
             points={gradedResult.points}
             questionCount={activeTestExercises.length}
@@ -489,6 +521,7 @@ function TestPlayerContent({
         )}
       </PromptMnemonicsContext.Provider>
       <FinishGradedTestDialog
+        focusFinish={isFinishByEnter}
         onConfirm={() => pendingFinish && completeGradedTest(pendingFinish)}
         onOpenChange={(open) => !open && setPendingFinish(null)}
         open={pendingFinish !== null}

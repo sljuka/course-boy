@@ -51,7 +51,8 @@ export const CourseTestContent = ({
   graded?: boolean;
   isTestPassed: boolean;
   onContinueAfterExercise: () => void;
-  onFinishGradedTest?: () => void;
+  // `confirm`: ask first (Enter does, so a stray one can't end the test).
+  onFinishGradedTest?: (options: { confirm: boolean }) => void;
   onSubmitExercise: () => void;
   onUpdateExerciseAnswer: (index: number, value: string) => void;
   printAnswerStyle: CoursePrintAnswerStyle;
@@ -93,7 +94,7 @@ export const CourseTestContent = ({
 
   function handlePrimaryAction() {
     if (graded) {
-      onFinishGradedTest?.();
+      onFinishGradedTest?.({ confirm: false });
     } else if (isTestPassed) {
       onContinueAfterExercise();
     } else {
@@ -123,8 +124,11 @@ export const CourseTestContent = ({
           return;
         }
 
-        // Finishing a graded test takes the button: a stray Enter mustn't.
+        // Enter in a graded test asks before finishing (a second Enter
+        // confirms): a stray one doesn't end the test.
         if (graded) {
+          event.preventDefault();
+          onFinishGradedTest?.({ confirm: true });
           return;
         }
 

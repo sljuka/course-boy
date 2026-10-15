@@ -1,4 +1,4 @@
-import { RotateCcw } from "lucide-react";
+import { ListChecks, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ export function GradedTestResult({
   isNewBest,
   maxPoints,
   onContinue,
+  onShowSummary,
   onTryAgain,
   points,
   questionCount,
@@ -25,6 +26,8 @@ export function GradedTestResult({
   isNewBest: boolean;
   maxPoints: number;
   onContinue: () => void;
+  // The summary of answers (SLJ-140), unless the teacher turned it off.
+  onShowSummary?: () => void;
   onTryAgain: () => void;
   points: number;
   questionCount: number;
@@ -54,6 +57,12 @@ export function GradedTestResult({
                 <RotateCcw aria-hidden="true" />
                 {t("courseDetails.tryAgain")}
               </Button>
+              {onShowSummary && (
+                <Button data-testid="show-summary" onClick={onShowSummary} size="lg" variant="secondary">
+                  <ListChecks aria-hidden="true" />
+                  {t("courseDetails.summaryButton")}
+                </Button>
+              )}
               <Button autoFocus data-testid="test-result-continue" onClick={onContinue} size="lg">
                 {t("continue")}
               </Button>

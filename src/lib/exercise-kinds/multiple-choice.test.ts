@@ -44,3 +44,11 @@ describe("partShare", () => {
     expect(partShare(0, 0, 0)).toBe(0);
   });
 });
+
+describe("multiple-choice review (SLJ-140)", () => {
+  it("lists the options picked and the right ones", () => {
+    expect(
+      multipleChoiceExerciseRuntime.review!(exercise([0, 2]), { kind: "multiple-choice" } as never, encodeMultipleChoiceSelection([2, 1])),
+    ).toEqual([{ answer: "b, c", isCorrect: false, solution: "a, c" }]);
+  });
+});

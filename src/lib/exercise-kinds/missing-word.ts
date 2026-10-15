@@ -14,6 +14,7 @@ import {
   type GradeResult,
   type ResolveForPlayerContext,
   partShare,
+  type ReviewPart,
 } from "./types";
 
 export function encodeMissingWordAnswers(answers: string[]): string {
@@ -185,6 +186,41 @@ function grade(
   return { isAnswered: true, isCorrect: false, share: partShare(blanksRight, 0, blankSegments.length) };
 }
 
+// Each blank: what was typed and the first accepted answer (SLJ-140),
+// labelled with the text just before it.
+function review(exercise: MissingWordCourseExercise, _instance: ExerciseInstance, rawAnswer: string): ReviewPart[] {
+  const blanks: { label: string; variableName: string }[] = [];
+  let before = "";
+  for (const segment of exercise.segments) {
+    if (segment.kind === "text") {
+      before = segment.value;
+    } else {
+      // Up to four words, without the punctuation left from the blank before.
+      const label = before.trim().split(/\s+/).slice(-4).join(" ").replace(/^[^\p{L}\p{N}]+/u, "");
+      blanks.push({ label, variableName: segment.variableName });
+      before = "";
+    }
+  }
+  const answers = decodeMissingWordAnswers(rawAnswer, blanks.length);
+  const variablesByName = new Map(exercise.variables.map((variable) => [variable.name, variable]));
+
+  return blanks.map((blank, index) => {
+    const variable = variablesByName.get(blank.variableName);
+    const typed = answers[index] ?? "";
+    const isCorrect = Boolean(
+      variable?.answers.some(
+        (accepted) => normalizeForComparison(accepted, variable.matchCase) === normalizeForComparison(typed, variable.matchCase),
+      ),
+    );
+    return {
+      answer: typed.trim(),
+      isCorrect,
+      ...(blanks.length > 1 && blank.label ? { label: blank.label } : {}),
+      solution: variable?.answers[0] ?? "",
+    };
+  });
+}
+
 export const missingWordExerciseRuntime: ExerciseKindRuntime<
   SharedMissingWordTestExerciseDefinition,
   MissingWordCourseExercise
@@ -194,4 +230,5 @@ export const missingWordExerciseRuntime: ExerciseKindRuntime<
   isValid,
   kind: "missing-word",
   resolveForPlayer,
+  review,
 };

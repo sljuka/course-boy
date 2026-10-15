@@ -165,7 +165,19 @@
     "startPartialCredit": "Делимични бодови",
     "startTest": "Почни",
     "enterAllAnswers": "Упиши све одговоре пре провере.",
-    "answerNumber": "Одговор {{index}}"
+    "answerNumber": "Одговор {{index}}",
+    "finishTestCanGoBack": "Још увек можеш да се вратиш и промениш одговоре.",
+    "summaryButton": "Преглед",
+    "summaryTitle": "Преглед одговора",
+    "summaryYourAnswer": "Твој одговор:",
+    "summaryCorrectAnswer": "Тачан одговор:",
+    "summaryNoAnswer": "Без одговора",
+    "summaryBack": "Назад на резултат",
+    "summaryStatus": {
+      "right": "Тачно",
+      "partial": "Делимично тачно",
+      "wrong": "Нетачно"
+    }
   },
   "courseVersions": {
     "actionErrorTitle": "Нешто није у реду",
@@ -574,7 +586,9 @@
     "solutionLabelPlaceholder": "нпр. Боб",
     "solutionLabelMissing": "Кад има више решења, свако треба ознаку, да ученик зна које поље је које.",
     "addSolution": "Додај решење",
-    "solutionFormula": "Формула"
+    "solutionFormula": "Формула",
+    "showSummary": "Прикажи преглед после теста",
+    "showSummaryHelp": "Само у тесту са оценом: после резултата ученик може да отвори преглед својих одговора, са тачним одговорима. Ако је искључено, прегледа нема."
   },
   "theme": {
     "switchToDark": "Пребаци на тамну тему",

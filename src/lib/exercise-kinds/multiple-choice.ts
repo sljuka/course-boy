@@ -11,6 +11,7 @@ import {
   type GradeResult,
   type ResolveForPlayerContext,
   partShare,
+  type ReviewPart,
 } from "./types";
 
 /**
@@ -195,6 +196,16 @@ function grade(
   };
 }
 
+// The options picked and the right ones (SLJ-140), as one part.
+function review(exercise: MultipleChoiceCourseExercise, _instance: ExerciseInstance, rawAnswer: string): ReviewPart[] {
+  const picked = decodeMultipleChoiceSelection(rawAnswer);
+  const correct = new Set(exercise.correctOptionIndexes);
+  const isCorrect = picked.length === correct.size && picked.every((index) => correct.has(index));
+  const texts = (indexes: number[]) => [...indexes].sort((a, b) => a - b).map((index) => exercise.options[index] ?? "").join(", ");
+
+  return [{ answer: texts(picked), isCorrect, solution: texts([...correct]) }];
+}
+
 export const multipleChoiceExerciseRuntime: ExerciseKindRuntime<
   SharedMultipleChoiceTestExerciseDefinition,
   MultipleChoiceCourseExercise
@@ -204,4 +215,5 @@ export const multipleChoiceExerciseRuntime: ExerciseKindRuntime<
   isValid,
   kind: "multiple-choice",
   resolveForPlayer,
+  review,
 };

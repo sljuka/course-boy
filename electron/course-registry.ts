@@ -386,6 +386,11 @@ function isSharedTestDefinitionShape(
     return false;
   }
 
+  // The summary after a graded test (SLJ-140).
+  if (typeof test.showSummary !== "undefined" && typeof test.showSummary !== "boolean") {
+    return false;
+  }
+
   if (typeof test.exerciseCount !== "undefined" && !isExerciseCount(test.exerciseCount)) {
     return false;
   }

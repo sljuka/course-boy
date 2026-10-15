@@ -47,12 +47,25 @@ export function partShare(right: number, wrong: number, total: number): number {
  * the player's instance-building/grading, dispatch through instead of a
  * hand-written `if/else` chain per kind.
  */
+// One part of an answer for the summary after a graded test (SLJ-140): what
+// the student gave, the correct answer, and a short label when the exercise
+// has several parts (a blank's context, a solution's name).
+export type ReviewPart = {
+  answer: string;
+  isCorrect: boolean;
+  label?: string;
+  solution: string;
+};
+
 export type ExerciseKindRuntime<TShared extends SharedTestExerciseDefinition, TCourse> = {
   kind: ExerciseKind;
   isValid(exercise: Record<string, unknown>): exercise is TShared;
   resolveForPlayer(shared: TShared, context: ResolveForPlayerContext): TCourse;
   buildInstance(exercise: TCourse): ExerciseInstance;
   grade(exercise: TCourse, instance: ExerciseInstance, rawAnswer: string): GradeResult;
+  // The answer and the correct one, part by part, for the summary. Missing
+  // for kinds whose solution is drawn on a diagram or text: right/wrong only.
+  review?(exercise: TCourse, instance: ExerciseInstance, rawAnswer: string): ReviewPart[];
 };
 
 /** Tags are optional, but when present must be well-formed — shared by all `isValid`s. */

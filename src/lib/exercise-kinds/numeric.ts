@@ -15,6 +15,7 @@ import {
   type ExerciseKindRuntime,
   type GradeResult,
   type ResolveForPlayerContext,
+  type ReviewPart,
 } from "./types";
 
 export function roundToPrecision(value: number, precision: number): number {
@@ -298,6 +299,22 @@ function grade(
   };
 }
 
+function review(exercise: NumericCourseExercise, instance: ExerciseInstance, rawAnswer: string): ReviewPart[] {
+  const solutions = numericSolutions(exercise);
+  const expected = instance.kind === "numeric" ? instance.expectedAnswers ?? [instance.expectedAnswer] : [];
+  const answers = decodeNumericAnswers(rawAnswer, solutions.length);
+
+  return solutions.map((solution, index) => {
+    const answer = parseAnswer(answers[index] ?? "", solution.precision);
+    return {
+      answer: (answers[index] ?? "").trim(),
+      isCorrect: answer !== null && answer === expected[index],
+      ...(solutions.length > 1 ? { label: exercise.solutionLabels?.[index] ?? `${index + 1}` } : {}),
+      solution: String(expected[index] ?? ""),
+    };
+  });
+}
+
 export const numericExerciseRuntime: ExerciseKindRuntime<
   SharedNumericTestExerciseDefinition,
   NumericCourseExercise
@@ -307,6 +324,7 @@ export const numericExerciseRuntime: ExerciseKindRuntime<
   isValid,
   kind: "numeric",
   resolveForPlayer,
+  review,
 };
 
 // Every solution of an exercise, the first (`formula`) first.

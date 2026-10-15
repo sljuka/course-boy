@@ -185,6 +185,7 @@ export type TestSettings = Pick<
   | "partialCredit"
   | "showMnemonics"
   | "showStartScreen"
+  | "showSummary"
   | "structure"
 >;
 
@@ -214,6 +215,7 @@ export function testFromQuestions(
     ...(kept.showMnemonics ? { showMnemonics: true } : {}),
     ...(kept.showStartScreen !== undefined ? { showStartScreen: kept.showStartScreen } : {}),
     ...(kept.structure ? { structure: kept.structure } : {}),
+    ...(kept.graded && kept.showSummary === false ? { showSummary: false } : {}),
     template: "",
   };
 }
@@ -326,6 +328,7 @@ export function testSettingsFromTest(test: CourseTest | null, courseTags: Course
     ...(test.includeCourseExercises ? { includeCourseExercises: true } : {}),
     ...(test.exerciseCount ? { exerciseCount: test.exerciseCount } : {}),
     ...(test.showStartScreen !== undefined ? { showStartScreen: test.showStartScreen } : {}),
+    ...(test.showSummary === false ? { showSummary: false } : {}),
   };
 }
 
@@ -419,6 +422,10 @@ const settings = z
       .boolean()
       .optional()
       .describe("A start screen before the first question (default: on for a section test, off for a lesson's)"),
+    showSummary: z
+      .boolean()
+      .optional()
+      .describe("Graded only: after the test, a summary of the student's answers and the correct ones (default on)"),
   })
   .optional()
   .describe("The test's settings; each one omitted stays as it was");
@@ -453,6 +460,7 @@ function resolveTestSettings(
     partialCredit: input?.partialCredit ?? previous?.partialCredit,
     showMnemonics: previous?.showMnemonics,
     showStartScreen: input?.showStartScreen ?? previous?.showStartScreen,
+    showSummary: input?.showSummary ?? previous?.showSummary,
     structure,
   };
 }

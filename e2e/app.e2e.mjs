@@ -1137,12 +1137,22 @@ describe('graded test', () => {
     await button('Next').click()
     await waitForText(page, 'What is 2 plus 2?')
 
-    // Finishing with the second left empty asks first; it counts as wrong.
-    await button('Finish test').click()
+    // Back to the first question with the stepper, and forward again.
+    await page.getByRole('button', { name: 'Review exercise 1' }).click()
+    await waitForText(page, 'What is 1 plus 1?')
+    expect(await answer.inputValue()).toBe('2')
+    await page.getByRole('button', { name: 'Review exercise 2' }).click()
+    await waitForText(page, 'What is 2 plus 2?')
+
+    // Enter on the last question asks before finishing (SLJ-140), also
+    // saying the answers can still be changed; a second Enter finishes. The
+    // empty second answer counts as wrong.
+    await answer.press('Enter')
     const dialog = page.locator('[data-testid="finish-graded-test-dialog"]')
     await dialog.waitFor()
     expect(await dialog.innerText()).toContain('Questions without an answer: 1.')
-    await dialog.getByRole('button', { exact: true, name: 'Finish test' }).click()
+    expect(await dialog.innerText()).toContain('You can still go back and change your answers.')
+    await page.keyboard.press('Enter')
 
     // 30 of 40 points: 75%, yellow in the default bands (55%+).
     await page.locator('[data-testid="graded-test-result"]').waitFor()
@@ -1153,6 +1163,19 @@ describe('graded test', () => {
     await expect
       .poll(() => page.evaluate((id) => window.progress.get().then((state) => state.courses[id]?.steps), ids.courseId))
       .toMatchObject({ [ids.testId]: { test: { best: { maxPoints: 40, points: 30 } } } })
+
+    // The summary (SLJ-140): each question's points, the answer given and,
+    // where wrong, the correct one.
+    await page.locator('[data-testid="show-summary"]').click()
+    const questions = page.locator('[data-testid="summary-question"]')
+    await questions.first().waitFor()
+    expect(await questions.nth(0).getAttribute('data-status')).toBe('right')
+    expect(await questions.nth(0).locator('[data-testid="summary-points"]').innerText()).toBe('30/30 points')
+    expect(await questions.nth(0).locator('[data-testid="summary-solution"]').count()).toBe(0)
+    expect(await questions.nth(1).getAttribute('data-status')).toBe('wrong')
+    expect(await questions.nth(1).locator('[data-testid="summary-answer"]').innerText()).toBe('No answer')
+    expect(await questions.nth(1).locator('[data-testid="summary-solution"]').innerText()).toBe('4')
+    await button('Back to the result').click()
 
     // Try again starts over, from the first question.
     await button('Try again').click()

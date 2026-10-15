@@ -29,6 +29,7 @@ function createInitialState(locales: Locale[]): TestEditorState {
     exerciseCount: null,
     partialCredit: false,
     showStartScreen: null,
+    showSummary: true,
     selectedLocale: locales[0] ?? "en",
     showMnemonics: false,
     useBlueprint: false,
@@ -205,6 +206,7 @@ function normalizeDraftTestData(
           exerciseCount: draftState.exerciseCount ?? null,
           partialCredit: draftState.partialCredit === true,
           showStartScreen: typeof draftState.showStartScreen === "boolean" ? draftState.showStartScreen : null,
+          showSummary: draftState.showSummary !== false,
           showMnemonics: draftState.showMnemonics === true,
         } satisfies TestEditorState,
       ];
@@ -248,7 +250,7 @@ function hasTestMoreOptionsSet(state: TestEditorState): boolean {
     state.showMnemonics ||
     state.showStartScreen !== null ||
     state.includeCourseExercises ||
-    (state.graded && (state.gradeBands !== null || state.partialCredit))
+    (state.graded && (state.gradeBands !== null || state.partialCredit || !state.showSummary))
   );
 }
 

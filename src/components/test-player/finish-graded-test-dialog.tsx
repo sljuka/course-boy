@@ -10,14 +10,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// "Finish test" on a graded test (SLJ-135) with questions left unanswered:
-// they'd count as wrong, so it asks first. Keep going is the default.
+// "Finish the test?" on a graded test (SLJ-135): asked when questions are
+// left unanswered (they'd count as wrong; Keep going has the focus), and on
+// Enter (SLJ-140; Finish has the focus, so a second Enter finishes). It says
+// the answers can still be changed.
 export function FinishGradedTestDialog({
+  focusFinish,
   onConfirm,
   onOpenChange,
   open,
   unansweredCount,
 }: {
+  focusFinish: boolean;
   onConfirm: () => void;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -31,14 +35,17 @@ export function FinishGradedTestDialog({
         <DialogHeader>
           <DialogTitle>{t("courseDetails.finishTestDialogTitle")}</DialogTitle>
           <DialogDescription>
-            {t("courseDetails.finishTestDialogDescription", { count: unansweredCount })}
+            {unansweredCount > 0 && `${t("courseDetails.finishTestDialogDescription", { count: unansweredCount })} `}
+            {t("courseDetails.finishTestCanGoBack")}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button autoFocus onClick={() => onOpenChange(false)} variant="secondary">
+          <Button autoFocus={!focusFinish} onClick={() => onOpenChange(false)} variant="secondary">
             {t("courseDetails.keepGoing")}
           </Button>
-          <Button onClick={onConfirm}>{t("courseDetails.finishTest")}</Button>
+          <Button autoFocus={focusFinish} data-testid="confirm-finish-test" onClick={onConfirm}>
+            {t("courseDetails.finishTest")}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -334,6 +334,10 @@ them in order (written only with several). An older app reads only `solution`: o
 graded on its own. A student's answer to several boxes is a JSON list of strings
 (`encodeNumericAnswers`); one box's is still the plain text.
 
+**`showSummary: false` (SLJ-140)** on a graded test turns off the summary of answers after
+it (missing: shown). The summary asks each kind's runtime for `review` (the answer and the
+correct one, part by part); a kind without it shows right or wrong only.
+
 **`showStartScreen` (SLJ-137)** on a test: whether interactive mode opens on a start screen
 (title, description, how many questions, graded and points). Missing means the default: shown
 for a section's own test, not for a lesson's; the editor writes it only when the teacher
@@ -685,8 +689,10 @@ To add a kind:
    disk / draft-editor) rather than one unified type; see `src/components/
    test-editor-prototype-types.ts` for the third (draft) shape.
 2. Create `src/lib/exercise-kinds/<kind>.ts` implementing `ExerciseKindRuntime`
-   (`isValid`, `resolveForPlayer`, `buildInstance`, `grade`) — pure, no React, no
-   filesystem, safe to import from Electron main.
+   (`isValid`, `resolveForPlayer`, `buildInstance`, `grade`, and optionally `review` for
+   a graded test's summary) — pure, no React, no filesystem, safe to import from
+   Electron main. A kind with several parts (blanks, boxes, regions) returns from
+   `grade` the `share` of parts right (partial credit) and `parts`, which are right.
 3. Create `src/components/exercise-kinds/<kind>.tsx` implementing `ExerciseKindEditor`
    (`createExercise`, `validate`, `toShared`/`fromShared`, `FieldsComponent`,
    `AnswerComponent`, optional `PrintAnswerComponent`) — register it in both
@@ -867,7 +873,8 @@ besides IPC, and the same rules hold:
   `update_course` sets the course's tags (by label; a known label keeps its id), questions
   carry tags by label, and the test tools take `settings` (graded, partial credit,
   randomization rules by tag label, a final test's `includeCourseExercises` and
-  `exerciseCount`, the start screen); a setting left out stays as it was. Section tests
+  `exerciseCount`, the start screen, the summary after a graded test); a setting left out
+  stays as it was. Section tests
   take a `description` (the per-language one students see). `add_image` copies an image file
   from this computer into the course (`uploadCourseAssetFromBytes`, image types only, at
   most 10 MB) and returns its `image` block for the agent to place in the lesson's blocks.

@@ -94,6 +94,7 @@ export function toSharedTestDefinition(testState: TestEditorState): SharedTestDe
     ...(testState.graded && testState.gradeBands ? { gradeBands: testState.gradeBands } : {}),
     ...(testState.graded && testState.partialCredit ? { partialCredit: true } : {}),
     ...(testState.showStartScreen !== null ? { showStartScreen: testState.showStartScreen } : {}),
+    ...(testState.graded && !testState.showSummary ? { showSummary: false } : {}),
     ...(testState.includeCourseExercises ? { includeCourseExercises: true } : {}),
     // A count only where it picks: a final test without tag rules.
     ...(testState.includeCourseExercises && !testState.useBlueprint && testState.exerciseCount
@@ -127,6 +128,7 @@ export function fromSharedTestDefinition(
     exerciseCount: definition.exerciseCount ?? null,
     partialCredit: definition.partialCredit ?? false,
     showStartScreen: definition.showStartScreen ?? null,
+    showSummary: definition.showSummary !== false,
     selectedLocale: supportedLocales[0] ?? "en",
     showMnemonics: definition.showMnemonics ?? false,
     // Presence, not length: a teacher can enable randomization before

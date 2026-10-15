@@ -196,17 +196,19 @@ button:disabled {
   }
 }
 
+/* A strong ease-out ("quint"): the line sets off quickly and settles gently
+   as it closes; the glow follows once it has. */
 .tracing-border-draw {
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
-  animation: tracing-border-draw 1200ms ease-out both;
+  animation: tracing-border-draw 1600ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .tracing-border-draw.tracing-border-glow {
   filter: drop-shadow(0 0 6px var(--gold));
   animation:
-    tracing-border-draw 1200ms ease-out both,
-    tracing-border-glow 500ms ease-out 1200ms both;
+    tracing-border-draw 1600ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    tracing-border-glow 700ms cubic-bezier(0.22, 1, 0.36, 1) 1100ms both;
 }
 
 @media (prefers-reduced-motion: reduce) {

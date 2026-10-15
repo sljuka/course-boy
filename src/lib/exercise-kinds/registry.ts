@@ -140,6 +140,7 @@ export function resolveSharedTestForPlayer(
     includeCourseExercises: sharedTest.includeCourseExercises ?? false,
     partialCredit: sharedTest.partialCredit ?? false,
     ...(sharedTest.showStartScreen !== undefined ? { showStartScreen: sharedTest.showStartScreen } : {}),
+    ...(sharedTest.showSummary === false ? { showSummary: false } : {}),
     ...(sharedTest.exerciseCount ? { exerciseCount: sharedTest.exerciseCount } : {}),
     showMnemonics: sharedTest.showMnemonics ?? false,
     structure: sharedTest.structure,

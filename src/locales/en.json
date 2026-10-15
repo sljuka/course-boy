@@ -165,7 +165,19 @@
     "startPartialCredit": "Partial credit",
     "startTest": "Start",
     "enterAllAnswers": "Enter all the answers before checking.",
-    "answerNumber": "Answer {{index}}"
+    "answerNumber": "Answer {{index}}",
+    "finishTestCanGoBack": "You can still go back and change your answers.",
+    "summaryButton": "Summary",
+    "summaryTitle": "Summary",
+    "summaryYourAnswer": "Your answer:",
+    "summaryCorrectAnswer": "Correct answer:",
+    "summaryNoAnswer": "No answer",
+    "summaryBack": "Back to the result",
+    "summaryStatus": {
+      "right": "Right",
+      "partial": "Partly right",
+      "wrong": "Wrong"
+    }
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
@@ -574,7 +586,9 @@
     "solutionLabelPlaceholder": "e.g. Bob",
     "solutionLabelMissing": "With several solutions, each needs a label, so the student knows which box is which.",
     "addSolution": "Add solution",
-    "solutionFormula": "Formula"
+    "solutionFormula": "Formula",
+    "showSummary": "Show a summary after the test",
+    "showSummaryHelp": "Only in a graded test: after the score, the student can open a summary of their answers, with the correct ones. Off, there’s no summary."
   },
   "theme": {
     "switchToDark": "Switch to dark theme",
