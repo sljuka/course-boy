@@ -176,8 +176,9 @@ async function start() {
   // students' computers, after an applied update and once per run for every
   // followed drive opened at startup. Not on the teacher's computer for now:
   // clearing the drive a teacher publishes from broke students' next update
-  // in e2e (sharing-restarts, sharing-programs) for a reason not found yet
-  // (SLJ-114). Never for shared courses' drives (`sharedDrives`): maintainers
+  // in e2e (sharing-restarts, sharing-programs), through a Hypercore bug
+  // (SLJ-114, hypercore#891; see drive-storage.cjs). Never for shared
+  // courses' drives (`sharedDrives`): maintainers
   // keep their whole history. In the background and bounded: it only frees
   // space.
   const clearedThisRun = new Set()

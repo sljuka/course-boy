@@ -1251,8 +1251,15 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   are never touched.
 - **Not on the teacher's computer yet (SLJ-114).** Clearing the drive a course or
   program is published from broke students' next update in e2e (sharing-restarts,
-  sharing-programs), though the cleared ranges were right and a plain Hyperdrive with
-  the same layout works. So a teacher's own drives still keep their history. Never for
+  sharing-programs). The cause is a Hypercore bug
+  ([hypercore#891](https://github.com/holepunchto/hypercore/issues/891), still in
+  11.39.0). A student connected while the teacher clears receives "blocks a–b dropped",
+  and `Peer.onrange` lowers that peer's contiguous length to `a`. The blocks after `b`
+  were known only through that length, so the student forgets the teacher still has
+  them and never asks for the new version's files. It hangs because it already sent a
+  want for that segment earlier. Students who connect after the clear are fine. A local
+  patch to `onrange` made the restarts file pass. We wait for an upstream release
+  rather than carry a patch, so a teacher's own drives still keep their history. Never for
   shared courses' drives on maintainers' computers (`sharedDrives`) either: they keep
   their whole history by design.
 - **Needs Hypercore 11.37.2 or later** (updated 2026-10-12, lockfile only). In 11.35.2, `clear` also deletes the tree node of the block right

@@ -10,7 +10,11 @@
 // starts with a copy of all its blocks (shared-course.cjs), so maintainers
 // keep its whole history. The worker calls this for students' followed
 // drives only: on the drive a teacher publishes from, it broke students'
-// next update in e2e for a reason not found yet (SLJ-114).
+// next update (SLJ-114). A Hypercore bug: a student connected while the
+// teacher clears forgets that the teacher still has the blocks after the
+// cleared range, so it never asks for the new version's files
+// (https://github.com/holepunchto/hypercore/issues/891). Turn it on there
+// once a Hypercore release fixes that.
 //
 // Only with a Hypercore whose `clear` keeps the tree nodes of blocks outside
 // the range (fixed in 11.37.2). Before that, clearing a range that starts
