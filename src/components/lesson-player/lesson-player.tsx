@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { CourseLessonContent } from "@/components/course-player/course-lesson-content";
 import { MnemonicsToggle } from "@/components/course-player/mnemonics-toggle";
 import { CoursePlayerActions } from "@/components/course-player/course-player-actions";
+import { PrintFillInFields } from "@/components/course-player/print-fill-in-fields";
 import { PrintOptionsMenu } from "@/components/course-player/print-options-menu";
 import { CoursePlayerShell } from "@/components/course-player/course-player-shell";
 import { PrintDocumentHeader } from "@/components/course-player/print-document-header";
@@ -20,6 +21,7 @@ import { defaultLessonPrintOptions } from "@/lib/print-options";
 import { buildLessonTestPath } from "@/lib/course-utils";
 import { recordStepDone } from "@/lib/course-progress-queries";
 import { buildCourseExercisePool } from "@/lib/course-exercise-pool";
+import { usePrintDensity } from "@/lib/use-print-density";
 
 // `CoursePlayerReadyState.activeStep` is a `{item: CourseLesson, kind: "lesson"} |
 // {item: CourseSectionTest, kind: "test"}` union — narrowed to the lesson
@@ -81,6 +83,7 @@ export function LessonPlayerView({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [printOptions, setPrintOptions] = useState(defaultLessonPrintOptions);
+  usePrintDensity(printOptions.density);
   const activeLesson = playerState.activeStep.item;
 
   const playerActions = (
@@ -143,6 +146,7 @@ export function LessonPlayerView({
         sectionTitle={playerState.sectionTitle}
         title={activeLesson.title}
       />
+      <PrintFillInFields showDate={printOptions.showDateField} showName={printOptions.showNameField} />
       <CourseLessonContent
         activeLesson={activeLesson}
         courseId={playerState.courseId}

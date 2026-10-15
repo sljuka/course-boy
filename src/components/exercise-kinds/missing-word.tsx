@@ -8,9 +8,14 @@ import { decodeMissingWordAnswers, encodeMissingWordAnswers } from "@/lib/exerci
 
 import { MissingWordExerciseFields } from "@/components/missing-word-exercise-fields";
 import { MissingWordText } from "@/components/missing-word-tokens";
+import { FillInBlank } from "@/components/ui/fill-in-line";
 import { Input } from "@/components/ui/input";
 import type { MissingWordTestExercise } from "@/components/test-editor-prototype-types";
-import type { AnswerComponentProps, ExerciseKindEditor } from "@/components/exercise-kinds/types";
+import type {
+  AnswerComponentProps,
+  ExerciseKindEditor,
+  PrintAnswerComponentProps,
+} from "@/components/exercise-kinds/types";
 import {
   createExercise,
   fromShared,
@@ -56,6 +61,17 @@ function AnswerComponent({
   );
 }
 
+// On paper: the sentence, with a line to write on in place of each blank.
+// The answer style (lines, box, squares) doesn't apply: the answers go in
+// the sentence itself.
+function PrintAnswerComponent({ exercise }: PrintAnswerComponentProps<MissingWordCourseExercise>) {
+  return (
+    <div className="hidden print:block">
+      <MissingWordText flow renderBlank={() => <FillInBlank className="mx-1 align-baseline" />} segments={exercise.segments} />
+    </div>
+  );
+}
+
 export const missingWordExerciseEditor: ExerciseKindEditor<
   MissingWordTestExercise,
   SharedMissingWordTestExerciseDefinition,
@@ -63,6 +79,7 @@ export const missingWordExerciseEditor: ExerciseKindEditor<
 > = {
   AnswerComponent,
   FieldsComponent: MissingWordExerciseFields,
+  PrintAnswerComponent,
   createExercise,
   fromShared,
   kind: "missing-word",

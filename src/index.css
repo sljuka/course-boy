@@ -220,9 +220,50 @@ button:disabled {
   }
 }
 
+/* Printed tests' spacing (course-test-content.tsx, the print answer areas),
+   tightened by compact print below. */
+:root {
+  --print-exercise-gap: 1rem;
+  --print-exercise-inner-gap: 0.75rem;
+  --print-answer-single-row: 3.25rem;
+}
+
 @media print {
   @page {
     margin: 14mm;
+  }
+
+  /* Print size (SLJ-142, src/lib/use-print-density.ts): everything in rem
+     (text, spacing, answer lines) shrinks, on pages with narrower margins.
+     Ruled answer lines stay writable: about 7 mm apart in standard, 6 mm
+     (narrow-ruled paper) in compact. Comfortable is the default above. */
+  @page standard {
+    margin: 9mm;
+  }
+
+  @page compact {
+    margin: 7mm;
+  }
+
+  html[data-print-density="standard"] {
+    font-size: 80%;
+  }
+
+  html[data-print-density="standard"] body {
+    page: standard;
+  }
+
+  html[data-print-density="compact"] {
+    font-size: 70%;
+    /* Less room between exercises too: the gaps halve, and a one-line
+       answer leaves about 7.5 mm to write in instead of 10 mm. */
+    --print-exercise-gap: 0.5rem;
+    --print-exercise-inner-gap: 0.375rem;
+    --print-answer-single-row: 2.5rem;
+  }
+
+  html[data-print-density="compact"] body {
+    page: compact;
   }
 
   :root {

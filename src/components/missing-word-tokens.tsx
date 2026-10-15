@@ -7,19 +7,29 @@ import type { MissingWordSegment } from "@/lib/course-package";
  * Renders a sentence with each of its blanks inline. `renderBlank` swaps in
  * the real interactive input (keyed by occurrence index and the variable
  * name it belongs to) for the player; the editor preview renders a static
- * placeholder per blank instead.
+ * placeholder per blank instead. `flow` lays the sentence out as ordinary
+ * text, wrapping word by word around the blanks (the printed sentence, whose
+ * blanks are lines, not inputs); otherwise each piece wraps whole.
  */
 export function MissingWordText({
+  flow = false,
   renderBlank,
   segments,
 }: {
+  flow?: boolean;
   renderBlank?: (blankIndex: number, variableName: string) => ReactNode;
   segments: MissingWordSegment[];
 }) {
   let blankIndex = -1;
 
   return (
-    <p className="flex flex-wrap items-center gap-x-1.5 gap-y-2 leading-8 text-foreground">
+    <p
+      className={
+        flow
+          ? "leading-8 text-foreground"
+          : "flex flex-wrap items-center gap-x-1.5 gap-y-2 leading-8 text-foreground"
+      }
+    >
       {segments.map((segment, index) => {
         if (segment.kind === "text") {
           return <span key={index}>{segment.value}</span>;

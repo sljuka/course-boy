@@ -1195,6 +1195,34 @@ describe('graded test', () => {
     await page.emulateMedia({ media: 'screen' })
     expect(printed).toContain('(Points: 30)')
     expect(printed).toContain('(Points: 10)')
+    expect(printed).not.toContain('Name:')
+
+    // Name and date lines for the student to fill in (SLJ-143), off by
+    // default, and the print size (SLJ-142): comfortable (full size) by
+    // default, standard and compact smaller. All printed only.
+    const printedRootFontSize = async () => {
+      await page.emulateMedia({ media: 'print' })
+      const size = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)
+      await page.emulateMedia({ media: 'screen' })
+      return size
+    }
+    expect(await printedRootFontSize()).toBe('16px')
+    await page.getByRole('button', { exact: true, name: 'Print course' }).first().click()
+    await page.locator('[data-testid="print-name-field-option"]').click()
+    await page.locator('[data-testid="print-date-field-option"]').click()
+    await page.locator('[data-testid="print-density-standard"]').click()
+    await page.keyboard.press('Escape')
+    expect(await bodyText(page)).not.toContain('Name:')
+    expect(await printedRootFontSize()).toBe('12.8px')
+    await page.emulateMedia({ media: 'print' })
+    const printedWithFields = await bodyText(page)
+    await page.emulateMedia({ media: 'screen' })
+    expect(printedWithFields).toContain('Name:')
+    expect(printedWithFields).toContain('Date:')
+    await page.getByRole('button', { exact: true, name: 'Print course' }).first().click()
+    await page.locator('[data-testid="print-density-compact"]').click()
+    await page.keyboard.press('Escape')
+    expect(await printedRootFontSize()).toBe('11.2px')
 
     // The course page shows the best score, in its band's colour.
     await button('Close course').click()
@@ -1202,6 +1230,8 @@ describe('graded test', () => {
     await score.waitFor({ timeout: 15_000 })
     expect(await score.innerText()).toBe('30/40')
     expect(await score.getAttribute('data-tone')).toBe('yellow')
+    // The print size ends with the test.
+    expect(await page.evaluate(() => document.documentElement.hasAttribute('data-print-density'))).toBe(false)
   })
 })
 
@@ -1254,6 +1284,49 @@ describe('partial credit', () => {
     await page.locator('[data-testid="graded-test-result"]').waitFor()
     expect(await page.locator('[data-testid="graded-test-points"]').innerText()).toBe('5/10 points')
     expect(await page.locator('[data-testid="graded-test-percent"]').innerText()).toBe('50%')
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+  })
+})
+
+// On paper, a missing-words exercise prints its sentence with a line to
+// write on for each blank (it used to print only its prompt).
+describe('missing words on paper', () => {
+  it('prints the sentence with a line for each blank', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Missing Words Print' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Days' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Days on paper' })
+      const exercise = {
+        kind: 'missing-word',
+        locales: {
+          en: {
+            prompt: 'Write the missing day',
+            text: 'After {{day}} comes Wednesday.',
+            variables: [{ answers: ['Tuesday'], matchCase: false, name: 'day' }],
+          },
+        },
+        tags: [],
+      }
+      await window.courses.saveSectionTest({ courseId, sectionId, test: { exercises: [exercise], template: '' }, testId })
+      return { courseId, testId }
+    })
+
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.getByRole('button', { exact: true, name: 'Paper mode' }).first().click({ timeout: 15_000 })
+    await page.emulateMedia({ media: 'print' })
+    const blanks = await page.locator('[data-slot="fill-in-blank"]:visible').count()
+    const printed = await bodyText(page)
+    await page.emulateMedia({ media: 'screen' })
+    expect(printed).toContain('Write the missing day')
+    expect(printed).toContain('comes Wednesday.')
+    expect(blanks).toBe(1)
     await page.getByRole('button', { exact: true, name: 'Close course' }).click()
   })
 })

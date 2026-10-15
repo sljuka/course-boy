@@ -6,6 +6,7 @@ import { Navigate } from "react-router-dom";
 import { CoursePlayerActions } from "@/components/course-player/course-player-actions";
 import { MnemonicsToggle } from "@/components/course-player/mnemonics-toggle";
 import { PlayerIconButton } from "@/components/course-player/player-icon-button";
+import { PrintFillInFields } from "@/components/course-player/print-fill-in-fields";
 import { PrintOptionsMenu } from "@/components/course-player/print-options-menu";
 import { CoursePlayerShell } from "@/components/course-player/course-player-shell";
 import { CourseSpree } from "@/components/course-player/course-spree";
@@ -30,6 +31,7 @@ import type { CourseMnemonic } from "@/lib/mnemonics";
 import { defaultTestPrintOptions } from "@/lib/print-options";
 import { PromptMnemonicsContext } from "@/lib/prompt-mnemonics-context";
 import { useCourseMnemonics } from "@/lib/use-course-mnemonics";
+import { usePrintDensity } from "@/lib/use-print-density";
 import { buildLessonPath } from "@/lib/course-utils";
 import { recordTestResult, useCourseProgressQuery, useCourseSpree } from "@/lib/course-progress-queries";
 import { isBetterAttempt, scoreGradedAttempt, scoreTestAttempt } from "@/lib/course-progress";
@@ -96,6 +98,7 @@ function TestPlayerContent({
 }) {
   const { t } = useTranslation();
   const [printOptions, setPrintOptions] = useState(defaultTestPrintOptions);
+  usePrintDensity(printOptions.density);
   // Lifted up from `InteractiveTestPlayer` so the stepper can be rendered in
   // this component's own header row (same height as the close button)
   // instead of inside the player's centered content.
@@ -435,6 +438,7 @@ function TestPlayerContent({
         sectionTitle={playerState.sectionTitle}
         title={activeItem.title}
       />
+      <PrintFillInFields showDate={printOptions.showDateField} showName={printOptions.showNameField} />
       <PromptMnemonicsContext.Provider value={allowsMnemonics ? shownMnemonics : NO_MNEMONICS}>
         {gradedResult && isShowingSummary ? (
           <GradedTestSummary

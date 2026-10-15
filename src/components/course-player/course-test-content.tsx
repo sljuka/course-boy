@@ -136,7 +136,7 @@ export const CourseTestContent = ({
         handlePrimaryAction();
       }}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 print:gap-(--print-exercise-gap)">
         {activeTestExercises.map((exercise, index) => {
           const exerciseInstance = activeTestInstances[index];
           const exerciseResult = exerciseResults[index];
@@ -149,7 +149,7 @@ export const CourseTestContent = ({
 
           return (
             <div
-              className={`flex break-inside-avoid flex-col gap-3 border-b border-border pb-4 last:border-b-0 last:pb-0 print:gap-3 print:pb-3 ${
+              className={`flex break-inside-avoid flex-col gap-3 border-b border-border pb-4 last:border-b-0 last:pb-0 print:gap-(--print-exercise-inner-gap) print:pb-(--print-exercise-inner-gap) ${
                 showPrintTestSeparators ? "" : "print:border-b-0"
               }`}
               key={exercise.id}

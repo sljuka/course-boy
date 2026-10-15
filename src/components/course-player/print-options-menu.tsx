@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type {
   CoursePrintAnswerStyle,
+  CoursePrintDensity,
   CoursePrintExerciseHintStyle,
   CoursePrintOptions,
 } from "@/lib/print-options";
@@ -68,7 +69,15 @@ export function PrintOptionsMenu({
             visible: t("courseDetails.printExerciseHintsPrint"),
           }
         : undefined,
+    density: {
+      comfortable: t("courseDetails.printDensityComfortable"),
+      compact: t("courseDetails.printDensityCompact"),
+      label: t("courseDetails.printDensity"),
+      standard: t("courseDetails.printDensityStandard"),
+    },
+    dateField: t("courseDetails.printDateField"),
     decorativeMedia: mode === "test" ? t("exerciseMedia.printDecorative") : undefined,
+    nameField: t("courseDetails.printNameField"),
     points: mode === "test" && graded ? t("courseDetails.printGradePoints") : undefined,
     header: t("courseDetails.printOptionHeader"),
     printNow: t("courseDetails.printNow"),
@@ -104,7 +113,7 @@ export function PrintOptionsMenu({
   return (
     <DropdownMenu onOpenChange={onOpenChange} open={open}>
       <DropdownMenuTrigger render={children} />
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuGroup>
           <DropdownMenuLabel>{labels.title}</DropdownMenuLabel>
         </DropdownMenuGroup>
@@ -113,6 +122,20 @@ export function PrintOptionsMenu({
           onCheckedChange={(checked) => updateOption("showHeader", checked)}
         >
           {labels.header}
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={printOptions.showNameField}
+          data-testid="print-name-field-option"
+          onCheckedChange={(checked) => updateOption("showNameField", checked)}
+        >
+          {labels.nameField}
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={printOptions.showDateField}
+          data-testid="print-date-field-option"
+          onCheckedChange={(checked) => updateOption("showDateField", checked)}
+        >
+          {labels.dateField}
         </DropdownMenuCheckboxItem>
         {labels.testSeparators && (
           <DropdownMenuCheckboxItem
@@ -142,6 +165,18 @@ export function PrintOptionsMenu({
             {labels.points}
           </DropdownMenuCheckboxItem>
         )}
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup
+          onValueChange={(value) => updateOption("density", value as CoursePrintDensity)}
+          value={printOptions.density}
+        >
+          <DropdownMenuLabel className="pt-1">{labels.density.label}</DropdownMenuLabel>
+          {(["comfortable", "standard", "compact"] as const).map((density) => (
+            <DropdownMenuRadioItem data-testid={`print-density-${density}`} key={density} value={density}>
+              {labels.density[density]}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
         {labels.answerStyle && (
           <>
             <DropdownMenuSeparator />

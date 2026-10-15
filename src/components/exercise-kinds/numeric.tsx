@@ -147,7 +147,7 @@ function resolveSolutionSpaceRows(solutionSpace: NumericCourseExercise["solution
 }
 
 function resolvePrintAnswerAreaMinHeight(rows: number) {
-  return `${rows === 1 ? 3.25 : rows * 2.75}rem`;
+  return rows === 1 ? "var(--print-answer-single-row)" : `${rows * 2.75}rem`;
 }
 
 function PrintAnswerComponent({

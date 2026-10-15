@@ -12,7 +12,7 @@ export function PrintAnswerLinesArea({
           className="border-b border-stone-500"
           key={`solution-row-${rowIndex + 1}`}
           style={{
-            height: rows === 1 ? "3.25rem" : "2rem",
+            height: rows === 1 ? "var(--print-answer-single-row)" : "2rem",
           }}
         />
       ))}
