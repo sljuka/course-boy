@@ -177,7 +177,8 @@
       "right": "Tačno",
       "partial": "Delimično tačno",
       "wrong": "Netačno"
-    }
+    },
+    "summaryRegionLegend": "Zeleno: oblasti koje je trebalo izabrati (✓ one koje si izabrao). Crveno: izabrano, a nije trebalo."
   },
   "courseVersions": {
     "actionErrorTitle": "Nešto nije u redu",
@@ -588,7 +589,8 @@
     "addSolution": "Dodaj rešenje",
     "solutionFormula": "Formula",
     "showSummary": "Prikaži pregled posle testa",
-    "showSummaryHelp": "Samo u testu sa ocenom: posle rezultata učenik može da otvori pregled svojih odgovora, sa tačnim odgovorima. Ako je isključeno, pregleda nema."
+    "showSummaryHelp": "Samo u testu sa ocenom: posle rezultata učenik može da otvori pregled svojih odgovora, sa tačnim odgovorima. Ako je isključeno, pregleda nema.",
+    "solutionFormulaEarlier": "Može da koristi rezultat rešenja iznad: {{names}}."
   },
   "theme": {
     "switchToDark": "Prebaci na tamnu temu",

@@ -19,6 +19,7 @@ import type {
 } from "@/components/test-editor-prototype-types";
 import { filterValidLocaleEntries } from "@/components/exercise-kinds/types";
 import { findTemplateVariables } from "@/lib/template-variables";
+import { earlierSolutionName, solveInOrder } from "@/lib/exercise-kinds/numeric";
 
 function createId(prefix: string) {
   return `${prefix}_${Math.random().toString(36).slice(2, 8)}`;
@@ -267,6 +268,9 @@ export function validateFormula(
   exercise: NumericTestExercise,
   locale: Locale,
   formula: string,
+  // Which solution this is (0: the first): a later one can use the earlier
+  // ones' results as solution1, solution2… (SLJ-139).
+  solutionIndex = 0,
 ): SolutionValidationResult {
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const usedPromptVariableNames = new Set(extractPromptVariables(prompt));
@@ -282,8 +286,11 @@ export function validateFormula(
     const declaredVariables = new Map(
       exercise.variables.map((variable) => [variable.name, variable]),
     );
+    const earlierNames = new Set(
+      Array.from({ length: solutionIndex }, (_, index) => earlierSolutionName(index)),
+    );
     const unknownVariables = referencedVariables.filter(
-      (variableName) => !declaredVariables.has(variableName),
+      (variableName) => !declaredVariables.has(variableName) && !earlierNames.has(variableName),
     );
 
     if (unknownVariables.length > 0) {
@@ -293,20 +300,30 @@ export function validateFormula(
       };
     }
 
+    // Every variable's sample, then the earlier solutions' results from them.
+    const allSamples = Object.fromEntries(
+      exercise.variables.map((variable) => [variable.name, resolveSampleValue(variable)]),
+    );
+    const formulas = [exercise.solution, ...exercise.moreSolutions.map((entry) => entry.formula)];
+    const earlierValues =
+      solutionIndex > 0
+        ? solveInOrder(
+            formulas.slice(0, solutionIndex).map((earlier) => ({ formula: earlier, precision: DEFAULT_SOLUTION_PRECISION })),
+            allSamples,
+          )
+        : [];
+    const earlierSamples = Object.fromEntries(
+      earlierValues.map((value, index) => [earlierSolutionName(index), value]),
+    );
     const sampleVariables = Object.fromEntries(
-      referencedVariables.map((variableName) => {
-        const variable = declaredVariables.get(variableName);
-
-        if (!variable) {
-          throw new Error(`Unknown variable "${variableName}"`);
-        }
-
-        return [variableName, resolveSampleValue(variable)];
-      }),
+      referencedVariables.map((variableName) => [
+        variableName,
+        variableName in allSamples ? allSamples[variableName] : earlierSamples[variableName],
+      ]),
     );
     const sampleResult = evaluateFormulaAst(formulaAst, sampleVariables);
     const promptUnusedVariables = referencedVariables.filter(
-      (variableName) => !usedPromptVariableNames.has(variableName),
+      (variableName) => !usedPromptVariableNames.has(variableName) && !earlierNames.has(variableName),
     );
 
     if (promptUnusedVariables.length > 0) {

@@ -4,10 +4,11 @@ import { useTranslation } from "react-i18next";
 
 import type { NumericTestExercise } from "@/components/test-editor-prototype-types";
 import { formatSampleVariables, validateFormula } from "@/components/exercise-kinds/numeric-logic";
+import { earlierSolutionName } from "@/lib/exercise-kinds/numeric";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Locale } from "@/lib/i18n";
@@ -153,6 +154,7 @@ export function NumericSolutionsField({
             locale={locale}
             onChange={(next) => setFormula(index, next)}
             showLabel={!isSeveral}
+            solutionIndex={index}
           />
         </div>
       ))}
@@ -173,6 +175,7 @@ function SolutionFormula({
   locale,
   onChange,
   showLabel,
+  solutionIndex,
 }: {
   exercise: NumericTestExercise;
   formula: string;
@@ -180,9 +183,15 @@ function SolutionFormula({
   locale: Locale;
   onChange: (formula: string) => void;
   showLabel: boolean;
+  solutionIndex: number;
 }) {
   const { t } = useTranslation();
-  const validation = useMemo(() => validateFormula(exercise, locale, formula), [exercise, formula, locale]);
+  const validation = useMemo(
+    () => validateFormula(exercise, locale, formula, solutionIndex),
+    [exercise, formula, locale, solutionIndex],
+  );
+  // A later solution can use the earlier ones' results (SLJ-139).
+  const earlierNames = Array.from({ length: solutionIndex }, (_, index) => earlierSolutionName(index)).join(", ");
 
   return (
     <Field>
@@ -195,6 +204,9 @@ function SolutionFormula({
         rows={2}
         value={formula}
       />
+      {solutionIndex > 0 && (
+        <FieldDescription>{t("testEditor.solutionFormulaEarlier", { names: earlierNames })}</FieldDescription>
+      )}
       {validation.status !== "idle" && (
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={validation.status === "valid" ? "success" : "warning"}>

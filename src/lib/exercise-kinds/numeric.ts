@@ -241,9 +241,7 @@ function buildInstance(exercise: NumericCourseExercise): ExerciseInstance {
       return [variableName, rollVariableValue(variableDefinition)];
     }),
   );
-  const expectedAnswers = numericSolutions(exercise).map((solution) =>
-    roundToPrecision(evaluateFormula(solution.formula, variables), solution.precision),
-  );
+  const expectedAnswers = solveInOrder(numericSolutions(exercise), variables);
 
   return { expectedAnswer: expectedAnswers[0], expectedAnswers, kind: "numeric", variables };
 }
@@ -326,6 +324,22 @@ export const numericExerciseRuntime: ExerciseKindRuntime<
   resolveForPlayer,
   review,
 };
+
+// Each solution's value, in order: a later formula can use an earlier
+// solution's (rounded) result as `solution1`, `solution2`… (SLJ-139).
+export function solveInOrder(solutions: NumericSolution[], variables: Record<string, number>): number[] {
+  const values: number[] = [];
+  for (const solution of solutions) {
+    const earlier = Object.fromEntries(values.map((value, index) => [earlierSolutionName(index), value]));
+    values.push(roundToPrecision(evaluateFormula(solution.formula, { ...variables, ...earlier }), solution.precision));
+  }
+  return values;
+}
+
+// What a later formula calls the solution at `index` (0-based): solution1…
+export function earlierSolutionName(index: number): string {
+  return `solution${index + 1}`;
+}
 
 // Every solution of an exercise, the first (`formula`) first.
 export function numericSolutions(exercise: Pick<NumericCourseExercise, "formula" | "moreSolutions" | "precision">): NumericSolution[] {

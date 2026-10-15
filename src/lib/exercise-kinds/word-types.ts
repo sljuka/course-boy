@@ -1,6 +1,7 @@
 import type {
   SharedWordTypeTestExerciseDefinition,
   WordTypeCourseExercise,
+  WordTypeToken,
 } from "../course-package";
 import type { ExerciseInstance } from "../course-player-utils";
 import { isCourseTagColor } from "../course-tags";
@@ -17,6 +18,7 @@ import {
   type GradeResult,
   type ResolveForPlayerContext,
   partShare,
+  type ReviewPart,
 } from "./types";
 
 /** Icon is a free-text, optional field — capped so it can't become a smuggled string. */
@@ -217,6 +219,20 @@ function grade(
   return { isAnswered: true, isCorrect: false, share: partShare(wordsRight, 0, correctWordTypeIds.length) };
 }
 
+// Each marked word: the type the student gave it and the right one (SLJ-140).
+function review(exercise: WordTypeCourseExercise, _instance: ExerciseInstance, rawAnswer: string): ReviewPart[] {
+  const words = exercise.tokens.filter((token): token is Extract<WordTypeToken, { kind: "word" }> => token.kind === "word");
+  const selections = decodeWordTypeSelections(rawAnswer, words.length);
+  const nameOf = (id: string | undefined) => exercise.wordTypes.find((type) => type.id === id)?.name ?? "";
+
+  return words.map((word, index) => ({
+    answer: nameOf(selections[index]),
+    isCorrect: selections[index] === word.wordTypeId,
+    label: word.value,
+    solution: nameOf(word.wordTypeId),
+  }));
+}
+
 export const wordTypesExerciseRuntime: ExerciseKindRuntime<
   SharedWordTypeTestExerciseDefinition,
   WordTypeCourseExercise
@@ -226,4 +242,5 @@ export const wordTypesExerciseRuntime: ExerciseKindRuntime<
   isValid,
   kind: "word-types",
   resolveForPlayer,
+  review,
 };

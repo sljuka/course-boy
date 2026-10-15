@@ -6,6 +6,7 @@ import {
   encodeNumericAnswers,
   numericExerciseRuntime,
   rollVariableValue,
+  solveInOrder,
 } from "@/lib/exercise-kinds/numeric";
 
 describe("rollVariableValue", () => {
@@ -100,5 +101,23 @@ describe("several solutions", () => {
     expect(decodeNumericAnswers("7", 1)).toEqual(["7"]);
     expect(decodeNumericAnswers(encodeNumericAnswers(["1", "2"]), 2)).toEqual(["1", "2"]);
     expect(decodeNumericAnswers("", 2)).toEqual(["", ""]);
+  });
+});
+
+describe("solveInOrder", () => {
+  it("lets a later formula use an earlier solution's rounded result", () => {
+    expect(
+      solveInOrder(
+        [
+          { formula: "x * y", precision: 0 },
+          { formula: "solution1 - z", precision: 0 },
+          { formula: "solution1 + solution2", precision: 0 },
+        ],
+        { x: 4, y: 3, z: 2 },
+      ),
+    ).toEqual([12, 10, 22]);
+    expect(solveInOrder([{ formula: "x / 3", precision: 1 }, { formula: "solution1 * 3", precision: 1 }], { x: 10 })).toEqual([
+      3.3, 9.9,
+    ]);
   });
 });

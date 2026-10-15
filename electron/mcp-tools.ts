@@ -132,7 +132,10 @@ const questionSchema = z.discriminatedUnion("type", [
       .array(
         z.object({
           label: z.string().min(1).describe('What this box asks for, e.g. "Bob"'),
-          answer: z.string().min(1).describe("A number or a formula over the variables"),
+          answer: z
+            .string()
+            .min(1)
+            .describe("A number or a formula over the variables; a later answer can use earlier ones as solution1, solution2…"),
           decimals: z.number().int().min(0).max(6).optional(),
         }),
       )

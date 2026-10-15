@@ -4,6 +4,7 @@ import {
   fromCourseExerciseVariable,
   toCourseExerciseVariable,
   validate,
+  validateFormula,
 } from "@/components/exercise-kinds/numeric-logic"
 import type {
   NumericTestExercise,
@@ -132,5 +133,32 @@ describe("validate", () => {
     }
 
     expect(validate(exercise, "en").status).toBe("valid")
+  })
+})
+
+// SLJ-139: a later solution can use an earlier one's result.
+describe("validateFormula with several solutions", () => {
+  const exercise: NumericTestExercise = {
+    kind: "numeric",
+    id: "ex_apples",
+    locales: { en: { answerPlaceholder: "", hint: "", prompt: "{{x}} {{y}} {{z}}" } },
+    solution: "x * y",
+    moreSolutions: [{ formula: "solution1 - z", id: "s2" }],
+    solutionSpace: "sm",
+    tagIds: [],
+    variables: [
+      { constraints: [{ id: "a", type: "min-value", value: 4 }, { id: "b", type: "max-value", value: 4 }], id: "vx", name: "x" },
+      { constraints: [{ id: "c", type: "min-value", value: 3 }, { id: "d", type: "max-value", value: 3 }], id: "vy", name: "y" },
+      { constraints: [{ id: "e", type: "min-value", value: 2 }, { id: "f", type: "max-value", value: 2 }], id: "vz", name: "z" },
+    ],
+  }
+
+  it("takes an earlier solution's result, with a sample computed from it", () => {
+    expect(validateFormula(exercise, "en", "solution1 - z", 1)).toMatchObject({ sampleResult: 10, status: "valid" })
+  })
+
+  it("doesn't know a solution that isn't above it", () => {
+    expect(validateFormula(exercise, "en", "solution1 + 1", 0)).toMatchObject({ status: "error" })
+    expect(validateFormula(exercise, "en", "solution2 + 1", 1)).toMatchObject({ status: "error" })
   })
 })

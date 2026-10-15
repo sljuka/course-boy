@@ -5,7 +5,9 @@ import {
   decodeWordTypeSelections,
   encodeWordTypeSelections,
   isValidWordTypeColor,
+  wordTypesExerciseRuntime,
 } from "@/lib/exercise-kinds/word-types";
+import type { WordTypeCourseExercise } from "@/lib/course-package";
 
 describe("word-type selection encoding", () => {
   it("decodes an empty/invalid raw value to all-unanswered", () => {
@@ -61,5 +63,33 @@ describe("isValidWordTypeColor", () => {
     expect(isValidWordTypeColor("not-a-color")).toBe(false);
     expect(isValidWordTypeColor("bae6fd")).toBe(false);
     expect(isValidWordTypeColor(42)).toBe(false);
+  });
+});
+
+// SLJ-140: the summary after a graded test.
+describe("word-types review", () => {
+  it("gives each marked word the type the student chose and the right one", () => {
+    const exercise = {
+      id: "w",
+      kind: "word-types",
+      prompt: "Mark the words",
+      tags: [],
+      tokens: [
+        { kind: "word", value: "Cats", wordTypeId: "n" },
+        { kind: "text", value: " " },
+        { kind: "word", value: "run", wordTypeId: "v" },
+      ],
+      wordTypes: [
+        { color: "sky", icon: "", id: "n", name: "noun", symbol: "N" },
+        { color: "rose", icon: "", id: "v", name: "verb", symbol: "V" },
+      ],
+    } as WordTypeCourseExercise;
+
+    expect(
+      wordTypesExerciseRuntime.review!(exercise, { kind: "word-types" } as never, encodeWordTypeSelections(["n", "n"])),
+    ).toEqual([
+      { answer: "noun", isCorrect: true, label: "Cats", solution: "noun" },
+      { answer: "noun", isCorrect: false, label: "run", solution: "verb" },
+    ]);
   });
 });

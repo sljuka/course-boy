@@ -81,7 +81,7 @@
     "closeCourse": "Close course",
     "fullScreen": "Full screen",
     "exitFullScreen": "Exit full screen",
-    "spree": "Spree: {{current}} right on the first try in a row · best {{best}}",
+    "spree": "Course streak: {{current}} right on the first try in a row · best {{best}}",
     "completedDescription": "You finished the current lesson flow for this course.",
     "completedTitle": "Course complete",
     "correctAnswer": "Correct. You can continue to the next lesson.",
@@ -156,7 +156,7 @@
     "practiceCheer6": "Keep it up!",
     "practiceLongestStreak": "Longest streak",
     "practiceFirstTry": "Right on the first try: {{correct}} of {{total}}",
-    "newBestSpree": "New best course spree: {{count}}",
+    "newBestSpree": "New best course streak: {{count}}",
     "previewNotSaved": "Preview: this result isn't saved.",
     "practiceLongestStreakCount": "Longest streak: {{count}}",
     "startGraded": "Graded",
@@ -177,7 +177,8 @@
       "right": "Right",
       "partial": "Partly right",
       "wrong": "Wrong"
-    }
+    },
+    "summaryRegionLegend": "Green: the shapes to pick (✓ the ones you picked). Red: picked, but not one of them."
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
@@ -588,7 +589,8 @@
     "addSolution": "Add solution",
     "solutionFormula": "Formula",
     "showSummary": "Show a summary after the test",
-    "showSummaryHelp": "Only in a graded test: after the score, the student can open a summary of their answers, with the correct ones. Off, there’s no summary."
+    "showSummaryHelp": "Only in a graded test: after the score, the student can open a summary of their answers, with the correct ones. Off, there’s no summary.",
+    "solutionFormulaEarlier": "Can use the result of the solutions above: {{names}}."
   },
   "theme": {
     "switchToDark": "Switch to dark theme",

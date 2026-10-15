@@ -12,6 +12,7 @@ import {
   type GradeResult,
   type ResolveForPlayerContext,
   partShare,
+  type ReviewPart,
 } from "./types";
 
 const VIEW_BOX_PATTERN = /^-?\d+(\.\d+)?(\s+-?\d+(\.\d+)?){3}$/;
@@ -209,6 +210,19 @@ function grade(
   };
 }
 
+// Each region: the label the student marked it with (the one whose colour
+// they used) and its own (SLJ-140).
+function review(exercise: RegionMarkerCourseExercise, _instance: ExerciseInstance, rawAnswer: string): ReviewPart[] {
+  const selections = decodeRegionMarkerSelections(rawAnswer);
+  const labelOfColor = (color: string | undefined) => exercise.regions.find((region) => region.color === color)?.label ?? "";
+
+  return exercise.regions.map((region) => ({
+    answer: labelOfColor(selections[region.id]),
+    isCorrect: selections[region.id] === region.color,
+    solution: region.label,
+  }));
+}
+
 export const regionMarkerExerciseRuntime: ExerciseKindRuntime<
   SharedRegionMarkerTestExerciseDefinition,
   RegionMarkerCourseExercise
@@ -218,4 +232,5 @@ export const regionMarkerExerciseRuntime: ExerciseKindRuntime<
   isValid,
   kind: "region-marker",
   resolveForPlayer,
+  review,
 };

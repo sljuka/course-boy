@@ -48,6 +48,14 @@ export type AnswerComponentProps<TCourse extends CourseExercise> = {
   value: string;
 };
 
+// A graded test's summary for a kind whose solution is best shown on its own
+// diagram (SLJ-140): the student's answer (`value`) and the right one, drawn.
+export type ReviewComponentProps<TCourse extends CourseExercise> = {
+  exercise: TCourse;
+  instance: ExerciseInstance;
+  value: string;
+};
+
 export type PrintAnswerComponentProps<TCourse extends CourseExercise> = {
   exercise: TCourse;
   printAnswerStyle: CoursePrintAnswerStyle;
@@ -82,4 +90,7 @@ export type ExerciseKindEditor<
   FieldsComponent: ComponentType<FieldsComponentProps<TExercise>>;
   AnswerComponent: ComponentType<AnswerComponentProps<TCourse>>;
   PrintAnswerComponent?: ComponentType<PrintAnswerComponentProps<TCourse>>;
+  // The answer and the solution drawn, for the summary after a graded test;
+  // a kind without it lists them as text (`ExerciseKindRuntime.review`).
+  ReviewComponent?: ComponentType<ReviewComponentProps<TCourse>>;
 };

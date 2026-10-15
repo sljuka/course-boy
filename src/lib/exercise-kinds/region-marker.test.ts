@@ -208,3 +208,26 @@ describe("region-marker grade", () => {
     ).toEqual({ isAnswered: true, isCorrect: false, share: 0.5 });
   });
 });
+
+// SLJ-140: the summary after a graded test.
+describe("region-marker review", () => {
+  it("gives each region the label the student marked it with, and its own", () => {
+    const exercise = {
+      id: "m",
+      kind: "region-marker",
+      prompt: "Mark the countries",
+      regions: [
+        { color: "#bbf7d0", id: "Hungary", label: "Hungary" },
+        { color: "#fecaca", id: "Serbia", label: "Serbia" },
+      ],
+      svgAssetUrl: "",
+      tags: [],
+    } as RegionMarkerCourseExercise;
+    const raw = encodeRegionMarkerSelections({ Hungary: "#bbf7d0", Serbia: "#bbf7d0" });
+
+    expect(regionMarkerExerciseRuntime.review!(exercise, { kind: "region-marker" } as never, raw)).toEqual([
+      { answer: "Hungary", isCorrect: true, solution: "Hungary" },
+      { answer: "Hungary", isCorrect: false, solution: "Serbia" },
+    ]);
+  });
+});

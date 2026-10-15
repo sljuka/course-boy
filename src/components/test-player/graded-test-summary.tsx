@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import type { CourseExercise } from "@/lib/course-package";
 import { getExercisePromptSource, type ExerciseInstance } from "@/lib/course-player-utils";
+import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
 import { exercisePoints } from "@/lib/grade-bands";
 import { useEnterKey } from "@/lib/use-enter-key";
@@ -49,7 +50,10 @@ export function GradedTestSummary({
         const points = exercisePoints(exercise);
         const share = result.isCorrect ? 1 : partialCredit ? result.share : 0;
         const status: Status = result.isCorrect ? "right" : share > 0 ? "partial" : "wrong";
-        const parts = getExerciseKindRuntime(exercise.kind).review?.(exercise, instance, answers[index] ?? "");
+        const { ReviewComponent } = getExerciseKindEditor(exercise.kind);
+        const parts = ReviewComponent
+          ? undefined
+          : getExerciseKindRuntime(exercise.kind).review?.(exercise, instance, answers[index] ?? "");
 
         return (
           <div
@@ -67,6 +71,9 @@ export function GradedTestSummary({
                 </CardDescription>
               </div>
             </div>
+            {ReviewComponent && (
+              <ReviewComponent exercise={exercise as never} instance={instance} value={answers[index] ?? ""} />
+            )}
             {parts && (
               <div className="flex flex-col gap-2">
                 {parts.map((part, partIndex) => (

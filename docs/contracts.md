@@ -331,8 +331,9 @@ pool is built in the player from the course's current tests
 **Several solutions (SLJ-139)** on a numeric exercise: `solution` stays the first, the others
 are `moreSolutions: [{ formula, precision }]`, and each language's `solutionLabels` names
 them in order (written only with several). An older app reads only `solution`: one box,
-graded on its own. A student's answer to several boxes is a JSON list of strings
-(`encodeNumericAnswers`); one box's is still the plain text.
+graded on its own. A later solution's formula can use an earlier one's rounded result as
+`solution1`, `solution2`… (`solveInOrder`). A student's answer to several boxes is a JSON
+list of strings (`encodeNumericAnswers`); one box's is still the plain text.
 
 **`showSummary: false` (SLJ-140)** on a graded test turns off the summary of answers after
 it (missing: shown). The summary asks each kind's runtime for `review` (the answer and the

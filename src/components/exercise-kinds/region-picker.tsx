@@ -21,7 +21,11 @@ import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import { useTestPlayerState } from "@/components/test-player/use-test-player-state";
 import type { RegionPickerTestExercise } from "@/components/test-editor-prototype-types";
-import type { AnswerComponentProps, ExerciseKindEditor } from "@/components/exercise-kinds/types";
+import type {
+  AnswerComponentProps,
+  ExerciseKindEditor,
+  ReviewComponentProps,
+} from "@/components/exercise-kinds/types";
 import {
   createExercise,
   fromShared,
@@ -151,12 +155,40 @@ function ExampleComponent() {
   );
 }
 
+// The summary after a graded test (SLJ-140), on the diagram itself: every
+// shape to pick in green, a ✓ on those the student picked; shapes picked
+// that shouldn't have been in red.
+function ReviewComponent({ exercise, value }: ReviewComponentProps<RegionPickerCourseExercise>) {
+  const { t } = useTranslation();
+  const picked = new Set(decodeRegionPickerSelection(value));
+  const correct = new Set(exercise.correctShapeIds);
+  const shapeColors = Object.fromEntries([
+    ...[...correct].map((id) => [id, "var(--success)"]),
+    ...[...picked].filter((id) => !correct.has(id)).map((id) => [id, "var(--destructive)"]),
+  ]);
+  const shapeLabels = Object.fromEntries([...picked].map((id) => [id, correct.has(id) ? "✓" : "✗"]));
+
+  return (
+    <div className="flex flex-col gap-2" data-testid="region-picker-review">
+      <RegionPickerCanvas
+        onToggleShape={() => {}}
+        shapeColors={shapeColors}
+        shapeLabels={shapeLabels}
+        svgUrl={exercise.svgAssetUrl}
+        viewBox={exercise.viewBox}
+      />
+      <CardDescription>{t("courseDetails.summaryRegionLegend")}</CardDescription>
+    </div>
+  );
+}
+
 export const regionPickerExerciseEditor: ExerciseKindEditor<
   RegionPickerTestExercise,
   SharedRegionPickerTestExerciseDefinition,
   RegionPickerCourseExercise
 > = {
   AnswerComponent,
+  ReviewComponent,
   ExampleComponent,
   FieldsComponent: RegionPickerExerciseFields,
   createExercise,
