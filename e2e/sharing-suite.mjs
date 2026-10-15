@@ -116,6 +116,8 @@ export function waitForUpdate(page, courseId, predicate, timeout = 30_000) {
   return waitForSharing(page, courseId, (info) => Boolean(info.update) && predicate(info.update), timeout)
 }
 
+// Onboarded, and at Home like a person who just finished onboarding (a
+// reload keeps the onboarding route, which nothing leaves on its own).
 export async function finishOnboarding(page, role) {
   await page.evaluate(
     (role) => window.preferences.set({ category: 'other', nickname: 'E2E', persona: 'course-boy', role }),
@@ -123,6 +125,10 @@ export async function finishOnboarding(page, role) {
   )
   await page.reload()
   await waitFor(page, () => (document.getElementById('root')?.childElementCount ?? 0) > 0)
+  await page.evaluate(() => {
+    location.hash = '#/'
+  })
+  await page.locator('[data-testid="app-menu"]').waitFor({ timeout: 15_000 })
 }
 
 // An imported course is kept as versions/<v>/ + release.json (SLJ-40).
