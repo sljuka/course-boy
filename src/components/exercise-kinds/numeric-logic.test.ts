@@ -104,6 +104,7 @@ describe("validate", () => {
       id: "ex_num",
       locales: { en: { answerPlaceholder: "", hint: "", prompt: "{{x}} + {{y}}" } },
       solution: "x + y",
+      moreSolutions: [],
       solutionSpace: "sm",
       tagIds: [],
       variables: [
@@ -121,6 +122,7 @@ describe("validate", () => {
       id: "ex_num",
       locales: { en: { answerPlaceholder: "", hint: "", prompt: "{{x}} + {{y}}" } },
       solution: "x + y",
+      moreSolutions: [],
       solutionSpace: "sm",
       tagIds: ["easy"],
       variables: [

@@ -11,6 +11,8 @@ import type {
   SharedTestExerciseDefinition,
 } from "../src/lib/course-package";
 import { isValidCourseId } from "../src/lib/course-id";
+import { type CourseTagDefinition, createCourseTagDefinition, courseTagColorOptions } from "../src/lib/course-tags";
+import { isExerciseCount } from "../src/lib/course-exercise-pool";
 import { DEFAULT_EXERCISE_POINTS, MAX_EXERCISE_POINTS, MIN_EXERCISE_POINTS } from "../src/lib/grade-bands";
 import { isLocale, type Locale } from "../src/lib/i18n";
 import { BLOCK_MARKER_PATTERN, blockMarker } from "../src/lib/lesson-block-markers";
@@ -98,6 +100,13 @@ const points = z
   .optional()
   .describe(`Points for solving it in a graded test (default ${DEFAULT_EXERCISE_POINTS})`);
 
+// A question's tags, by label: the course's own (update_course sets them).
+// Randomization picks by them (SLJ-135 follow-up).
+const tags = z
+  .array(z.string().min(1))
+  .optional()
+  .describe("Labels of the course's tags this question has, for a test's randomization rules");
+
 const questionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("multiple_choice"),
@@ -106,6 +115,7 @@ const questionSchema = z.discriminatedUnion("type", [
     correct: z.array(z.number().int().min(0)).min(1).describe("0-based indexes of the correct options"),
     hint: z.string().optional(),
     points,
+    tags,
   }),
   z.object({
     type: z.literal("number"),
@@ -116,7 +126,19 @@ const questionSchema = z.discriminatedUnion("type", [
     answer: z
       .string()
       .min(1)
-      .describe('A number ("42") or a formula over the variables ("a + b")'),
+      .optional()
+      .describe('A number ("42") or a formula over the variables ("a + b"). Give this or `answers`.'),
+    answers: z
+      .array(
+        z.object({
+          label: z.string().min(1).describe('What this box asks for, e.g. "Bob"'),
+          answer: z.string().min(1).describe("A number or a formula over the variables"),
+          decimals: z.number().int().min(0).max(6).optional(),
+        }),
+      )
+      .min(2)
+      .optional()
+      .describe("Several solutions, each answered in its own labelled box (instead of `answer`)"),
     decimals: z.number().int().min(0).max(6).optional().describe("Decimal places the answer is checked to (default 0)"),
     variables: z
       .record(
@@ -127,6 +149,7 @@ const questionSchema = z.discriminatedUnion("type", [
       .describe("Whole-number variables used in the prompt and formula"),
     hint: z.string().optional(),
     points,
+    tags,
   }),
   z.object({
     type: z.literal("fill_in"),
@@ -146,25 +169,36 @@ const questionSchema = z.discriminatedUnion("type", [
       .describe("Each blank named in the text, with its accepted answers"),
     hint: z.string().optional(),
     points,
+    tags,
   }),
 ]);
 
 type Question = z.infer<typeof questionSchema>;
 
-// `kept`: the settings of the test being replaced that the questions don't
-// carry (whether it's graded, its own grade bands, whether it includes the
-// course's other tests and how many, mnemonics), kept unless the call says
-// otherwise.
+// The settings of a test the questions don't carry.
+export type TestSettings = Pick<
+  SharedTestDefinition,
+  | "exerciseCount"
+  | "graded"
+  | "gradeBands"
+  | "includeCourseExercises"
+  | "partialCredit"
+  | "showMnemonics"
+  | "showStartScreen"
+  | "structure"
+>;
+
+// `kept`: the test's settings (those of a test being replaced, with what the
+// call changes). `courseTags`: the course's, to turn questions' tag labels
+// into the ids the test stores.
 export function testFromQuestions(
   questions: Question[],
   locale: Locale,
-  kept: Pick<
-    SharedTestDefinition,
-    "exerciseCount" | "graded" | "gradeBands" | "includeCourseExercises" | "partialCredit" | "showMnemonics" | "showStartScreen"
-  > = {},
+  kept: TestSettings = {},
+  courseTags: CourseTagDefinition[] = [],
 ): SharedTestDefinition {
   const exercises = questions.map((question): SharedTestExerciseDefinition => {
-    const exercise = exerciseFromQuestion(question, locale);
+    const exercise = { ...exerciseFromQuestion(question, locale), tags: tagIds(question.tags ?? [], courseTags) };
     return question.points === undefined ? exercise : { ...exercise, points: question.points };
   });
 
@@ -174,11 +208,26 @@ export function testFromQuestions(
     ...(kept.graded && kept.gradeBands ? { gradeBands: kept.gradeBands } : {}),
     ...(kept.graded && kept.partialCredit ? { partialCredit: true } : {}),
     ...(kept.includeCourseExercises ? { includeCourseExercises: true } : {}),
-    ...(kept.includeCourseExercises && kept.exerciseCount ? { exerciseCount: kept.exerciseCount } : {}),
+    ...(kept.includeCourseExercises && kept.exerciseCount && !kept.structure?.length
+      ? { exerciseCount: kept.exerciseCount }
+      : {}),
     ...(kept.showMnemonics ? { showMnemonics: true } : {}),
     ...(kept.showStartScreen !== undefined ? { showStartScreen: kept.showStartScreen } : {}),
+    ...(kept.structure ? { structure: kept.structure } : {}),
     template: "",
   };
+}
+
+// Tag labels to the course's tag ids; an unknown label is the agent's mistake.
+function tagIds(labels: string[], courseTags: CourseTagDefinition[]): string[] {
+  return labels.map((label) => {
+    const tag = courseTags.find((candidate) => candidate.label.toLowerCase() === label.trim().toLowerCase());
+    if (!tag) {
+      const known = courseTags.map((candidate) => `"${candidate.label}"`).join(", ") || "none yet (update_course sets them)";
+      throw new Error(`The course has no tag "${label}" (it has ${known})`);
+    }
+    return tag.id;
+  });
 }
 
 function exerciseFromQuestion(question: Question, locale: Locale): SharedTestExerciseDefinition {
@@ -229,10 +278,23 @@ function exerciseFromQuestion(question: Question, locale: Locale): SharedTestExe
       return [name, { max: range.max, min: range.min, type: "integer" as const }];
     }),
   );
+  // One answer, or several each in its own labelled box (SLJ-139).
+  if (question.answers && question.answer) {
+    throw new Error(`"${question.prompt}": give either answer or answers, not both`);
+  }
+  const solutions = question.answers
+    ? question.answers.map((entry) => ({ formula: entry.answer, precision: entry.decimals ?? question.decimals ?? 0 }))
+    : question.answer
+      ? [{ formula: question.answer, precision: question.decimals ?? 0 }]
+      : [];
+  if (solutions.length === 0) throw new Error(`"${question.prompt}": a number question needs answer or answers`);
+  const labels = question.answers?.map((entry) => entry.label);
+
   return {
     kind: "numeric",
-    locales: { [locale]: { ...hint, prompt: question.prompt } },
-    solution: { formula: question.answer, precision: question.decimals ?? 0 },
+    locales: { [locale]: { ...hint, prompt: question.prompt, ...(labels ? { solutionLabels: labels } : {}) } },
+    ...(solutions.length > 1 ? { moreSolutions: solutions.slice(1) } : {}),
+    solution: solutions[0],
     tags: [],
     variables,
   };
@@ -240,11 +302,31 @@ function exerciseFromQuestion(question: Question, locale: Locale): SharedTestExe
 
 // A saved test as questions, for the kinds the tools can write; other kinds
 // (made in the app) are named so the agent knows they're there.
-export function questionsFromTest(test: CourseTest | null): unknown[] {
+export function questionsFromTest(test: CourseTest | null, courseTags: CourseTagDefinition[] = []): unknown[] {
   return (test?.exercises ?? []).map((exercise: CourseExercise) => ({
     ...questionFromExercise(exercise),
     ...(exercise.points !== undefined ? { points: exercise.points } : {}),
+    ...(exercise.tags.length > 0 ? { tags: tagLabels(exercise.tags, courseTags) } : {}),
   }));
+}
+
+function tagLabels(ids: string[], courseTags: CourseTagDefinition[]): string[] {
+  return ids.map((id) => courseTags.find((tag) => tag.id === id)?.label ?? id);
+}
+
+// A test's settings as an agent reads them: rules by tag label.
+export function testSettingsFromTest(test: CourseTest | null, courseTags: CourseTagDefinition[] = []) {
+  if (!test) return {};
+  return {
+    ...(test.graded ? { graded: true } : {}),
+    ...(test.partialCredit ? { partialCredit: true } : {}),
+    ...(test.structure?.length
+      ? { randomize: test.structure.map((rule) => ({ count: rule.count, tag: tagLabels([rule.tag], courseTags)[0] })) }
+      : {}),
+    ...(test.includeCourseExercises ? { includeCourseExercises: true } : {}),
+    ...(test.exerciseCount ? { exerciseCount: test.exerciseCount } : {}),
+    ...(test.showStartScreen !== undefined ? { showStartScreen: test.showStartScreen } : {}),
+  };
 }
 
 function questionFromExercise(exercise: CourseExercise): Record<string, unknown> {
@@ -258,9 +340,15 @@ function questionFromExercise(exercise: CourseExercise): Record<string, unknown>
     };
   }
   if (exercise.kind === "numeric") {
+    const answers = exercise.moreSolutions?.length
+      ? [{ formula: exercise.formula, precision: exercise.precision }, ...exercise.moreSolutions].map((solution, index) => ({
+          answer: solution.formula,
+          decimals: solution.precision,
+          label: exercise.solutionLabels?.[index] ?? "",
+        }))
+      : null;
     return {
-      answer: exercise.formula,
-      decimals: exercise.precision,
+      ...(answers ? { answers } : { answer: exercise.formula, decimals: exercise.precision }),
       prompt: exercise.prompt,
       type: "number",
       ...(Object.keys(exercise.variables).length > 0
@@ -304,18 +392,85 @@ const graded = z
     "A graded test (no feedback after each answer; the score at the end, from each question's points) instead of a practice test. Omitted when replacing questions: the test stays as it was.",
   );
 
-// What a test being replaced keeps (testFromQuestions), with `graded` as the
-// call says if it says.
-function keptTestSettings(previous: SharedTestDefinition | null, graded: boolean | undefined) {
+const settings = z
+  .object({
+    graded: z.boolean().optional().describe("A graded test (see `graded`)"),
+    partialCredit: z
+      .boolean()
+      .optional()
+      .describe("Graded only: a question with several parts (blanks, several answers) earns its share of points for the parts right"),
+    randomize: z
+      .array(z.object({ count: z.number().int().min(1), tag: z.string().min(1).describe("A course tag's label") }))
+      .nullable()
+      .optional()
+      .describe("Each attempt picks this many questions with each tag, at random; null turns randomization off"),
+    includeCourseExercises: z
+      .boolean()
+      .optional()
+      .describe("A final test: also uses the questions of the course's other tests"),
+    exerciseCount: z
+      .number()
+      .int()
+      .min(1)
+      .nullable()
+      .optional()
+      .describe("With includeCourseExercises and no randomize: how many to pick, in turn from each test; null for all"),
+    showStartScreen: z
+      .boolean()
+      .optional()
+      .describe("A start screen before the first question (default: on for a section test, off for a lesson's)"),
+  })
+  .optional()
+  .describe("The test's settings; each one omitted stays as it was");
+
+type SettingsInput = NonNullable<z.infer<typeof settings>>;
+
+// A test's settings: those it had (`previous`), with what the call changes
+// (`graded`, `settings`). Randomization rules come by tag label.
+function resolveTestSettings(
+  previous: SharedTestDefinition | null,
+  graded: boolean | undefined,
+  input: SettingsInput | undefined,
+  courseTags: CourseTagDefinition[],
+): TestSettings {
+  const exerciseCount =
+    input?.exerciseCount === undefined ? previous?.exerciseCount : (input.exerciseCount ?? undefined);
+  if (exerciseCount !== undefined && !isExerciseCount(exerciseCount)) {
+    throw new Error("exerciseCount must be a whole number from 1 to 500");
+  }
+  const structure =
+    input?.randomize === undefined
+      ? previous?.structure
+      : input.randomize === null
+        ? undefined
+        : input.randomize.map((rule) => ({ count: rule.count, tag: tagIds([rule.tag], courseTags)[0] }));
+
   return {
-    exerciseCount: previous?.exerciseCount,
-    graded: graded ?? previous?.graded,
+    exerciseCount,
+    graded: input?.graded ?? graded ?? previous?.graded,
     gradeBands: previous?.gradeBands,
-    includeCourseExercises: previous?.includeCourseExercises,
-    partialCredit: previous?.partialCredit,
+    includeCourseExercises: input?.includeCourseExercises ?? previous?.includeCourseExercises,
+    partialCredit: input?.partialCredit ?? previous?.partialCredit,
     showMnemonics: previous?.showMnemonics,
-    showStartScreen: previous?.showStartScreen,
+    showStartScreen: input?.showStartScreen ?? previous?.showStartScreen,
+    structure,
   };
+}
+
+// The course's tags from labels: an existing label keeps its tag (its id, and
+// its colour unless one is given); a new one gets a new id.
+function courseTagsFrom(
+  input: { color?: string; label: string }[],
+  existing: CourseTagDefinition[],
+): CourseTagDefinition[] {
+  const next: CourseTagDefinition[] = [];
+  for (const [index, entry] of input.entries()) {
+    const label = entry.label.trim();
+    const known = existing.find((tag) => tag.label.toLowerCase() === label.toLowerCase());
+    const color = (entry.color ?? known?.color ?? courseTagColorOptions[index % courseTagColorOptions.length]) as CourseTagDefinition["color"];
+    next.push(known ? { ...known, color, label } : createCourseTagDefinition(label, color, [...existing, ...next]));
+  }
+  return next;
 }
 
 function result(value: unknown) {
@@ -403,6 +558,7 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         description: details.description,
         id: details.id,
         languages: details.supportedLocales,
+        tags: details.descriptiveTags.map((tag) => ({ color: tag.color, label: tag.label })),
         sections: details.sections.map((section) => ({
           hasIntro: section.intro !== null,
           id: section.id,
@@ -433,8 +589,8 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
       if (!lesson) throw new Error(`No lesson "${args.lessonId}" in section "${args.sectionId}"`);
       return {
         content: lessonBodyToMarkdown(lesson.body),
-        ...(lesson.test?.graded ? { graded: true } : {}),
-        questions: questionsFromTest(lesson.test),
+        questions: questionsFromTest(lesson.test, details.descriptiveTags),
+        settings: testSettingsFromTest(lesson.test, details.descriptiveTags),
         title: lesson.title,
       };
     }),
@@ -444,7 +600,7 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
     "read_section_test",
     {
       annotations: { readOnlyHint: true },
-      description: "A section test's title and questions.",
+      description: "A section test's title, description, settings and questions.",
       inputSchema: { courseId, language, sectionId, testId: z.string().describe("The test's id, from get_course") },
     },
     read(async (args: { courseId: string; language?: string; sectionId: string; testId: string }) => {
@@ -454,7 +610,12 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         .find((section) => section.id === args.sectionId)
         ?.tests.find((candidate) => candidate.id === args.testId);
       if (!test) throw new Error(`No test "${args.testId}" in section "${args.sectionId}"`);
-      return { ...(test.test?.graded ? { graded: true } : {}), questions: questionsFromTest(test.test), title: test.title };
+      return {
+        ...(test.description ? { description: test.description } : {}),
+        questions: questionsFromTest(test.test, details.descriptiveTags),
+        settings: testSettingsFromTest(test.test, details.descriptiveTags),
+        title: test.title,
+      };
     }),
   );
 
@@ -482,10 +643,26 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
   server.registerTool(
     "update_course",
     {
-      description: "Changes a course's title or description, in one of its languages.",
-      inputSchema: { courseId, description: z.string().optional(), language, title: z.string().min(1).optional() },
+      description:
+        "Changes a course's title or description, in one of its languages, or its tags (which questions carry, for tests' randomization rules).",
+      inputSchema: {
+        courseId,
+        description: z.string().optional(),
+        language,
+        tags: z
+          .array(z.object({ color: z.enum(courseTagColorOptions as [string, ...string[]]).optional(), label: z.string().min(1) }))
+          .optional()
+          .describe("The course's tags, replacing them; a label it already has keeps its tag (and the questions carrying it)"),
+        title: z.string().min(1).optional(),
+      },
     },
-    write(async (args: { courseId: string; description?: string; language?: string; title?: string }) => {
+    write(async (args: {
+      courseId: string;
+      description?: string;
+      language?: string;
+      tags?: { color?: string; label: string }[];
+      title?: string;
+    }) => {
       const locale = await courseLanguage(args.courseId, args.language);
       const details = await ownCourse(args.courseId);
       const current = details.locales[locale] ?? { description: "", title: "" };
@@ -493,7 +670,7 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         contentRating: details.contentRating,
         courseId: details.id,
         defaultLocale: details.defaultLocale,
-        descriptiveTags: details.descriptiveTags,
+        descriptiveTags: args.tags ? courseTagsFrom(args.tags, details.descriptiveTags) : details.descriptiveTags,
         locales: {
           ...details.locales,
           [locale]: { ...current, description: args.description ?? current.description, title: args.title ?? current.title },
@@ -649,7 +826,7 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
     {
       description:
         "Sets the test students take after a lesson, replacing any it had. Questions are multiple choice or a number (optionally with variables, so every student gets their own numbers).",
-      inputSchema: { courseId, graded, language, lessonId, questions, sectionId },
+      inputSchema: { courseId, graded, language, lessonId, questions, sectionId, settings },
     },
     write(
       async (args: {
@@ -659,8 +836,10 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         lessonId: string;
         questions: Question[];
         sectionId: string;
+        settings?: SettingsInput;
       }) => {
         const locale = await courseLanguage(args.courseId, args.language);
+        const courseTags = (await ownCourse(args.courseId)).descriptiveTags;
         const previous = await getLocalCourseLessonTestDraft({
           courseId: args.courseId,
           lessonId: args.lessonId,
@@ -670,7 +849,12 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
           courseId: args.courseId,
           lessonId: args.lessonId,
           sectionId: args.sectionId,
-          test: testFromQuestions(args.questions, locale, keptTestSettings(previous, args.graded)),
+          test: testFromQuestions(
+            args.questions,
+            locale,
+            resolveTestSettings(previous, args.graded, args.settings, courseTags),
+            courseTags,
+          ),
         });
         return null;
       },
@@ -681,20 +865,45 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
     "create_section_test",
     {
       description: "Adds a test of its own at the end of a section (not tied to a lesson), with its questions. Returns its id.",
-      inputSchema: { courseId, graded, language, questions, sectionId, title: z.string().min(1) },
+      inputSchema: {
+        courseId,
+        description: z.string().optional().describe("A short instruction students see before and above the test"),
+        graded,
+        language,
+        questions,
+        sectionId,
+        settings,
+        title: z.string().min(1),
+      },
     },
     write(
       async (args: {
         courseId: string;
+        description?: string;
         graded?: boolean;
         language?: string;
         questions: Question[];
         sectionId: string;
+        settings?: SettingsInput;
         title: string;
       }) => {
         const locale = await courseLanguage(args.courseId, args.language);
-        const test = testFromQuestions(args.questions, locale, { graded: args.graded });
+        const courseTags = (await ownCourse(args.courseId)).descriptiveTags;
+        const test = testFromQuestions(
+          args.questions,
+          locale,
+          resolveTestSettings(null, args.graded, args.settings, courseTags),
+          courseTags,
+        );
         const created = await createLocalCourseSectionTest({ courseId: args.courseId, sectionId: args.sectionId, title: args.title });
+        if (args.description?.trim()) {
+          await updateLocalCourseSectionTestMetadata({
+            courseId: args.courseId,
+            locales: { [locale]: { description: args.description.trim(), title: args.title } },
+            sectionId: args.sectionId,
+            testId: created.testId,
+          });
+        }
         await updateLocalCourseSectionTest({ courseId: args.courseId, sectionId: args.sectionId, test, testId: created.testId });
         return created;
       },
@@ -705,7 +914,7 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
     "set_section_test_questions",
     {
       description: "Replaces a section test's questions.",
-      inputSchema: { courseId, graded, language, questions, sectionId, testId: z.string() },
+      inputSchema: { courseId, graded, language, questions, sectionId, settings, testId: z.string() },
     },
     write(
       async (args: {
@@ -714,9 +923,11 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         language?: string;
         questions: Question[];
         sectionId: string;
+        settings?: SettingsInput;
         testId: string;
       }) => {
         const locale = await courseLanguage(args.courseId, args.language);
+        const courseTags = (await ownCourse(args.courseId)).descriptiveTags;
         const previous = await getLocalCourseSectionTestDraft({
           courseId: args.courseId,
           sectionId: args.sectionId,
@@ -725,7 +936,12 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
         await updateLocalCourseSectionTest({
           courseId: args.courseId,
           sectionId: args.sectionId,
-          test: testFromQuestions(args.questions, locale, keptTestSettings(previous, args.graded)),
+          test: testFromQuestions(
+            args.questions,
+            locale,
+            resolveTestSettings(previous, args.graded, args.settings, courseTags),
+            courseTags,
+          ),
           testId: args.testId,
         });
         return null;
@@ -736,10 +952,25 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
   server.registerTool(
     "update_section_test",
     {
-      description: "Renames a section test, in one of the course's languages.",
-      inputSchema: { courseId, language, sectionId, testId: z.string(), title: z.string().min(1) },
+      description:
+        "Changes a section test's title or description (a short instruction students see), in one of the course's languages.",
+      inputSchema: {
+        courseId,
+        description: z.string().optional(),
+        language,
+        sectionId,
+        testId: z.string(),
+        title: z.string().min(1).optional(),
+      },
     },
-    write(async (args: { courseId: string; language?: string; sectionId: string; testId: string; title: string }) => {
+    write(async (args: {
+      courseId: string;
+      description?: string;
+      language?: string;
+      sectionId: string;
+      testId: string;
+      title?: string;
+    }) => {
       const locale = await courseLanguage(args.courseId, args.language);
       const details = await ownCourse(args.courseId, locale);
       const test = details.sections
@@ -750,7 +981,13 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
       // are kept as they are.
       await updateLocalCourseSectionTestMetadata({
         courseId: args.courseId,
-        locales: { ...test.locales, [locale]: { description: test.locales?.[locale]?.description ?? "", title: args.title } },
+        locales: {
+          ...test.locales,
+          [locale]: {
+            description: args.description?.trim() ?? test.locales?.[locale]?.description ?? "",
+            title: args.title ?? test.locales?.[locale]?.title ?? test.title,
+          },
+        },
         sectionId: args.sectionId,
         testId: args.testId,
       });

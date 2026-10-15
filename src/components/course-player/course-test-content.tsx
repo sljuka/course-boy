@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 type ExerciseResult = {
   feedback: string | null;
   isCorrect: boolean;
+  parts?: boolean[] | null;
 };
 
 export const CourseTestContent = ({
@@ -164,6 +165,7 @@ export const CourseTestContent = ({
                     index={index}
                     instance={exerciseInstance}
                     onAnswerChange={(value) => onUpdateExerciseAnswer(index, value)}
+                    parts={graded ? null : exerciseResults[index]?.parts}
                     size="lg"
                     value={exerciseAnswers[index] ?? ""}
                   />

@@ -37,6 +37,9 @@ export type AnswerComponentProps<TCourse extends CourseExercise> = {
   index: number;
   instance: ExerciseInstance;
   onAnswerChange: (value: string) => void;
+  // After a check in a practice test, which of several answer boxes are
+  // right (SLJ-139); the kind marks the others. Never in a graded test.
+  parts?: boolean[] | null;
   // Only consumed by kinds that render `Input` (numeric, missing-word,
   // region-label). Both real student-facing player surfaces
   // (`CourseTestContent` and `InteractiveTestPlayer`) pass `"lg"`; absent

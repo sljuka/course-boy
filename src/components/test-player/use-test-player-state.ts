@@ -23,6 +23,10 @@ export type ExerciseResult = {
   isCorrect: boolean;
   // How much of it is right, 0 to 1: partial credit in a graded test.
   share: number;
+  // Answered in several boxes (SLJ-139): some left empty, which in practice
+  // isn't a try; and which boxes are right, to mark the wrong ones.
+  isIncomplete: boolean;
+  parts: boolean[] | null;
 };
 
 // Exported for reuse by the inline exercise block
@@ -37,11 +41,32 @@ export function deriveExerciseResult(
   const result = getExerciseKindRuntime(exercise.kind).grade(exercise, instance, rawAnswer);
 
   if (result.isCorrect) {
-    return { feedback: null, hint: null, isAnswered: true, isCorrect: true, share: 1 };
+    return { feedback: null, hint: null, isAnswered: true, isCorrect: true, isIncomplete: false, parts: null, share: 1 };
   }
 
   if (!result.isAnswered) {
-    return { feedback: t(result.noAnswerMessageKey), hint: null, isAnswered: false, isCorrect: false, share: 0 };
+    return {
+      feedback: t(result.noAnswerMessageKey),
+      hint: null,
+      isAnswered: false,
+      isCorrect: false,
+      isIncomplete: false,
+      parts: null,
+      share: 0,
+    };
+  }
+
+  // Some boxes still empty: ask for them all, not a wrong answer yet.
+  if (result.incomplete) {
+    return {
+      feedback: t("courseDetails.enterAllAnswers"),
+      hint: null,
+      isAnswered: true,
+      isCorrect: false,
+      isIncomplete: true,
+      parts: result.parts ?? null,
+      share: result.share ?? 0,
+    };
   }
 
   return {
@@ -51,6 +76,8 @@ export function deriveExerciseResult(
     hint: exercise.hint ?? null,
     isAnswered: true,
     isCorrect: false,
+    isIncomplete: false,
+    parts: result.parts ?? null,
     share: result.share ?? 0,
   };
 }
@@ -63,6 +90,8 @@ function createEmptyResults(exercises: CourseExercise[]): ExerciseResult[] {
     hint: null,
     isAnswered: false,
     isCorrect: false,
+    isIncomplete: false,
+    parts: null,
     share: 0,
   }));
 }
@@ -158,7 +187,8 @@ export function useTestPlayerState(
     );
     setExerciseResults((currentResults) =>
       currentResults.map((result, resultIndex) =>
-        resultIndex === index ? { feedback: null, hint: null, isAnswered: false, isCorrect: false, share: 0 } : result,
+        resultIndex === index ? { feedback: null, hint: null, isAnswered: false, isCorrect: false, isIncomplete: false, parts: null, share: 0 }
+          : result,
       ),
     );
     setTestFeedback(null);
@@ -229,9 +259,10 @@ export function useTestPlayerState(
 
     const result = deriveExerciseResult(exercise, instance, exerciseAnswers[index] ?? "", t);
 
-    // "Check answer" with nothing given (a stray Enter) isn't a try: it
-    // shows "not answered" but neither counts as wrong nor ends a spree.
-    if (result.isAnswered) {
+    // "Check answer" with nothing given (a stray Enter), or with some of
+    // several boxes empty, isn't a try: it shows what's missing but neither
+    // counts as wrong nor ends a spree.
+    if (result.isAnswered && !result.isIncomplete) {
       if (firstTryCorrect[index] === null) onFirstTry?.(result.isCorrect);
       recordFirstTries([{ index, isCorrect: result.isCorrect }]);
     }

@@ -769,7 +769,9 @@ describe('learner flow: attend a course and complete its test', () => {
       'Right on the first try: 1 of 1',
     )
     expect(await card.innerText()).not.toContain('New best')
-    await card.getByRole('button', { exact: true, name: 'Continue' }).click()
+    // Enter continues, also with the focus off the button.
+    await card.click({ position: { x: 5, y: 5 } })
+    await harness.page.keyboard.press('Enter')
     await waitForText(harness.page, 'Course complete')
 
     // Leave the player's BlankLayout (no locale picker/sidebar chrome) so
@@ -1096,6 +1098,9 @@ describe('graded test', () => {
     await page.getByText('Final exam', { exact: true }).first().click()
     await page.locator('[data-testid="test-type-graded"]').click()
     await expect.poll(() => readTest().graded, { timeout: 15_000 }).toBe(true)
+    // The description is per language: the one students see.
+    await page.locator('#draft-test-description-en').fill('Answer every question.')
+    await expect.poll(() => readTest().locales?.en?.description, { timeout: 15_000 }).toBe('Answer every question.')
     expect(readTest().exercises.map((saved) => saved.points)).toEqual([30, undefined])
 
     // Under "Show more options": bands of its own, starting from the
@@ -1116,10 +1121,14 @@ describe('graded test', () => {
     const start = page.locator('[data-testid="test-start-screen"]')
     await start.waitFor({ timeout: 15_000 })
     expect(await start.innerText()).toContain('Final exam')
+    expect(await start.innerText()).toContain('Answer every question.')
     expect(await page.locator('[data-testid="test-start-facts"]').innerText()).toBe(
       'Graded · Questions: 2 · Points: 40',
     )
-    await page.locator('[data-testid="test-start"]').click()
+    // Enter starts it, also with the focus off the button (a click on the page).
+    await start.click({ position: { x: 5, y: 5 } })
+    await page.keyboard.press('Enter')
+    await start.waitFor({ state: 'detached' })
     const answer = page.getByPlaceholder('Type the result')
     await answer.waitFor({ timeout: 15_000 })
     expect(await button('Check answer').count()).toBe(0)
@@ -1222,6 +1231,69 @@ describe('partial credit', () => {
     await page.locator('[data-testid="graded-test-result"]').waitFor()
     expect(await page.locator('[data-testid="graded-test-points"]').innerText()).toBe('5/10 points')
     expect(await page.locator('[data-testid="graded-test-percent"]').innerText()).toBe('50%')
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+  })
+})
+
+// SLJ-139: a numeric exercise with several solutions has a labelled box for
+// each: checking with one empty asks for all, a wrong one is marked, both
+// right moves on.
+describe('several solutions', () => {
+  it('asks for every box, marks the wrong one, and passes with both right', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Several Solutions Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Apples' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Apples test' })
+      const exercise = {
+        kind: 'numeric',
+        locales: {
+          en: {
+            prompt: 'Alice has {{x}} apples, Bob has {{y}} times more and Carol has {{z}} less than Bob. How many do Bob and Carol have?',
+            solutionLabels: ['Bob', 'Carol'],
+          },
+        },
+        moreSolutions: [{ formula: 'x * y - z', precision: 0 }],
+        solution: { formula: 'x * y', precision: 0 },
+        tags: [],
+        variables: {
+          x: { max: 4, min: 4, type: 'integer' },
+          y: { max: 3, min: 3, type: 'integer' },
+          z: { max: 2, min: 2, type: 'integer' },
+        },
+      }
+      await window.courses.saveSectionTest({ courseId, sectionId, test: { exercises: [exercise], template: '' }, testId })
+      return { courseId, testId }
+    })
+
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const bob = page.getByLabel('Bob', { exact: true })
+    const carol = page.getByLabel('Carol', { exact: true })
+    const check = () => page.getByRole('button', { exact: true, name: 'Check answer' }).click()
+
+    // Enter in Bob's box goes to Carol's instead of checking.
+    await bob.fill('12')
+    await bob.press('Enter')
+    expect(await carol.evaluate((element) => element === document.activeElement)).toBe(true)
+
+    await check()
+    await waitForText(page, 'Enter all the answers before checking.')
+
+    await carol.fill('9')
+    await check()
+    await expect.poll(() => carol.getAttribute('aria-invalid')).toBe('true')
+    expect(await bob.getAttribute('aria-invalid')).toBeNull()
+
+    await carol.fill('10')
+    await check()
+    await page.getByRole('button', { exact: true, name: 'Continue' }).waitFor()
     await page.getByRole('button', { exact: true, name: 'Close course' }).click()
   })
 })

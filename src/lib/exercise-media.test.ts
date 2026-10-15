@@ -24,6 +24,7 @@ function numericExercise(media?: NumericTestExercise["media"]): NumericTestExerc
     },
     media,
     solution: "8",
+    moreSolutions: [],
     solutionSpace: "sm",
     tagIds: [],
     variables: [],

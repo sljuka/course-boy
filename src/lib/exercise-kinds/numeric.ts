@@ -1,15 +1,17 @@
 import type {
   CourseExerciseVariable,
   NumericCourseExercise,
+  NumericSolution,
   SharedNumericTestExerciseDefinition,
 } from "../course-package";
 import type { ExerciseInstance } from "../course-player-utils";
 import { evaluateFormula } from "../formula-dsl";
-import { isLocale } from "../i18n";
+import { isLocale, type Locale } from "../i18n";
 import { findTemplateVariables } from "../template-variables";
 
 import {
   hasValidTags,
+  partShare,
   type ExerciseKindRuntime,
   type GradeResult,
   type ResolveForPlayerContext,
@@ -93,6 +95,19 @@ function isSolutionSpace(
   );
 }
 
+function areNumericSolutions(value: unknown): value is NumericSolution[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (solution) =>
+        Boolean(solution) &&
+        typeof solution === "object" &&
+        typeof (solution as NumericSolution).formula === "string" &&
+        typeof (solution as NumericSolution).precision === "number",
+    )
+  );
+}
+
 function isValid(
   exercise: Record<string, unknown>,
 ): exercise is SharedNumericTestExerciseDefinition {
@@ -112,10 +127,14 @@ function isValid(
         answerPlaceholder?: unknown;
         hint?: unknown;
         prompt?: unknown;
+        solutionLabels?: unknown;
       };
 
       return (
         typeof typedMetadata.prompt === "string" &&
+        (typeof typedMetadata.solutionLabels === "undefined" ||
+          (Array.isArray(typedMetadata.solutionLabels) &&
+            typedMetadata.solutionLabels.every((label) => typeof label === "string"))) &&
         (typeof typedMetadata.hint === "undefined" ||
           typeof typedMetadata.hint === "string") &&
         (typeof typedMetadata.answerPlaceholder === "undefined" ||
@@ -136,6 +155,7 @@ function isValid(
     typeof solution.formula !== "string" ||
     typeof solution.precision !== "number" ||
     (typeof solution.space !== "undefined" && !isSolutionSpace(solution.space)) ||
+    (typeof exercise.moreSolutions !== "undefined" && !areNumericSolutions(exercise.moreSolutions)) ||
     !exercise.variables ||
     typeof exercise.variables !== "object" ||
     !Object.values(exercise.variables).every((variable) => {
@@ -177,11 +197,30 @@ function isValid(
   });
 }
 
+// The solutions' labels in the first of the reader's languages that has them.
+function resolveSolutionLabels(
+  shared: SharedNumericTestExerciseDefinition,
+  requestedLocales: Locale[],
+): string[] | undefined {
+  for (const locale of requestedLocales) {
+    const labels = shared.locales[locale]?.solutionLabels;
+    if (labels && labels.length > 0) return labels;
+  }
+
+  return Object.values(shared.locales).find((content) => content?.solutionLabels?.length)?.solutionLabels;
+}
+
 function resolveForPlayer(
   shared: SharedNumericTestExerciseDefinition,
   context: ResolveForPlayerContext,
 ): NumericCourseExercise {
+  const solutionLabels = shared.moreSolutions?.length
+    ? resolveSolutionLabels(shared, context.requestedLocales)
+    : undefined;
+
   return {
+    ...(shared.moreSolutions?.length ? { moreSolutions: shared.moreSolutions } : {}),
+    ...(solutionLabels ? { solutionLabels } : {}),
     answerPlaceholder: context.answerPlaceholder,
     formula: shared.solution.formula,
     hint: context.hint,
@@ -201,12 +240,19 @@ function buildInstance(exercise: NumericCourseExercise): ExerciseInstance {
       return [variableName, rollVariableValue(variableDefinition)];
     }),
   );
-  const expectedAnswer = roundToPrecision(
-    evaluateFormula(exercise.formula, variables),
-    exercise.precision,
+  const expectedAnswers = numericSolutions(exercise).map((solution) =>
+    roundToPrecision(evaluateFormula(solution.formula, variables), solution.precision),
   );
 
-  return { expectedAnswer, kind: "numeric", variables };
+  return { expectedAnswer: expectedAnswers[0], expectedAnswers, kind: "numeric", variables };
+}
+
+// One number typed, rounded like the solution; null if it isn't a number.
+function parseAnswer(raw: string, precision: number): number | null {
+  const normalized = raw.trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized.replace(",", "."));
+  return Number.isNaN(parsed) ? null : roundToPrecision(parsed, precision);
 }
 
 function grade(
@@ -214,25 +260,42 @@ function grade(
   instance: ExerciseInstance,
   rawAnswer: string,
 ): GradeResult {
-  const normalizedAnswer = rawAnswer.trim();
+  const solutions = numericSolutions(exercise);
+  const expected = instance.kind === "numeric" ? instance.expectedAnswers ?? [instance.expectedAnswer] : [];
 
-  if (!normalizedAnswer) {
+  if (solutions.length === 1) {
+    const answer = parseAnswer(rawAnswer, solutions[0].precision);
+
+    if (answer === null) {
+      return { isAnswered: false, isCorrect: false, noAnswerMessageKey: "courseDetails.enterAnswer" };
+    }
+
+    return answer === expected[0] ? { isCorrect: true } : { isAnswered: true, isCorrect: false };
+  }
+
+  // Several solutions (SLJ-139): each box on its own.
+  const answers = decodeNumericAnswers(rawAnswer, solutions.length).map((raw, index) =>
+    parseAnswer(raw, solutions[index].precision),
+  );
+
+  if (answers.every((answer) => answer === null)) {
     return { isAnswered: false, isCorrect: false, noAnswerMessageKey: "courseDetails.enterAnswer" };
   }
 
-  const parsedAnswer = Number(normalizedAnswer.replace(",", "."));
+  const parts = answers.map((answer, index) => answer !== null && answer === expected[index]);
+  const right = parts.filter(Boolean).length;
 
-  if (Number.isNaN(parsedAnswer)) {
-    return { isAnswered: false, isCorrect: false, noAnswerMessageKey: "courseDetails.enterAnswer" };
-  }
-
-  const roundedAnswer = roundToPrecision(parsedAnswer, exercise.precision);
-
-  if (instance.kind === "numeric" && roundedAnswer === instance.expectedAnswer) {
+  if (right === solutions.length) {
     return { isCorrect: true };
   }
 
-  return { isAnswered: true, isCorrect: false };
+  return {
+    isAnswered: true,
+    isCorrect: false,
+    parts,
+    share: partShare(right, 0, solutions.length),
+    ...(answers.some((answer) => answer === null) ? { incomplete: true } : {}),
+  };
 }
 
 export const numericExerciseRuntime: ExerciseKindRuntime<
@@ -245,3 +308,29 @@ export const numericExerciseRuntime: ExerciseKindRuntime<
   kind: "numeric",
   resolveForPlayer,
 };
+
+// Every solution of an exercise, the first (`formula`) first.
+export function numericSolutions(exercise: Pick<NumericCourseExercise, "formula" | "moreSolutions" | "precision">): NumericSolution[] {
+  return [{ formula: exercise.formula, precision: exercise.precision }, ...(exercise.moreSolutions ?? [])];
+}
+
+// Several boxes' answers as one string: a JSON list. One box's is the text
+// itself, as before several solutions existed.
+export function encodeNumericAnswers(answers: string[]): string {
+  return answers.length === 1 ? (answers[0] ?? "") : JSON.stringify(answers);
+}
+
+export function decodeNumericAnswers(raw: string, count: number): string[] {
+  if (count === 1) return [raw];
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return Array.from({ length: count }, (_, index) => (typeof parsed[index] === "string" ? parsed[index] : ""));
+    }
+  } catch {
+    // Not a list (e.g. empty): the first box only.
+  }
+
+  return Array.from({ length: count }, (_, index) => (index === 0 ? raw : ""));
+}

@@ -193,6 +193,7 @@ export function InteractiveTestPlayer({
           index={currentIndex}
           instance={instance}
           onAnswerChange={(value) => onUpdateExerciseAnswer(currentIndex, value)}
+          parts={hasSubmitted ? result.parts : null}
           size="lg"
           value={exerciseAnswers[currentIndex] ?? ""}
         />

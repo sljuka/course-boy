@@ -25,9 +25,11 @@ export type ResolveForPlayerContext = {
 // `share`: for a wrong answer to an exercise with several parts (blanks,
 // words, regions, several right options), how much of it is right, from 0 to
 // below 1: what partial credit gives in a graded test (SLJ-135). Missing: none.
+// `parts`: for an exercise answered in several boxes (SLJ-139), which are
+// right; `incomplete`: some boxes were left empty (not a try in practice).
 export type GradeResult =
   | { isCorrect: true }
-  | { isCorrect: false; isAnswered: true; share?: number }
+  | { isCorrect: false; isAnswered: true; incomplete?: boolean; parts?: boolean[]; share?: number }
   | { isCorrect: false; isAnswered: false; noAnswerMessageKey: string };
 
 // The share of parts right: each wrong pick (an option, shape or colour that

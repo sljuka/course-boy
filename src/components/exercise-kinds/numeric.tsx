@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -29,15 +30,33 @@ import {
   validate,
 } from "@/components/exercise-kinds/numeric-logic";
 import { interpolateTemplate } from "@/lib/course-player-utils";
+import { decodeNumericAnswers, encodeNumericAnswers, numericSolutions } from "@/lib/exercise-kinds/numeric";
+import { Label } from "@/components/ui/label";
+import type { TFunction } from "i18next";
 
 function AnswerComponent({
   exercise,
   index,
   onAnswerChange,
+  parts,
   size,
   value,
 }: AnswerComponentProps<NumericCourseExercise>) {
   const { t } = useTranslation();
+  const boxCount = numericSolutions(exercise).length;
+
+  if (boxCount > 1) {
+    return (
+      <SeveralAnswers
+        exercise={exercise}
+        index={index}
+        onAnswerChange={onAnswerChange}
+        parts={parts}
+        size={size}
+        value={value}
+      />
+    );
+  }
 
   return (
     <div className="flex max-w-xs flex-col gap-3 print:hidden">
@@ -50,6 +69,63 @@ function AnswerComponent({
       />
     </div>
   );
+}
+
+// Several solutions (SLJ-139): a labelled box each. Enter in any box but the
+// last goes to the next one instead of checking the answer, so a half-done
+// answer isn't checked by accident. After a check, a wrong box is marked.
+function SeveralAnswers({
+  exercise,
+  index,
+  onAnswerChange,
+  parts,
+  size,
+  value,
+}: Omit<AnswerComponentProps<NumericCourseExercise>, "instance">) {
+  const { t } = useTranslation();
+  const boxCount = numericSolutions(exercise).length;
+  const answers = decodeNumericAnswers(value, boxCount);
+  const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+  return (
+    <div className="flex max-w-sm flex-col gap-3 print:hidden" data-testid="numeric-answers">
+      {answers.map((answer, boxIndex) => {
+        const id = `course-exercise-answer-${index}-${boxIndex}`;
+        return (
+          <div className="flex flex-col gap-1.5" key={boxIndex}>
+            <Label htmlFor={id}>{solutionLabel(exercise, boxIndex, t)}</Label>
+            <Input
+              aria-invalid={parts?.[boxIndex] === false || undefined}
+              id={id}
+              inputMode="decimal"
+              onChange={(event) =>
+                onAnswerChange(
+                  encodeNumericAnswers(answers.map((current, i) => (i === boxIndex ? event.target.value : current))),
+                )
+              }
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" || boxIndex === boxCount - 1) return;
+                event.preventDefault();
+                event.stopPropagation();
+                inputsRef.current[boxIndex + 1]?.focus();
+              }}
+              placeholder={exercise.answerPlaceholder || t("courseDetails.answerPlaceholder")}
+              ref={(element) => {
+                inputsRef.current[boxIndex] = element;
+              }}
+              size={size}
+              value={answer}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// A solution's label in the reader's language, or "Answer 2" if it has none.
+function solutionLabel(exercise: NumericCourseExercise, boxIndex: number, t: TFunction): string {
+  return exercise.solutionLabels?.[boxIndex]?.trim() || t("courseDetails.answerNumber", { index: boxIndex + 1 });
 }
 
 function resolveSolutionSpaceRows(solutionSpace: NumericCourseExercise["solutionSpace"]) {
@@ -78,8 +154,33 @@ function PrintAnswerComponent({
   exercise,
   printAnswerStyle,
 }: PrintAnswerComponentProps<NumericCourseExercise>) {
-  const solutionRows = resolveSolutionSpaceRows(exercise.solutionSpace);
+  const { t } = useTranslation();
+  const boxCount = numericSolutions(exercise).length;
 
+  // Several solutions (SLJ-139): a labelled answer area each.
+  if (boxCount > 1) {
+    return (
+      <div className="hidden flex-col gap-2 print:flex">
+        {Array.from({ length: boxCount }, (_, boxIndex) => (
+          <div className="flex flex-col gap-1" key={boxIndex}>
+            <span className="text-sm">{solutionLabel(exercise, boxIndex, t)}</span>
+            <PrintAnswerArea printAnswerStyle={printAnswerStyle} rows={1} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return <PrintAnswerArea printAnswerStyle={printAnswerStyle} rows={resolveSolutionSpaceRows(exercise.solutionSpace)} />;
+}
+
+function PrintAnswerArea({
+  printAnswerStyle,
+  rows: solutionRows,
+}: {
+  printAnswerStyle: PrintAnswerComponentProps<NumericCourseExercise>["printAnswerStyle"];
+  rows: number;
+}) {
   return (
     <div className="hidden print:block">
       {printAnswerStyle === "lines" ? (

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { rollVariableValue } from "@/lib/exercise-kinds/numeric";
+import type { SharedNumericTestExerciseDefinition } from "@/lib/course-package";
+import {
+  decodeNumericAnswers,
+  encodeNumericAnswers,
+  numericExerciseRuntime,
+  rollVariableValue,
+} from "@/lib/exercise-kinds/numeric";
 
 describe("rollVariableValue", () => {
   it("stays within range with no parity constraint", () => {
@@ -34,5 +40,58 @@ describe("rollVariableValue", () => {
 
   it("falls back to a deterministic valid value for a single-value range", () => {
     expect(rollVariableValue({ max: 4, min: 4, parity: "even", type: "integer" })).toBe(4);
+  });
+});
+
+// SLJ-139: Alice has {{x}} apples, Bob {{y}} times more, Carol {{z}} less than Bob.
+describe("several solutions", () => {
+  const shared: SharedNumericTestExerciseDefinition = {
+    kind: "numeric",
+    locales: {
+      en: { prompt: "Alice has {{x}}, Bob {{y}} times more, Carol {{z}} less than Bob", solutionLabels: ["Bob", "Carol"] },
+      sr: { prompt: "Alisa ima {{x}}…", solutionLabels: ["Bob", "Karol"] },
+    },
+    moreSolutions: [{ formula: "x * y - z", precision: 0 }],
+    solution: { formula: "x * y", precision: 0 },
+    tags: [],
+    variables: {
+      x: { max: 4, min: 4, type: "integer" },
+      y: { max: 3, min: 3, type: "integer" },
+      z: { max: 2, min: 2, type: "integer" },
+    },
+  };
+  const exercise = numericExerciseRuntime.resolveForPlayer(shared, {
+    courseId: "c",
+    id: "t#1",
+    prompt: shared.locales.sr!.prompt,
+    requestedLocales: ["sr", "en"],
+  });
+  const instance = numericExerciseRuntime.buildInstance(exercise);
+  const grade = (answers: string[]) => numericExerciseRuntime.grade(exercise, instance, encodeNumericAnswers(answers));
+
+  it("is valid with its extra solutions and labels, and resolves the reader's labels", () => {
+    expect(numericExerciseRuntime.isValid(shared as never)).toBe(true);
+    expect(exercise.solutionLabels).toEqual(["Bob", "Karol"]);
+    expect(instance).toMatchObject({ expectedAnswer: 12, expectedAnswers: [12, 10] });
+  });
+
+  it("grades each box: all right, some right (with its share), empty", () => {
+    expect(grade(["12", "10"])).toEqual({ isCorrect: true });
+    expect(grade(["12", "9"])).toEqual({ isAnswered: true, isCorrect: false, parts: [true, false], share: 0.5 });
+    expect(grade(["12", ""])).toEqual({
+      incomplete: true,
+      isAnswered: true,
+      isCorrect: false,
+      parts: [true, false],
+      share: 0.5,
+    });
+    expect(grade(["", ""])).toMatchObject({ isAnswered: false, isCorrect: false });
+  });
+
+  it("keeps a single answer as plain text, and several as a list", () => {
+    expect(encodeNumericAnswers(["7"])).toBe("7");
+    expect(decodeNumericAnswers("7", 1)).toEqual(["7"]);
+    expect(decodeNumericAnswers(encodeNumericAnswers(["1", "2"]), 2)).toEqual(["1", "2"]);
+    expect(decodeNumericAnswers("", 2)).toEqual(["", ""]);
   });
 });

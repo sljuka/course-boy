@@ -20,6 +20,7 @@ describe("graded tests (SLJ-135)", () => {
     id: "ex_points",
     locales: { en: { answerPlaceholder: "", hint: "", prompt: "1 + 1?" } },
     solution: "2",
+    moreSolutions: [],
     solutionSpace: "md",
     tagIds: [],
     variables: [],
@@ -41,6 +42,29 @@ describe("graded tests (SLJ-135)", () => {
     expect(toSharedTestDefinition(state)).toMatchObject({ graded: true, gradeBands: [{ color: "gold", min: 90 }] })
     expect(toSharedTestDefinition({ ...state, graded: false })).not.toHaveProperty("gradeBands")
     expect(toSharedTestDefinition({ ...state, graded: false })).not.toHaveProperty("graded")
+  })
+
+  it("round-trips several solutions with their labels, and drops labels with one (SLJ-139)", () => {
+    const several: NumericTestExercise = {
+      ...exercise,
+      locales: { en: { answerPlaceholder: "", hint: "", prompt: "Bob? Carol?", solutionLabels: [" Bob ", "Carol"] } },
+      moreSolutions: [{ formula: "x * y - z", id: "s2" }],
+      solution: "x * y",
+    }
+    const shared = toSharedTestExerciseDefinition(several)
+
+    expect(shared).toMatchObject({
+      locales: { en: { solutionLabels: ["Bob", "Carol"] } },
+      moreSolutions: [{ formula: "x * y - z", precision: 2 }],
+      solution: { formula: "x * y" },
+    })
+    const back = fromSharedTestExerciseDefinition(shared) as NumericTestExercise
+    expect(back.moreSolutions.map((solution) => solution.formula)).toEqual(["x * y - z"])
+    expect(back.locales.en?.solutionLabels).toEqual(["Bob", "Carol"])
+
+    const single = toSharedTestExerciseDefinition({ ...several, moreSolutions: [] })
+    expect(single).not.toHaveProperty("moreSolutions")
+    expect((single.locales as Record<string, object>).en).not.toHaveProperty("solutionLabels")
   })
 
   it("keeps the start screen setting only when it isn't the default (SLJ-137)", () => {
@@ -164,6 +188,7 @@ describe("exercise kind persistence", () => {
       id: "ex_num",
       locales: { en: { answerPlaceholder: "", hint: "", prompt: "{{a}} + {{b}}" } },
       solution: "a + b",
+      moreSolutions: [],
       solutionSpace: "sm",
       tagIds: ["easy"],
       variables: [

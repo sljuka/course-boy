@@ -1,12 +1,10 @@
 import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { Play, Plus } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/eyebrow";
-import { Field, FieldLabel } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -19,7 +17,6 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { LocaleTabsList } from "@/components/locales-tabs";
 import { StickyBar } from "@/components/ui/sticky-bar";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
@@ -98,7 +95,6 @@ export function TestEditorPrototype({
   renderTitle,
   getIsLocaleIncomplete,
 }: TestEditorPrototypeProps) {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const generatedLocale = useGeneratedSerbianLocale();
   const [isAddingExercise, setIsAddingExercise] = useState(false);
@@ -145,12 +141,6 @@ export function TestEditorPrototype({
     }));
   }
 
-  function setDescription(description: string) {
-    setState((currentState) => ({
-      ...currentState,
-      description,
-    }));
-  }
 
 
 
@@ -301,20 +291,8 @@ export function TestEditorPrototype({
           renderTitle?.(state.selectedLocale)
         )}
 
-        {isStandalone && (
-          <Field>
-            <FieldLabel htmlFor="test-description">{t("testEditor.description")}</FieldLabel>
-            <Textarea
-              className="min-h-0 resize-none overflow-hidden"
-              id="test-description"
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder={t("testEditor.descriptionPlaceholder")}
-              rows={1}
-              value={state.description}
-            />
-          </Field>
-        )}
-
+        {/* A standalone test's description is per language, with its title
+            (`renderTitle`): the one students see. */}
         <TestTypeField
           graded={state.graded}
           onGradedChange={(graded) => setState((currentState) => ({ ...currentState, graded }))}

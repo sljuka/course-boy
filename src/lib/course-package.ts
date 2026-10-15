@@ -115,6 +115,15 @@ export type NumericCourseExercise = {
   tags: string[];
   variables: Record<string, CourseExerciseVariable>;
   formula: string;
+  // Solutions after the first (`formula`/`precision`), each answered in its
+  // own box (SLJ-139), and every solution's label in the reader's language.
+  moreSolutions?: NumericSolution[];
+  solutionLabels?: string[];
+};
+
+export type NumericSolution = {
+  formula: string;
+  precision: number;
 };
 
 export type MultipleChoiceCourseExercise = {
@@ -335,7 +344,17 @@ export type CourseTest = {
 export type SharedNumericTestExerciseDefinition = {
   kind: "numeric";
   locales: Partial<
-    Record<Locale, { answerPlaceholder?: string; hint?: string; mediaAlt?: string; prompt: string }>
+    Record<
+      Locale,
+      {
+        answerPlaceholder?: string;
+        hint?: string;
+        mediaAlt?: string;
+        prompt: string;
+        // One per solution, `solution` first, when there are several (SLJ-139).
+        solutionLabels?: string[];
+      }
+    >
   >;
   // An image or video shown above the prompt (SLJ-56); see lib/exercise-media.ts.
   media?: SharedExerciseMedia;
@@ -344,6 +363,9 @@ export type SharedNumericTestExerciseDefinition = {
     precision: number;
     space?: CourseExerciseSolutionSpace;
   };
+  // Solutions after the first, each answered on its own (SLJ-139). An older
+  // app reads only `solution`: the first box.
+  moreSolutions?: NumericSolution[];
   tags: string[];
   variables: Record<string, CourseExerciseVariable>;
 };

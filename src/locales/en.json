@@ -163,7 +163,9 @@
     "startQuestions": "Questions: {{count}}",
     "startPoints": "Points: {{count}}",
     "startPartialCredit": "Partial credit",
-    "startTest": "Start"
+    "startTest": "Start",
+    "enterAllAnswers": "Enter all the answers before checking.",
+    "answerNumber": "Answer {{index}}"
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
@@ -565,7 +567,14 @@
     "partialCredit": "Give partial credit",
     "partialCreditHelp": "Only in a graded test: an exercise with several parts (blanks, words, regions, several right options) earns its points’ share for the parts solved, e.g. 2 of 3 blanks gives 7 of 10 points. A wrong pick takes a right one away.",
     "showStartScreen": "Show a start screen",
-    "showStartScreenHelp": "Before the first question: the test’s title, its description and what it is (how many questions, graded or not). In interactive mode only; paper mode has them at the top."
+    "showStartScreenHelp": "Before the first question: the test’s title, its description and what it is (how many questions, graded or not). In interactive mode only; paper mode has them at the top.",
+    "solutionNumber": "Solution {{index}}",
+    "removeSolution": "Remove solution {{index}}",
+    "solutionLabel": "Label",
+    "solutionLabelPlaceholder": "e.g. Bob",
+    "solutionLabelMissing": "With several solutions, each needs a label, so the student knows which box is which.",
+    "addSolution": "Add solution",
+    "solutionFormula": "Formula"
   },
   "theme": {
     "switchToDark": "Switch to dark theme",

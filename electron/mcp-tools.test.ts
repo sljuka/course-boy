@@ -97,6 +97,26 @@ describe("questions", () => {
     ]);
   });
 
+  it("become a numeric exercise with several labelled answers, and back (SLJ-139)", () => {
+    const question = {
+      answers: [
+        { answer: "x * y", label: "Bob" },
+        { answer: "x * y - z", label: "Carol" },
+      ],
+      prompt: "Alice has {{x}}, Bob {{y}} times more, Carol {{z}} less. Bob and Carol?",
+      type: "number" as const,
+      variables: { x: { max: 5, min: 2 }, y: { max: 3, min: 2 }, z: { max: 1, min: 1 } },
+    };
+    const [exercise] = testFromQuestions([question], "en").exercises;
+
+    expect(exercise).toMatchObject({
+      locales: { en: { solutionLabels: ["Bob", "Carol"] } },
+      moreSolutions: [{ formula: "x * y - z", precision: 0 }],
+      solution: { formula: "x * y", precision: 0 },
+    });
+    expect(() => testFromQuestions([{ prompt: "?", type: "number" }], "en")).toThrow("needs answer or answers");
+  });
+
   it("become fill-in exercises, with the blanks in the order the text names them", () => {
     expect(
       testFromQuestions(
@@ -215,6 +235,7 @@ describe("the tools", () => {
     expect(await call("read_lesson", { courseId, lessonId, sectionId })).toEqual({
       content: "## Two numbers\n\nPut them together.",
       questions: [{ correct: [0], options: ["4", "5"], prompt: "2 + 2?", type: "multiple_choice" }],
+      settings: {},
       title: "Basics",
     });
 
@@ -245,23 +266,75 @@ describe("the tools", () => {
     });
 
     expect(await call("read_section_test", { courseId, sectionId, testId })).toEqual({
-      graded: true,
       questions: [{ ...question, points: 25 }],
+      settings: { graded: true },
       title: "Final exam",
     });
 
     await call("set_section_test_questions", { courseId, questions: [question], sectionId, testId });
     expect(await call("read_section_test", { courseId, sectionId, testId })).toEqual({
-      graded: true,
       questions: [question],
+      settings: { graded: true },
       title: "Final exam",
     });
 
     await call("set_section_test_questions", { courseId, graded: false, questions: [question], sectionId, testId });
     expect(await call("read_section_test", { courseId, sectionId, testId })).toEqual({
       questions: [question],
+      settings: {},
       title: "Final exam",
     });
+  });
+
+  it("set course tags, tag questions, randomize by them, describe a test, and make a final test", async () => {
+    const { courseId } = await call<{ courseId: string }>("create_course", { title: "Days" });
+    const { sectionId } = await call<{ sectionId: string }>("create_section", { courseId, title: "Days" });
+    await call("update_course", { courseId, tags: [{ label: "Lako" }, { color: "rose", label: "Teže" }] });
+    expect(await call("get_course", { courseId })).toMatchObject({
+      tags: [{ label: "Lako" }, { color: "rose", label: "Teže" }],
+    });
+
+    const question = (prompt: string, tag: string) => ({
+      correct: [0],
+      options: ["a", "b"],
+      prompt,
+      tags: [tag],
+      type: "multiple_choice" as const,
+    });
+    const { testId } = await call<{ testId: string }>("create_section_test", {
+      courseId,
+      description: "Odaberi tačne odgovore.",
+      questions: [question("1", "Lako"), question("2", "Lako"), question("3", "Teže")],
+      sectionId,
+      settings: { randomize: [{ count: 1, tag: "Lako" }, { count: 1, tag: "Teže" }] },
+      title: "Days test",
+    });
+    expect(await call("read_section_test", { courseId, sectionId, testId })).toMatchObject({
+      description: "Odaberi tačne odgovore.",
+      questions: [{ tags: ["Lako"] }, { tags: ["Lako"] }, { tags: ["Teže"] }],
+      settings: { randomize: [{ count: 1, tag: "Lako" }, { count: 1, tag: "Teže" }] },
+    });
+
+    // Renaming a tag's colour keeps it on the questions.
+    await call("update_course", { courseId, tags: [{ color: "sky", label: "Lako" }, { label: "Teže" }] });
+    expect(await call("read_section_test", { courseId, sectionId, testId })).toMatchObject({
+      questions: [{ tags: ["Lako"] }, { tags: ["Lako"] }, { tags: ["Teže"] }],
+    });
+
+    const { testId: finalId } = await call<{ testId: string }>("create_section_test", {
+      courseId,
+      questions: [question("4", "Teže")],
+      sectionId,
+      settings: { exerciseCount: 3, graded: true, includeCourseExercises: true, partialCredit: true },
+      title: "Final",
+    });
+    expect(await call("read_section_test", { courseId, sectionId, testId: finalId })).toMatchObject({
+      settings: { exerciseCount: 3, graded: true, includeCourseExercises: true, partialCredit: true },
+    });
+
+    await expect(
+      call("set_section_test_questions", { courseId, questions: [question("5", "Nope")], sectionId, testId }),
+    ).rejects.toThrow('The course has no tag "Nope"');
   });
 
   it("rename a section test in one language, keeping the others", async () => {

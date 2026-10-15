@@ -23,6 +23,7 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type {
   CourseSectionPreview,
   CourseTest,
@@ -65,6 +66,24 @@ function getTestTitleValidationMessage(
   }
 
   return null;
+}
+
+// Each language's description, the one students see (on the start screen and
+// above the test). A test whose description was only ever saved in the old,
+// single-language `template` field (never shown to students) gets it as its
+// default language's description, if that one is empty.
+function buildTestDescriptions(
+  locales: Record<Locale, LocalizedSectionMetadata> | undefined,
+  template: string | undefined,
+  defaultLocale: Locale,
+): Partial<Record<Locale, string>> {
+  const descriptions: Partial<Record<Locale, string>> = Object.fromEntries(
+    Object.entries(locales ?? {}).map(([locale, metadata]) => [locale, metadata.description ?? ""]),
+  );
+  if (template?.trim() && !descriptions[defaultLocale]?.trim()) {
+    descriptions[defaultLocale] = template.trim();
+  }
+  return descriptions;
 }
 
 function buildTestLocales(
@@ -275,25 +294,27 @@ function DraftStandaloneTestEditor({
     value: testState,
   });
 
-  const [titleSeed] = useState(() => buildTestLocales(initialLocales));
-  const [titleLocales, setTitleLocales] = useState(titleSeed);
+  // Each language's title and description, saved together.
+  const [titleSeed] = useState(() => ({
+    descriptions: buildTestDescriptions(initialLocales, initialSharedTest?.template, defaultLocale),
+    titles: buildTestLocales(initialLocales),
+  }));
+  const [testMetadata, setTestMetadata] = useState(titleSeed);
+  const titleLocales = testMetadata.titles;
   const updateSectionTestMetadataMutation =
     useUpdateSectionTestMetadataMutation();
 
   // The on-disk test file requires every locale's `description` to stay a
   // defined string (see `isStoredSectionTestDefinition` in
-  // electron/course-registry.ts) even though this editor only ever changes
-  // `title` — preserve whatever the section originally had (or "") rather
-  // than omitting it, or a save here would corrupt the file for every other
-  // reader.
+  // electron/course-registry.ts): a language without one gets "".
   const buildTitleInput = useCallback(
     (value: typeof titleSeed): UpdateCourseSectionTestMetadataInput => ({
       courseId,
       locales: Object.fromEntries(
-        Object.entries(value).map(([locale, title]) => [
+        Object.entries(value.titles).map(([locale, title]) => [
           locale,
           {
-            description: initialLocales?.[locale as Locale]?.description ?? "",
+            description: (value.descriptions[locale as Locale] ?? "").trim(),
             title: title ?? "",
           },
         ]),
@@ -301,14 +322,14 @@ function DraftStandaloneTestEditor({
       sectionId,
       testId: selectedNode.id,
     }),
-    [courseId, initialLocales, sectionId, selectedNode.id],
+    [courseId, sectionId, selectedNode.id],
   );
 
   const titleAutosave = useEntityAutosave({
     buildInput: buildTitleInput,
     initialValue: titleSeed,
     mutation: updateSectionTestMetadataMutation,
-    value: titleLocales,
+    value: testMetadata,
   });
 
   // Two independent autosaves (content + title metadata) share one status
@@ -337,7 +358,7 @@ function DraftStandaloneTestEditor({
   useFocusTitleOnRename(selectedNode.renameRequest, "draft-test-title-");
 
   function updateTitleLocale(locale: Locale, title: string) {
-    setTitleLocales((current) => ({ ...current, [locale]: title }));
+    setTestMetadata((current) => ({ ...current, titles: { ...current.titles, [locale]: title } }));
 
     if (locale === defaultLocale) {
       setSelectedNode({ ...selectedNode, title });
@@ -369,6 +390,22 @@ function DraftStandaloneTestEditor({
               {getTestTitleValidationMessage(locale, titleLocales[locale])}
             </FieldDescription>
           )}
+        </Field>
+        <Field>
+          <FieldLabel htmlFor={`draft-test-description-${locale}`}>{t("testEditor.description")}</FieldLabel>
+          <Textarea
+            className="min-h-0 resize-none overflow-hidden"
+            id={`draft-test-description-${locale}`}
+            onChange={(event) =>
+              setTestMetadata((current) => ({
+                ...current,
+                descriptions: { ...current.descriptions, [locale]: event.target.value },
+              }))
+            }
+            placeholder={t("testEditor.descriptionPlaceholder")}
+            rows={1}
+            value={testMetadata.descriptions[locale] ?? ""}
+          />
         </Field>
       </FieldGroup>
     </FieldSet>

@@ -4,7 +4,8 @@ import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
 import { replaceTemplateVariables } from "@/lib/template-variables";
 
 export type ExerciseInstance =
-  | { kind: "numeric"; expectedAnswer: number; variables: Record<string, number> }
+  // `expectedAnswers`: every solution's, the first being `expectedAnswer`.
+  | { kind: "numeric"; expectedAnswer: number; expectedAnswers: number[]; variables: Record<string, number> }
   | { kind: "multiple-choice"; optionOrder: number[] }
   | { kind: "word-types" }
   | { kind: "missing-word" }

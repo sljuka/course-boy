@@ -57,6 +57,7 @@ export function createExercise(locales: Locale[]): NumericTestExercise {
     kind: "numeric",
     id: createId("ex"),
     locales: createExerciseLocaleMap(locales),
+    moreSolutions: [],
     solution: "",
     solutionSpace: "sm",
     tagIds: [],
@@ -257,9 +258,19 @@ function resolveSampleValue(variable: PromptVariable): number {
 }
 
 export function validate(exercise: NumericTestExercise, locale: Locale): SolutionValidationResult {
+  return validateFormula(exercise, locale, exercise.solution);
+}
+
+// One solution's formula, checked against the exercise's variables with a
+// sample value for each (every solution, SLJ-139).
+export function validateFormula(
+  exercise: NumericTestExercise,
+  locale: Locale,
+  formula: string,
+): SolutionValidationResult {
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const usedPromptVariableNames = new Set(extractPromptVariables(prompt));
-  const solution = exercise.solution.trim();
+  const solution = formula.trim();
 
   if (!solution) {
     return { status: "idle" };
@@ -369,9 +380,31 @@ export function fromCourseExerciseVariable(
 const DEFAULT_SOLUTION_PRECISION = 2;
 
 export function toShared(exercise: NumericTestExercise): SharedNumericTestExerciseDefinition {
+  const solutionCount = 1 + exercise.moreSolutions.length;
+  // Labels only with several solutions, one per solution, trimmed.
+  const locales = Object.fromEntries(
+    Object.entries(filterValidLocaleEntries(exercise.locales)).map(([locale, content]) => {
+      const { solutionLabels, ...rest } = content as typeof content & { solutionLabels?: string[] };
+      return [
+        locale,
+        solutionCount > 1
+          ? { ...rest, solutionLabels: Array.from({ length: solutionCount }, (_, i) => (solutionLabels?.[i] ?? "").trim()) }
+          : rest,
+      ];
+    }),
+  ) as SharedNumericTestExerciseDefinition["locales"];
+
   return {
     kind: "numeric",
-    locales: filterValidLocaleEntries(exercise.locales),
+    locales,
+    ...(exercise.moreSolutions.length > 0
+      ? {
+          moreSolutions: exercise.moreSolutions.map((solution) => ({
+            formula: solution.formula,
+            precision: DEFAULT_SOLUTION_PRECISION,
+          })),
+        }
+      : {}),
     solution: {
       formula: exercise.solution,
       precision: DEFAULT_SOLUTION_PRECISION,
@@ -395,9 +428,14 @@ export function fromShared(definition: SharedNumericTestExerciseDefinition): Num
           answerPlaceholder: content?.answerPlaceholder ?? "",
           hint: content?.hint ?? "",
           prompt: content?.prompt ?? "",
+          ...(content?.solutionLabels ? { solutionLabels: content.solutionLabels } : {}),
         },
       ]),
     ),
+    moreSolutions: (definition.moreSolutions ?? []).map((solution) => ({
+      formula: solution.formula,
+      id: createId("solution"),
+    })),
     solution: definition.solution.formula,
     solutionSpace: normalizeSolutionSpace(definition.solution.space),
     tagIds: definition.tags,

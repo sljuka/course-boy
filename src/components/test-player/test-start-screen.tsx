@@ -4,11 +4,14 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { useEnterKey } from "@/lib/use-enter-key";
 
 // Before the first question in interactive mode (SLJ-137): the test's title,
 // its description, and what it is, from what the app knows (how many
-// questions; graded, its points, partial credit). Start begins it; it has
-// the focus, so Enter does too.
+// questions; graded, its points, partial credit). Start begins it, and so
+// does Enter, like submitting a form: also when the focus has moved off the
+// button (a click on the page), unless it's on another button or a field,
+// which keeps its own Enter.
 export function TestStartScreen({
   description,
   graded,
@@ -27,6 +30,9 @@ export function TestStartScreen({
   title: string;
 }) {
   const { t } = useTranslation();
+
+  useEnterKey(onStart);
+
   const facts = [
     ...(graded ? [t("courseDetails.startGraded")] : []),
     t("courseDetails.startQuestions", { count: questionCount }),

@@ -13,6 +13,9 @@ type ExerciseLocaleContent = {
   answerPlaceholder: string;
   hint: string;
   prompt: string;
+  // A numeric exercise's solution labels, one per solution, when it has
+  // several (SLJ-139).
+  solutionLabels?: string[];
 };
 
 type MultipleChoiceExerciseLocaleContent = {
@@ -57,6 +60,8 @@ type NumericTestExercise = {
   media?: ExerciseMediaDraft;
   locales: Record<string, ExerciseLocaleContent>;
   solution: string;
+  // Solutions after the first, each answered in its own box (SLJ-139).
+  moreSolutions: { formula: string; id: string }[];
   solutionSpace: NumericSolutionSpace;
   tagIds: string[];
   variables: PromptVariable[];

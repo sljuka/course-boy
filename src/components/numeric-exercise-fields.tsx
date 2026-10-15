@@ -3,7 +3,6 @@ import { Plus, TriangleAlert, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CardDescription } from "@/components/ui/card";
 import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
@@ -24,14 +23,13 @@ import type {
 import {
   addConstraintToVariable,
   extractPromptVariables,
-  formatSampleVariables,
   getConstraintLabel,
   removeConstraintFromVariable,
   removeVariableFromExercise,
   syncExercisePrompt,
-  validate,
 } from "@/components/exercise-kinds/numeric-logic";
 import type { FieldsComponentProps } from "@/components/exercise-kinds/types";
+import { NumericSolutionsField } from "@/components/numeric-solutions-field";
 
 const SOLUTION_SPACE_LABELS: Record<NumericSolutionSpace, string> = {
   sm: "Small (1 line)",
@@ -40,16 +38,6 @@ const SOLUTION_SPACE_LABELS: Record<NumericSolutionSpace, string> = {
   xl: "Extra large (8 lines)",
 };
 
-function getValidationLabel(status: "error" | "valid" | "warning") {
-  switch (status) {
-    case "error":
-      return "Invalid";
-    case "warning":
-      return "Warning";
-    case "valid":
-      return "Valid";
-  }
-}
 
 export function NumericExerciseFields({
   exercise,
@@ -69,10 +57,6 @@ export function NumericExerciseFields({
   const usedVariableNames = useMemo(
     () => new Set(extractPromptVariables(prompt)),
     [prompt],
-  );
-  const solutionValidation = useMemo(
-    () => validate(exercise, locale),
-    [exercise, locale],
   );
 
   function submitConstraint(variableId: string) {
@@ -222,34 +206,7 @@ export function NumericExerciseFields({
         </Field>
       )}
 
-      <Field>
-        <FieldLabel htmlFor={`exercise-solution-${exercise.id}`}>Solution *</FieldLabel>
-        <Textarea
-          className="min-h-0 resize-none overflow-hidden"
-          id={`exercise-solution-${exercise.id}`}
-          onChange={(event) =>
-            onChange((currentExercise) => ({
-              ...currentExercise,
-              solution: event.target.value,
-            }))
-          }
-          placeholder="apple_number + 42"
-          rows={2}
-          value={exercise.solution}
-        />
-        {solutionValidation.status !== "idle" && (
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={solutionValidation.status === "valid" ? "success" : "warning"}>
-              {getValidationLabel(solutionValidation.status)}
-            </Badge>
-            <CardDescription>
-              {solutionValidation.sampleVariables
-                ? `Sample variables: ${formatSampleVariables(solutionValidation.sampleVariables)}. ${solutionValidation.message}`
-                : solutionValidation.message}
-            </CardDescription>
-          </div>
-        )}
-      </Field>
+      <NumericSolutionsField exercise={exercise} locale={locale} onChange={onChange} />
 
       <ExerciseMoreOptions defaultOpen={hasMoreOptionsSet(exercise)}>
           <Field>

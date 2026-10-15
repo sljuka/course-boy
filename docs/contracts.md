@@ -328,6 +328,12 @@ own (`isSharedTestDefinitionShape`); an older app treats it as having none and h
 pool is built in the player from the course's current tests
 ([src/lib/course-exercise-pool.ts](../src/lib/course-exercise-pool.ts:1)), never stored.
 
+**Several solutions (SLJ-139)** on a numeric exercise: `solution` stays the first, the others
+are `moreSolutions: [{ formula, precision }]`, and each language's `solutionLabels` names
+them in order (written only with several). An older app reads only `solution`: one box,
+graded on its own. A student's answer to several boxes is a JSON list of strings
+(`encodeNumericAnswers`); one box's is still the plain text.
+
 **`showStartScreen` (SLJ-137)** on a test: whether interactive mode opens on a start screen
 (title, description, how many questions, graded and points). Missing means the default: shown
 for a section's own test, not for a lesson's; the editor writes it only when the teacher
@@ -856,7 +862,13 @@ besides IPC, and the same rules hold:
   with other kinds read as `{ type, editable: false }`. A question can carry `points`, and
   a test `graded` (SLJ-135); replacing a test's questions keeps whether it's graded, its
   own grade bands, whether it includes the course's other tests (and how many) and its
-  mnemonics setting unless the call sets `graded`. `add_image` copies an image file
+  mnemonics setting unless the call sets `graded`. A `number` question can give `answers`
+  (each a label and a formula) instead of one `answer`: several solutions (SLJ-139).
+  `update_course` sets the course's tags (by label; a known label keeps its id), questions
+  carry tags by label, and the test tools take `settings` (graded, partial credit,
+  randomization rules by tag label, a final test's `includeCourseExercises` and
+  `exerciseCount`, the start screen); a setting left out stays as it was. Section tests
+  take a `description` (the per-language one students see). `add_image` copies an image file
   from this computer into the course (`uploadCourseAssetFromBytes`, image types only, at
   most 10 MB) and returns its `image` block for the agent to place in the lesson's blocks.
   `update_section_test` renames a section test through the editor's own

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { useEnterKey } from "@/lib/use-enter-key";
 import { GradeScore } from "@/components/ui/grade-score";
 import { TracingBorder } from "@/components/ui/tracing-border";
 import { celebrationColor, type GradeBand, type GradeBandColor, gradeBandColor, scorePercent } from "@/lib/grade-bands";
@@ -29,6 +30,8 @@ export function GradedTestResult({
   questionCount: number;
 }) {
   const { t } = useTranslation();
+  // Enter continues, like the button (it has the focus).
+  useEnterKey(onContinue);
   const percent = scorePercent(points, maxPoints);
   // The two highest bands get the drawn border (`celebrationColor`).
   const celebration = celebrationColor(percent, bands, questionCount);
@@ -51,7 +54,7 @@ export function GradedTestResult({
                 <RotateCcw aria-hidden="true" />
                 {t("courseDetails.tryAgain")}
               </Button>
-              <Button onClick={onContinue} size="lg">
+              <Button autoFocus data-testid="test-result-continue" onClick={onContinue} size="lg">
                 {t("continue")}
               </Button>
             </div>

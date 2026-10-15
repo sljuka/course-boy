@@ -163,7 +163,9 @@
     "startQuestions": "Pitanja: {{count}}",
     "startPoints": "Bodova: {{count}}",
     "startPartialCredit": "Delimični bodovi",
-    "startTest": "Počni"
+    "startTest": "Počni",
+    "enterAllAnswers": "Upiši sve odgovore pre provere.",
+    "answerNumber": "Odgovor {{index}}"
   },
   "courseVersions": {
     "actionErrorTitle": "Nešto nije u redu",
@@ -565,7 +567,14 @@
     "partialCredit": "Daj delimične bodove",
     "partialCreditHelp": "Samo u testu sa ocenom: zadatak sa više delova (praznine, reči, oblasti, više tačnih odgovora) donosi deo bodova za rešene delove, npr. 2 od 3 praznine daju 7 od 10 bodova. Pogrešan izbor poništava jedan tačan.",
     "showStartScreen": "Prikaži početni ekran",
-    "showStartScreenHelp": "Pre prvog pitanja: naziv testa, njegov opis i šta je (koliko pitanja, sa ocenom ili ne). Samo u interaktivnom režimu; papirni režim ih ima na vrhu."
+    "showStartScreenHelp": "Pre prvog pitanja: naziv testa, njegov opis i šta je (koliko pitanja, sa ocenom ili ne). Samo u interaktivnom režimu; papirni režim ih ima na vrhu.",
+    "solutionNumber": "Rešenje {{index}}",
+    "removeSolution": "Ukloni rešenje {{index}}",
+    "solutionLabel": "Oznaka",
+    "solutionLabelPlaceholder": "npr. Bob",
+    "solutionLabelMissing": "Kad ima više rešenja, svako treba oznaku, da učenik zna koje polje je koje.",
+    "addSolution": "Dodaj rešenje",
+    "solutionFormula": "Formula"
   },
   "theme": {
     "switchToDark": "Prebaci na tamnu temu",

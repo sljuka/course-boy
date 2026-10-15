@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { useEnterKey } from "@/lib/use-enter-key";
 import { StreakCounter } from "@/components/ui/streak-counter";
 import { CelebratedCard } from "@/components/test-player/graded-test-result";
 import { spreeLevel } from "@/lib/course-progress";
@@ -39,6 +40,8 @@ export function PracticeTestResult({
   result: PracticeTestResultValue;
 }) {
   const { t } = useTranslation();
+  // Enter continues, like the button (it has the focus).
+  useEnterKey(onContinue);
   const celebration = celebrationColor(scorePercent(result.correct, result.total), bands, result.total);
 
   return (
@@ -76,7 +79,7 @@ export function PracticeTestResult({
                 <RotateCcw aria-hidden="true" />
                 {t("courseDetails.tryAgain")}
               </Button>
-              <Button onClick={onContinue} size="lg">
+              <Button autoFocus data-testid="test-result-continue" onClick={onContinue} size="lg">
                 {t("continue")}
               </Button>
             </div>
