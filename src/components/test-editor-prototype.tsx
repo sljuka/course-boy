@@ -324,6 +324,7 @@ export function TestEditorPrototype({
           courseGradeBands={courseGradeBands}
           courseTests={courseTests}
           descriptiveTags={descriptiveTags}
+          isStandalone={isStandalone}
           onOpenChange={setIsMoreOptionsOpen}
           open={isMoreOptionsOpen}
           state={state}

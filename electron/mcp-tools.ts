@@ -160,7 +160,7 @@ export function testFromQuestions(
   locale: Locale,
   kept: Pick<
     SharedTestDefinition,
-    "exerciseCount" | "graded" | "gradeBands" | "includeCourseExercises" | "showMnemonics"
+    "exerciseCount" | "graded" | "gradeBands" | "includeCourseExercises" | "partialCredit" | "showMnemonics" | "showStartScreen"
   > = {},
 ): SharedTestDefinition {
   const exercises = questions.map((question): SharedTestExerciseDefinition => {
@@ -172,9 +172,11 @@ export function testFromQuestions(
     exercises,
     ...(kept.graded ? { graded: true } : {}),
     ...(kept.graded && kept.gradeBands ? { gradeBands: kept.gradeBands } : {}),
+    ...(kept.graded && kept.partialCredit ? { partialCredit: true } : {}),
     ...(kept.includeCourseExercises ? { includeCourseExercises: true } : {}),
     ...(kept.includeCourseExercises && kept.exerciseCount ? { exerciseCount: kept.exerciseCount } : {}),
     ...(kept.showMnemonics ? { showMnemonics: true } : {}),
+    ...(kept.showStartScreen !== undefined ? { showStartScreen: kept.showStartScreen } : {}),
     template: "",
   };
 }
@@ -310,7 +312,9 @@ function keptTestSettings(previous: SharedTestDefinition | null, graded: boolean
     graded: graded ?? previous?.graded,
     gradeBands: previous?.gradeBands,
     includeCourseExercises: previous?.includeCourseExercises,
+    partialCredit: previous?.partialCredit,
     showMnemonics: previous?.showMnemonics,
+    showStartScreen: previous?.showStartScreen,
   };
 }
 

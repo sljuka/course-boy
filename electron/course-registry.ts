@@ -377,6 +377,15 @@ function isSharedTestDefinitionShape(
     return false;
   }
 
+  if (typeof test.partialCredit !== "undefined" && typeof test.partialCredit !== "boolean") {
+    return false;
+  }
+
+  // The start screen (SLJ-137).
+  if (typeof test.showStartScreen !== "undefined" && typeof test.showStartScreen !== "boolean") {
+    return false;
+  }
+
   if (typeof test.exerciseCount !== "undefined" && !isExerciseCount(test.exerciseCount)) {
     return false;
   }

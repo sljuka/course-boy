@@ -69,6 +69,7 @@ describe("missingWordExerciseRuntime.grade", () => {
     expect(missingWordExerciseRuntime.grade(buildExercise(), instance, raw)).toEqual({
       isAnswered: true,
       isCorrect: false,
+      share: 0.5,
     });
   });
 
@@ -78,6 +79,7 @@ describe("missingWordExerciseRuntime.grade", () => {
     expect(missingWordExerciseRuntime.grade(buildExercise(), instance, raw)).toEqual({
       isAnswered: true,
       isCorrect: false,
+      share: 0.5,
     });
   });
 

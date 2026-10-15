@@ -11,6 +11,7 @@ import {
   type ExerciseKindRuntime,
   type GradeResult,
   type ResolveForPlayerContext,
+  partShare,
 } from "./types";
 
 const VIEW_BOX_PATTERN = /^-?\d+(\.\d+)?(\s+-?\d+(\.\d+)?){3}$/;
@@ -135,15 +136,19 @@ function grade(
 
   const correctSet = new Set(exercise.correctShapeIds);
   const selectedSet = new Set(selectedShapeIds);
-  const isCorrect =
-    correctSet.size === selectedSet.size &&
-    [...correctSet].every((id) => selectedSet.has(id));
+  const shapesRight = [...selectedSet].filter((id) => correctSet.has(id)).length;
+  const isCorrect = correctSet.size === selectedSet.size && shapesRight === correctSet.size;
 
   if (isCorrect) {
     return { isCorrect: true };
   }
 
-  return { isAnswered: true, isCorrect: false };
+  // Only a question with several shapes to pick has parts.
+  return {
+    isAnswered: true,
+    isCorrect: false,
+    ...(correctSet.size > 1 ? { share: partShare(shapesRight, selectedSet.size - shapesRight, correctSet.size) } : {}),
+  };
 }
 
 export const regionPickerExerciseRuntime: ExerciseKindRuntime<

@@ -11,6 +11,8 @@ export type CoursePrintOptions = {
   // student asks for them; media that's part of the question always prints.
   showDecorativeMedia: boolean;
   showHeader: boolean;
+  // A graded test's points beside each question (SLJ-135): off unless asked.
+  showPoints: boolean;
   showTestSeparators: boolean;
 };
 
@@ -19,6 +21,7 @@ export const defaultLessonPrintOptions: CoursePrintOptions = {
   exerciseHintStyle: "hidden",
   showDecorativeMedia: false,
   showHeader: true,
+  showPoints: false,
   showTestSeparators: true,
 };
 
@@ -27,5 +30,6 @@ export const defaultTestPrintOptions: CoursePrintOptions = {
   exerciseHintStyle: "hidden",
   showDecorativeMedia: false,
   showHeader: true,
+  showPoints: false,
   showTestSeparators: true,
 };

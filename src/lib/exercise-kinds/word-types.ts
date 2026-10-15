@@ -16,6 +16,7 @@ import {
   type ExerciseKindRuntime,
   type GradeResult,
   type ResolveForPlayerContext,
+  partShare,
 } from "./types";
 
 /** Icon is a free-text, optional field — capped so it can't become a smuggled string. */
@@ -205,15 +206,15 @@ function grade(
     return { isAnswered: false, isCorrect: false, noAnswerMessageKey: "courseDetails.markAllWords" };
   }
 
-  const isFullyCorrect = correctWordTypeIds.every(
+  const wordsRight = correctWordTypeIds.filter(
     (wordTypeId, tokenIndex) => selections[tokenIndex] === wordTypeId,
-  );
+  ).length;
 
-  if (isFullyCorrect) {
+  if (wordsRight === correctWordTypeIds.length) {
     return { isCorrect: true };
   }
 
-  return { isAnswered: true, isCorrect: false };
+  return { isAnswered: true, isCorrect: false, share: partShare(wordsRight, 0, correctWordTypeIds.length) };
 }
 
 export const wordTypesExerciseRuntime: ExerciseKindRuntime<

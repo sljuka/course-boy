@@ -10,6 +10,7 @@ import {
   type ExerciseKindRuntime,
   type GradeResult,
   type ResolveForPlayerContext,
+  partShare,
 } from "./types";
 
 /**
@@ -179,15 +180,19 @@ function grade(
 
   const correctSet = new Set(exercise.correctOptionIndexes);
   const selectedSet = new Set(selectedIndexes);
-  const isCorrect =
-    correctSet.size === selectedSet.size &&
-    [...correctSet].every((index) => selectedSet.has(index));
+  const picksRight = [...selectedSet].filter((index) => correctSet.has(index)).length;
+  const isCorrect = correctSet.size === selectedSet.size && picksRight === correctSet.size;
 
   if (isCorrect) {
     return { isCorrect: true };
   }
 
-  return { isAnswered: true, isCorrect: false };
+  // Only a question with several right options has parts.
+  return {
+    isAnswered: true,
+    isCorrect: false,
+    ...(correctSet.size > 1 ? { share: partShare(picksRight, selectedSet.size - picksRight, correctSet.size) } : {}),
+  };
 }
 
 export const multipleChoiceExerciseRuntime: ExerciseKindRuntime<

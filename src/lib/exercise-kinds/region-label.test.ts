@@ -210,7 +210,7 @@ describe("region-label grade", () => {
         instance,
         encodeRegionLabelAnswers(["Hungary", "norway"]),
       ),
-    ).toEqual({ isAnswered: true, isCorrect: false });
+    ).toEqual({ isAnswered: true, isCorrect: false, share: 0.5 });
   });
 
   it("is unanswered when nothing is typed", () => {
@@ -226,6 +226,6 @@ describe("region-label grade", () => {
         instance,
         encodeRegionLabelAnswers(["Hungary", ""]),
       ),
-    ).toEqual({ isAnswered: true, isCorrect: false });
+    ).toEqual({ isAnswered: true, isCorrect: false, share: 0.5 });
   });
 });

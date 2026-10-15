@@ -7,6 +7,7 @@ import { InlineMarkdown } from "@/components/course-player/inline-markdown";
 import { Button } from "@/components/ui/button";
 import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import type { CourseExercise } from "@/lib/course-package";
+import { exercisePoints } from "@/lib/grade-bands";
 import {
   getExercisePromptSource,
   interpolateTemplate,
@@ -36,6 +37,7 @@ export const CourseTestContent = ({
   onUpdateExerciseAnswer,
   printAnswerStyle,
   printExerciseHintStyle,
+  printPoints = false,
   showPrintDecorativeMedia = false,
   showPrintTestSeparators,
   testFeedback,
@@ -53,6 +55,8 @@ export const CourseTestContent = ({
   onUpdateExerciseAnswer: (index: number, value: string) => void;
   printAnswerStyle: CoursePrintAnswerStyle;
   printExerciseHintStyle: CoursePrintExerciseHintStyle;
+  // Each question's points on paper (a graded test, SLJ-135).
+  printPoints?: boolean;
   showPrintDecorativeMedia?: boolean;
   showPrintTestSeparators: boolean;
   testFeedback: string | null;
@@ -146,7 +150,11 @@ export const CourseTestContent = ({
               key={exercise.id}
             >
               <ExerciseMediaView media={getExerciseMedia(exercise)} printDecorative={showPrintDecorativeMedia} />
-              <ExercisePromptHeader index={index} promptSource={promptSource} />
+              <ExercisePromptHeader
+                index={index}
+                printPoints={printPoints ? exercisePoints(exercise) : undefined}
+                promptSource={promptSource}
+              />
               {(() => {
                 const { AnswerComponent } = getExerciseKindEditor(exercise.kind);
 

@@ -571,15 +571,15 @@ describe('page breadcrumbs', () => {
         title: panel.querySelector('[data-slot=panel-card-header]')?.textContent,
       })),
     }))
-    // Preview course, Commit new version and Publish are round icon buttons in the action bar.
+    // Open as student, Commit new version and Publish are round icon buttons in the action bar.
     expect(
       await harness.page.evaluate(() => ({
         actionBar: [
-          '[aria-label="Preview course"]',
+          '[aria-label="Open as student"]',
           '[data-testid="commit-new-version"]',
           '[data-testid="publish-course"]',
         ].map((selector) => Boolean(document.querySelector(`[data-slot=page-action-bar] ${selector}`))),
-        toolbar: Boolean(document.querySelector('[data-slot=page-toolbar] [aria-label="Preview course"]')),
+        toolbar: Boolean(document.querySelector('[data-slot=page-toolbar] [aria-label="Open as student"]')),
       })),
     ).toEqual({ actionBar: [true, true, true], toolbar: false })
     // Explorer on the left, Versions on the right, each a card with its title inside.
@@ -754,7 +754,22 @@ describe('learner flow: attend a course and complete its test', () => {
     expect(await clickText(harness.page, 'Check answer')).toContain('OK')
     await harness.page.getByRole('button', { name: 'Continue' }).waitFor({ timeout: 15_000 })
 
+    // The practice test's card (SLJ-135 follow-up): a pep talk, the run's
+    // longest streak and first-try score; no "New best" on a first attempt.
     expect(await clickText(harness.page, 'Continue')).toContain('OK')
+    const card = harness.page.locator('[data-testid="practice-test-result"]')
+    await card.waitFor({ timeout: 15_000 })
+    expect(await harness.page.locator('[data-testid="practice-test-cheer"]').innerText()).toMatch(
+      /^(Flawless!|Perfect run!|Every answer right, first time!)$/,
+    )
+    expect(await harness.page.locator('[data-testid="practice-test-streak"]').getAttribute('aria-label')).toBe(
+      'Longest streak: 1',
+    )
+    expect(await harness.page.locator('[data-testid="practice-test-first-try"]').innerText()).toBe(
+      'Right on the first try: 1 of 1',
+    )
+    expect(await card.innerText()).not.toContain('New best')
+    await card.getByRole('button', { exact: true, name: 'Continue' }).click()
     await waitForText(harness.page, 'Course complete')
 
     // Leave the player's BlankLayout (no locale picker/sidebar chrome) so
@@ -1097,6 +1112,14 @@ describe('graded test', () => {
     await page.evaluate(({ courseId, testId }) => {
       location.hash = `#/courses/${courseId}/lessons/${testId}/test`
     }, ids)
+    // A section test opens on its start screen (SLJ-137): title and facts.
+    const start = page.locator('[data-testid="test-start-screen"]')
+    await start.waitFor({ timeout: 15_000 })
+    expect(await start.innerText()).toContain('Final exam')
+    expect(await page.locator('[data-testid="test-start-facts"]').innerText()).toBe(
+      'Graded · Questions: 2 · Points: 40',
+    )
+    await page.locator('[data-testid="test-start"]').click()
     const answer = page.getByPlaceholder('Type the result')
     await answer.waitFor({ timeout: 15_000 })
     expect(await button('Check answer').count()).toBe(0)
@@ -1127,12 +1150,79 @@ describe('graded test', () => {
     await waitForText(page, 'What is 1 plus 1?')
     expect(await answer.inputValue()).toBe('')
 
+    // On paper, "Print grade points" (off by default) puts each question's
+    // points beside it.
+    await button('Paper mode').click()
+    await waitForText(page, 'What is 2 plus 2?')
+    expect(await bodyText(page)).not.toContain('Points:')
+    await page.getByRole('button', { exact: true, name: 'Print course' }).first().click()
+    await page.locator('[data-testid="print-grade-points"]').click()
+    await page.keyboard.press('Escape')
+    await page.emulateMedia({ media: 'print' })
+    const printed = await bodyText(page)
+    await page.emulateMedia({ media: 'screen' })
+    expect(printed).toContain('(Points: 30)')
+    expect(printed).toContain('(Points: 10)')
+
     // The course page shows the best score, in its band's colour.
     await button('Close course').click()
     const score = page.locator('[data-testid="step-progress-score"]')
     await score.waitFor({ timeout: 15_000 })
     expect(await score.innerText()).toBe('30/40')
     expect(await score.getAttribute('data-tone')).toBe('yellow')
+  })
+})
+
+// SLJ-135: with partial credit, an exercise with several parts earns its
+// points' share for the parts right: one of two blanks, 5 of 10 points.
+describe('partial credit', () => {
+  it('gives a graded test half the points for half the blanks', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Partial Credit Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Days' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Days quiz' })
+      const exercise = {
+        kind: 'missing-word',
+        locales: {
+          en: {
+            prompt: 'Write the missing days',
+            text: '{{first}}, {{second}}, Wednesday',
+            variables: [
+              { answers: ['Monday'], matchCase: false, name: 'first' },
+              { answers: ['Tuesday'], matchCase: false, name: 'second' },
+            ],
+          },
+        },
+        tags: [],
+      }
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: { exercises: [exercise], graded: true, partialCredit: true, template: '' },
+        testId,
+      })
+      return { courseId, testId }
+    })
+
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const blanks = page.locator('form input')
+    await blanks.first().waitFor({ timeout: 15_000 })
+    await blanks.nth(0).fill('Monday')
+    await blanks.nth(1).fill('Friday')
+    await page.getByRole('button', { exact: true, name: 'Finish test' }).click()
+
+    await page.locator('[data-testid="graded-test-result"]').waitFor()
+    expect(await page.locator('[data-testid="graded-test-points"]').innerText()).toBe('5/10 points')
+    expect(await page.locator('[data-testid="graded-test-percent"]').innerText()).toBe('50%')
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
   })
 })
 

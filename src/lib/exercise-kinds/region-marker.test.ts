@@ -179,7 +179,7 @@ describe("region-marker grade", () => {
         instance,
         encodeRegionMarkerSelections({ France: "#bfdbfe", Hungary: "#bbf7d0", Norway: "#fecaca" }),
       ),
-    ).toEqual({ isAnswered: true, isCorrect: false });
+    ).toEqual({ isAnswered: true, isCorrect: false, share: 0.5 });
   });
 
   it("is unanswered when nothing is marked", () => {
@@ -195,7 +195,7 @@ describe("region-marker grade", () => {
         instance,
         encodeRegionMarkerSelections({ Hungary: "#fecaca", Norway: "#bbf7d0" }),
       ),
-    ).toEqual({ isAnswered: true, isCorrect: false });
+    ).toEqual({ isAnswered: true, isCorrect: false, share: 0 });
   });
 
   it("is incorrect when only some regions are marked", () => {
@@ -205,6 +205,6 @@ describe("region-marker grade", () => {
         instance,
         encodeRegionMarkerSelections({ Hungary: "#bbf7d0" }),
       ),
-    ).toEqual({ isAnswered: true, isCorrect: false });
+    ).toEqual({ isAnswered: true, isCorrect: false, share: 0.5 });
   });
 });

@@ -143,12 +143,18 @@ export function scoreTestAttempt(firstTryCorrect: (boolean | null)[]): TestAttem
 }
 
 // A graded test's attempt (SLJ-135): every exercise right or not as answered
-// at "Finish test", with its points.
-export function scoreGradedAttempt(exercises: { isCorrect: boolean; points: number }[]): TestAttemptResult {
+// at "Finish test", with its points. With partial credit, a wrong exercise's
+// `share` of right parts earns that share of its points, rounded.
+export function scoreGradedAttempt(
+  exercises: { isCorrect: boolean; points: number; share?: number }[],
+): TestAttemptResult {
+  const earned = (exercise: { isCorrect: boolean; points: number; share?: number }) =>
+    exercise.isCorrect ? exercise.points : Math.round(exercise.points * (exercise.share ?? 0));
+
   return {
     ...scoreTestAttempt(exercises.map((exercise) => exercise.isCorrect)),
     maxPoints: exercises.reduce((sum, exercise) => sum + exercise.points, 0),
-    points: exercises.reduce((sum, exercise) => sum + (exercise.isCorrect ? exercise.points : 0), 0),
+    points: exercises.reduce((sum, exercise) => sum + earned(exercise), 0),
   };
 }
 

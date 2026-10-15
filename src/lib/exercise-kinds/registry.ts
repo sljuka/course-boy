@@ -138,6 +138,8 @@ export function resolveSharedTestForPlayer(
     graded: sharedTest.graded ?? false,
     ...(sharedTest.gradeBands ? { gradeBands: sharedTest.gradeBands } : {}),
     includeCourseExercises: sharedTest.includeCourseExercises ?? false,
+    partialCredit: sharedTest.partialCredit ?? false,
+    ...(sharedTest.showStartScreen !== undefined ? { showStartScreen: sharedTest.showStartScreen } : {}),
     ...(sharedTest.exerciseCount ? { exerciseCount: sharedTest.exerciseCount } : {}),
     showMnemonics: sharedTest.showMnemonics ?? false,
     structure: sharedTest.structure,

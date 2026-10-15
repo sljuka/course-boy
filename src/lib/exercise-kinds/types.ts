@@ -22,10 +22,20 @@ export type ResolveForPlayerContext = {
   requestedLocales: Locale[];
 };
 
+// `share`: for a wrong answer to an exercise with several parts (blanks,
+// words, regions, several right options), how much of it is right, from 0 to
+// below 1: what partial credit gives in a graded test (SLJ-135). Missing: none.
 export type GradeResult =
   | { isCorrect: true }
-  | { isCorrect: false; isAnswered: true }
+  | { isCorrect: false; isAnswered: true; share?: number }
   | { isCorrect: false; isAnswered: false; noAnswerMessageKey: string };
+
+// The share of parts right: each wrong pick (an option, shape or colour that
+// isn't asked for) takes a right one away, so ticking everything earns
+// nothing; never below 0.
+export function partShare(right: number, wrong: number, total: number): number {
+  return total > 0 ? Math.max(0, right - wrong) / total : 0;
+}
 
 /**
  * The pure, portable half of an exercise kind — importable from both the

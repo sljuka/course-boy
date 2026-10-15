@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  celebrationColor,
   DEFAULT_GRADE_BANDS,
   exercisePoints,
   gradeBandColor,
@@ -88,5 +89,32 @@ describe("the colour below the lowest band", () => {
       { color: "green", min: 60 },
       { color: "blue", min: 0 },
     ]);
+  });
+});
+
+describe("celebrationColor", () => {
+  it("celebrates the two highest bands only", () => {
+    expect(celebrationColor(100, DEFAULT_GRADE_BANDS, 10)).toBe("gold");
+    expect(celebrationColor(90, DEFAULT_GRADE_BANDS, 10)).toBe("green");
+    expect(celebrationColor(70, DEFAULT_GRADE_BANDS, 10)).toBeNull();
+    expect(celebrationColor(20, DEFAULT_GRADE_BANDS, 10)).toBeNull();
+  });
+
+  it("follows the teacher's bands, whatever their colours", () => {
+    const bands = [
+      { color: "purple" as const, min: 100 },
+      { color: "gold" as const, min: 90 },
+      { color: "green" as const, min: 75 },
+      { color: "blue" as const, min: 0 },
+    ];
+
+    expect(celebrationColor(100, bands, 10)).toBe("purple");
+    expect(celebrationColor(92, bands, 10)).toBe("gold");
+    expect(celebrationColor(80, bands, 10)).toBeNull();
+  });
+
+  it("celebrates a short test only when perfect", () => {
+    expect(celebrationColor(100, DEFAULT_GRADE_BANDS, 2)).toBe("gold");
+    expect(celebrationColor(67, DEFAULT_GRADE_BANDS, 3)).toBeNull();
   });
 });

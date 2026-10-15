@@ -43,6 +43,22 @@ describe("graded tests (SLJ-135)", () => {
     expect(toSharedTestDefinition({ ...state, graded: false })).not.toHaveProperty("graded")
   })
 
+  it("keeps the start screen setting only when it isn't the default (SLJ-137)", () => {
+    const state = fromSharedTestDefinition({ exercises: [], showStartScreen: false, template: "" }, ["en"])
+
+    expect(state.showStartScreen).toBe(false)
+    expect(toSharedTestDefinition(state)).toMatchObject({ showStartScreen: false })
+    expect(toSharedTestDefinition({ ...state, showStartScreen: null })).not.toHaveProperty("showStartScreen")
+  })
+
+  it("keeps partial credit only on a graded test", () => {
+    const state = fromSharedTestDefinition({ exercises: [], graded: true, partialCredit: true, template: "" }, ["en"])
+
+    expect(state.partialCredit).toBe(true)
+    expect(toSharedTestDefinition(state)).toMatchObject({ partialCredit: true })
+    expect(toSharedTestDefinition({ ...state, graded: false })).not.toHaveProperty("partialCredit")
+  })
+
   it("writes a final test's count only when it picks (no tag rules) (SLJ-136)", () => {
     const state = fromSharedTestDefinition(
       { exerciseCount: 12, exercises: [], includeCourseExercises: true, template: "" },

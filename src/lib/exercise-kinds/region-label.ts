@@ -11,6 +11,7 @@ import {
   type ExerciseKindRuntime,
   type GradeResult,
   type ResolveForPlayerContext,
+  partShare,
 } from "./types";
 
 const VIEW_BOX_PATTERN = /^-?\d+(\.\d+)?(\s+-?\d+(\.\d+)?){3}$/;
@@ -194,19 +195,19 @@ function grade(
     return { isAnswered: false, isCorrect: false, noAnswerMessageKey: "courseDetails.enterAnswer" };
   }
 
-  const isFullyCorrect = exercise.regions.every((region, index) => {
+  const regionsRight = exercise.regions.filter((region, index) => {
     const typedAnswer = normalizeForComparison(answers[index] ?? "", region.matchCase);
 
     return region.answers.some(
       (accepted) => normalizeForComparison(accepted, region.matchCase) === typedAnswer,
     );
-  });
+  }).length;
 
-  if (isFullyCorrect) {
+  if (regionsRight === exercise.regions.length) {
     return { isCorrect: true };
   }
 
-  return { isAnswered: true, isCorrect: false };
+  return { isAnswered: true, isCorrect: false, share: partShare(regionsRight, 0, exercise.regions.length) };
 }
 
 export const regionLabelExerciseRuntime: ExerciseKindRuntime<

@@ -183,7 +183,7 @@ not as a reason this block type replaces anything.
 **Implemented.** The course-level page of the draft editor
 (`src/pages/draft-detail-page.tsx`, the `selectedNode.id === courseRootId`
 branch) has four page actions, all round icon buttons with their label in a tooltip:
-**Preview course**, **Share**, **Commit new version** (commit without publishing; disabled
+**Open as student**, **Share**, **Commit new version** (commit without publishing; disabled
 with the reason when there's nothing to commit or a section has no lessons) and **Publish**.
 While the draft has changes since a committed version, the course's ⋯ menu also has
 **Discard changes**, in red right above Remove course. It asks first, like the Versions
@@ -197,15 +197,16 @@ Versions panel still publishes or reverts any version, and the Share dialog says
 version the code gives. Commit and Publish both read "are there changes?" from the version
 history (refetched when the editor opens), the same as the Versions panel.
 
-"Preview course" is just a `<Link to={\`/courses/${courseId}\`}>` to the real,
+"Open as student" (once "Preview course") is just a `<Link to={\`/courses/${courseId}\`}>` to the real,
 read-only `CourseDetails` page — no new player-side code. This works because
 `resolvePackageDirectoryCandidates()` (`electron/course-registry.ts`) always
 prefers `draft/course.json` over a cut snapshot when both exist, so
 `/courses/:courseId` and the real lesson/test player routes already
 transparently serve live draft content for a personal (`distribution:
-"local"`) course. A teacher previewing sees exactly what a student would see
+"local"`) course. The teacher sees exactly what a student would see
 if that draft were published right now — same components, same routes, no
-synthetic state (contrast with "Previewing a draft test" below, which *does*
+synthetic state, and their results are kept like a student's (the course page's
+"Clear course progress" removes them) (contrast with "Previewing a draft test" below, which *does*
 need synthetic state, because unsaved in-memory test content has no route to
 serve it from).
 

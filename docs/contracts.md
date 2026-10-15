@@ -309,6 +309,9 @@ files read as practice tests and an older app reads a graded test as one:
   gave its own; otherwise the course's apply);
 - an exercise's `points` (a whole number 1–100), written only when it isn't the default
   10 (`DEFAULT_EXERCISE_POINTS`);
+- a graded test's `partialCredit: true`: an exercise with several parts earns its points'
+  share for the parts right, from each kind's `grade` (`GradeResult.share`, where a wrong
+  pick takes a right one away: `partShare` in `src/lib/exercise-kinds/types.ts`);
 - `course.json`'s `gradeBands`, written only once the teacher changes them.
 
 `gradeBands` is a list of `{ min, color }` (1 to 8, each `min` a distinct whole percent,
@@ -324,6 +327,11 @@ written with tag rules, which pick instead). Such a test is valid with no exerci
 own (`isSharedTestDefinitionShape`); an older app treats it as having none and hides it. The
 pool is built in the player from the course's current tests
 ([src/lib/course-exercise-pool.ts](../src/lib/course-exercise-pool.ts:1)), never stored.
+
+**`showStartScreen` (SLJ-137)** on a test: whether interactive mode opens on a start screen
+(title, description, how many questions, graded and points). Missing means the default: shown
+for a section's own test, not for a lesson's; the editor writes it only when the teacher
+changes that.
 
 **Course ids are opaque and random**: 16 lowercase base32 characters (`a–z`, `2–7`),
 80 random bits, created by `createCourseId` in

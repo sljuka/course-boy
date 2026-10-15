@@ -20,6 +20,8 @@ import { CardDescription, CardTitle } from "@/components/ui/card";
 import { ExerciseStepper } from "@/components/test-player/exercise-stepper";
 import { FinishGradedTestDialog } from "@/components/test-player/finish-graded-test-dialog";
 import { GradedTestResult } from "@/components/test-player/graded-test-result";
+import { PracticeTestResult, type PracticeTestResultValue } from "@/components/test-player/practice-test-result";
+import { TestStartScreen } from "@/components/test-player/test-start-screen";
 import { InteractiveTestPlayer } from "@/components/test-player/interactive-test-player";
 import { TestPlayerPrintHint } from "@/components/test-player/test-player-print-hint";
 import { type ExerciseResult, useTestPlayerState } from "@/components/test-player/use-test-player-state";
@@ -31,6 +33,7 @@ import { buildLessonPath } from "@/lib/course-utils";
 import { recordTestResult, useCourseProgressQuery, useCourseSpree } from "@/lib/course-progress-queries";
 import { isBetterAttempt, scoreGradedAttempt, scoreTestAttempt } from "@/lib/course-progress";
 import { exercisePoints, resolveGradeBands } from "@/lib/grade-bands";
+import { pickCheerKey } from "@/lib/practice-cheers";
 import { buildCourseExercisePool } from "@/lib/course-exercise-pool";
 import { useStartTestsInteractivePreference } from "@/lib/start-tests-interactive-preference";
 import { resolveTestIdForLesson } from "@/lib/course-test-id";
@@ -108,6 +111,20 @@ function TestPlayerContent({
   const [gradedResult, setGradedResult] = useState<{ isNewBest: boolean; maxPoints: number; points: number } | null>(
     null,
   );
+  // The end of a practice test: its results card.
+  const [practiceResult, setPracticeResult] = useState<PracticeTestResultValue | null>(null);
+  // The course spree's best when this attempt started, to tell a new best at
+  // its end (set once the student's progress has loaded).
+  const [spreeBestAtStart, setSpreeBestAtStart] = useState<number | null>(null);
+  if (spreeBestAtStart === null && (progressQuery.data || playerState.isPreview)) {
+    setSpreeBestAtStart(spree.best);
+  }
+  const isShowingResult = gradedResult !== null || practiceResult !== null;
+  // The start screen (SLJ-137): before the first question in interactive
+  // mode, a section test's by default, a lesson's only if the teacher wants
+  // it. Try again doesn't show it again.
+  const [hasStarted, setHasStarted] = useState(false);
+
   // "Finish test" with questions unanswered: the grading, waiting for the
   // student to confirm.
   const [pendingFinish, setPendingFinish] = useState<ExerciseResult[] | null>(null);
@@ -138,14 +155,39 @@ function TestPlayerContent({
   // A lesson's test is kept under its own step id, the one course summaries
   // list it by.
   const stepId = playerState.activeStep.kind === "lesson" ? resolveTestIdForLesson(activeItem.id) : activeItem.id;
+  const showsStartScreen =
+    isInteractiveMode &&
+    !hasStarted &&
+    !isShowingResult &&
+    (activeItem.test?.showStartScreen ?? playerState.activeStep.kind === "test");
 
-  // Continue after a practice test: it's done, with this attempt's first-try
-  // score (SLJ-50). A teacher's preview records nothing.
-  function continueAfterTest() {
+  // The end of a practice test: it's done, with this attempt's first-try
+  // score (SLJ-50), kept the moment the card shows. A teacher's preview
+  // records nothing and has no best to beat.
+  function finishPracticeTest() {
+    const result = scoreTestAttempt(firstTryCorrect);
+    const previous = progressQuery.data?.courses[playerState.courseId]?.steps[stepId]?.test;
+    const previousLongest = previous ? Math.max(previous.best.longestStreak, previous.latest.longestStreak) : null;
     if (!playerState.isPreview) {
-      recordTestResult({ courseId: playerState.courseId, result: scoreTestAttempt(firstTryCorrect), stepId });
+      recordTestResult({ courseId: playerState.courseId, result, stepId });
     }
-    playerState.moveToNextStep();
+    setPracticeResult({
+      cheerKey: pickCheerKey(result.total > 0 && result.correct === result.total),
+      correct: result.correct,
+      isNewBestStreak: !playerState.isPreview && previousLongest !== null && result.longestStreak > previousLongest,
+      longestStreak: result.longestStreak,
+      // Only once there was a best to beat, like the test's own streak.
+      newBestSpree:
+        !playerState.isPreview && spreeBestAtStart && spree.best > spreeBestAtStart ? spree.best : null,
+      total: result.total,
+    });
+  }
+
+  function tryPracticeTestAgain() {
+    restart();
+    setCurrentExerciseIndex(0);
+    setPracticeResult(null);
+    setSpreeBestAtStart(spree.best);
   }
 
   function finishGradedTest() {
@@ -161,10 +203,12 @@ function TestPlayerContent({
   // player from the results card doesn't lose it.
   function completeGradedTest(results: ExerciseResult[]) {
     setPendingFinish(null);
+    const partialCredit = activeItem.test?.partialCredit === true;
     const result = scoreGradedAttempt(
       results.map((exerciseResult, index) => ({
         isCorrect: exerciseResult.isCorrect,
         points: exercisePoints(activeTestExercises[index] ?? {}),
+        ...(partialCredit ? { share: exerciseResult.share } : {}),
       })),
     );
     const previousBest = progressQuery.data?.courses[playerState.courseId]?.steps[stepId]?.test?.best;
@@ -223,7 +267,7 @@ function TestPlayerContent({
 
   // X leaves the test in both modes; interactive mode reaches paper mode
   // through its own two buttons. A graded test's results card has only X.
-  const toolbarActions = gradedResult ? (
+  const toolbarActions = isShowingResult ? (
     <CoursePlayerActions
       isRefreshingAvailable={false}
       onClose={playerState.exitPlayer}
@@ -264,6 +308,7 @@ function TestPlayerContent({
       printControl={
         <div className="flex items-center gap-2">
           <PrintOptionsMenu
+            graded={isGraded}
             mode="test"
             onOpenChange={setIsPrintMenuOpen}
             onPrint={() => window.print()}
@@ -301,7 +346,7 @@ function TestPlayerContent({
       // with the test's own controls — and, in interactive mode, the stepper.
       header={
         !isInteractiveMode &&
-        !gradedResult && (
+        !isShowingResult && (
           <PageHeader
             className="print:hidden"
             title={
@@ -342,13 +387,17 @@ function TestPlayerContent({
       className={isInteractiveMode ? "min-h-full" : undefined}
       // Interactive mode: the course's spree in the corner (SLJ-134).
       actionBarStart={
-        isInteractiveMode && !isGraded && !gradedResult && <CourseSpree best={spree.best} current={spree.current} />
+        isInteractiveMode &&
+        !isGraded &&
+        !isShowingResult &&
+        !showsStartScreen && <CourseSpree best={spree.best} current={spree.current} />
       }
       // Interactive mode steps through one exercise at a time; its stepper
       // sits centred in the action bar.
       actionBarCenter={
         isInteractiveMode &&
-        !gradedResult && (
+        !isShowingResult &&
+        !showsStartScreen && (
           <ExerciseStepper
             currentIndex={currentExerciseIndex}
             onSelectStep={setCurrentExerciseIndex}
@@ -374,6 +423,25 @@ function TestPlayerContent({
             onContinue={playerState.moveToNextStep}
             onTryAgain={tryGradedTestAgain}
             points={gradedResult.points}
+            questionCount={activeTestExercises.length}
+          />
+        ) : practiceResult ? (
+          <PracticeTestResult
+            bands={gradeBands}
+            isPreview={playerState.isPreview}
+            onContinue={playerState.moveToNextStep}
+            onTryAgain={tryPracticeTestAgain}
+            result={practiceResult}
+          />
+        ) : showsStartScreen ? (
+          <TestStartScreen
+            description={activeItem.description}
+            graded={isGraded}
+            maxPoints={activeTestExercises.reduce((sum, exercise) => sum + exercisePoints(exercise), 0)}
+            onStart={() => setHasStarted(true)}
+            partialCredit={activeItem.test?.partialCredit === true}
+            questionCount={activeTestExercises.length}
+            title={activeItem.title}
           />
         ) : isInteractiveMode ? (
           <InteractiveTestPlayer
@@ -383,7 +451,7 @@ function TestPlayerContent({
             exerciseAnswers={exerciseAnswers}
             exerciseResults={exerciseResults}
             graded={isGraded}
-            onContinueAfterExercise={continueAfterTest}
+            onContinueAfterExercise={finishPracticeTest}
             onFinishGradedTest={finishGradedTest}
             onIndexChange={setCurrentExerciseIndex}
             onSubmitExercise={submitSingleExercise}
@@ -393,6 +461,7 @@ function TestPlayerContent({
           <>
             {isPrintHintVisible && (
               <TestPlayerPrintHint
+                graded={isGraded}
                 onDismiss={() => setIsPrintHintVisible(false)}
                 onPrintOptionsChange={setPrintOptions}
                 printOptions={printOptions}
@@ -405,11 +474,12 @@ function TestPlayerContent({
               exerciseResults={exerciseResults}
               graded={isGraded}
               isTestPassed={isTestPassed}
-              onContinueAfterExercise={continueAfterTest}
+              onContinueAfterExercise={finishPracticeTest}
               onFinishGradedTest={finishGradedTest}
               onSubmitExercise={submitExercise}
               onUpdateExerciseAnswer={updateExerciseAnswer}
               printAnswerStyle={printOptions.answerStyle}
+              printPoints={isGraded && printOptions.showPoints}
               printExerciseHintStyle={printOptions.exerciseHintStyle}
               showPrintDecorativeMedia={printOptions.showDecorativeMedia}
               showPrintTestSeparators={printOptions.showTestSeparators}

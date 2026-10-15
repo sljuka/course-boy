@@ -21,6 +21,8 @@ export type ExerciseResult = {
   // False when nothing was given (graded "not answered"): not a try.
   isAnswered: boolean;
   isCorrect: boolean;
+  // How much of it is right, 0 to 1: partial credit in a graded test.
+  share: number;
 };
 
 // Exported for reuse by the inline exercise block
@@ -35,11 +37,11 @@ export function deriveExerciseResult(
   const result = getExerciseKindRuntime(exercise.kind).grade(exercise, instance, rawAnswer);
 
   if (result.isCorrect) {
-    return { feedback: null, hint: null, isAnswered: true, isCorrect: true };
+    return { feedback: null, hint: null, isAnswered: true, isCorrect: true, share: 1 };
   }
 
   if (!result.isAnswered) {
-    return { feedback: t(result.noAnswerMessageKey), hint: null, isAnswered: false, isCorrect: false };
+    return { feedback: t(result.noAnswerMessageKey), hint: null, isAnswered: false, isCorrect: false, share: 0 };
   }
 
   return {
@@ -49,6 +51,7 @@ export function deriveExerciseResult(
     hint: exercise.hint ?? null,
     isAnswered: true,
     isCorrect: false,
+    share: result.share ?? 0,
   };
 }
 
@@ -60,6 +63,7 @@ function createEmptyResults(exercises: CourseExercise[]): ExerciseResult[] {
     hint: null,
     isAnswered: false,
     isCorrect: false,
+    share: 0,
   }));
 }
 
@@ -154,7 +158,7 @@ export function useTestPlayerState(
     );
     setExerciseResults((currentResults) =>
       currentResults.map((result, resultIndex) =>
-        resultIndex === index ? { feedback: null, hint: null, isAnswered: false, isCorrect: false } : result,
+        resultIndex === index ? { feedback: null, hint: null, isAnswered: false, isCorrect: false, share: 0 } : result,
       ),
     );
     setTestFeedback(null);

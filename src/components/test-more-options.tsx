@@ -38,6 +38,7 @@ export function TestMoreOptions({
   courseGradeBands,
   courseTests,
   descriptiveTags,
+  isStandalone,
   open,
   onOpenChange,
   state,
@@ -48,6 +49,9 @@ export function TestMoreOptions({
   // Every test in the course, as saved: a final test's pool (SLJ-136).
   courseTests: CourseTest[];
   descriptiveTags: CourseTagDefinition[];
+  // A section's own test, not a lesson's: shows its start screen unless
+  // turned off (SLJ-137).
+  isStandalone: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   state: TestEditorState;
@@ -96,6 +100,34 @@ export function TestMoreOptions({
                 )}
               </div>
             )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Label>
+              <Checkbox
+                checked={state.showStartScreen ?? isStandalone}
+                data-testid="test-show-start-screen"
+                onCheckedChange={(checked) =>
+                  // Kept only when it differs from the default.
+                  updateState((current) => ({ ...current, showStartScreen: checked === isStandalone ? null : checked }))
+                }
+              />
+              {t("testEditor.showStartScreen")}
+            </Label>
+            <InfoTooltip>{t("testEditor.showStartScreenHelp")}</InfoTooltip>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Label>
+              <Checkbox
+                checked={state.graded && state.partialCredit}
+                data-testid="test-partial-credit"
+                disabled={!state.graded}
+                onCheckedChange={(checked) => updateState((current) => ({ ...current, partialCredit: checked }))}
+              />
+              {t("testEditor.partialCredit")}
+            </Label>
+            <InfoTooltip>{t("testEditor.partialCreditHelp")}</InfoTooltip>
           </div>
 
           <div className="flex flex-col gap-2">

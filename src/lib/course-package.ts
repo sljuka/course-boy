@@ -313,6 +313,12 @@ export type CourseTest = {
   // round robin, unless the tag rules (`structure`) pick.
   includeCourseExercises: boolean;
   exerciseCount?: number;
+  // A graded test's partial credit (SLJ-135): an exercise with several parts
+  // earns its points' share for the parts right (`GradeResult.share`).
+  partialCredit: boolean;
+  // A start screen before the first question in interactive mode (SLJ-137).
+  // Missing: shown for a section test, not for a lesson's (just read).
+  showStartScreen?: boolean;
   // Show the course's mnemonics in this test's prompts (SLJ-37). Off unless
   // the teacher turns it on: a badge could give an answer away.
   showMnemonics?: boolean;
@@ -431,6 +437,10 @@ export type SharedTestDefinition = {
   // missing means only the test's own exercises, all of them.
   includeCourseExercises?: boolean;
   exerciseCount?: number;
+  // See `CourseTest.partialCredit`; missing means all or nothing.
+  partialCredit?: boolean;
+  // See `CourseTest.showStartScreen`; written only when it isn't the default.
+  showStartScreen?: boolean;
   // See `CourseTest.showMnemonics`; missing means off.
   showMnemonics?: boolean;
   structure?: CourseTestStructureRule[];

@@ -174,9 +174,46 @@ button:disabled {
   animation: streak-counter-pulse 400ms ease-out;
 }
 
+/* A celebrated result's border (ui/tracing-border.tsx): drawn from the top
+   centre around the card, then (gold) a glow fades in. */
+@keyframes tracing-border-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes tracing-border-glow {
+  from {
+    filter: none;
+  }
+
+  to {
+    filter: drop-shadow(0 0 6px var(--gold));
+  }
+}
+
+.tracing-border-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: tracing-border-draw 1200ms ease-out both;
+}
+
+.tracing-border-draw.tracing-border-glow {
+  filter: drop-shadow(0 0 6px var(--gold));
+  animation:
+    tracing-border-draw 1200ms ease-out both,
+    tracing-border-glow 500ms ease-out 1200ms both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-fade-in,
-  .streak-counter-pulse {
+  .streak-counter-pulse,
+  .tracing-border-draw,
+  .tracing-border-draw.tracing-border-glow {
     animation: none;
   }
 }

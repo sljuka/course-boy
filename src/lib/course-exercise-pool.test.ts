@@ -15,6 +15,7 @@ const test = (id: string, exerciseIds: string[], extra: Partial<CourseTest> = {}
   graded: false,
   id,
   includeCourseExercises: false,
+  partialCredit: false,
   ...extra,
 });
 const ids = (exercises: CourseExercise[]) => exercises.map((item) => item.id);

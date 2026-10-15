@@ -131,6 +131,7 @@ const EXAMPLE_TEST: CourseTest = {
   graded: false,
   id: "example",
   includeCourseExercises: false,
+  partialCredit: false,
 };
 
 const EXAMPLE_LESSON = { test: EXAMPLE_TEST };

@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import type { CoursePrintOptions } from "@/lib/print-options";
 
 type TestPlayerPrintHintProps = {
+  graded: boolean;
   onDismiss: () => void;
   onPrintOptionsChange: (nextOptions: CoursePrintOptions) => void;
   printOptions: CoursePrintOptions;
 };
 
 export function TestPlayerPrintHint({
+  graded,
   onDismiss,
   onPrintOptionsChange,
   printOptions,
@@ -31,6 +33,7 @@ export function TestPlayerPrintHint({
         </div>
         <div className="flex items-start gap-2">
           <PrintOptionsMenu
+            graded={graded}
             mode="test"
             onPrint={() => window.print()}
             onPrintOptionsChange={onPrintOptionsChange}

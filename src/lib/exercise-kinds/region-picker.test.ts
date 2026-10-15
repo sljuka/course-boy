@@ -180,7 +180,7 @@ describe("region-picker grade", () => {
   it("is incorrect when missing a correct shape", () => {
     expect(
       regionPickerExerciseRuntime.grade(exercise, instance, encodeRegionPickerSelection(["Norway"])),
-    ).toEqual({ isAnswered: true, isCorrect: false });
+    ).toEqual({ isAnswered: true, isCorrect: false, share: 0.5 });
   });
 
   it("is incorrect when an extra, non-correct shape is also selected", () => {
@@ -190,6 +190,6 @@ describe("region-picker grade", () => {
         instance,
         encodeRegionPickerSelection(["Norway", "Sweden", "Finland"]),
       ),
-    ).toEqual({ isAnswered: true, isCorrect: false });
+    ).toEqual({ isAnswered: true, isCorrect: false, share: 0.5 });
   });
 });

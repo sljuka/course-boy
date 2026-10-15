@@ -107,3 +107,17 @@ export function joinGradeBands(bands: GradeBand[], belowColor: GradeBandColor): 
     ...(belowColor === BELOW_GRADE_BANDS_COLOR ? [] : [{ color: belowColor, min: 0 }]),
   ]);
 }
+
+// A short test makes one mistake a big share (1 of 2 is 50%): below this many
+// questions, only a perfect run is celebrated.
+export const MIN_QUESTIONS_FOR_CELEBRATION = 4;
+
+// Whether a result earns the celebrated card border at the end of a test,
+// and in which colour: the band it reaches, if that's one of the two highest
+// (gold and green with the default bands), whatever colours the teacher
+// chose. Null for anything lower, and for a short test that wasn't perfect.
+export function celebrationColor(percent: number, bands: GradeBand[], questionCount: number): GradeBandColor | null {
+  if (questionCount < MIN_QUESTIONS_FOR_CELEBRATION && percent < 100) return null;
+
+  return splitGradeBands(bands).bands.slice(0, 2).find((band) => percent >= band.min)?.color ?? null;
+}

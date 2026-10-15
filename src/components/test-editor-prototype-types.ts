@@ -206,6 +206,11 @@ type TestEditorState = {
   // many to pick round robin (null: all).
   includeCourseExercises: boolean;
   exerciseCount: number | null;
+  // A graded test's partial credit (SLJ-135).
+  partialCredit: boolean;
+  // The start screen (SLJ-137); null: the default (shown for a section
+  // test, not a lesson's).
+  showStartScreen: boolean | null;
   selectedLocale: Locale;
   showMnemonics: boolean;
   useBlueprint: boolean;

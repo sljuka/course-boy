@@ -13,6 +13,7 @@ import {
   type ExerciseKindRuntime,
   type GradeResult,
   type ResolveForPlayerContext,
+  partShare,
 } from "./types";
 
 export function encodeMissingWordAnswers(answers: string[]): string {
@@ -163,7 +164,7 @@ function grade(
 
   const variablesByName = new Map(exercise.variables.map((variable) => [variable.name, variable]));
 
-  const isFullyCorrect = blankSegments.every((segment, index) => {
+  const blanksRight = blankSegments.filter((segment, index) => {
     const variable = variablesByName.get(segment.variableName);
 
     if (!variable) {
@@ -175,13 +176,13 @@ function grade(
     return variable.answers.some(
       (accepted) => normalizeForComparison(accepted, variable.matchCase) === typedAnswer,
     );
-  });
+  }).length;
 
-  if (isFullyCorrect) {
+  if (blanksRight === blankSegments.length) {
     return { isCorrect: true };
   }
 
-  return { isAnswered: true, isCorrect: false };
+  return { isAnswered: true, isCorrect: false, share: partShare(blanksRight, 0, blankSegments.length) };
 }
 
 export const missingWordExerciseRuntime: ExerciseKindRuntime<

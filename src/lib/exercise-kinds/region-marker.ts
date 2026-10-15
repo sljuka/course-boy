@@ -11,6 +11,7 @@ import {
   type ExerciseKindRuntime,
   type GradeResult,
   type ResolveForPlayerContext,
+  partShare,
 } from "./types";
 
 const VIEW_BOX_PATTERN = /^-?\d+(\.\d+)?(\s+-?\d+(\.\d+)?){3}$/;
@@ -193,15 +194,19 @@ function grade(
   // designated region with its own color isn't enough on its own — an extra
   // shape colored on the side (right color or not) makes the answer wrong
   // too, rather than being silently ignored.
-  const isFullyCorrect =
-    markedIds.length === exercise.regions.length &&
-    exercise.regions.every((region) => selections[region.id] === region.color);
+  const regionsRight = exercise.regions.filter((region) => selections[region.id] === region.color).length;
+  const isFullyCorrect = markedIds.length === exercise.regions.length && regionsRight === exercise.regions.length;
 
   if (isFullyCorrect) {
     return { isCorrect: true };
   }
 
-  return { isAnswered: true, isCorrect: false };
+  // Every other mark (a wrong colour, or a shape not asked for) is wrong.
+  return {
+    isAnswered: true,
+    isCorrect: false,
+    share: partShare(regionsRight, markedIds.length - regionsRight, exercise.regions.length),
+  };
 }
 
 export const regionMarkerExerciseRuntime: ExerciseKindRuntime<

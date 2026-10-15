@@ -26,6 +26,7 @@ type PrintOptionsMenuTriggerProps = {
 
 export function PrintOptionsMenu({
   children,
+  graded = false,
   mode,
   onOpenChange,
   onPrint,
@@ -34,6 +35,8 @@ export function PrintOptionsMenu({
   printOptions,
 }: {
   children: React.ReactElement<PrintOptionsMenuTriggerProps>;
+  // A graded test (SLJ-135) can print each question's points.
+  graded?: boolean;
   mode: "lesson" | "test";
   // Optional: controlled from outside, e.g. the test player opening it after
   // switching from interactive mode to paper mode (SLJ-132).
@@ -66,6 +69,7 @@ export function PrintOptionsMenu({
           }
         : undefined,
     decorativeMedia: mode === "test" ? t("exerciseMedia.printDecorative") : undefined,
+    points: mode === "test" && graded ? t("courseDetails.printGradePoints") : undefined,
     header: t("courseDetails.printOptionHeader"),
     printNow: t("courseDetails.printNow"),
     testSeparators:
@@ -127,6 +131,15 @@ export function PrintOptionsMenu({
             onCheckedChange={(checked) => updateOption("showDecorativeMedia", checked)}
           >
             {labels.decorativeMedia}
+          </DropdownMenuCheckboxItem>
+        )}
+        {labels.points && (
+          <DropdownMenuCheckboxItem
+            checked={printOptions.showPoints}
+            data-testid="print-grade-points"
+            onCheckedChange={(checked) => updateOption("showPoints", checked)}
+          >
+            {labels.points}
           </DropdownMenuCheckboxItem>
         )}
         {labels.answerStyle && (

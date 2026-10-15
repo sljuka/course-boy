@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { InlineMarkdown } from "@/components/course-player/inline-markdown";
 import { Badge } from "@/components/ui/badge";
 
@@ -10,13 +12,18 @@ import { Badge } from "@/components/ui/badge";
  */
 export function ExercisePromptHeader({
   index,
+  printPoints,
   promptSource,
   showIndex = true,
 }: {
   index: number;
+  // A graded test's points for it, printed after the prompt (paper only).
+  printPoints?: number;
   promptSource: string;
   showIndex?: boolean;
 }) {
+  const { t } = useTranslation();
+
   return (
     <p className="flex items-start gap-1.5 text-lg font-normal leading-7 text-foreground">
       {showIndex && (
@@ -32,6 +39,11 @@ export function ExercisePromptHeader({
         </Badge>
       )}
       <InlineMarkdown source={promptSource} />
+      {printPoints !== undefined && (
+        <span className="ml-auto hidden shrink-0 pl-2 whitespace-nowrap text-muted-foreground print:inline">
+          ({t("courseDetails.printPoints", { count: printPoints })})
+        </span>
+      )}
     </p>
   );
 }

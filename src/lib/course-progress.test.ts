@@ -65,6 +65,18 @@ describe("scoreGradedAttempt", () => {
   });
 });
 
+describe("scoreGradedAttempt with partial credit", () => {
+  it("gives a wrong exercise its share of the points, rounded", () => {
+    expect(
+      scoreGradedAttempt([
+        { isCorrect: true, points: 10 },
+        { isCorrect: false, points: 10, share: 2 / 3 },
+        { isCorrect: false, points: 30 },
+      ]),
+    ).toMatchObject({ correct: 1, maxPoints: 50, points: 17 });
+  });
+});
+
 describe("isBetterAttempt", () => {
   it("compares graded attempts by their share of the points", () => {
     expect(

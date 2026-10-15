@@ -60,7 +60,11 @@ export function DraftTestPreviewPage() {
     const sharedTest = toSharedTestDefinition(testState);
     // Under its own id, so a final test's pool (SLJ-136) has the version
     // being edited in place of the saved one, not both.
-    const test = resolveSharedTestForPlayer(sharedTest, requestedLocales, selectedNode?.id ?? "preview", courseId);
+    const resolvedTest = resolveSharedTestForPlayer(sharedTest, requestedLocales, selectedNode?.id ?? "preview", courseId);
+    // The preview plays every test as a lesson's: the start screen's default
+    // (SLJ-137) follows what the test really is.
+    const isSectionTest = section?.tests.some((candidate) => candidate.id === testId) ?? false;
+    const test = { ...resolvedTest, showStartScreen: resolvedTest.showStartScreen ?? isSectionTest };
     const closePreview = () =>
       navigate(`/drafts/${courseId}`, { state: selectedNode ? { selectedNode } : undefined });
 
@@ -89,7 +93,7 @@ export function DraftTestPreviewPage() {
       sectionTitle: section?.title ?? "",
       status: "ready",
     };
-  }, [course, courseId, navigate, section?.title, state]);
+  }, [course, courseId, navigate, section, state, testId]);
 
   if (!courseId) {
     return <Navigate replace to="/my-courses" />;
