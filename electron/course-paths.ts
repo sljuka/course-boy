@@ -226,6 +226,13 @@ async function installPublishedBundledCourse(snapshotPath: string, courseRootPat
 // alongside the app, copied into a course's own `assets/` directory on
 // selection so the resulting course stays self-contained (see
 // `applyCourseSvgPreset` below).
+// The shape ids in a bundled map (e.g. "Hungary"), for checking an agent's
+// region-picker answers (SLJ-68 tools).
+export async function readSvgPresetShapeIds(presetId: string): Promise<string[]> {
+  const svg = await fs.readFile(getBundledSvgPresetPath(presetId), "utf8");
+  return [...svg.matchAll(/\sid="([^"]+)"/g)].map((match) => match[1]);
+}
+
 function getBundledSvgPresetPath(presetId: string): string {
   const preset = regionPickerSvgPresets.find((candidate) => candidate.id === presetId);
 

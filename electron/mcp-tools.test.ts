@@ -337,6 +337,28 @@ describe("the tools", () => {
     ).rejects.toThrow('The course has no tag "Nope"');
   });
 
+  it("make a region-picker question on one of the app's maps, checking its countries", async () => {
+    const { courseId } = await call<{ courseId: string }>("create_course", { title: "Maps" });
+    const { sectionId } = await call<{ sectionId: string }>("create_section", { courseId, title: "Europe" });
+    const question = { correct: ["Hungary", "Romania"], map: "europe", prompt: "Click Serbia's neighbours", type: "region_picker" };
+    const { testId } = await call<{ testId: string }>("create_section_test", {
+      courseId,
+      questions: [question],
+      sectionId,
+      title: "Neighbours",
+    });
+
+    expect(await call("read_section_test", { courseId, sectionId, testId })).toMatchObject({ questions: [question] });
+    await expect(
+      call("set_section_test_questions", {
+        courseId,
+        questions: [{ ...question, correct: ["Atlantis"] }],
+        sectionId,
+        testId,
+      }),
+    ).rejects.toThrow('the europe map has no "Atlantis"');
+  });
+
   it("rename a section test in one language, keeping the others", async () => {
     const { courseId } = await call<{ courseId: string }>("create_course", { title: "Days" });
     const { sectionId } = await call<{ sectionId: string }>("create_section", { courseId, title: "Week" });

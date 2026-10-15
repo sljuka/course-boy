@@ -11,6 +11,7 @@ import type {
   SharedTestExerciseDefinition,
 } from "../src/lib/course-package";
 import { isValidCourseId } from "../src/lib/course-id";
+import { regionPickerSvgPresets } from "../src/lib/region-picker-svg-presets";
 import { type CourseTagDefinition, createCourseTagDefinition, courseTagColorOptions } from "../src/lib/course-tags";
 import { isExerciseCount } from "../src/lib/course-exercise-pool";
 import { DEFAULT_EXERCISE_POINTS, MAX_EXERCISE_POINTS, MIN_EXERCISE_POINTS } from "../src/lib/grade-bands";
@@ -25,8 +26,10 @@ import {
   createLocalCourseSectionTest,
   cutLocalCourseVersion,
   ensureLocalCoursesRoot,
+  applyCourseSvgPreset,
   getLocalCourseLessonTestDraft,
   getLocalCourseSectionTestDraft,
+  readSvgPresetShapeIds,
   updateLocalCourseDraftMetadata,
   updateLocalCourseLessonContent,
   updateLocalCourseLessonMetadata,
@@ -174,6 +177,18 @@ const questionSchema = z.discriminatedUnion("type", [
     points,
     tags,
   }),
+  z.object({
+    type: z.literal("region_picker"),
+    prompt: z.string().min(1).describe('The instruction, e.g. "Click the countries that border Serbia"'),
+    map: z.enum(regionPickerSvgPresets.map((preset) => preset.id) as [string, ...string[]]).describe("One of the app's maps"),
+    correct: z
+      .array(z.string().min(1))
+      .min(1)
+      .describe('The shapes to pick: on the maps, country names as in the map ("Hungary", "GreatBritain", "CzechRepublic")'),
+    hint: z.string().optional(),
+    points,
+    tags,
+  }),
 ]);
 
 type Question = z.infer<typeof questionSchema>;
@@ -195,14 +210,20 @@ export type TestSettings = Pick<
 // `kept`: the test's settings (those of a test being replaced, with what the
 // call changes). `courseTags`: the course's, to turn questions' tag labels
 // into the ids the test stores.
+// `mapFiles`: each map a region_picker question uses, as its file in the
+// course (`prepareMaps`).
 export function testFromQuestions(
   questions: Question[],
   locale: Locale,
   kept: TestSettings = {},
   courseTags: CourseTagDefinition[] = [],
+  mapFiles: Record<string, string> = {},
 ): SharedTestDefinition {
   const exercises = questions.map((question): SharedTestExerciseDefinition => {
-    const exercise = { ...exerciseFromQuestion(question, locale), tags: tagIds(question.tags ?? [], courseTags) };
+    const exercise = {
+      ...exerciseFromQuestion(question, locale, mapFiles),
+      tags: tagIds(question.tags ?? [], courseTags),
+    };
     return question.points === undefined ? exercise : { ...exercise, points: question.points };
   });
 
@@ -235,8 +256,24 @@ function tagIds(labels: string[], courseTags: CourseTagDefinition[]): string[] {
   });
 }
 
-function exerciseFromQuestion(question: Question, locale: Locale): SharedTestExerciseDefinition {
+function exerciseFromQuestion(
+  question: Question,
+  locale: Locale,
+  mapFiles: Record<string, string>,
+): SharedTestExerciseDefinition {
   const hint = question.hint?.trim() ? { hint: question.hint.trim() } : {};
+
+  if (question.type === "region_picker") {
+    const file = mapFiles[question.map];
+    if (!file) throw new Error(`"${question.prompt}": the map "${question.map}" isn't in the course`);
+    return {
+      correctShapeIds: [...new Set(question.correct)],
+      kind: "region-picker",
+      locales: { [locale]: { ...hint, prompt: question.prompt } },
+      svgAssetFilename: file,
+      tags: [],
+    };
+  }
 
   if (question.type === "multiple_choice") {
     const correct = [...new Set(question.correct)].sort((left, right) => left - right);
@@ -336,6 +373,18 @@ export function testSettingsFromTest(test: CourseTest | null, courseTags: Course
 }
 
 function questionFromExercise(exercise: CourseExercise): Record<string, unknown> {
+  if (exercise.kind === "region-picker") {
+    const map = regionPickerSvgPresets.find((preset) => exercise.svgAssetUrl.includes(`preset-${preset.id}-`))?.id;
+    if (map) {
+      return {
+        correct: exercise.correctShapeIds,
+        map,
+        prompt: exercise.prompt,
+        type: "region_picker",
+        ...(exercise.hint ? { hint: exercise.hint } : {}),
+      };
+    }
+  }
   if (exercise.kind === "multiple-choice") {
     return {
       correct: exercise.correctOptionIndexes,
@@ -482,6 +531,22 @@ function courseTagsFrom(
     next.push(known ? { ...known, color, label } : createCourseTagDefinition(label, color, [...existing, ...next]));
   }
   return next;
+}
+
+// The maps region_picker questions use, put in the course (once each) and
+// their answers checked against the map's shapes.
+async function prepareMaps(courseId: string, questions: Question[]): Promise<Record<string, string>> {
+  const files: Record<string, string> = {};
+  for (const question of questions) {
+    if (question.type !== "region_picker") continue;
+    const shapes = new Set(await readSvgPresetShapeIds(question.map));
+    const unknown = question.correct.filter((id) => !shapes.has(id));
+    if (unknown.length > 0) {
+      throw new Error(`"${question.prompt}": the ${question.map} map has no "${unknown[0]}"`);
+    }
+    files[question.map] ??= (await applyCourseSvgPreset({ courseId, presetId: question.map })).path;
+  }
+  return files;
 }
 
 function result(value: unknown) {
@@ -865,6 +930,7 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
             locale,
             resolveTestSettings(previous, args.graded, args.settings, courseTags),
             courseTags,
+            await prepareMaps(args.courseId, args.questions),
           ),
         });
         return null;
@@ -905,6 +971,7 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
           locale,
           resolveTestSettings(null, args.graded, args.settings, courseTags),
           courseTags,
+          await prepareMaps(args.courseId, args.questions),
         );
         const created = await createLocalCourseSectionTest({ courseId: args.courseId, sectionId: args.sectionId, title: args.title });
         if (args.description?.trim()) {
@@ -952,6 +1019,7 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
             locale,
             resolveTestSettings(previous, args.graded, args.settings, courseTags),
             courseTags,
+            await prepareMaps(args.courseId, args.questions),
           ),
           testId: args.testId,
         });

@@ -870,7 +870,9 @@ besides IPC, and the same rules hold:
   a test `graded` (SLJ-135); replacing a test's questions keeps whether it's graded, its
   own grade bands, whether it includes the course's other tests (and how many) and its
   mnemonics setting unless the call sets `graded`. A `number` question can give `answers`
-  (each a label and a formula) instead of one `answer`: several solutions (SLJ-139).
+  (each a label and a formula) instead of one `answer`: several solutions (SLJ-139). A `region_picker`
+  question picks shapes on one of the app's maps (`regionPickerSvgPresets`, by country
+  name); the map is copied into the course like the editor's presets.
   `update_course` sets the course's tags (by label; a known label keeps its id), questions
   carry tags by label, and the test tools take `settings` (graded, partial credit,
   randomization rules by tag label, a final test's `includeCourseExercises` and
