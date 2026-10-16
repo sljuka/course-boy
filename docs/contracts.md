@@ -905,7 +905,8 @@ besides IPC, and the same rules hold:
   `update_course` sets the course's tags (by label; a known label keeps its id), questions
   carry tags by label, and the test tools take `settings` (graded, partial credit,
   randomization rules by tag label, a final test's `includeCourseExercises` and
-  `exerciseCount`, the start screen, the summary after a graded test); a setting left out
+  `exerciseCount`, the start screen, the summary after a graded test, showing the correct
+  answer in a practice test); a setting left out
   stays as it was. Section tests
   take a `description` (the per-language one students see). `add_image` copies an image file
   from this computer into the course (`uploadCourseAssetFromBytes`, image types only, at

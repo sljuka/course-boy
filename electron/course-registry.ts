@@ -391,6 +391,11 @@ function isSharedTestDefinitionShape(
     return false;
   }
 
+  // Showing the correct answer in a practice test (SLJ-141).
+  if (typeof test.allowShowAnswer !== "undefined" && typeof test.allowShowAnswer !== "boolean") {
+    return false;
+  }
+
   if (typeof test.exerciseCount !== "undefined" && !isExerciseCount(test.exerciseCount)) {
     return false;
   }

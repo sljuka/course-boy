@@ -1344,6 +1344,79 @@ describe('missing words on paper', () => {
   })
 })
 
+// SLJ-141: in a practice test, a wrong answer can be tried again or its
+// correct answer shown, which lets the student move on; the teacher can turn
+// that off.
+describe('show the correct answer', () => {
+  it('shows it after a wrong answer, moves on, and is gone when the teacher turns it off', async () => {
+    const { page } = harness
+    const exercise = (prompt, formula) => ({
+      kind: 'numeric',
+      locales: { en: { prompt } },
+      solution: { formula, precision: 0 },
+      tags: [],
+      variables: {},
+    })
+    const exercises = [exercise('What is 5 plus 2?', '7'), exercise('What is 1 plus 1?', '2')]
+    const ids = await page.evaluate(async (exercises) => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Show Answer' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Sums' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Sums quiz' })
+      await window.courses.saveSectionTest({ courseId, sectionId, test: { exercises, template: '' }, testId })
+      return { courseId, sectionId, testId }
+    }, exercises)
+    const openTest = async () => {
+      await page.evaluate(() => {
+        location.hash = '#/'
+      })
+      await page.locator('[data-testid="course-search"]').waitFor()
+      await page.evaluate(({ courseId, testId }) => {
+        location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+      }, ids)
+      await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    }
+    const answer = page.getByPlaceholder('Type the result')
+    const showAnswer = page.locator('[data-testid="show-correct-answer"]')
+    const check = () => page.getByRole('button', { exact: true, name: 'Check answer' }).click()
+
+    await openTest()
+    await answer.waitFor({ timeout: 15_000 })
+    // Not before a first try.
+    expect(await showAnswer.count()).toBe(0)
+    await answer.fill('8')
+    await check()
+    await showAnswer.waitFor()
+    // Trying again is still possible.
+    await answer.fill('9')
+    await check()
+    await showAnswer.click()
+    expect(await page.locator('[data-testid="exercise-solution-value"]').innerText()).toBe('7')
+    await page.getByRole('button', { exact: true, name: 'Continue' }).click()
+    await waitForText(page, 'What is 1 plus 1?')
+
+    // The teacher turns it off: a wrong answer only says so. (Saved behind
+    // the app's back here, so a reload drops its cached course.)
+    await page.evaluate(
+      ({ courseId, sectionId, testId, exercises }) =>
+        window.courses.saveSectionTest({ courseId, sectionId, test: { allowShowAnswer: false, exercises, template: '' }, testId }),
+      { ...ids, exercises },
+    )
+    await page.reload()
+    await waitFor(page, () => (document.getElementById('root')?.childElementCount ?? 0) > 0)
+    await openTest()
+    await answer.waitFor({ timeout: 15_000 })
+    await answer.fill('8')
+    await check()
+    await waitForText(page, 'That answer is not correct.')
+    expect(await showAnswer.count()).toBe(0)
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+  })
+})
+
 // SLJ-139: a numeric exercise with several solutions has a labelled box for
 // each: checking with one empty asks for all, a wrong one is marked, both
 // right moves on.

@@ -218,6 +218,7 @@ export type TestSettings = Pick<
   | "showMnemonics"
   | "showStartScreen"
   | "showSummary"
+  | "allowShowAnswer"
   | "structure"
 >;
 
@@ -254,6 +255,7 @@ export function testFromQuestions(
     ...(kept.showStartScreen !== undefined ? { showStartScreen: kept.showStartScreen } : {}),
     ...(kept.structure ? { structure: kept.structure } : {}),
     ...(kept.graded && kept.showSummary === false ? { showSummary: false } : {}),
+    ...(!kept.graded && kept.allowShowAnswer === false ? { allowShowAnswer: false } : {}),
     template: "",
   };
 }
@@ -401,6 +403,7 @@ export function testSettingsFromTest(test: CourseTest | null, courseTags: Course
     ...(test.exerciseCount ? { exerciseCount: test.exerciseCount } : {}),
     ...(test.showStartScreen !== undefined ? { showStartScreen: test.showStartScreen } : {}),
     ...(test.showSummary === false ? { showSummary: false } : {}),
+    ...(test.allowShowAnswer === false ? { allowShowAnswer: false } : {}),
   };
 }
 
@@ -510,6 +513,10 @@ const settings = z
       .boolean()
       .optional()
       .describe("Graded only: after the test, a summary of the student's answers and the correct ones (default on)"),
+    allowShowAnswer: z
+      .boolean()
+      .optional()
+      .describe("Practice only: after a wrong answer, the student can show the correct one and move on (default on)"),
   })
   .optional()
   .describe("The test's settings; each one omitted stays as it was");
@@ -545,6 +552,7 @@ function resolveTestSettings(
     showMnemonics: previous?.showMnemonics,
     showStartScreen: input?.showStartScreen ?? previous?.showStartScreen,
     showSummary: input?.showSummary ?? previous?.showSummary,
+    allowShowAnswer: input?.allowShowAnswer ?? previous?.allowShowAnswer,
     structure,
   };
 }

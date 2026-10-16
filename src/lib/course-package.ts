@@ -331,6 +331,9 @@ export type CourseTest = {
   // A graded test's summary of answers after the test (SLJ-140); missing
   // means shown.
   showSummary?: boolean;
+  // A practice test: after a wrong answer, the student can show the correct
+  // one and move on (SLJ-141); missing means allowed.
+  allowShowAnswer?: boolean;
   // Show the course's mnemonics in this test's prompts (SLJ-37). Off unless
   // the teacher turns it on: a badge could give an answer away.
   showMnemonics?: boolean;
@@ -468,6 +471,8 @@ export type SharedTestDefinition = {
   showStartScreen?: boolean;
   // See `CourseTest.showSummary`; written only as `false`.
   showSummary?: boolean;
+  // See `CourseTest.allowShowAnswer`; written only as `false`.
+  allowShowAnswer?: boolean;
   // See `CourseTest.showMnemonics`; missing means off.
   showMnemonics?: boolean;
   structure?: CourseTestStructureRule[];

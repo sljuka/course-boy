@@ -73,6 +73,8 @@
     "serbianElementarySchoolDescription": "Teme iz matematike za prvi razred usklađene sa nastavom srpske osnovne škole."
   },
   "courseDetails": {
+    "showCorrectAnswer": "Prikaži tačan odgovor",
+    "correctAnswerShown": "Tačan odgovor:",
     "answerLabel": "Tvoj odgovor",
     "answerPlaceholder": "Unesi rezultat",
     "checkAnswer": "Proveri odgovor",
@@ -556,6 +558,8 @@
     "myChannel": "Moj kanal"
   },
   "testEditor": {
+    "allowShowAnswer": "Učenik može da vidi tačan odgovor",
+    "allowShowAnswerHelp": "Samo u testu za vežbu: posle netačnog odgovora učenik može da pokuša ponovo ili da vidi tačan odgovor i nastavi. I dalje se računa kao netačno. Isključeno, pokušava dok ne bude tačno.",
     "tagsTooltip": "Oznake su korisne za obeležavanje zadataka. Koriste se za nasumičan izbor zadataka. Oznake se podešavaju u korenskom folderu kursa.",
     "moreOptions": "Prikaži još opcija",
     "testType": "Vrsta testa",

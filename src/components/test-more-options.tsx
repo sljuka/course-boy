@@ -120,6 +120,19 @@ export function TestMoreOptions({
           <div className="flex items-center gap-2">
             <Label>
               <Checkbox
+                checked={!state.graded && state.allowShowAnswer}
+                data-testid="test-allow-show-answer"
+                disabled={state.graded}
+                onCheckedChange={(checked) => updateState((current) => ({ ...current, allowShowAnswer: checked }))}
+              />
+              {t("testEditor.allowShowAnswer")}
+            </Label>
+            <InfoTooltip>{t("testEditor.allowShowAnswerHelp")}</InfoTooltip>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Label>
+              <Checkbox
                 checked={state.graded && state.showSummary}
                 data-testid="test-show-summary"
                 disabled={!state.graded}

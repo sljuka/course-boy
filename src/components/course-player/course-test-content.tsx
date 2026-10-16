@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import { ExerciseMediaView } from "@/components/course-player/exercise-media-view";
 import { getExerciseMedia } from "@/lib/exercise-media";
+import { ExerciseSolution } from "@/components/test-player/exercise-solution";
 import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
 import { InlineMarkdown } from "@/components/course-player/inline-markdown";
 import { Button } from "@/components/ui/button";
@@ -21,30 +22,39 @@ import { cn } from "@/lib/utils";
 
 type ExerciseResult = {
   feedback: string | null;
+  // False when nothing was given; incomplete when some of several boxes are
+  // empty: neither is a wrong answer that can show the correct one.
+  isAnswered?: boolean;
   isCorrect: boolean;
+  isIncomplete?: boolean;
   parts?: boolean[] | null;
 };
 
 export const CourseTestContent = ({
   activeTestExercises,
   activeTestInstances,
+  allowShowAnswer = false,
   exerciseAnswers,
   exerciseResults,
   graded = false,
   isTestPassed,
   onContinueAfterExercise,
   onFinishGradedTest,
+  onRevealAnswer,
   onSubmitExercise,
   onUpdateExerciseAnswer,
   printAnswerStyle,
   printExerciseHintStyle,
   printPoints = false,
   showPrintDecorativeMedia = false,
+  revealedAnswers = [],
   showPrintTestSeparators,
   testFeedback,
 }: {
   activeTestExercises: CourseExercise[];
   activeTestInstances: ExerciseInstance[];
+  // A practice test (SLJ-141): a wrong answer can show the correct one.
+  allowShowAnswer?: boolean;
   exerciseAnswers: string[];
   exerciseResults: ExerciseResult[];
   // A graded test (SLJ-135): "Finish test" instead of "Check answers".
@@ -53,12 +63,14 @@ export const CourseTestContent = ({
   onContinueAfterExercise: () => void;
   // `confirm`: ask first (Enter does, so a stray one can't end the test).
   onFinishGradedTest?: (options: { confirm: boolean }) => void;
+  onRevealAnswer?: (index: number) => void;
   onSubmitExercise: () => void;
   onUpdateExerciseAnswer: (index: number, value: string) => void;
   printAnswerStyle: CoursePrintAnswerStyle;
   printExerciseHintStyle: CoursePrintExerciseHintStyle;
   // Each question's points on paper (a graded test, SLJ-135).
   printPoints?: boolean;
+  revealedAnswers?: boolean[];
   showPrintDecorativeMedia?: boolean;
   showPrintTestSeparators: boolean;
   testFeedback: string | null;
@@ -184,10 +196,28 @@ export const CourseTestContent = ({
                   )
                 );
               })()}
-              {exerciseResult?.feedback && (
-                <div className="text-sm font-medium text-destructive print:hidden">
-                  {exerciseResult.feedback}
+              {!graded && revealedAnswers[index] ? (
+                <div className="print:hidden">
+                  <ExerciseSolution answer={exerciseAnswers[index] ?? ""} exercise={exercise} instance={exerciseInstance} />
                 </div>
+              ) : (
+                exerciseResult?.feedback && (
+                  <div className="flex flex-wrap items-center gap-3 print:hidden">
+                    <span className="text-sm font-medium text-destructive">{exerciseResult.feedback}</span>
+                    {/* A wrong answer, not an empty or incomplete one (SLJ-141). */}
+                    {allowShowAnswer && !graded && exerciseResult.isAnswered !== false && !exerciseResult.isIncomplete && (
+                      <Button
+                        data-testid="show-correct-answer"
+                        onClick={() => onRevealAnswer?.(index)}
+                        size="sm"
+                        type="button"
+                        variant="secondary"
+                      >
+                        {t("courseDetails.showCorrectAnswer")}
+                      </Button>
+                    )}
+                  </div>
+                )
               )}
             </div>
           );

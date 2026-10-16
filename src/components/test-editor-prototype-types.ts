@@ -218,6 +218,8 @@ type TestEditorState = {
   showStartScreen: boolean | null;
   // A graded test's summary after the test (SLJ-140).
   showSummary: boolean;
+  // A practice test: showing the correct answer after a wrong one (SLJ-141).
+  allowShowAnswer: boolean;
   selectedLocale: Locale;
   showMnemonics: boolean;
   useBlueprint: boolean;

@@ -130,6 +130,10 @@ export function useTestPlayerState(
   // (null). The score kept for the student (SLJ-50) counts first tries only;
   // a fresh set of exercises (Refresh) starts a new attempt.
   const [firstTryCorrect, setFirstTryCorrect] = useState<(boolean | null)[]>([]);
+  // Exercises whose correct answer the student chose to see after a wrong
+  // one (SLJ-141): done, like a right answer, so the test can go on; the
+  // first try still counts as wrong.
+  const [revealedAnswers, setRevealedAnswers] = useState<boolean[]>([]);
   const [isPrintHintVisible, setIsPrintHintVisible] = useState(true);
   const [isInteractiveMode, setIsInteractiveMode] = useState(startInteractive);
 
@@ -139,6 +143,7 @@ export function useTestPlayerState(
     setExerciseAnswers([]);
     setExerciseResults([]);
     setFirstTryCorrect([]);
+    setRevealedAnswers([]);
     setTestFeedback(null);
     setIsTestPassed(false);
   }
@@ -151,6 +156,22 @@ export function useTestPlayerState(
     setExerciseAnswers(exercises.map(() => ""));
     setExerciseResults(createEmptyResults(exercises));
     setFirstTryCorrect(exercises.map(() => null));
+    setRevealedAnswers(exercises.map(() => false));
+  }
+
+  // Every exercise either right or with its answer shown.
+  function isAllDone(results: ExerciseResult[], revealed: boolean[]) {
+    return results.length > 0 && results.every((result, index) => result.isCorrect || revealed[index] === true);
+  }
+
+  // "Show correct answer" (SLJ-141): only after a wrong answer, which is
+  // already recorded as the first try.
+  function revealAnswer(index: number) {
+    const nextRevealed = revealedAnswers.map((revealed, revealedIndex) => revealed || revealedIndex === index);
+    setRevealedAnswers(nextRevealed);
+    const allDone = isAllDone(exerciseResults, nextRevealed);
+    setIsTestPassed(allDone);
+    if (allDone) setTestFeedback(null);
   }
 
   function recordFirstTries(results: { index: number; isCorrect: boolean }[]) {
@@ -233,7 +254,7 @@ export function useTestPlayerState(
 
     recordFirstTries(nextResults.map((result, index) => ({ index, isCorrect: result.isCorrect })));
     setExerciseResults(nextResults);
-    setIsTestPassed(allCorrect);
+    setIsTestPassed(isAllDone(nextResults, revealedAnswers));
     setTestFeedback(
       allCorrect
         ? t("courseDetails.correctAnswer")
@@ -270,11 +291,10 @@ export function useTestPlayerState(
       const nextResults = currentResults.map((currentResult, resultIndex) =>
         resultIndex === index ? result : currentResult,
       );
-      const allCorrect =
-        nextResults.length > 0 && nextResults.every((nextResult) => nextResult.isCorrect);
+      const allDone = isAllDone(nextResults, revealedAnswers);
 
-      setIsTestPassed(allCorrect);
-      setTestFeedback(allCorrect ? t("courseDetails.correctAnswer") : null);
+      setIsTestPassed(allDone);
+      setTestFeedback(allDone ? t("courseDetails.correctAnswer") : null);
 
       return nextResults;
     });
@@ -292,6 +312,8 @@ export function useTestPlayerState(
     isTestPassed,
     refreshExercises,
     restart,
+    revealAnswer,
+    revealedAnswers,
     setIsInteractiveMode,
     setIsPrintHintVisible,
     submitExercise,

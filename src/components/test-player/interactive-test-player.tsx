@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ExerciseMediaView } from "@/components/course-player/exercise-media-view";
 import { getExerciseMedia } from "@/lib/exercise-media";
 import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
+import { ExerciseSolution } from "@/components/test-player/exercise-solution";
 import { getExerciseKindEditor } from "@/components/exercise-kinds/registry";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ import { cn } from "@/lib/utils";
 export function InteractiveTestPlayer({
   activeTestExercises,
   activeTestInstances,
+  allowShowAnswer = false,
   currentIndex,
   exerciseAnswers,
   exerciseResults,
@@ -32,11 +34,16 @@ export function InteractiveTestPlayer({
   onContinueAfterExercise,
   onFinishGradedTest,
   onIndexChange,
+  onRevealAnswer,
   onSubmitExercise,
   onUpdateExerciseAnswer,
+  revealedAnswers = [],
 }: {
   activeTestExercises: CourseExercise[];
   activeTestInstances: ExerciseInstance[];
+  // A practice test (SLJ-141): after a wrong answer, "Show correct answer"
+  // shows it and lets the student move on.
+  allowShowAnswer?: boolean;
   currentIndex: number;
   exerciseAnswers: string[];
   exerciseResults: ExerciseResult[];
@@ -47,8 +54,10 @@ export function InteractiveTestPlayer({
   // `confirm`: ask first (Enter does, so a stray one can't end the test).
   onFinishGradedTest?: (options: { confirm: boolean }) => void;
   onIndexChange: (index: number) => void;
+  onRevealAnswer?: (index: number) => void;
   onSubmitExercise: (index: number) => void;
   onUpdateExerciseAnswer: (index: number, value: string) => void;
+  revealedAnswers?: boolean[];
 }) {
   const { t } = useTranslation();
   const answerContainerRef = useRef<HTMLDivElement>(null);
@@ -75,8 +84,13 @@ export function InteractiveTestPlayer({
   const result = exerciseResults[currentIndex];
   const isLast = currentIndex === total - 1;
   const hasSubmitted = !graded && (Boolean(result?.isCorrect) || result?.feedback != null);
-  // A practice test moves on only after a correct answer.
-  const isPrimaryActionDisabled = hasSubmitted && !result?.isCorrect;
+  // Its correct answer shown (SLJ-141): done, like a right answer.
+  const isRevealed = !graded && revealedAnswers[currentIndex] === true;
+  // A wrong answer (not an empty or incomplete one) can show the correct one.
+  const canReveal =
+    allowShowAnswer && !isRevealed && hasSubmitted && !result?.isCorrect && result?.isAnswered && !result.isIncomplete;
+  // A practice test moves on only after a correct answer, or the correct one shown.
+  const isPrimaryActionDisabled = !isRevealed && hasSubmitted && !result?.isCorrect;
 
   function handlePrimaryAction() {
     if (graded) {
@@ -85,7 +99,7 @@ export function InteractiveTestPlayer({
       return;
     }
 
-    if (!hasSubmitted) {
+    if (!hasSubmitted && !isRevealed) {
       onSubmitExercise(currentIndex);
       return;
     }
@@ -207,7 +221,9 @@ export function InteractiveTestPlayer({
             the exercise has one) stays hidden behind its own button instead
             of showing right away, so a student who wants to keep trying
             isn't handed the answer unasked. */}
-        {hasSubmitted && !result.isCorrect && (
+        {isRevealed ? (
+          <ExerciseSolution answer={exerciseAnswers[currentIndex] ?? ""} exercise={exercise} instance={instance} />
+        ) : hasSubmitted && !result.isCorrect && (
           <Alert variant="warning">
             <AlertDescription>
               {result.hint && !isHintRevealed ? (
@@ -230,6 +246,17 @@ export function InteractiveTestPlayer({
         )}
       </div>
       <div className="flex w-full items-center justify-end gap-3">
+        {canReveal && (
+          <Button
+            data-testid="show-correct-answer"
+            onClick={() => onRevealAnswer?.(currentIndex)}
+            size="lg"
+            type="button"
+            variant="ghost"
+          >
+            {t("courseDetails.showCorrectAnswer")}
+          </Button>
+        )}
         <Button
           disabled={isPrimaryActionDisabled}
           onClick={handlePrimaryAction}
@@ -241,7 +268,7 @@ export function InteractiveTestPlayer({
             ? isLast
               ? t("courseDetails.finishTest")
               : t("courseDetails.nextQuestion")
-            : result.isCorrect
+            : result.isCorrect || isRevealed
               ? t("continue")
               : t("courseDetails.checkAnswer")}
         </Button>

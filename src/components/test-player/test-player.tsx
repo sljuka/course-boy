@@ -117,6 +117,9 @@ function TestPlayerContent({
   const progressQuery = useCourseProgressQuery();
   // A graded test (SLJ-135): no feedback while it's taken, a score at the end.
   const isGraded = activeItem.test?.graded === true;
+  // A practice test: "Show correct answer" after a wrong one, unless the
+  // teacher turned it off (SLJ-141).
+  const allowShowAnswer = !isGraded && activeItem.test?.allowShowAnswer !== false;
   const gradeBands = resolveGradeBands(activeItem.test?.gradeBands, playerState.courseGradeBands);
   const [gradedResult, setGradedResult] = useState<{
     isNewBest: boolean;
@@ -156,6 +159,8 @@ function TestPlayerContent({
     isTestPassed,
     refreshExercises,
     restart,
+    revealAnswer,
+    revealedAnswers,
     setIsInteractiveMode,
     setIsPrintHintVisible,
     submitExercise,
@@ -484,6 +489,7 @@ function TestPlayerContent({
           <InteractiveTestPlayer
             activeTestExercises={activeTestExercises}
             activeTestInstances={activeTestInstances}
+            allowShowAnswer={allowShowAnswer}
             currentIndex={currentExerciseIndex}
             exerciseAnswers={exerciseAnswers}
             exerciseResults={exerciseResults}
@@ -491,8 +497,10 @@ function TestPlayerContent({
             onContinueAfterExercise={finishPracticeTest}
             onFinishGradedTest={finishGradedTest}
             onIndexChange={setCurrentExerciseIndex}
+            onRevealAnswer={revealAnswer}
             onSubmitExercise={submitSingleExercise}
             onUpdateExerciseAnswer={updateExerciseAnswer}
+            revealedAnswers={revealedAnswers}
           />
         ) : (
           <>
@@ -507,17 +515,20 @@ function TestPlayerContent({
             <CourseTestContent
               activeTestExercises={activeTestExercises}
               activeTestInstances={activeTestInstances}
+              allowShowAnswer={allowShowAnswer}
               exerciseAnswers={exerciseAnswers}
               exerciseResults={exerciseResults}
               graded={isGraded}
               isTestPassed={isTestPassed}
               onContinueAfterExercise={finishPracticeTest}
               onFinishGradedTest={finishGradedTest}
+              onRevealAnswer={revealAnswer}
               onSubmitExercise={submitExercise}
               onUpdateExerciseAnswer={updateExerciseAnswer}
               printAnswerStyle={printOptions.answerStyle}
               printPoints={isGraded && printOptions.showPoints}
               printExerciseHintStyle={printOptions.exerciseHintStyle}
+              revealedAnswers={revealedAnswers}
               showPrintDecorativeMedia={printOptions.showDecorativeMedia}
               showPrintTestSeparators={printOptions.showTestSeparators}
               testFeedback={testFeedback}

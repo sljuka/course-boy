@@ -30,6 +30,7 @@ function createInitialState(locales: Locale[]): TestEditorState {
     partialCredit: false,
     showStartScreen: null,
     showSummary: true,
+    allowShowAnswer: true,
     selectedLocale: locales[0] ?? "en",
     showMnemonics: false,
     useBlueprint: false,
@@ -207,6 +208,7 @@ function normalizeDraftTestData(
           partialCredit: draftState.partialCredit === true,
           showStartScreen: typeof draftState.showStartScreen === "boolean" ? draftState.showStartScreen : null,
           showSummary: draftState.showSummary !== false,
+          allowShowAnswer: draftState.allowShowAnswer !== false,
           showMnemonics: draftState.showMnemonics === true,
         } satisfies TestEditorState,
       ];
@@ -250,7 +252,8 @@ function hasTestMoreOptionsSet(state: TestEditorState): boolean {
     state.showMnemonics ||
     state.showStartScreen !== null ||
     state.includeCourseExercises ||
-    (state.graded && (state.gradeBands !== null || state.partialCredit || !state.showSummary))
+    (state.graded && (state.gradeBands !== null || state.partialCredit || !state.showSummary)) ||
+    (!state.graded && !state.allowShowAnswer)
   );
 }
 
