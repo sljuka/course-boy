@@ -81,9 +81,9 @@ const NOTES: Record<
     mallet: true,
     notes: [
       { at: 0, gain: 0.9, length: 0.26, semitones: 11 }, // 11 9 good
-      { at: 0.12, gain: 0.6, length: 0.26, semitones: 7 },
-      { at: 0.23, gain: 0.4, length: 0.3, semitones: 11 },
-      { at: 0.3, gain: 0.3, length: 0.25, semitones: 7 },
+      { at: 0.12, gain: 0.6, length: 0.26, semitones: 9 },
+      { at: 0.23, gain: 0.4, length: 0.26, semitones: 11 },
+      { at: 0.3, gain: 0.3, length: 0.4, semitones: 7 },
       // An echo, fading away.
       { at: 1.33, gain: 0.1, length: 0.04, semitones: 1 },
       { at: 1.41, gain: 0.2, length: 0.04, semitones: 2 },
