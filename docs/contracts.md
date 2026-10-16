@@ -786,6 +786,25 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   before the page changes, collapsed sections) is rendered once by the layout with
   `usePersistentPanelContent` (`src/lib/use-persistent-panel-content.tsx`), and the panel
   gets its `outlet`, which only moves that one element between pages (SLJ-131).
+- **Tabs** (SLJ-12). The title bar's tabs come after its buttons
+  (`AppTabBar`, built from `WindowTitleBarTabs`/`WindowTitleBarTab` in
+  `ui/window-title-bar.tsx`); the bar between and after them stays a drag region,
+  each tab opts out. One router serves every tab (`AppTabsProvider`,
+  `src/lib/app-tabs.tsx`; the model is `src/lib/tabs.ts`): the location is always
+  the active tab's current entry, and every navigation the app makes (`navigate`, a
+  link, a redirect, `location.hash`) is recorded in the active tab's history.
+  Switching tabs and Back/Forward replace the location with the entry they move to.
+  So **never navigate with `navigate(-1)` / `history.back()`**: it would be recorded
+  as a new navigation; use the tabs' `back()`. Only the active tab's page is mounted,
+  so a page left by a tab switch unmounts (and a draft editor saves) like any other.
+  The tabs are saved in the profile's preferences (`tabs`, validated in `main.ts` by
+  `parseTabsPreference`) and the active one opens when the window opens without a
+  route (start, profile switch), not on a reload. Onboarding pages never go into a
+  tab's history, and the launcher and onboarding have no tabs. ⌘W stays the app
+  menu's (closes the window), not the tab's.
+- **Minimum window size: 480 × 400** (`minWidth`/`minHeight` in `main.ts`): enough
+  for the title bar's buttons and one tab; the sidebar and side panels are drawers
+  there.
 - **Narrow windows turn the frame's side parts into drawers** (SLJ-26). Below
   `SIDE_PANELS_INLINE_MIN_WIDTH` (1280px) the editor's panels, and below
   `APP_SIDEBAR_INLINE_MIN_WIDTH` (1024px) the app sidebar, render as sheets that start
@@ -872,7 +891,9 @@ besides IPC, and the same rules hold:
   mnemonics setting unless the call sets `graded`. A `number` question can give `answers`
   (each a label and a formula) instead of one `answer`: several solutions (SLJ-139). A `region_picker`
   question picks shapes on one of the app's maps (`regionPickerSvgPresets`, by country
-  name); the map is copied into the course like the editor's presets.
+  name); the map is copied into the course like the editor's presets. The other three
+  can carry an `image` (`file`: a filename `add_image` returned, and `alt`), stored as
+  the exercise's media (SLJ-56) with its alt text in the question's language.
   `update_course` sets the course's tags (by label; a known label keeps its id), questions
   carry tags by label, and the test tools take `settings` (graded, partial credit,
   randomization rules by tag label, a final test's `includeCourseExercises` and

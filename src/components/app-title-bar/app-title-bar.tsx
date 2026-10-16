@@ -1,7 +1,6 @@
 import { ArrowLeft, ArrowRight, PanelLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
-
+import { AppTabBar } from "@/components/app-title-bar/app-tab-bar";
 import { RecentlyViewedMenu } from "@/components/app-title-bar/recently-viewed-menu";
 import {
   WindowTitleBar,
@@ -10,16 +9,16 @@ import {
 } from "@/components/ui/window-title-bar";
 import { useImmersiveMode } from "@/lib/use-immersive-mode";
 import { useAppState } from "@/lib/use-app-state";
-import { useHistoryAvailability } from "@/lib/use-history-availability";
+import { useOptionalAppTabs } from "@/lib/use-app-tabs";
 import { useTitleBarSidebar } from "@/lib/use-title-bar-sidebar";
 
 // The window's title bar (the native one is hidden — see electron/main.ts):
-// sidebar toggle, back/forward through in-app history, and recently viewed
-// courses. Each control is disabled when it has nothing to act on.
-function AppTitleBar() {
+// sidebar toggle, back/forward through the active tab's history, recently
+// viewed courses, then the tabs (SLJ-12). Each control is disabled when it has
+// nothing to act on. No tabs in the launcher and during onboarding.
+function AppTitleBar({ showTabs }: { showTabs: boolean }) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const { canGoBack, canGoForward } = useHistoryAvailability();
+  const tabs = useOptionalAppTabs();
   const { toggle: toggleSidebar } = useTitleBarSidebar();
   const { isLoaded } = useAppState();
   const { isImmersive } = useImmersiveMode();
@@ -44,22 +43,23 @@ function AppTitleBar() {
         </WindowTitleBarButton>
         <WindowTitleBarButton
           aria-label={t("titleBar.back")}
-          disabled={!canGoBack}
-          onClick={() => navigate(-1)}
+          disabled={!tabs?.canGoBack}
+          onClick={() => tabs?.back()}
           title={t("titleBar.back")}
         >
           <ArrowLeft aria-hidden="true" />
         </WindowTitleBarButton>
         <WindowTitleBarButton
           aria-label={t("titleBar.forward")}
-          disabled={!canGoForward}
-          onClick={() => navigate(1)}
+          disabled={!tabs?.canGoForward}
+          onClick={() => tabs?.forward()}
           title={t("titleBar.forward")}
         >
           <ArrowRight aria-hidden="true" />
         </WindowTitleBarButton>
         <RecentlyViewedMenu />
       </WindowTitleBarGroup>
+      {showTabs && tabs && <AppTabBar />}
     </WindowTitleBar>
   );
 }

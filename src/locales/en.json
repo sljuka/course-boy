@@ -125,6 +125,7 @@
     "printHeaderSection": "{{title}} (section)",
     "printHeaderItem": "{{title}} ({{kind}})",
     "refreshExercise": "Refresh exercise",
+    "reviewUnansweredExercise": "Review exercise {{number}}, no answer yet",
     "reviewExercise": "Review exercise {{number}}",
     "sections": "Sections",
     "selectAnAnswer": "Select an answer before continuing.",
@@ -607,6 +608,10 @@
   "welcomeSubtitle": "Matko is an open platform for creating and attending courses. Tests and documents that make up the courses are adjusted to be print-friendly. The focus is on making learning and teaching an enjoyable experience.",
   "welcomeTitle": "Welcome!",
   "titleBar": {
+    "tabs": "Open tabs",
+    "newTab": "New tab",
+    "closeTab": "Close tab",
+    "untitledTab": "Page",
     "back": "Back",
     "forward": "Forward",
     "recentKind": {

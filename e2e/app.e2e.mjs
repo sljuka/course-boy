@@ -1133,9 +1133,19 @@ describe('graded test', () => {
     await answer.waitFor({ timeout: 15_000 })
     expect(await button('Check answer').count()).toBe(0)
     expect(await page.locator('[data-testid="course-spree"]').count()).toBe(0)
+    // Skipped without an answer, the first step stays grey with its number,
+    // not checked; it can still be reopened.
+    await button('Next').click()
+    await waitForText(page, 'What is 2 plus 2?')
+    const skipped = page.getByRole('button', { exact: true, name: 'Review exercise 1, no answer yet' })
+    expect(await skipped.getAttribute('data-skipped')).toBe('')
+    expect(await skipped.innerText()).toBe('1')
+    await skipped.click()
+    await waitForText(page, 'What is 1 plus 1?')
     await answer.fill('2')
     await button('Next').click()
     await waitForText(page, 'What is 2 plus 2?')
+    expect(await page.locator('[data-skipped]').count()).toBe(0)
 
     // Back to the first question with the stepper, and forward again.
     await page.getByRole('button', { name: 'Review exercise 1' }).click()
@@ -1222,7 +1232,7 @@ describe('graded test', () => {
     await page.getByRole('button', { exact: true, name: 'Print course' }).first().click()
     await page.locator('[data-testid="print-density-compact"]').click()
     await page.keyboard.press('Escape')
-    expect(await printedRootFontSize()).toBe('11.2px')
+    expect(await printedRootFontSize()).toBe('10px')
 
     // The course page shows the best score, in its band's colour.
     await button('Close course').click()
@@ -1866,6 +1876,66 @@ describe('revert confirmation', () => {
     await revertFromPanel(ids.second)
     await expect.poll(async () => (await history()).currentDraftVersion).toBe(ids.second)
     expect(await page.getByRole('dialog').count()).toBe(0)
+  })
+})
+
+// SLJ-12: tabs in the title bar, each with its own back/forward history,
+// saved in the profile's preferences.
+describe('tabs', () => {
+  it('opens a tab, switches, goes back in each tab, and closes it', async () => {
+    const { page } = harness
+    const tabs = page.locator('[data-testid="app-tab"]')
+    const titles = () => tabs.allInnerTexts()
+    const activeTitle = () => page.locator('[data-testid="app-tab"][data-active]').innerText()
+    const go = (hash) =>
+      page.evaluate((target) => {
+        location.hash = target
+      }, hash)
+    const hashIs = (hash) => expect.poll(() => page.evaluate(() => location.hash)).toBe(hash)
+    const savedTabs = () => page.evaluate(() => window.preferences.get().then((preferences) => preferences.tabs))
+
+    await go('#/')
+    await go('#/my-courses')
+    await expect.poll(activeTitle).toBe('My courses')
+
+    // + opens a tab on Home, after the active one.
+    await page.locator('[data-testid="app-tab-new"]').click()
+    await expect.poll(titles).toEqual(['My courses', 'Home'])
+    await hashIs('#/')
+    await go('#/settings')
+    await expect.poll(activeTitle).toBe('Settings')
+
+    // Back in this tab goes to its own Home, not the other tab's page.
+    await page.getByRole('button', { exact: true, name: 'Back' }).click()
+    await hashIs('#/')
+    await expect.poll(activeTitle).toBe('Home')
+    await page.getByRole('button', { exact: true, name: 'Forward' }).click()
+    await hashIs('#/settings')
+
+    // Switching shows the first tab's page; its own Back goes to Home.
+    await tabs.first().getByRole('tab').click()
+    await hashIs('#/my-courses')
+    await page.getByRole('button', { exact: true, name: 'Back' }).click()
+    await hashIs('#/')
+
+    // Saved in the profile's preferences, with each tab's history.
+    await expect
+      .poll(async () => (await savedTabs())?.tabs.map((tab) => tab.entries.at(tab.index)))
+      .toEqual(['/', '/settings'])
+
+    // Closing the active tab shows the other one; a middle-click closes too.
+    await tabs.first().getByRole('button', { name: 'Close tab' }).click({ force: true })
+    await expect.poll(titles).toEqual(['Settings'])
+    await hashIs('#/settings')
+    await page.locator('[data-testid="app-tab-new"]').click()
+    await expect.poll(titles).toEqual(['Settings', 'Home'])
+    await tabs.nth(1).click({ button: 'middle' })
+    await expect.poll(titles).toEqual(['Settings'])
+
+    // Closing the last tab leaves one on Home.
+    await tabs.first().getByRole('button', { name: 'Close tab' }).click({ force: true })
+    await expect.poll(titles).toEqual(['Home'])
+    await hashIs('#/')
   })
 })
 

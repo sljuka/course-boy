@@ -13,13 +13,19 @@ import { cn } from "@/lib/utils";
  * again: those before it with a check, the furthest with its number (it may
  * not be answered yet). The current and the not-yet-reached steps stay
  * purely decorative (`aria-hidden`).
+ *
+ * `answered` (a graded test, where Next moves on without an answer): a step
+ * passed without one keeps its number, grey, instead of a check, so the
+ * student sees what's still empty. It can still be clicked to go back.
  */
 export function ExerciseStepper({
+  answered,
   currentIndex,
   onSelectStep,
   reachedIndex = currentIndex,
   total,
 }: {
+  answered?: readonly boolean[];
   currentIndex: number;
   onSelectStep: (index: number) => void;
   reachedIndex?: number;
@@ -38,21 +44,25 @@ export function ExerciseStepper({
     >
       {Array.from({ length: total }, (_, index) => {
         const furthest = Math.max(reachedIndex, currentIndex);
-        const isCompleted = index < furthest;
+        const isSkipped = index < furthest && answered?.[index] === false;
+        const isCompleted = index < furthest && !isSkipped;
         const isCurrent = index === currentIndex;
         const isReachable = !isCurrent && index <= furthest;
         const circleClassName = cn(
           "flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-sm font-medium transition-colors",
           isCurrent && "border-primary bg-primary text-primary-foreground",
-          isReachable && "border-primary bg-primary/10 text-primary",
-          !isCurrent && !isReachable && "border-border text-muted-foreground",
+          isReachable && !isSkipped && "border-primary bg-primary/10 text-primary",
+          ((!isCurrent && !isReachable) || (isReachable && isSkipped)) && "border-border text-muted-foreground",
         );
         const content = isCompleted && !isCurrent ? <Check className="h-4 w-4" /> : index + 1;
 
         if (isReachable) {
           return (
             <button
-              aria-label={t("courseDetails.reviewExercise", { number: index + 1 })}
+              aria-label={t(isSkipped ? "courseDetails.reviewUnansweredExercise" : "courseDetails.reviewExercise", {
+                number: index + 1,
+              })}
+              data-skipped={isSkipped ? "" : undefined}
               className={cn(circleClassName, "cursor-pointer hover:opacity-75")}
               key={index}
               onClick={() => onSelectStep(index)}

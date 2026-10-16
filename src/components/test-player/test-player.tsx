@@ -422,6 +422,7 @@ function TestPlayerContent({
         !isShowingResult &&
         !showsStartScreen && (
           <ExerciseStepper
+            answered={isGraded ? gradeAll().map((result) => result.isAnswered) : undefined}
             currentIndex={currentExerciseIndex}
             onSelectStep={setCurrentExerciseIndex}
             reachedIndex={reachedExerciseIndex}

@@ -125,6 +125,7 @@
     "printHeaderSection": "{{title}} (odeljak)",
     "printHeaderItem": "{{title}} ({{kind}})",
     "refreshExercise": "Osveži zadatak",
+    "reviewUnansweredExercise": "Pregledaj zadatak {{number}}, još bez odgovora",
     "reviewExercise": "Pregledaj zadatak {{number}}",
     "sections": "Sekcije",
     "selectAnAnswer": "Izaberi odgovor pre nastavka.",
@@ -607,6 +608,10 @@
   "welcomeSubtitle": "Matko je otvorena platforma za kreiranje i pohađanje kurseva. Testovi i dokumenti od kojih su kursevi sastavljeni prilagođeni su za štampanje. Fokus je na tome da učenje i podučavanje budu prijatno iskustvo.",
   "welcomeTitle": "Dobrodošli!",
   "titleBar": {
+    "tabs": "Otvoreni tabovi",
+    "newTab": "Novi tab",
+    "closeTab": "Zatvori tab",
+    "untitledTab": "Stranica",
     "back": "Nazad",
     "forward": "Napred",
     "recentKind": {

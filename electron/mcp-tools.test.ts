@@ -160,6 +160,32 @@ describe("questions", () => {
     ).toThrow("has no blank d2");
   });
 
+  it("carry an image above the question, with its alt text in the question's language", () => {
+    const [exercise] = testFromQuestions(
+      [
+        {
+          correct: [0],
+          image: { alt: "A note on the second line", file: "nota-so-1a2b3c.svg" },
+          options: ["so", "la"],
+          prompt: "Which note is this?",
+          type: "multiple_choice",
+        },
+      ],
+      "sr",
+    ).exercises;
+
+    expect(exercise).toMatchObject({
+      locales: { sr: { mediaAlt: "A note on the second line", prompt: "Which note is this?" } },
+      media: { assetFilename: "nota-so-1a2b3c.svg", kind: "image" },
+    });
+    expect(() =>
+      testFromQuestions(
+        [{ correct: [0], image: { alt: "x", file: "../secret.png" }, options: ["a", "b"], prompt: "?", type: "multiple_choice" }],
+        "en",
+      ),
+    ).toThrow("isn't a filename in the course");
+  });
+
   it("refuse a correct option that doesn't exist", () => {
     expect(() =>
       testFromQuestions([{ correct: [2], options: ["a", "b"], prompt: "?", type: "multiple_choice" }], "en"),

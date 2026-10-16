@@ -75,9 +75,10 @@ export function PrintOptionsMenu({
       label: t("courseDetails.printDensity"),
       standard: t("courseDetails.printDensityStandard"),
     },
-    dateField: t("courseDetails.printDateField"),
+    // The student's name and the date (SLJ-143): on a test, not a lesson.
+    dateField: mode === "test" ? t("courseDetails.printDateField") : undefined,
     decorativeMedia: mode === "test" ? t("exerciseMedia.printDecorative") : undefined,
-    nameField: t("courseDetails.printNameField"),
+    nameField: mode === "test" ? t("courseDetails.printNameField") : undefined,
     points: mode === "test" && graded ? t("courseDetails.printGradePoints") : undefined,
     header: t("courseDetails.printOptionHeader"),
     printNow: t("courseDetails.printNow"),
@@ -123,20 +124,24 @@ export function PrintOptionsMenu({
         >
           {labels.header}
         </DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem
-          checked={printOptions.showNameField}
-          data-testid="print-name-field-option"
-          onCheckedChange={(checked) => updateOption("showNameField", checked)}
-        >
-          {labels.nameField}
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem
-          checked={printOptions.showDateField}
-          data-testid="print-date-field-option"
-          onCheckedChange={(checked) => updateOption("showDateField", checked)}
-        >
-          {labels.dateField}
-        </DropdownMenuCheckboxItem>
+        {labels.nameField && (
+          <DropdownMenuCheckboxItem
+            checked={printOptions.showNameField}
+            data-testid="print-name-field-option"
+            onCheckedChange={(checked) => updateOption("showNameField", checked)}
+          >
+            {labels.nameField}
+          </DropdownMenuCheckboxItem>
+        )}
+        {labels.dateField && (
+          <DropdownMenuCheckboxItem
+            checked={printOptions.showDateField}
+            data-testid="print-date-field-option"
+            onCheckedChange={(checked) => updateOption("showDateField", checked)}
+          >
+            {labels.dateField}
+          </DropdownMenuCheckboxItem>
+        )}
         {labels.testSeparators && (
           <DropdownMenuCheckboxItem
             checked={printOptions.showTestSeparators}

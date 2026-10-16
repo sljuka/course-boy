@@ -114,6 +114,7 @@ import { createCourseId, isValidCourseId } from '../src/lib/course-id'
 import { DEFAULT_HOME_VIEW, parseCourseListView, type CourseListView } from '../src/lib/course-list-view'
 import { parseExplorerPanelPreference, type ExplorerPanelPreference } from '../src/lib/explorer-panel'
 import { parseRecentlyViewedEntries, type RecentlyViewedEntry } from '../src/lib/recently-viewed'
+import { parseTabsPreference, type TabsState } from '../src/lib/tabs'
 import type {
   CourseDiskUsage,
   ApplyCourseSvgPresetInput,
@@ -228,6 +229,7 @@ type UserPreferences = {
   publisherName?: string
   recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
+  tabs?: TabsState
   theme?: Theme
 }
 
@@ -861,6 +863,11 @@ ipcMain.handle(
       profile.preferencesStore.set('recentlyViewed', parseRecentlyViewedEntries(preferences.recentlyViewed))
     }
 
+    if (typeof preferences.tabs === 'object' && preferences.tabs !== null) {
+      const tabs = parseTabsPreference(preferences.tabs)
+      if (tabs) profile.preferencesStore.set('tabs', tabs)
+    }
+
     return profile.preferencesStore.store
   },
 )
@@ -923,6 +930,7 @@ ipcMain.handle('preferences:reset-onboarding', () => {
   profile.preferencesStore.delete('role')
   profile.preferencesStore.delete('persona')
   profile.preferencesStore.delete('recentlyViewed')
+  profile.preferencesStore.delete('tabs')
 
   return profile.preferencesStore.store
 })
@@ -1741,6 +1749,11 @@ function createWindow() {
     show: !startHidden,
     width: Math.min(1440, workArea.width),
     height: Math.min(900, workArea.height),
+    // Narrow enough for side-by-side windows (the sidebar and side panels turn
+    // into drawers), wide enough that the title bar's buttons and at least one
+    // tab never overlap (SLJ-12).
+    minWidth: 480,
+    minHeight: 400,
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     // The renderer draws its own title bar (`WindowTitleBar` in
     // src/components/ui/window-title-bar.tsx) holding the sidebar toggle,

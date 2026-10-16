@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { CourseLessonContent } from "@/components/course-player/course-lesson-content";
 import { MnemonicsToggle } from "@/components/course-player/mnemonics-toggle";
 import { CoursePlayerActions } from "@/components/course-player/course-player-actions";
-import { PrintFillInFields } from "@/components/course-player/print-fill-in-fields";
 import { PrintOptionsMenu } from "@/components/course-player/print-options-menu";
 import { CoursePlayerShell } from "@/components/course-player/course-player-shell";
 import { PrintDocumentHeader } from "@/components/course-player/print-document-header";
@@ -146,7 +145,6 @@ export function LessonPlayerView({
         sectionTitle={playerState.sectionTitle}
         title={activeLesson.title}
       />
-      <PrintFillInFields showDate={printOptions.showDateField} showName={printOptions.showNameField} />
       <CourseLessonContent
         activeLesson={activeLesson}
         courseId={playerState.courseId}

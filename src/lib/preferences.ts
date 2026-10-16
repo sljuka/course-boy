@@ -2,6 +2,7 @@ import type { Locale } from '@/lib/i18n'
 import type { CourseListView } from '@/lib/course-list-view'
 import type { ExplorerPanelPreference } from '@/lib/explorer-panel'
 import type { RecentlyViewedEntry } from '@/lib/recently-viewed'
+import type { TabsState } from '@/lib/tabs'
 
 export type Category =
   | 'pre-school'
@@ -37,6 +38,8 @@ export type UserPreferences = {
   publisherName?: string
   recentlyViewed?: RecentlyViewedEntry[]
   role?: UserRole
+  // The window title bar's tabs, each with its history (SLJ-12).
+  tabs?: TabsState
   // Bundled courses (Getting Started) on Home and in recently viewed; on when unset.
   showBundledCourses?: boolean
   // Course mnemonics in lessons (and tests that allow them); on when unset.

@@ -16,6 +16,7 @@ import { ImmersiveModeProvider } from "@/lib/immersive-mode";
 import { PublisherPasswordGate } from "@/components/identity/publisher-password-gate";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppStateProvider } from "@/lib/app-state";
+import { AppTabsProvider } from "@/lib/app-tabs";
 import { useTrackRecentlyViewed } from "@/lib/recently-viewed-queries";
 import { CourseCreatePage } from "@/pages/course-create-page";
 import { CourseDetailPage } from "@/pages/course-detail-page";
@@ -128,26 +129,35 @@ const AppRoutes = () => {
 // The whole window frame renders only once preferences have loaded, so the
 // first thing that mounts is the page the app actually starts on (e.g. the
 // onboarding redirect) — never an empty frame that redirects a moment later.
+//
+// Tabs (SLJ-12) only with a profile open and onboarding done: they're saved in
+// the profile's preferences. The provider starts over when that changes (the
+// end of onboarding), so the first tab opens where the app is then.
 const AppFrame = () => {
-  const { isLoaded } = useAppState();
+  const { isLoaded, isOnboarded } = useAppState();
+  const { data: profilesState } = useProfilesStateQuery();
 
-  if (!isLoaded) {
+  if (!isLoaded || !profilesState) {
     return null;
   }
 
+  const hasTabs = Boolean(profilesState.active) && isOnboarded;
+
   return (
-    <AppShell>
-      <AppTitleBar />
-      <AppShellMain>
-        <PublisherPasswordGate>
-          <AppRoutes />
-        </PublisherPasswordGate>
-      </AppShellMain>
-      <AppFrameStatusBar />
-      {/* Asked by main when the window is closed (SLJ-129). */}
-      <KeepSharingDialog />
-      <AgentChangesRefresher />
-    </AppShell>
+    <AppTabsProvider key={hasTabs ? "tabs" : "no-tabs"} persist={hasTabs}>
+      <AppShell>
+        <AppTitleBar showTabs={hasTabs} />
+        <AppShellMain>
+          <PublisherPasswordGate>
+            <AppRoutes />
+          </PublisherPasswordGate>
+        </AppShellMain>
+        <AppFrameStatusBar />
+        {/* Asked by main when the window is closed (SLJ-129). */}
+        <KeepSharingDialog />
+        <AgentChangesRefresher />
+      </AppShell>
+    </AppTabsProvider>
   );
 };
 

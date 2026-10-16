@@ -10,6 +10,7 @@ import type {
   SharedTestDefinition,
   SharedTestExerciseDefinition,
 } from "../src/lib/course-package";
+import { resolveAssetFilename } from "../src/lib/course-asset-id";
 import { isValidCourseId } from "../src/lib/course-id";
 import { regionPickerSvgPresets } from "../src/lib/region-picker-svg-presets";
 import { type CourseTagDefinition, createCourseTagDefinition, courseTagColorOptions } from "../src/lib/course-tags";
@@ -110,9 +111,20 @@ const tags = z
   .optional()
   .describe("Labels of the course's tags this question has, for a test's randomization rules");
 
+// A picture above the question (SLJ-56): a file already in the course, as
+// add_image returns it. Not for region_picker, whose map is the picture.
+const image = z
+  .object({
+    alt: z.string().min(1).describe("What the image shows, for students who can't see it"),
+    file: z.string().min(1).describe("The image's filename in the course, as add_image returned it"),
+  })
+  .optional()
+  .describe("An image shown above the question, e.g. a diagram the question is about");
+
 const questionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("multiple_choice"),
+    image,
     prompt: z.string().min(1),
     options: z.array(z.string().min(1)).min(2),
     correct: z.array(z.number().int().min(0)).min(1).describe("0-based indexes of the correct options"),
@@ -122,6 +134,7 @@ const questionSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("number"),
+    image,
     prompt: z
       .string()
       .min(1)
@@ -159,6 +172,7 @@ const questionSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("fill_in"),
+    image,
     prompt: z.string().min(1).describe('The instruction, e.g. "Write the missing day"'),
     text: z
       .string()
@@ -221,7 +235,7 @@ export function testFromQuestions(
 ): SharedTestDefinition {
   const exercises = questions.map((question): SharedTestExerciseDefinition => {
     const exercise = {
-      ...exerciseFromQuestion(question, locale, mapFiles),
+      ...withImage(exerciseFromQuestion(question, locale, mapFiles), question, locale),
       tags: tagIds(question.tags ?? [], courseTags),
     };
     return question.points === undefined ? exercise : { ...exercise, points: question.points };
@@ -254,6 +268,24 @@ function tagIds(labels: string[], courseTags: CourseTagDefinition[]): string[] {
     }
     return tag.id;
   });
+}
+
+// The question's image as the exercise's media, its alt text in the
+// question's language (next to the prompt, like the editor stores it).
+function withImage(
+  exercise: SharedTestExerciseDefinition,
+  question: Question,
+  locale: Locale,
+): SharedTestExerciseDefinition {
+  if (question.type === "region_picker" || !question.image) return exercise;
+  const file = resolveAssetFilename(question.image.file.trim());
+  if (!file) throw new Error(`"${question.prompt}": "${question.image.file}" isn't a filename in the course`);
+  const texts = (exercise.locales as Record<string, Record<string, unknown>>)[locale];
+  return {
+    ...exercise,
+    locales: { ...exercise.locales, [locale]: { ...texts, mediaAlt: question.image.alt.trim() } },
+    media: { assetFilename: file, kind: "image" },
+  } as SharedTestExerciseDefinition;
 }
 
 function exerciseFromQuestion(
