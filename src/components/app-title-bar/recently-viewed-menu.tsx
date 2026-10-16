@@ -1,4 +1,5 @@
 import { BookOpen, History, PencilLine, PlayCircle, type LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -16,6 +17,7 @@ import type { RecentlyViewedKind } from "@/lib/recently-viewed";
 import { useRecentlyViewedQuery } from "@/lib/recently-viewed-queries";
 import { useShowBundledCourses } from "@/lib/show-bundled-courses-queries";
 import { useAppState } from "@/lib/use-app-state";
+import { useOptionalAppTabs } from "@/lib/use-app-tabs";
 
 const kindIcons: Record<RecentlyViewedKind, LucideIcon> = {
   course: BookOpen,
@@ -41,9 +43,13 @@ function RecentlyViewedMenu() {
       (showBundledCourses || !coursesById.get(entry.courseId)?.isBuiltIn),
   );
   const label = t("titleBar.recentlyViewed");
+  const tabs = useOptionalAppTabs();
+  const isMac = document.documentElement.dataset.platform === "mac";
+  // Controlled, so a middle-click (which isn't a click) can close it too.
+  const [open, setOpen] = useState(false);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={setOpen} open={open}>
       <DropdownMenuTrigger
         render={
           <WindowTitleBarButton
@@ -65,7 +71,17 @@ function RecentlyViewedMenu() {
             return (
               <DropdownMenuItem
                 key={`${entry.kind}:${entry.courseId}`}
-                onClick={() => navigate(entry.path)}
+                // ⌘-click (Ctrl-click off macOS) or a middle-click: in a new tab (SLJ-12).
+                onAuxClick={(event) => {
+                  if (event.button !== 1 || !tabs) return;
+                  event.preventDefault();
+                  tabs.open(entry.path);
+                  setOpen(false);
+                }}
+                onClick={(event) => {
+                  if (tabs && (isMac ? event.metaKey : event.ctrlKey)) tabs.open(entry.path);
+                  else navigate(entry.path);
+                }}
               >
                 <KindIcon aria-label={kindLabel} role="img" />
                 <span className="min-w-0 flex-1 truncate">

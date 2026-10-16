@@ -1,16 +1,14 @@
 import { BookOpen, Library, Radio } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
+import { AppSidebarItem } from "@/components/app-sidebar-item";
+import { SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu } from "@/components/ui/sidebar";
 import {
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
-import { useCourseProgressQuery } from "@/lib/course-progress-queries";
+  useCourseProgressQuery,
+  useSetFavoriteMutation,
+  useSetProgramFavoriteMutation,
+} from "@/lib/course-progress-queries";
 import { useCoursesQuery } from "@/lib/course-queries";
 import { useProgramsQuery } from "@/lib/program-queries";
 import { useAppState } from "@/lib/use-app-state";
@@ -22,6 +20,7 @@ type FavoriteItem = {
   icon: typeof BookOpen;
   id: string;
   title: string;
+  unfavorite: () => void;
 };
 
 // The sidebar's Favorites (SLJ-50): everything the student starred, in the
@@ -34,6 +33,8 @@ export function AppSidebarFavorites() {
   const { data: progress } = useCourseProgressQuery();
   const { data: courses = [] } = useCoursesQuery(locale);
   const { data: programs = [] } = useProgramsQuery(locale);
+  const setFavorite = useSetFavoriteMutation();
+  const setProgramFavorite = useSetProgramFavoriteMutation();
 
   const items: FavoriteItem[] = [
     ...courses
@@ -44,6 +45,7 @@ export function AppSidebarFavorites() {
         icon: BookOpen,
         id: course.id,
         title: course.title,
+        unfavorite: () => setFavorite.mutate({ courseId: course.id, favorite: false }),
       })),
     ...programs
       .filter((program) => progress?.programs?.[program.id]?.favorite === true)
@@ -53,6 +55,7 @@ export function AppSidebarFavorites() {
         icon: program.kind === "channel" ? Radio : Library,
         id: program.id,
         title: program.title || t("programs.untitled"),
+        unfavorite: () => setProgramFavorite.mutate({ favorite: false, programId: program.id }),
       })),
   ].sort((left, right) => left.favoritedAt.localeCompare(right.favoritedAt));
 
@@ -66,17 +69,17 @@ export function AppSidebarFavorites() {
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => (
-            <SidebarMenuItem key={item.id}>
-              <SidebarMenuButton
-                // Highlighted on its page and while playing it.
-                isActive={location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)}
-                render={<Link to={item.href} />}
-                title={item.title}
-              >
-                <item.icon aria-hidden="true" className="h-4 w-4 shrink-0" />
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            <AppSidebarItem
+              href={item.href}
+              // Highlighted on its page and while playing it.
+              isActive={location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)}
+              key={item.id}
+              onUnfavorite={item.unfavorite}
+              title={item.title}
+            >
+              <item.icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+              <span>{item.title}</span>
+            </AppSidebarItem>
           ))}
         </SidebarMenu>
       </SidebarGroupContent>

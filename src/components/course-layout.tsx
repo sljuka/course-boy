@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useIsMutating } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 
@@ -24,6 +24,7 @@ import { PanelCard, PanelCardGroup } from "@/components/ui/panel-card";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import { courseContentSaveMutationKey, useCourseDetailsQuery } from "@/lib/course-queries";
+import { editorNodeHref, findEditorNodeTitle, parseEditorNode } from "@/lib/editor-node";
 import type {
   ContentRating,
   CourseSectionPreview,
@@ -109,14 +110,14 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   const restoredSelectedNodeRef = useRef(
     (location.state as { selectedNode?: StructureSelection } | null)?.selectedNode ?? null,
   );
-  const [selectedNode, setSelectedNode] = useState<StructureSelection>(
-    () =>
-      restoredSelectedNodeRef.current ?? {
-        id: courseRootId,
-        title: "Course",
-        type: "course",
-      },
-  );
+  // Else the node in the address (`?node=`, SLJ-12): a tab coming back, or
+  // an explorer node opened in a new tab. Its title is filled in once the
+  // course has loaded (below).
+  const [selectedNode, setSelectedNode] = useState<StructureSelection>(() => {
+    if (restoredSelectedNodeRef.current) return restoredSelectedNodeRef.current;
+    const fromAddress = parseEditorNode(location.search);
+    return fromAddress ? { ...fromAddress, title: "" } : { id: courseRootId, title: "Course", type: "course" };
+  });
   // The explorer as a drawer (narrow windows): kept open here, across the
   // pages it opens. A pick in it closes it ("show me the page"); selecting
   // what was just added doesn't, so the teacher sees it and can keep adding.
@@ -153,6 +154,43 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
       }),
     [courseDetailsQuery.data?.sections, courseTitle, selectedNode, t],
   );
+
+  // A node from the address, titled once the course is here; one that's gone
+  // since (removed) falls back to the course root.
+  useEffect(() => {
+    const loadedSections = courseDetailsQuery.data?.sections;
+    if (!loadedSections || selectedNode.type === "course" || selectedNode.title !== "") return;
+    const title = findEditorNodeTitle(loadedSections, { id: selectedNode.id, type: selectedNode.type });
+    setSelectedNode(title === null ? { id: courseRootId, title: courseTitle, type: "course" } : { ...selectedNode, title });
+  }, [courseDetailsQuery.data?.sections, courseTitle, selectedNode]);
+
+  // The address changed from outside (another tab on this same editor, Back
+  // or Forward): the selection follows it. The editor stays mounted across
+  // those, so its first read alone isn't enough.
+  useEffect(() => {
+    const fromAddress = parseEditorNode(location.search);
+    setSelectedNode((current) => {
+      if (!fromAddress) {
+        return current.type === "course" ? current : { id: courseRootId, title: courseTitle, type: "course" };
+      }
+      if (current.id === fromAddress.id && current.type === fromAddress.type) return current;
+      const loadedSections = courseDetailsQuery.data?.sections;
+      return { ...fromAddress, title: (loadedSections && findEditorNodeTitle(loadedSections, fromAddress)) || "" };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the address changes
+  }, [location.search]);
+
+  // The selection in the address, replacing it (no new history entry): the
+  // tab then reopens on this node, and switching tabs comes back to it.
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!courseId) return;
+    const target = editorNodeHref(courseId, selectedNode.type === "course" ? null : selectedNode);
+    if (`${location.pathname}${location.search}` !== target) {
+      navigate(target, { replace: true, state: location.state });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the selection changes
+  }, [courseId, selectedNode.id, selectedNode.type]);
 
   const [explorerPanel, updateExplorerPanel] = useSidePanelPreference("explorerPanel");
   const [versionsPanel, updateVersionsPanel] = useSidePanelPreference("versionsPanel");

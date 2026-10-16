@@ -1,8 +1,9 @@
-import { Library, Plus } from "lucide-react";
+import { Eye, Library, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 
+import { ItemContextMenu } from "@/components/item-context-menu";
 import { Page } from "@/components/page/page";
 import { Button, ButtonLabel } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
@@ -11,8 +12,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ListRow, ListRowLink, ListRowMeta } from "@/components/ui/list-row";
+import type { ProgramSummary } from "@/lib/program-package";
 import { useCreateProgramMutation, useProgramsQuery } from "@/lib/program-queries";
 import { useAppState } from "@/lib/use-app-state";
+import { useNewTabLink } from "@/lib/use-new-tab-link";
 
 // My programs (SLJ-32): the teacher's programs, each an ordered set of
 // courses with its own page. New program asks for a title, then opens the
@@ -50,18 +53,42 @@ export function MyProgramsPage() {
       ) : (
         <div className="flex flex-col">
           {own.map((program) => (
-            <ListRow data-testid="my-program" key={program.id}>
-              <ProgramProgressIcon courseIds={program.courseIds} />
-              <ListRowLink render={<Link to={`/my-programs/${program.id}`} />}>
-                {program.title || t("programs.untitled")}
-              </ListRowLink>
-              <ListRowMeta align="end">{t("programs.courseCount", { count: program.courseCount })}</ListRowMeta>
-            </ListRow>
+            <MyProgramRow key={program.id} program={program} />
           ))}
         </div>
       )}
       <NewProgramDialog onClose={() => setIsCreating(false)} open={isCreating} />
     </Page>
+  );
+}
+
+// One of your programs: the row opens its editor. Right-click: Open in new
+// tab, and Open as student (its page, as students see it); a middle-click or
+// ⌘-click opens the editor in a new tab.
+function MyProgramRow({ program }: { program: ProgramSummary }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const href = `/my-programs/${program.id}`;
+  const newTabLink = useNewTabLink(href);
+
+  return (
+    <ItemContextMenu
+      actions={[
+        {
+          icon: Eye,
+          id: "open-as-student",
+          label: t("programs.openAsStudent"),
+          onSelect: () => navigate(`/programs/${program.id}`),
+        },
+      ]}
+      href={href}
+    >
+      <ListRow data-testid="my-program">
+        <ProgramProgressIcon courseIds={program.courseIds} />
+        <ListRowLink render={<Link to={href} {...newTabLink} />}>{program.title || t("programs.untitled")}</ListRowLink>
+        <ListRowMeta align="end">{t("programs.courseCount", { count: program.courseCount })}</ListRowMeta>
+      </ListRow>
+    </ItemContextMenu>
   );
 }
 

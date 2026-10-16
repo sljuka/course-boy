@@ -117,6 +117,7 @@ export function AppTabsProvider({ children, persist }: { children: ReactNode; pe
   }, [show, state]);
 
   useTabShortcuts(value);
+  useCloseTabShortcut(value);
 
   // Nothing renders until the tabs are known, so a restored tab opens straight
   // on its page rather than flashing the one the window started on.
@@ -125,9 +126,25 @@ export function AppTabsProvider({ children, persist }: { children: ReactNode; pe
   return <AppTabsContext.Provider value={value}>{children}</AppTabsContext.Provider>;
 }
 
+// ⌘W (Ctrl+W), forwarded by main (it'd otherwise close the window): closes
+// the active tab, or the window when it's the only one, like a browser.
+function useCloseTabShortcut(tabs: AppTabsContextValue | null): void {
+  const latest = useRef(tabs);
+  latest.current = tabs;
+
+  useEffect(
+    () =>
+      window.appWindow.onCloseTabRequest(() => {
+        const current = latest.current;
+        if (current && current.state.tabs.length > 1) current.close(current.state.activeId);
+        else void window.appWindow.close();
+      }),
+    [],
+  );
+}
+
 // ⌘T (Ctrl+T) opens a tab on Home, ⌘1–8 jump to that tab and ⌘9 to the last,
 // Ctrl+Tab / Ctrl+Shift+Tab and ⌘⇧] / ⌘⇧[ move to the next / previous one.
-// (⌘W stays the window's: the app menu owns it.)
 function useTabShortcuts(tabs: AppTabsContextValue | null): void {
   useEffect(() => {
     if (!tabs) return;

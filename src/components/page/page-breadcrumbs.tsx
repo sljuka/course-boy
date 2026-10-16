@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { ItemContextMenu } from "@/components/item-context-menu";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,6 +12,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { useNewTabLink } from "@/lib/use-new-tab-link";
 
 // One step of a page's trail. Earlier steps either navigate (`to`) or select
 // something in place (`onSelect`, e.g. an explorer node in the course editor);
@@ -35,6 +37,20 @@ function CrumbContent({ item }: { item: PageBreadcrumb }) {
   );
 }
 
+// A crumb that goes somewhere: a middle-click or ⌘-click opens it in a new
+// tab, and so does right-click → Open in new tab (SLJ-12).
+function CrumbLink({ item, to }: { item: PageBreadcrumb; to: string }) {
+  const newTabLink = useNewTabLink(to);
+
+  return (
+    <ItemContextMenu href={to}>
+      <BreadcrumbLink render={<Link to={to} {...newTabLink} />}>
+        <CrumbContent item={item} />
+      </BreadcrumbLink>
+    </ItemContextMenu>
+  );
+}
+
 export function PageBreadcrumbs({ items }: { items: readonly PageBreadcrumb[] }) {
   const { t } = useTranslation();
 
@@ -53,9 +69,7 @@ export function PageBreadcrumbs({ items }: { items: readonly PageBreadcrumb[] })
                     <CrumbContent item={item} />
                   </BreadcrumbPage>
                 ) : item.to ? (
-                  <BreadcrumbLink render={<Link to={item.to} />}>
-                    <CrumbContent item={item} />
-                  </BreadcrumbLink>
+                  <CrumbLink item={item} to={item.to} />
                 ) : (
                   <BreadcrumbLink onClick={item.onSelect}>
                     <CrumbContent item={item} />

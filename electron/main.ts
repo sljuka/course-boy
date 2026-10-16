@@ -1782,6 +1782,7 @@ function createWindow() {
   })
 
   lockDownWindow(win, [VITE_DEV_SERVER_URL ?? pathToFileURL(path.join(RENDERER_DIST, 'index.html')).href])
+  forwardCloseTabShortcut(win)
   background.attach(win, { hidden: startHidden })
   loadApp(win)
 }
@@ -1820,6 +1821,24 @@ const background = createBackground({
 })
 
 // Loads the app at its start page (also after a profile switch).
+// ⌘W (Ctrl+W elsewhere) closes the active tab, not the window (SLJ-12).
+// Caught before the app menu, whose Close Window owns the shortcut, and sent
+// to the window: it closes the tab, or with one tab left asks to close the
+// window (`window:close`), like a browser.
+function forwardCloseTabShortcut(window: BrowserWindow): void {
+  window.webContents.on('before-input-event', (event, input) => {
+    const isMac = process.platform === 'darwin'
+    const modifier = isMac ? input.meta && !input.control : input.control && !input.meta
+    if (input.type !== 'keyDown' || !modifier || input.shift || input.alt || input.key.toLowerCase() !== 'w') return
+    event.preventDefault()
+    window.webContents.send('window:close-tab')
+  })
+}
+
+ipcMain.handle('window:close', (event) => {
+  BrowserWindow.fromWebContents(event.sender)?.close()
+})
+
 function loadApp(window: BrowserWindow): void {
   if (VITE_DEV_SERVER_URL) {
     void window.loadURL(VITE_DEV_SERVER_URL)

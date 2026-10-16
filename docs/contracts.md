@@ -800,8 +800,16 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   The tabs are saved in the profile's preferences (`tabs`, validated in `main.ts` by
   `parseTabsPreference`) and the active one opens when the window opens without a
   route (start, profile switch), not on a reload. Onboarding pages never go into a
-  tab's history, and the launcher and onboarding have no tabs. ⌘W stays the app
-  menu's (closes the window), not the tab's.
+  tab's history, and the launcher and onboarding have no tabs. ⌘W (Ctrl+W) closes the
+  active tab: main catches it before the app menu (`before-input-event`, which only
+  real input reaches, not Playwright's synthetic key presses) and sends
+  `window:close-tab`; with one tab left the window asks to close (`window:close`).
+  The course editor keeps its explorer selection in its address
+  (`/drafts/<course>?node=<type>:<id>`, `src/lib/editor-node.ts`): `CourseLayout`
+  writes it on every selection (a replace, no new history entry) and follows it when
+  the address changes from outside (another tab on the same editor, Back/Forward),
+  since the editor stays mounted across those. That's what lets an explorer node open
+  in a new tab, and a tab come back to the node it showed.
 - **Minimum window size: 480 × 400** (`minWidth`/`minHeight` in `main.ts`): enough
   for the title bar's buttons and one tab; the sidebar and side panels are drawers
   there.

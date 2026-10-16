@@ -14,6 +14,7 @@ import {
   FolderPlus,
   PanelRightOpen,
   Pencil,
+  SquarePlus,
   Trash2,
   type LucideIcon,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Eyebrow } from "@/components/ui/eyebrow";
@@ -39,6 +41,9 @@ import {
 } from "@/components/course-structure-prototype/explorer-delete-dialog";
 import type { CourseSectionPreview } from "@/lib/course-package";
 import { resolveTestIdForLesson } from "@/lib/course-test-id";
+import { editorNodeHref } from "@/lib/editor-node";
+import { useOptionalAppTabs } from "@/lib/use-app-tabs";
+import { useNewTabLink } from "@/lib/use-new-tab-link";
 import {
   useCreateCourseLessonMutation,
   useCreateCourseSectionMutation,
@@ -336,6 +341,7 @@ export function CourseStructurePrototype({
               isFixed
               isSelected={selectedNodeId === courseRootId}
               label="Root"
+              newTabHref={editorNodeHref(courseId)}
               onSelect={() =>
                 onSelectionChange?.({
                   id: courseRootId,
@@ -361,6 +367,7 @@ export function CourseStructurePrototype({
                 ) : (
                   sectionNodes.map((node) => (
                     <SectionRow
+                  courseId={courseId}
                       key={node.id}
                       node={node}
                       onAddDocument={() => startAddDocument(node.id)}
@@ -422,6 +429,7 @@ export function CourseStructurePrototype({
 }
 
 function SectionRow({
+  courseId,
   node,
   onAddDocument,
   onAddTest,
@@ -437,6 +445,7 @@ function SectionRow({
   sectionIsExpanded,
   selectedNodeId,
 }: {
+  courseId: string;
   node: SectionNode;
   onAddDocument: () => void;
   onAddTest: () => void;
@@ -466,6 +475,7 @@ function SectionRow({
         isFixed
         isSelected={selectedNodeId === node.id}
         label="Section"
+        newTabHref={editorNodeHref(courseId, { id: node.id, type: "section" })}
         onDelete={() =>
           onRequestDelete({ kind: "section", id: node.id, title: node.title })
         }
@@ -496,6 +506,7 @@ function SectionRow({
                   isFixed
                   isSelected={selectedNodeId === child.id}
                   label="Document"
+                  newTabHref={editorNodeHref(courseId, { id: child.id, type: "document" })}
                   onDelete={() =>
                     onRequestDelete({
                       kind: "document",
@@ -534,6 +545,7 @@ function SectionRow({
                       isFixed
                       isSelected={selectedNodeId === resolveTestIdForLesson(child.id)}
                       label="Test"
+                      newTabHref={editorNodeHref(courseId, { id: resolveTestIdForLesson(child.id), type: "test" })}
                       onDelete={() =>
                         onRequestDelete({
                           kind: "test",
@@ -560,6 +572,7 @@ function SectionRow({
                 isSelected={selectedNodeId === child.id}
                 key={child.id}
                 label="Test"
+                newTabHref={editorNodeHref(courseId, { id: child.id, type: "test" })}
                 onDelete={() =>
                   onRequestDelete({
                     kind: "test",
@@ -672,6 +685,7 @@ function ExplorerRow({
   isExpanded,
   isSelected = false,
   label,
+  newTabHref,
   onChange,
   onDelete,
   onEditDone,
@@ -702,6 +716,9 @@ function ExplorerRow({
   isExpanded?: boolean;
   isSelected?: boolean;
   label: string;
+  // The node's address (`editorNodeHref`): right-click → Open in new tab,
+  // and a middle-click or ⌘-click opens it in a new tab (SLJ-12).
+  newTabHref?: string;
   onChange?: (title: string) => void;
   onDelete?: () => void;
   onEditDone?: () => void;
@@ -723,6 +740,8 @@ function ExplorerRow({
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const tabs = useOptionalAppTabs();
+  const newTabLink = useNewTabLink(newTabHref ?? "");
 
   useEffect(() => {
     if (!autoFocus || !isEditing) {
@@ -740,7 +759,12 @@ function ExplorerRow({
             "group/row flex min-h-8 cursor-pointer items-center gap-1 rounded-sm px-1 text-sm text-foreground hover:bg-muted",
             isSelected || isContextMenuOpen ? "bg-muted text-foreground" : "",
           ].join(" ")}
-          onClick={onSelect}
+          onAuxClick={newTabHref ? newTabLink.onAuxClick : undefined}
+          onClick={(event) => {
+            if (newTabHref) newTabLink.onClick(event);
+            if (!event.defaultPrevented) onSelect?.();
+          }}
+          onMouseDown={newTabHref ? newTabLink.onMouseDown : undefined}
         >
           <button
             className={[
@@ -869,7 +893,16 @@ function ExplorerRow({
         </div>
       </ContextMenuTrigger>
 
-      <ContextMenuContent className="w-44">
+      <ContextMenuContent className="w-48">
+        {newTabHref && tabs && (
+          <>
+            <ContextMenuItem onClick={() => tabs.open(newTabHref)}>
+              <SquarePlus aria-hidden="true" />
+              <span>{t("titleBar.openInNewTab")}</span>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        )}
         {onInsertDocument && (
           <ContextMenuItem onClick={onInsertDocument}>
             <FileText aria-hidden="true" />

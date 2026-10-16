@@ -159,6 +159,11 @@ interface Window {
     isSupported: boolean
     onAskKeepSharing: (callback: () => void) => () => void
   }
+  // The window's tabs (SLJ-12): ⌘W closes the active tab.
+  appWindow: {
+    close: () => Promise<void>
+    onCloseTabRequest: (callback: () => void) => () => void
+  }
   // Agents (SLJ-68): the MCP server in Settings → Agents.
   mcp: {
     getStatus: () => Promise<import('../src/lib/mcp').McpStatus>

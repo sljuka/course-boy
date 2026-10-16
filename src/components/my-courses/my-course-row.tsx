@@ -7,6 +7,7 @@ import type { CourseSummary } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
 import { formatShortDate } from "@/lib/format-date";
 import { getLocaleFlag } from "@/lib/locale-flags";
+import { useNewTabLink } from "@/lib/use-new-tab-link";
 
 type MyCourseRowProps = {
   course: CourseSummary;
@@ -17,11 +18,12 @@ type MyCourseRowProps = {
 // last edit. The whole row opens the editor, where the course's own menu is.
 export function MyCourseRow({ course, locale }: MyCourseRowProps) {
   const { t } = useTranslation();
+  const newTabLink = useNewTabLink(`/drafts/${course.id}`);
 
   return (
     <ListRow>
       <CourseStatusIcon course={course} />
-      <ListRowLink render={<Link to={`/drafts/${course.id}`} />}>{course.title}</ListRowLink>
+      <ListRowLink render={<Link to={`/drafts/${course.id}`} {...newTabLink} />}>{course.title}</ListRowLink>
       {/* Fixed-width, right-aligned columns, so every row's columns line up
           whatever the text width ("Oct 1" vs "Sep 29"), like Linear. */}
       <ListRowMeta align="end" aria-label={t("courseSearch.localesLabel")} className="w-14">

@@ -609,6 +609,7 @@
   "welcomeTitle": "Dobrodošli!",
   "titleBar": {
     "tabs": "Otvoreni tabovi",
+    "openInNewTab": "Otvori u novom tabu",
     "newTab": "Novi tab",
     "closeTab": "Zatvori tab",
     "untitledTab": "Stranica",
@@ -1018,6 +1019,7 @@
     "scoreDetails": "Najbolji rezultat · {{percent}}% · pokušaja: {{attempts}}"
   },
   "programs": {
+    "openAsStudent": "Otvori kao učenik",
     "new": "Novi program",
     "myTitle": "Moji programi",
     "myDescription": "Programi okupljaju kurseve u putanju koja se prelazi redom, na jednoj stranici sa sopstvenim banerom, logom i bojama.",

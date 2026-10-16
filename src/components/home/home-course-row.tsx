@@ -11,6 +11,7 @@ import type { CourseProgressSummary } from "@/lib/course-progress";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { PublishedBy } from "@/components/publishers/publisher-name";
 import type { CourseUpdateInfo } from "@/lib/sharing";
+import { useNewTabLink } from "@/lib/use-new-tab-link";
 
 // One course in Home's table view: where the student is in it, its star, the
 // title, "Built in" for the bundled tutorial, a pending update, how much is
@@ -28,6 +29,7 @@ export function HomeCourseRow({
 }) {
   const { t } = useTranslation();
   const progressLabel = useCourseProgressLabel(summary, isStarted);
+  const newTabLink = useNewTabLink(`/courses/${course.id}`);
 
   return (
     <ListRow>
@@ -37,7 +39,7 @@ export function HomeCourseRow({
       <ListRowActions>
         <CourseFavoriteToggle courseId={course.id} />
       </ListRowActions>
-      <ListRowLink render={<Link to={`/courses/${course.id}`} />}>{course.title}</ListRowLink>
+      <ListRowLink render={<Link to={`/courses/${course.id}`} {...newTabLink} />}>{course.title}</ListRowLink>
       {course.isBuiltIn && <Badge variant="secondary">{t("home.builtInBadge")}</Badge>}
       {update && (
         <Badge data-testid="course-update-badge" variant={update.kind === "recommended" ? "warning" : "info"}>

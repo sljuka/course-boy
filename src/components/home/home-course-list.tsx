@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { CourseLoadingCard } from "@/components/course-loading-card";
 import { CourseFavoriteToggle } from "@/components/course-progress/course-favorite-toggle";
+import { CourseContextMenu } from "@/components/course-context-menu";
 import { CourseCard } from "@/components/course-search/course-card";
 import { HomeCourseRow } from "@/components/home/home-course-row";
 import { PendingImportCard } from "@/components/home/pending-import-card";
@@ -148,24 +149,26 @@ export function HomeCourseList({
                   const update = updates[course.id]?.visibility === "prominent" ? updates[course.id] : undefined;
                   const courseProgress = progress?.courses[course.id];
                   const summary = summarizeCourseProgress(course.stepIds, courseProgress);
-                  return view !== "table" ? (
-                    <CourseCard
-                      compact={view === "cards"}
-                      course={course}
-                      href={`/courses/${course.id}`}
-                      key={course.id}
-                      leading={<CourseFavoriteToggle courseId={course.id} />}
-                      progress={{ isStarted: Boolean(courseProgress?.startedAt), summary }}
-                      update={update}
-                    />
-                  ) : (
-                    <HomeCourseRow
-                      course={course}
-                      isStarted={Boolean(courseProgress?.startedAt)}
-                      key={course.id}
-                      summary={summary}
-                      update={update}
-                    />
+                  return (
+                    <CourseContextMenu course={course} favorite href={`/courses/${course.id}`} key={course.id}>
+                      {view !== "table" ? (
+                        <CourseCard
+                          compact={view === "cards"}
+                          course={course}
+                          href={`/courses/${course.id}`}
+                          leading={<CourseFavoriteToggle courseId={course.id} />}
+                          progress={{ isStarted: Boolean(courseProgress?.startedAt), summary }}
+                          update={update}
+                        />
+                      ) : (
+                        <HomeCourseRow
+                          course={course}
+                          isStarted={Boolean(courseProgress?.startedAt)}
+                          summary={summary}
+                          update={update}
+                        />
+                      )}
+                    </CourseContextMenu>
                   );
                 })}
               </ListGroupContent>

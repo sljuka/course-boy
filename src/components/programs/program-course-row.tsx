@@ -1,7 +1,9 @@
 import { BookOpen, Download } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { CourseContextMenu } from "@/components/course-context-menu";
 import { useCourseProgressLabel } from "@/components/course-progress/course-progress-label";
 import { usePendingImportView } from "@/components/home/use-pending-import";
 import { PublishedBy } from "@/components/publishers/publisher-name";
@@ -14,6 +16,7 @@ import type { CourseListView } from "@/lib/course-list-view";
 import type { CourseSummary } from "@/lib/course-package";
 import { summarizeCourseProgress } from "@/lib/course-progress";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
+import { useNewTabLink } from "@/lib/use-new-tab-link";
 import { localizeProgram, type ProgramCourse } from "@/lib/program-package";
 import type { PendingImport } from "@/lib/sharing-queries";
 import { useAppState } from "@/lib/use-app-state";
@@ -60,6 +63,7 @@ export function ProgramCourseRow({
     course ? summarizeCourseProgress(course.stepIds, courseProgress) : undefined,
     Boolean(courseProgress?.startedAt),
   );
+  const newTabLink = useNewTabLink(course ? `/courses/${course.id}` : "");
 
   const title = course?.title ?? (snapshot.title || entry.courseId);
   // Who published it (SLJ-126): as the course itself says once it's here
@@ -106,46 +110,66 @@ export function ProgramCourseRow({
     </>
   );
 
+  // A course on this device: right-click for its menu (SLJ-12), like on Home.
+  const withMenu = (content: ReactNode) =>
+    course ? (
+      <CourseContextMenu course={course} favorite href={`/courses/${course.id}`}>
+        {content}
+      </CourseContextMenu>
+    ) : (
+      content
+    );
+
   if (view !== "table") {
     return (
       <li className="min-w-0" data-testid="program-course">
-        <Card className="h-full min-w-0" size={view === "cards" ? "sm" : "default"}>
-          <CardHeader className="min-w-0">
-            <div className="flex min-w-0 items-center gap-2">
-              <CoverStepNumber>{index + 1}</CoverStepNumber>
-              <CardTitle className="min-w-0 wrap-break-word">
-                {course ? <Link to={`/courses/${course.id}`}>{title}</Link> : title}
-              </CardTitle>
-            </div>
-            {credit && <CardDescription>{credit}</CardDescription>}
-            {description && <CardDescription>{description}</CardDescription>}
-            <div className="flex min-w-0 flex-wrap items-center gap-2">{status}</div>
-          </CardHeader>
-        </Card>
+        {withMenu(
+          <Card className="h-full min-w-0" size={view === "cards" ? "sm" : "default"}>
+            <CardHeader className="min-w-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <CoverStepNumber>{index + 1}</CoverStepNumber>
+                <CardTitle className="min-w-0 wrap-break-word">
+                  {course ? (
+                    <Link to={`/courses/${course.id}`} {...newTabLink}>
+                      {title}
+                    </Link>
+                  ) : (
+                    title
+                  )}
+                </CardTitle>
+              </div>
+              {credit && <CardDescription>{credit}</CardDescription>}
+              {description && <CardDescription>{description}</CardDescription>}
+              <div className="flex min-w-0 flex-wrap items-center gap-2">{status}</div>
+            </CardHeader>
+          </Card>,
+        )}
       </li>
     );
   }
 
   return (
     <li data-testid="program-course">
-      <ListRow className="h-auto min-h-14 py-2">
-        <CoverStepNumber>{index + 1}</CoverStepNumber>
-        <BookOpen aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-        <div className="flex min-w-0 flex-1 flex-col">
-          {course ? (
-            <ListRowLink render={<Link to={`/courses/${course.id}`} />}>{title}</ListRowLink>
-          ) : (
-            <ListRowLink render={<span />}>{title}</ListRowLink>
+      {withMenu(
+        <ListRow className="h-auto min-h-14 py-2">
+          <CoverStepNumber>{index + 1}</CoverStepNumber>
+          <BookOpen aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+          <div className="flex min-w-0 flex-1 flex-col">
+            {course ? (
+              <ListRowLink render={<Link to={`/courses/${course.id}`} {...newTabLink} />}>{title}</ListRowLink>
+            ) : (
+              <ListRowLink render={<span />}>{title}</ListRowLink>
+            )}
+            <ListRowMeta fill>{description}</ListRowMeta>
+          </div>
+          {credit && (
+            <ListRowMeta align="end" className="max-w-48" fill>
+              {credit}
+            </ListRowMeta>
           )}
-          <ListRowMeta fill>{description}</ListRowMeta>
-        </div>
-        {credit && (
-          <ListRowMeta align="end" className="max-w-48" fill>
-            {credit}
-          </ListRowMeta>
-        )}
-        {status}
-      </ListRow>
+          {status}
+        </ListRow>,
+      )}
     </li>
   );
 }

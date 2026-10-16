@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 import { CourseLoadingCard } from "@/components/course-loading-card";
+import { CourseContextMenu } from "@/components/course-context-menu";
 import { CourseCard } from "@/components/course-search/course-card";
 import { CourseStatusIcon } from "@/components/my-courses/course-status-icon";
 import { MyCourseRow } from "@/components/my-courses/my-course-row";
@@ -105,23 +106,20 @@ export function MyCoursesList({ query, view }: { query: string; view: CourseList
               title={t(`myCourses.groups.${group.key}`)}
             />
             <ListGroupContent className={contentClassName}>
-              {group.courses.map((course) =>
-                view !== "table" ? (
-                  <CourseCard
-                    compact={view === "cards"}
-                    course={course}
-                    href={`/drafts/${course.id}`}
-                    key={course.id}
-                    leading={<CourseStatusIcon course={course} />}
-                  />
-                ) : (
-                  <MyCourseRow
-                    course={course}
-                    key={course.id}
-                    locale={locale}
-                  />
-                ),
-              )}
+              {group.courses.map((course) => (
+                <CourseContextMenu course={course} href={`/drafts/${course.id}`} key={course.id}>
+                  {view !== "table" ? (
+                    <CourseCard
+                      compact={view === "cards"}
+                      course={course}
+                      href={`/drafts/${course.id}`}
+                      leading={<CourseStatusIcon course={course} />}
+                    />
+                  ) : (
+                    <MyCourseRow course={course} locale={locale} />
+                  )}
+                </CourseContextMenu>
+              ))}
             </ListGroupContent>
           </ListGroup>
         ))}

@@ -6,6 +6,7 @@ import { Link, useLocation } from "react-router-dom";
 import { AppMenu } from "@/components/app-menu";
 import { AppSidebarApprovals } from "@/components/app-sidebar-approvals";
 import { AppSidebarFavorites } from "@/components/app-sidebar-favorites";
+import { AppSidebarItem } from "@/components/app-sidebar-item";
 import { AppSidebarPublishers } from "@/components/app-sidebar-publishers";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -17,8 +18,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { DEFAULT_PERSONA, PERSONAS, getPersonaIconUrl } from "@/lib/personas";
@@ -110,18 +109,14 @@ function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu>
                 {group.items.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      isActive={isSidebarItemActive(item.href, location.pathname)}
-                      render={<Link to={item.href} />}
-                    >
-                      <item.icon
-                        aria-hidden="true"
-                        className="h-4 w-4 shrink-0"
-                      />
-                      <span>{t(`sidebar.${item.id}`)}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <AppSidebarItem
+                    href={item.href}
+                    isActive={isSidebarItemActive(item.href, location.pathname)}
+                    key={item.href}
+                  >
+                    <item.icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                    <span>{t(`sidebar.${item.id}`)}</span>
+                  </AppSidebarItem>
                 ))}
                 {/* Under Teaching: versions waiting for your approval (SLJ-11). */}
                 {group.label === "teaching" && <AppSidebarApprovals />}

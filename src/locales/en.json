@@ -609,6 +609,7 @@
   "welcomeTitle": "Welcome!",
   "titleBar": {
     "tabs": "Open tabs",
+    "openInNewTab": "Open in new tab",
     "newTab": "New tab",
     "closeTab": "Close tab",
     "untitledTab": "Page",
@@ -1018,6 +1019,7 @@
     "scoreDetails": "Best score · {{percent}}% · attempts: {{attempts}}"
   },
   "programs": {
+    "openAsStudent": "Open as student",
     "new": "New program",
     "myTitle": "My programs",
     "myDescription": "Programs gather courses into a path to take in order, under one page with its own banner, logo and colors.",

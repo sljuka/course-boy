@@ -912,9 +912,12 @@ describe('learner flow: attend a course and complete its test', () => {
     await expect.poll(savedSpree).toEqual({ best: 1, current: 0 })
 
     // The next test (here, the same one again): right first time grows it.
+    // Home first, shown for real: two address changes in a row can reach
+    // React together, and the test page would stay mounted, still answered.
     await page.evaluate(() => {
       location.hash = '#/'
     })
+    await page.locator('[data-testid="course-search"]').waitFor()
     await openTest()
     await answer.fill('7')
     await checkAnswer()
@@ -1683,10 +1686,12 @@ describe('course mnemonics', () => {
     expect(lessonText).toContain('John Newbery again.')
     expect(lessonText).not.toContain('📰')
 
-    // Teacher: the same terms are marked while writing the lesson.
+    // Teacher: the same terms are marked while writing the lesson. The editor
+    // first, for real: the lesson page it replaces also shows "Newbery".
     await page.evaluate((id) => {
       location.hash = `#/drafts/${id}`
     }, ids.courseId)
+    await page.locator('#draft-course-title-en').waitFor()
     await waitFor(page, () => [...document.querySelectorAll('span,button,div')].some((el) => el.textContent === 'Newbery'))
     await page.evaluate(() =>
       [...document.querySelectorAll('span,button,div')].filter((el) => el.textContent === 'Newbery').pop().click(),
@@ -1932,10 +1937,112 @@ describe('tabs', () => {
     await tabs.nth(1).click({ button: 'middle' })
     await expect.poll(titles).toEqual(['Settings'])
 
+    // ⌘W (Ctrl+W off macOS) closes the active tab, not the window.
+    await page.locator('[data-testid="app-tab-new"]').click()
+    await expect.poll(titles).toEqual(['Settings', 'Home'])
+    // Through Electron's own input path: Playwright's key presses skip the
+    // before-input-event that main listens on.
+    await harness.app.evaluate(({ BrowserWindow }, modifier) => {
+      const contents = BrowserWindow.getAllWindows()[0].webContents
+      contents.sendInputEvent({ keyCode: 'W', modifiers: [modifier], type: 'keyDown' })
+      contents.sendInputEvent({ keyCode: 'W', modifiers: [modifier], type: 'keyUp' })
+    }, process.platform === 'darwin' ? 'meta' : 'control')
+    await expect.poll(titles).toEqual(['Settings'])
+    expect(await harness.app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1)
+
     // Closing the last tab leaves one on Home.
     await tabs.first().getByRole('button', { name: 'Close tab' }).click({ force: true })
     await expect.poll(titles).toEqual(['Home'])
     await hashIs('#/')
+
+    // From the sidebar: right-click → Open in new tab, a middle-click, and
+    // ⌘-click (Ctrl-click off macOS) each open a new tab; a plain click
+    // still navigates the current one.
+    const sidebarLink = (name) => page.locator('[data-slot="sidebar"] a').filter({ hasText: name }).first()
+    await sidebarLink('My courses').click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Open in new tab' }).click()
+    await expect.poll(titles).toEqual(['Home', 'My courses'])
+    await hashIs('#/my-courses')
+    await sidebarLink('Publishers').click({ button: 'middle' })
+    await expect.poll(titles).toEqual(['Home', 'My courses', 'Publishers'])
+    await hashIs('#/publishers')
+    await sidebarLink('Home').click({ modifiers: [process.platform === 'darwin' ? 'Meta' : 'Control'] })
+    await expect.poll(titles).toEqual(['Home', 'My courses', 'Publishers', 'Home'])
+    await sidebarLink('My courses').click()
+    await expect.poll(titles).toEqual(['Home', 'My courses', 'Publishers', 'My courses'])
+
+    // A course on Home: right-click shows Open in new tab with the same
+    // actions as its ⋯ menu (the bundled course: Hide course).
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    const bundledLink = page.locator(`[data-testid^="home-group-"] a[href$="/courses/${BUNDLED_COURSE_ID}"]`).first()
+    await bundledLink.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Hide course' }).waitFor()
+    await page.getByRole('menuitem', { name: 'Open in new tab' }).click()
+    await expect.poll(async () => (await titles()).at(-1)).toBe('Getting Started with Matko')
+    await hashIs(`#/courses/${BUNDLED_COURSE_ID}`)
+
+    // A breadcrumb that links somewhere: right-click → Open in new tab.
+    await page.locator('[data-slot="breadcrumb"] a').filter({ hasText: 'Home' }).first().click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Open in new tab' }).click()
+    await expect.poll(async () => (await titles()).at(-1)).toBe('Home')
+    await hashIs('#/')
+
+    // Back to one tab on Home for the tests after this one.
+    for (let i = 0; i < 5; i++) await tabs.first().getByRole('button', { name: 'Close tab' }).click({ force: true })
+    await expect.poll(async () => (await titles()).length).toBe(1)
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    await expect.poll(titles).toEqual(['Home'])
+  })
+})
+
+// SLJ-12: the course editor keeps its explorer selection in its address, so
+// an explorer node opens in a new tab on that node, and a tab comes back to it.
+describe('explorer nodes in tabs', () => {
+  it('opens a document in a new tab, and each tab keeps its own selection', async () => {
+    const { page } = harness
+    const tabs = page.locator('[data-testid="app-tab"]')
+    const titles = () => tabs.allInnerTexts()
+    const hash = () => page.evaluate(() => location.hash)
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Explorer Tabs' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Chapter' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Explorer doc' })
+      return { courseId, lessonId, sectionId }
+    })
+
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.courseId)
+    await page.getByText('Chapter', { exact: true }).first().click()
+    // Selecting a node puts it in the address.
+    await expect.poll(hash).toBe(`#/drafts/${ids.courseId}?node=${encodeURIComponent(`section:${ids.sectionId}`)}`)
+
+    await page.getByText('Explorer doc', { exact: true }).first().click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Open in new tab' }).click()
+    await expect.poll(async () => (await titles()).at(-1)).toBe('Explorer doc')
+    await expect.poll(hash).toBe(`#/drafts/${ids.courseId}?node=${encodeURIComponent(`document:${ids.lessonId}`)}`)
+    await page.locator('[data-slot="breadcrumb-page"]').filter({ hasText: 'Explorer doc' }).waitFor()
+
+    // The first tab still shows the section.
+    await tabs.nth(-2).getByRole('tab').click()
+    await expect.poll(hash).toBe(`#/drafts/${ids.courseId}?node=${encodeURIComponent(`section:${ids.sectionId}`)}`)
+    await page.locator('[data-slot="breadcrumb-page"]').filter({ hasText: 'Chapter' }).waitFor()
+
+    // Back to one tab on Home.
+    await tabs.last().getByRole('button', { name: 'Close tab' }).click({ force: true })
+    await expect.poll(async () => (await titles()).length).toBe(1)
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    await expect.poll(titles).toEqual(['Home'])
   })
 })
 

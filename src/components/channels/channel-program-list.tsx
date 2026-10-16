@@ -1,7 +1,9 @@
 import { Download, Library } from "lucide-react";
+import { Fragment, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { ProgramContextMenu } from "@/components/programs/program-context-menu";
 import { Button } from "@/components/ui/button";
 import { CardTitle } from "@/components/ui/card";
 import { ListRow, ListRowActions, ListRowLink, ListRowMeta } from "@/components/ui/list-row";
@@ -10,6 +12,7 @@ import { localizeProgram, type ChannelProgram } from "@/lib/program-package";
 import { useProgramsQuery } from "@/lib/program-queries";
 import type { PendingImport } from "@/lib/sharing-queries";
 import { useAppState } from "@/lib/use-app-state";
+import { useNewTabLink } from "@/lib/use-new-tab-link";
 
 // A channel's programs (SLJ-31), on its page: each opens once it's here, or
 // is brought here by its code, like a program's courses.
@@ -38,11 +41,11 @@ export function ChannelProgramList({
             localizeProgram({ defaultLocale: locale, locales: entry.snapshot.locales }, locale).title ||
             Object.values(entry.snapshot.locales)[0]?.title ||
             t("programs.untitled");
-          return (
-            <ListRow data-testid="channel-program-entry" key={entry.programId}>
+          const row = (
+            <ListRow data-testid="channel-program-entry">
               <Library aria-hidden="true" className="size-4 shrink-0" />
               {here ? (
-                <ListRowLink render={<Link to={`/programs/${entry.programId}`} />}>{title}</ListRowLink>
+                <ProgramLink programId={entry.programId}>{title}</ProgramLink>
               ) : (
                 <ListRowMeta emphasized fill>
                   {title}
@@ -65,8 +68,24 @@ export function ChannelProgramList({
               )}
             </ListRow>
           );
+          // Right-click once it's here (SLJ-12): Open in new tab and its star.
+          return here ? (
+            <ProgramContextMenu href={`/programs/${entry.programId}`} key={entry.programId} programId={entry.programId}>
+              {row}
+            </ProgramContextMenu>
+          ) : (
+            <Fragment key={entry.programId}>{row}</Fragment>
+          );
         })}
       </div>
     </div>
   );
+}
+
+// A program's title on a channel's page: a plain click opens it, a
+// middle-click or ⌘-click in a new tab (SLJ-12).
+function ProgramLink({ children, programId }: { children: ReactNode; programId: string }) {
+  const href = `/programs/${programId}`;
+  const newTabLink = useNewTabLink(href);
+  return <ListRowLink render={<Link to={href} {...newTabLink} />}>{children}</ListRowLink>;
 }

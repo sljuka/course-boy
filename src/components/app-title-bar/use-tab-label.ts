@@ -4,6 +4,7 @@ import {
   Contact,
   FileText,
   FlaskConical,
+  Folder,
   Home,
   Library,
   type LucideIcon,
@@ -16,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { matchPath } from "react-router-dom";
 
 import { useCourseDetailsQuery, useCoursesQuery } from "@/lib/course-queries";
+import { type EditorNodeRef, findEditorNodeTitle, parseEditorNode } from "@/lib/editor-node";
 import type { Locale } from "@/lib/i18n";
 import { localizeProgram } from "@/lib/program-package";
 import { useProgramQuery } from "@/lib/program-queries";
@@ -25,6 +27,7 @@ type Match =
   | { kind: "page"; icon: LucideIcon; labelKey: string }
   | { courseId: string; kind: "course"; icon: LucideIcon }
   | { courseId: string; kind: "lesson"; icon: LucideIcon; lessonId: string }
+  | { courseId: string; kind: "editor-node"; icon: LucideIcon; node: EditorNodeRef }
   | { kind: "program"; icon: LucideIcon; programId: string };
 
 // Fixed pages first: `/courses/:courseId` would otherwise swallow `/courses/new`.
@@ -52,6 +55,12 @@ function matchTabPath(path: string): Match | null {
     }
   }
   const draft = matchPath("/drafts/:courseId/*", pathname)?.params.courseId;
+  // The editor on a node of the explorer (`?node=`): that node's name.
+  const node = draft ? parseEditorNode(path.slice(pathname.length)) : null;
+  if (draft && node) {
+    const icon = node.type === "section" ? Folder : node.type === "test" ? FlaskConical : FileText;
+    return { courseId: draft, icon, kind: "editor-node", node };
+  }
   if (draft) return { courseId: draft, icon: PencilLine, kind: "course" };
   const course = matchPath("/courses/:courseId", pathname)?.params.courseId;
   if (course) return { courseId: course, icon: BookOpen, kind: "course" };
@@ -69,9 +78,13 @@ export function useTabLabel(path: string): { icon: LucideIcon; label: string } {
   const { t } = useTranslation();
   const { locale } = useAppState();
   const match = matchTabPath(path);
-  const courseId = match && (match.kind === "course" || match.kind === "lesson") ? match.courseId : undefined;
+  const courseId =
+    match && (match.kind === "course" || match.kind === "lesson" || match.kind === "editor-node") ? match.courseId : undefined;
   const { data: courses } = useCoursesQuery(locale as Locale);
-  const { data: details } = useCourseDetailsQuery(match?.kind === "lesson" ? courseId : undefined, locale as Locale);
+  const { data: details } = useCourseDetailsQuery(
+    match?.kind === "lesson" || match?.kind === "editor-node" ? courseId : undefined,
+    locale as Locale,
+  );
   const { data: program } = useProgramQuery(match?.kind === "program" ? match.programId : undefined);
 
   if (!match) return { icon: FileText, label: t("titleBar.untitledTab") };
@@ -80,6 +93,9 @@ export function useTabLabel(path: string): { icon: LucideIcon; label: string } {
     return { icon: match.icon, label: program ? localizeProgram(program, locale as Locale).title : "" };
   }
   const courseTitle = courses?.find((course) => course.id === match.courseId)?.title ?? "";
+  if (match.kind === "editor-node") {
+    return { icon: match.icon, label: (details && findEditorNodeTitle(details.sections, match.node)) || courseTitle };
+  }
   if (match.kind === "lesson") {
     const lesson = details?.sections.flatMap((section) => section.lessons).find((item) => item.id === match.lessonId);
     return { icon: match.icon, label: lesson?.title ?? courseTitle };

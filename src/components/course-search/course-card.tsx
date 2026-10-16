@@ -19,6 +19,7 @@ import type { CourseUpdateInfo } from "@/lib/sharing";
 import { formatShortDate } from "@/lib/format-date";
 import { useAppState } from "@/lib/use-app-state";
 import { getLocaleFlag } from "@/lib/locale-flags";
+import { useNewTabLink } from "@/lib/use-new-tab-link";
 
 type CourseCardProps = {
   course: CourseSummary;
@@ -41,6 +42,7 @@ export function CourseCard({ compact = false, course, href, leading, progress, u
   // An imported course's publisher (SLJ-108): their name in Publishers, else the short id.
   const progressLabel = useCourseProgressLabel(progress?.summary, progress?.isStarted ?? false);
   const { locale } = useAppState();
+  const newTabLink = useNewTabLink(href);
 
   return (
     <Card className="min-w-0 overflow-hidden" data-testid={compact ? "course-card-compact" : "course-card"} size={compact ? "sm" : "default"}>
@@ -48,7 +50,7 @@ export function CourseCard({ compact = false, course, href, leading, progress, u
         <CardHeader className="min-w-0">
           <CardTitle className="flex min-w-0 flex-wrap items-center gap-x-2">
             {leading}
-            <Link className="min-w-0 wrap-break-word transition-colors hover:text-foreground" to={href}>
+            <Link className="min-w-0 wrap-break-word transition-colors hover:text-foreground" to={href} {...newTabLink}>
               {course.title}
             </Link>
             {!compact && course.lastCutAt && (

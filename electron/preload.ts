@@ -243,6 +243,22 @@ contextBridge.exposeInMainWorld('background', {
   },
 })
 
+// The window's tabs (SLJ-12): main forwarding ⌘W / Ctrl+W, which closes the
+// active tab, and closing the window when only one tab is left. Returns a
+// function that stops listening.
+contextBridge.exposeInMainWorld('appWindow', {
+  close() {
+    return ipcRenderer.invoke('window:close') as Promise<void>
+  },
+  onCloseTabRequest(callback: () => void) {
+    const listener = () => callback()
+    ipcRenderer.on('window:close-tab', listener)
+    return () => {
+      ipcRenderer.removeListener('window:close-tab', listener)
+    }
+  },
+})
+
 // Agents (SLJ-68): the MCP server's switch and token (Settings → Agents), and
 // main saying an agent changed courses or programs, so what's on screen is
 // read again. `onChanged` returns a function that stops listening.

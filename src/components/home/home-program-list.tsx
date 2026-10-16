@@ -2,6 +2,7 @@ import { Library, Radio } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
+import { ProgramContextMenu } from "@/components/programs/program-context-menu";
 import { ProgramFavoriteToggle } from "@/components/programs/program-favorite-toggle";
 import { ProgramProgressIcon } from "@/components/programs/program-progress-icon";
 import { Badge } from "@/components/ui/badge";
@@ -10,9 +11,10 @@ import { ListRow, ListRowActions, ListRowLink, ListRowMeta } from "@/components/
 import { StatusIcon } from "@/components/ui/status-icon";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { parseCourseSearchQuery } from "@/lib/course-search-query";
-import type { ProgramKind } from "@/lib/program-package";
+import type { ProgramKind, ProgramSummary } from "@/lib/program-package";
 import { useProgramsQuery } from "@/lib/program-queries";
 import { useAppState } from "@/lib/use-app-state";
+import { useNewTabLink } from "@/lib/use-new-tab-link";
 
 // Home's Programs group (SLJ-32 phase 2): programs imported with a code, each
 // opening its page, with where the student is in it (like a course's row),
@@ -46,30 +48,45 @@ export function HomeProgramList({ kind = "program", query }: { kind?: ProgramKin
       />
       <ListGroupContent>
         {imported.map((program) => (
-          <ListRow data-testid={kind === "channel" ? "home-channel" : "home-program"} key={program.id}>
-            {/* A channel isn't something to finish (SLJ-31): a red target, like an
-                imported course's. */}
-            {kind === "channel" ? (
-              <StatusIcon data-testid="home-channel-icon" status="channel" />
-            ) : (
-              <ProgramProgressIcon courseIds={program.courseIds} />
-            )}
-            {/* Above the row's stretched link, so it toggles instead of opening the program. */}
-            <ListRowActions>
-              <ProgramFavoriteToggle programId={program.id} />
-            </ListRowActions>
-            <ListRowLink render={<Link to={`/${kind === "channel" ? "channels" : "programs"}/${program.id}`} />}>
-              {program.title || (kind === "channel" ? t("channels.untitled") : t("programs.untitled"))}
-            </ListRowLink>
-            {program.newCourseCount > 0 && (
-              <Badge data-testid="home-program-new" variant="info">
-                {t("programSharing.newCourses", { count: program.newCourseCount })}
-              </Badge>
-            )}
-            <ListRowMeta align="end">{t("programs.courseCount", { count: program.courseCount })}</ListRowMeta>
-          </ListRow>
+          <HomeProgramRow key={program.id} kind={kind} program={program} />
         ))}
       </ListGroupContent>
     </ListGroup>
+  );
+}
+
+// One program (or followed channel) on Home. Right-click: Open in new tab and
+// its star (`ProgramContextMenu`); a middle-click or ⌘-click opens it in a new
+// tab.
+function HomeProgramRow({ kind, program }: { kind: ProgramKind; program: ProgramSummary }) {
+  const { t } = useTranslation();
+  const href = `/${kind === "channel" ? "channels" : "programs"}/${program.id}`;
+  const newTabLink = useNewTabLink(href);
+
+  return (
+    <ProgramContextMenu href={href} programId={program.id}>
+      <ListRow data-testid={kind === "channel" ? "home-channel" : "home-program"}>
+        {/* A channel isn't something to finish (SLJ-31): a red target, like an
+            imported course's. */}
+        {kind === "channel" ? (
+          <StatusIcon data-testid="home-channel-icon" status="channel" />
+        ) : (
+          <ProgramProgressIcon courseIds={program.courseIds} />
+        )}
+        {/* Above the row's stretched link, so it toggles instead of opening the program. */}
+        <ListRowActions>
+          <ProgramFavoriteToggle programId={program.id} />
+        </ListRowActions>
+        <ListRowLink render={<Link to={href} {...newTabLink} />}>
+          {program.title || (kind === "channel" ? t("channels.untitled") : t("programs.untitled"))}
+        </ListRowLink>
+        {program.newCourseCount > 0 && (
+          <Badge data-testid="home-program-new" variant="info">
+            {t("programSharing.newCourses", { count: program.newCourseCount })}
+          </Badge>
+        )}
+        <ListRowMeta align="end">{t("programs.courseCount", { count: program.courseCount })}</ListRowMeta>
+      </ListRow>
+    </ProgramContextMenu>
   );
 }
