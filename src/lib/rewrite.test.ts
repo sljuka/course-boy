@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { closestRewriteSolution, matchesRewrite, normalizeRewrite, rewritePrintRows } from "@/lib/rewrite";
+import { closestRewriteSolution, diffRewrite, matchesRewrite, normalizeRewrite, rewritePrintRows } from "@/lib/rewrite";
 
 // SLJ-146: a written answer against the teacher's solutions.
 describe("normalizeRewrite", () => {
@@ -45,5 +45,31 @@ describe("rewritePrintRows", () => {
     expect(rewritePrintRows(["Kratko."])).toBe(1);
     expect(rewritePrintRows(["x".repeat(130)])).toBe(3);
     expect(rewritePrintRows(["x".repeat(1000)])).toBe(6);
+  });
+});
+
+describe("diffRewrite", () => {
+  const changed = (segments: { changed: boolean; text: string }[]) =>
+    segments.filter((segment) => segment.changed).map((segment) => segment.text);
+
+  it("marks the answer's wrong words and the solution's missing ones, marks included", () => {
+    const diff = diffRewrite("Nena reče kupiću hleb", "Nena reče: „Kupiću hleb.“");
+    expect(changed(diff.answer)).toEqual([]);
+    expect(changed(diff.solution)).toEqual([":", "„", ".", "“"]);
+
+    const swapped = diffRewrite("Nena kaže: „Kupiću mleko.“", "Nena reče: „Kupiću hleb.“");
+    expect(changed(swapped.answer)).toEqual(["kaže", "mleko"]);
+    expect(changed(swapped.solution)).toEqual(["reče", "hleb"]);
+  });
+
+  it("gives back each text exactly, spaces included", () => {
+    const diff = diffRewrite("  Nena   reče  ", "Nena reče: „Kupiću hleb.“");
+    expect(diff.answer.map((segment) => segment.text).join("")).toBe("  Nena   reče  ");
+    expect(diff.solution.map((segment) => segment.text).join("")).toBe("Nena reče: „Kupiću hleb.“");
+  });
+
+  it("compares words as the whole answer is compared", () => {
+    expect(changed(diffRewrite('NENA rece: ,,Kupicu hleb.\'\'', "Nena reče: „Kupiću hleb.“", { acceptWithoutDiacritics: true }).answer)).toEqual([]);
+    expect(changed(diffRewrite("nena", "Nena", { matchCase: true }).answer)).toEqual(["nena"]);
   });
 });

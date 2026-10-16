@@ -1515,7 +1515,12 @@ describe('rewrite', () => {
     await answer.fill('Can I come asked Mark')
     await page.getByRole('button', { exact: true, name: 'Check answer' }).click()
     await page.locator('[data-testid="show-correct-answer"]').click()
-    expect(await page.locator('[data-testid="exercise-solution-value"]').innerText()).toBe('„Can I come?“ asked Mark.')
+    expect(await page.locator('[data-testid="rewrite-review-solution"]').innerText()).toBe('„Can I come?“ asked Mark.')
+    // Word by word: the answer has nothing wrong, only things missing.
+    const marked = (testId) =>
+      page.locator(`[data-testid="${testId}"] [data-slot="marked-text-piece"]`).allInnerTexts()
+    expect(await marked('rewrite-review-answer')).toEqual([])
+    expect(await marked('rewrite-review-solution')).toEqual(['„', '?', '“', '.'])
     await page.getByRole('button', { exact: true, name: 'Close course' }).click()
   })
 })

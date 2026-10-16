@@ -21,12 +21,12 @@ export function ExerciseSolution({
   instance: ExerciseInstance;
 }) {
   const { t } = useTranslation();
-  const { ReviewComponent } = getExerciseKindEditor(exercise.kind);
+  const { ReviewComponent, reviewIsLabelled } = getExerciseKindEditor(exercise.kind);
 
   if (ReviewComponent) {
     return (
       <div className="flex flex-col gap-2" data-testid="exercise-solution">
-        <CardDescription>{t("courseDetails.correctAnswerShown")}</CardDescription>
+        {!reviewIsLabelled && <CardDescription>{t("courseDetails.correctAnswerShown")}</CardDescription>}
         <ReviewComponent exercise={exercise as never} instance={instance} value={answer} />
       </div>
     );

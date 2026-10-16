@@ -93,4 +93,7 @@ export type ExerciseKindEditor<
   // The answer and the solution drawn, for the summary after a graded test;
   // a kind without it lists them as text (`ExerciseKindRuntime.review`).
   ReviewComponent?: ComponentType<ReviewComponentProps<TCourse>>;
+  // `ReviewComponent` labels the answer and the solution itself, so the
+  // correct answer shown after a wrong one (SLJ-141) needs no title above.
+  reviewIsLabelled?: boolean;
 };
