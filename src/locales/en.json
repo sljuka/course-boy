@@ -189,7 +189,8 @@
       "partial": "Partly right",
       "wrong": "Wrong"
     },
-    "summaryRegionLegend": "Green: the shapes to pick (✓ the ones you picked). Red: picked, but not one of them."
+    "summaryRegionLegend": "Green: the shapes to pick (✓ the ones you picked). Red: picked, but not one of them.",
+    "placePunctuation": "Place the punctuation marks before checking."
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
@@ -1343,5 +1344,24 @@
     },
     "belowColorLabel": "Below {{min}}%: colour",
     "belowSummary": "Below {{min}}%: {{color}}"
+  },
+  "punctuation": {
+    "gapBefore": "Marks before “{{word}}”",
+    "gapAtEnd": "Marks at the end",
+    "addMark": "Add {{mark}}",
+    "clear": "Clear",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Put in the punctuation marks",
+    "textLabel": "Sentence with its punctuation",
+    "textPlaceholder": "Učiteljica reče: „Sutra idemo u pozorište.“",
+    "textHelp": "Write it as it should be. The student sees it without the marks below and puts them back.",
+    "marksLabel": "Marks the student places",
+    "marksHelp": "The marks taken out of the sentence and offered to the student. Empty: the usual ones.",
+    "valid": "Valid",
+    "invalid": "Invalid",
+    "marksToPlace_one": "{{count}} place for marks",
+    "marksToPlace_other": "{{count}} places for marks",
+    "needsMarks": "Write the sentence with its punctuation marks",
+    "previewLabel": "What the student sees"
   }
 }

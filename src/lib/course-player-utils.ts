@@ -11,7 +11,8 @@ export type ExerciseInstance =
   | { kind: "missing-word" }
   | { kind: "region-picker" }
   | { kind: "region-marker" }
-  | { kind: "region-label" };
+  | { kind: "region-label" }
+  | { kind: "punctuation" };
 
 export function interpolateTemplate(
   template: string,

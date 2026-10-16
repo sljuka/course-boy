@@ -12,6 +12,12 @@ import type {
 } from "../src/lib/course-package";
 import { resolveAssetFilename } from "../src/lib/course-asset-id";
 import { isValidCourseId } from "../src/lib/course-id";
+import {
+  DEFAULT_PUNCTUATION_MARKS,
+  joinPunctuationSentence,
+  normalizeMarks,
+  parsePunctuationText,
+} from "../src/lib/punctuation";
 import { regionPickerSvgPresets } from "../src/lib/region-picker-svg-presets";
 import { type CourseTagDefinition, createCourseTagDefinition, courseTagColorOptions } from "../src/lib/course-tags";
 import { isExerciseCount } from "../src/lib/course-exercise-pool";
@@ -192,6 +198,22 @@ const questionSchema = z.discriminatedUnion("type", [
     tags,
   }),
   z.object({
+    type: z.literal("punctuation"),
+    image,
+    prompt: z.string().min(1).describe('The instruction, e.g. "Put in the punctuation marks"'),
+    text: z
+      .string()
+      .min(1)
+      .describe('The sentence as it should be, with its marks: "Učiteljica reče: „Sutra idemo u pozorište.“". The student sees it without them and places each one.'),
+    marks: z
+      .array(z.string().length(1))
+      .optional()
+      .describe(`The marks taken out and offered to the student (default ${DEFAULT_PUNCTUATION_MARKS.join(" ")}); others stay in the text`),
+    hint: z.string().optional(),
+    points,
+    tags,
+  }),
+  z.object({
     type: z.literal("region_picker"),
     prompt: z.string().min(1).describe('The instruction, e.g. "Click the countries that border Serbia"'),
     map: z.enum(regionPickerSvgPresets.map((preset) => preset.id) as [string, ...string[]]).describe("One of the app's maps"),
@@ -323,6 +345,19 @@ function exerciseFromQuestion(
     };
   }
 
+  if (question.type === "punctuation") {
+    const marks = normalizeMarks(question.marks);
+    if (!parsePunctuationText(question.text, marks).gaps.some(Boolean)) {
+      throw new Error(`"${question.prompt}": the text has none of the marks to place (${marks.join(" ")})`);
+    }
+    return {
+      kind: "punctuation",
+      locales: { [locale]: { ...hint, prompt: question.prompt, text: question.text } },
+      ...(question.marks ? { marks } : {}),
+      tags: [],
+    };
+  }
+
   if (question.type === "fill_in") {
     const named = extractMissingWordVariableNames(question.text);
     if (named.length === 0) throw new Error(`"${question.prompt}": the text has no {{blank}} to fill in`);
@@ -448,6 +483,15 @@ function questionFromExercise(exercise: CourseExercise): Record<string, unknown>
             ),
           }
         : {}),
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  if (exercise.kind === "punctuation") {
+    return {
+      marks: exercise.marks,
+      prompt: exercise.prompt,
+      text: joinPunctuationSentence(exercise.words, exercise.gaps),
+      type: "punctuation",
       ...(exercise.hint ? { hint: exercise.hint } : {}),
     };
   }

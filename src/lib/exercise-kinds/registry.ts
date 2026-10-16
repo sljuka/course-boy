@@ -10,6 +10,7 @@ import type { Locale } from "../i18n";
 import { missingWordExerciseRuntime } from "./missing-word";
 import { multipleChoiceExerciseRuntime } from "./multiple-choice";
 import { numericExerciseRuntime } from "./numeric";
+import { punctuationExerciseRuntime } from "./punctuation";
 import { regionLabelExerciseRuntime } from "./region-label";
 import { regionMarkerExerciseRuntime } from "./region-marker";
 import { regionPickerExerciseRuntime } from "./region-picker";
@@ -27,6 +28,7 @@ const EXERCISE_KIND_RUNTIMES: Record<ExerciseKind, ExerciseKindRuntime<any, any>
   "missing-word": missingWordExerciseRuntime,
   "multiple-choice": multipleChoiceExerciseRuntime,
   numeric: numericExerciseRuntime,
+  punctuation: punctuationExerciseRuntime,
   "region-label": regionLabelExerciseRuntime,
   "region-marker": regionMarkerExerciseRuntime,
   "region-picker": regionPickerExerciseRuntime,

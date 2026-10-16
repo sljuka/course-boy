@@ -100,7 +100,8 @@ export type ExerciseKind =
   | "missing-word"
   | "region-picker"
   | "region-marker"
-  | "region-label";
+  | "region-label"
+  | "punctuation";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -291,6 +292,21 @@ export type ExercisePointsField = {
   points?: number;
 };
 
+// A sentence whose marks the student places (SLJ-145, lib/punctuation.ts):
+// its words, the marks each gap should hold, and the marks offered.
+export type PunctuationCourseExercise = {
+  kind: "punctuation";
+  gaps: string[];
+  hint?: string;
+  id: string;
+  marks: string[];
+  // An image or video shown above the prompt (SLJ-56); see lib/exercise-media.ts.
+  media?: CourseExerciseMedia;
+  prompt: string;
+  tags: string[];
+  words: string[];
+};
+
 export type CourseExercise = (
   | NumericCourseExercise
   | MultipleChoiceCourseExercise
@@ -299,6 +315,7 @@ export type CourseExercise = (
   | RegionPickerCourseExercise
   | RegionMarkerCourseExercise
   | RegionLabelCourseExercise
+  | PunctuationCourseExercise
 ) &
   ExercisePointsField;
 
@@ -444,6 +461,16 @@ export type SharedRegionLabelTestExerciseDefinition = {
   tags: string[];
 };
 
+// On disk: each language's sentence with its marks, and the marks the
+// student places (`lib/punctuation.ts`'s default set when missing).
+export type SharedPunctuationTestExerciseDefinition = {
+  kind: "punctuation";
+  locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; text: string }>>;
+  marks?: string[];
+  media?: SharedExerciseMedia;
+  tags: string[];
+};
+
 export type SharedTestExerciseDefinition = (
   | SharedNumericTestExerciseDefinition
   | SharedMultipleChoiceTestExerciseDefinition
@@ -452,6 +479,7 @@ export type SharedTestExerciseDefinition = (
   | SharedRegionPickerTestExerciseDefinition
   | SharedRegionMarkerTestExerciseDefinition
   | SharedRegionLabelTestExerciseDefinition
+  | SharedPunctuationTestExerciseDefinition
 ) &
   ExercisePointsField;
 

@@ -706,12 +706,8 @@ the mechanism behind "multiple-choice and word-types are interactive-only."
 never calls `t(...)` — hint-formatting and translation are centralized once in
 `use-test-player-state.ts` rather than duplicated per kind.
 
-Every kind requires at least one tag to save — `hasValidTags` in the runtime registry
-enforces it at save time, but a kind's editor-side `validate()` must call the matching
-`validateHasTags()` from `src/components/exercise-kinds/types.ts` itself (last, after any
-kind-specific checks) or the UI can show "Valid" for an exercise the backend then
-rejects with no visible reason. This was a real bug for numeric specifically: it validated
-its formula but never checked for tags, while multiple-choice and word-types did.
+Tags are optional; when present they must be well-formed (`hasValidTags` in the runtime
+types, which every kind's `isValid` calls first).
 
 Both registries type their entries as `ExerciseKindRuntime<any, any>` /
 `ExerciseKindEditor<any, any, any>` — a deliberate, narrow loss of per-kind type
@@ -891,8 +887,9 @@ besides IPC, and the same rules hold:
   rebinding).
 - **Simple formats for agents:** a lesson is Markdown (wrapped as one `markdown` block;
   a body with `[matko-block]` markers passes through), a test is a list of
-  `multiple_choice`, `number` or `fill_in` questions (`fill_in` is the `missing-word` kind:
-  a text with `{{name}}` blanks and each blank's accepted answers). Tests made in the app
+  `multiple_choice`, `number`, `fill_in` or `punctuation` questions (`fill_in` is the
+  `missing-word` kind: a text with `{{name}}` blanks and each blank's accepted answers;
+  `punctuation` is the sentence with its marks, and optionally which marks are taken out). Tests made in the app
   with other kinds read as `{ type, editable: false }`. A question can carry `points`, and
   a test `graded` (SLJ-135); replacing a test's questions keeps whether it's graded, its
   own grade bands, whether it includes the course's other tests (and how many) and its

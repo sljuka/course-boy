@@ -186,6 +186,26 @@ describe("questions", () => {
     ).toThrow("isn't a filename in the course");
   });
 
+  it("become punctuation exercises (SLJ-145), with their own marks only when given", () => {
+    const [exercise, withMarks] = testFromQuestions(
+      [
+        { prompt: "Upiši znake", text: "Ana reče: „Važi.“", type: "punctuation" },
+        { marks: [",", ","], prompt: "Zarezi", text: "Jabuke, kruške i šljive.", type: "punctuation" },
+      ],
+      "sr",
+    ).exercises;
+
+    expect(exercise).toEqual({
+      kind: "punctuation",
+      locales: { sr: { prompt: "Upiši znake", text: "Ana reče: „Važi.“" } },
+      tags: [],
+    });
+    expect(withMarks).toMatchObject({ marks: [","] });
+    expect(() => testFromQuestions([{ prompt: "?", text: "Ana peva", type: "punctuation" }], "sr")).toThrow(
+      "none of the marks to place",
+    );
+  });
+
   it("refuse a correct option that doesn't exist", () => {
     expect(() =>
       testFromQuestions([{ correct: [2], options: ["a", "b"], prompt: "?", type: "multiple_choice" }], "en"),

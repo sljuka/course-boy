@@ -125,6 +125,23 @@ type MissingWordTestExercise = {
   tagIds: string[];
 };
 
+// A punctuation exercise (SLJ-145): each language's sentence with its marks.
+type PunctuationExerciseLocaleContent = {
+  hint: string;
+  prompt: string;
+  text: string;
+};
+
+type PunctuationTestExercise = {
+  kind: "punctuation";
+  id: string;
+  media?: ExerciseMediaDraft;
+  locales: Record<string, PunctuationExerciseLocaleContent>;
+  // The marks the student places, as typed ("" for the default set).
+  marks: string;
+  tagIds: string[];
+};
+
 type RegionPickerExerciseLocaleContent = {
   hint: string;
   prompt: string;
@@ -194,6 +211,7 @@ type TestExercise = (
   | MultipleChoiceTestExercise
   | WordTypeTestExercise
   | MissingWordTestExercise
+  | PunctuationTestExercise
   | RegionPickerTestExercise
   | RegionMarkerTestExercise
   | RegionLabelTestExercise
@@ -247,6 +265,8 @@ export type {
   NumericSolutionSpace,
   NumericTestExercise,
   PromptVariable,
+  PunctuationExerciseLocaleContent,
+  PunctuationTestExercise,
   RegionLabelExerciseLocaleContent,
   RegionLabelRegionDraft,
   RegionLabelTestExercise,

@@ -1417,6 +1417,60 @@ describe('show the correct answer', () => {
   })
 })
 
+// SLJ-145: a punctuation exercise shows the sentence without its marks; the
+// student places them in the gaps (typing a mark, or from a gap's palette).
+describe('punctuation', () => {
+  it('places marks by typing and from the palette, grades each gap, and shows the sentence', async () => {
+    const { page } = harness
+    const exercise = (prompt, text) => ({ kind: 'punctuation', locales: { en: { prompt, text } }, tags: [] })
+    const ids = await page.evaluate(async (exercises) => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Punctuation' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Marks' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Marks quiz' })
+      await window.courses.saveSectionTest({ courseId, sectionId, test: { exercises, template: '' }, testId })
+      return { courseId, testId }
+    }, [exercise('Put in the marks', 'Ana said: „Fine.“'), exercise('Put in the marks', 'Mark is here.')])
+
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const gaps = page.locator('[data-testid="punctuation-gap"]')
+    await gaps.first().waitFor({ timeout: 15_000 })
+    // A gap before, between and after the words; the marks are taken out.
+    expect(await gaps.count()).toBe(4)
+    expect(await page.locator('[data-testid="punctuation-sentence"]').innerText()).not.toContain(':')
+
+    // Typing a mark into a focused gap, and picking one from its palette.
+    await gaps.nth(2).focus()
+    await page.keyboard.type(':')
+    await gaps.nth(2).click()
+    await page.getByRole('menuitem', { name: 'Add „' }).click()
+    await gaps.nth(3).focus()
+    await page.keyboard.type('.')
+    await gaps.nth(3).click()
+    await page.getByRole('menuitem', { name: 'Add “' }).click()
+    expect(await gaps.nth(2).innerText()).toBe(':„')
+    await page.getByRole('button', { exact: true, name: 'Check answer' }).click()
+    await page.getByRole('button', { exact: true, name: 'Continue' }).click()
+
+    // A mark in the wrong gap: that gap turns red, and the correct sentence
+    // can be shown.
+    await waitForText(page, 'Mark')
+    await gaps.nth(1).focus()
+    await page.keyboard.type(',')
+    await page.getByRole('button', { exact: true, name: 'Check answer' }).click()
+    await expect.poll(() => gaps.nth(1).getAttribute('data-tone')).toBe('wrong')
+    await page.locator('[data-testid="show-correct-answer"]').click()
+    expect(await page.locator('[data-testid="exercise-solution-value"]').innerText()).toBe('Mark is here.')
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+  })
+})
+
 // SLJ-139: a numeric exercise with several solutions has a labelled box for
 // each: checking with one empty asks for all, a wrong one is marked, both
 // right moves on.
@@ -1965,10 +2019,17 @@ describe('tabs', () => {
     const tabs = page.locator('[data-testid="app-tab"]')
     const titles = () => tabs.allInnerTexts()
     const activeTitle = () => page.locator('[data-testid="app-tab"][data-active]').innerText()
+    // One address change at a time, each drawn before the next: two in a row
+    // can reach React together, and the tab would record only the last.
     const go = (hash) =>
-      page.evaluate((target) => {
-        location.hash = target
-      }, hash)
+      page.evaluate(
+        (target) =>
+          new Promise((resolve) => {
+            location.hash = target
+            requestAnimationFrame(() => requestAnimationFrame(resolve))
+          }),
+        hash,
+      )
     const hashIs = (hash) => expect.poll(() => page.evaluate(() => location.hash)).toBe(hash)
     const savedTabs = () => page.evaluate(() => window.preferences.get().then((preferences) => preferences.tabs))
 

@@ -189,7 +189,8 @@
       "partial": "Delimično tačno",
       "wrong": "Netačno"
     },
-    "summaryRegionLegend": "Zeleno: oblasti koje je trebalo izabrati (✓ one koje si izabrao). Crveno: izabrano, a nije trebalo."
+    "summaryRegionLegend": "Zeleno: oblasti koje je trebalo izabrati (✓ one koje si izabrao). Crveno: izabrano, a nije trebalo.",
+    "placePunctuation": "Postavi znakove interpunkcije pre provere."
   },
   "courseVersions": {
     "actionErrorTitle": "Nešto nije u redu",
@@ -1343,5 +1344,24 @@
     },
     "belowColorLabel": "Ispod {{min}}%: boja",
     "belowSummary": "Ispod {{min}}%: {{color}}"
+  },
+  "punctuation": {
+    "gapBefore": "Znakovi pre „{{word}}“",
+    "gapAtEnd": "Znakovi na kraju",
+    "addMark": "Dodaj {{mark}}",
+    "clear": "Obriši",
+    "promptLabel": "Zadatak",
+    "promptPlaceholder": "Upiši znake interpunkcije",
+    "textLabel": "Rečenica sa znacima interpunkcije",
+    "textPlaceholder": "Učiteljica reče: „Sutra idemo u pozorište.“",
+    "textHelp": "Napiši je kako treba da glasi. Učenik je vidi bez znakova iz polja ispod i vraća ih.",
+    "marksLabel": "Znakovi koje učenik postavlja",
+    "marksHelp": "Znakovi koji se izbacuju iz rečenice i nude učeniku. Prazno: uobičajeni.",
+    "valid": "Ispravno",
+    "invalid": "Neispravno",
+    "marksToPlace_one": "{{count}} mesto za znakove",
+    "marksToPlace_other": "{{count}} mesta za znakove",
+    "needsMarks": "Napiši rečenicu sa njenim znacima interpunkcije",
+    "previewLabel": "Šta učenik vidi"
   }
 }
