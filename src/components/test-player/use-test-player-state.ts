@@ -100,14 +100,21 @@ function createEmptyResults(exercises: CourseExercise[]): ExerciseResult[] {
 // person's setting in the test player, paper mode for the editors' examples).
 // `onFirstTry`: each question's first try in interactive mode, right or not
 // (the course's spree, SLJ-134). `courseTests`: every test in the course, for
-// a final test's pool (SLJ-136).
+// a final test's pool (SLJ-136). `onChecked`: every answer checked in
+// interactive mode, right or not (its sound, SLJ-147).
 export function useTestPlayerState(
   activeLesson?: { test: CourseTest | null },
   {
     courseTests = NO_TESTS,
+    onChecked,
     onFirstTry,
     startInteractive = false,
-  }: { courseTests?: CourseTest[]; onFirstTry?: (isCorrect: boolean) => void; startInteractive?: boolean } = {},
+  }: {
+    courseTests?: CourseTest[];
+    onChecked?: (isCorrect: boolean) => void;
+    onFirstTry?: (isCorrect: boolean) => void;
+    startInteractive?: boolean;
+  } = {},
 ) {
   // Read when exercises are picked, not watched: the course refreshing in
   // the background mustn't start a test over.
@@ -285,6 +292,7 @@ export function useTestPlayerState(
     // counts as wrong nor ends a spree.
     if (result.isAnswered && !result.isIncomplete) {
       if (firstTryCorrect[index] === null) onFirstTry?.(result.isCorrect);
+      onChecked?.(result.isCorrect);
       recordFirstTries([{ index, isCorrect: result.isCorrect }]);
     }
     setExerciseResults((currentResults) => {

@@ -35,7 +35,8 @@ import { usePrintDensity } from "@/lib/use-print-density";
 import { buildLessonPath } from "@/lib/course-utils";
 import { recordTestResult, useCourseProgressQuery, useCourseSpree } from "@/lib/course-progress-queries";
 import { isBetterAttempt, scoreGradedAttempt, scoreTestAttempt } from "@/lib/course-progress";
-import { exercisePoints, resolveGradeBands } from "@/lib/grade-bands";
+import { celebrationColor, exercisePoints, resolveGradeBands, scorePercent } from "@/lib/grade-bands";
+import { useSoundEffects } from "@/lib/sound-effects-preference";
 import { pickCheerKey } from "@/lib/practice-cheers";
 import { buildCourseExercisePool } from "@/lib/course-exercise-pool";
 import { useStartTestsInteractivePreference } from "@/lib/start-tests-interactive-preference";
@@ -138,6 +139,10 @@ function TestPlayerContent({
     setSpreeBestAtStart(spree.best);
   }
   const isShowingResult = gradedResult !== null || practiceResult !== null;
+  const playSound = useSoundEffects();
+  function playCheckSound(isCorrect: boolean) {
+    playSound(isCorrect ? "right" : "wrong");
+  }
   // The start screen (SLJ-137): before the first question in interactive
   // mode, a section test's by default, a lesson's only if the teacher wants
   // it. Try again doesn't show it again.
@@ -169,7 +174,9 @@ function TestPlayerContent({
     updateExerciseAnswer,
   } = useTestPlayerState(activeItem, {
     courseTests: playerState.courseTests,
-    // A graded test gives no feedback, so it has no spree to grow or end.
+    // A graded test gives no feedback, so it has no spree to grow or end,
+    // and no sound until its end.
+    onChecked: isGraded ? undefined : playCheckSound,
     onFirstTry: isGraded ? undefined : spree.recordFirstTry,
     startInteractive,
   });
@@ -192,14 +199,17 @@ function TestPlayerContent({
     if (!playerState.isPreview) {
       recordTestResult({ courseId: playerState.courseId, result, stepId });
     }
+    const isAllRight = result.total > 0 && result.correct === result.total;
+    const isNewBestStreak = !playerState.isPreview && previousLongest !== null && result.longestStreak > previousLongest;
+    const newBestSpree = !playerState.isPreview && spreeBestAtStart && spree.best > spreeBestAtStart ? spree.best : null;
+    playSound(isAllRight || isNewBestStreak || newBestSpree !== null ? "celebrate" : "done");
     setPracticeResult({
-      cheerKey: pickCheerKey(result.total > 0 && result.correct === result.total),
+      cheerKey: pickCheerKey(isAllRight),
       correct: result.correct,
-      isNewBestStreak: !playerState.isPreview && previousLongest !== null && result.longestStreak > previousLongest,
+      isNewBestStreak,
       longestStreak: result.longestStreak,
       // Only once there was a best to beat, like the test's own streak.
-      newBestSpree:
-        !playerState.isPreview && spreeBestAtStart && spree.best > spreeBestAtStart ? spree.best : null,
+      newBestSpree,
       total: result.total,
     });
   }
@@ -240,6 +250,10 @@ function TestPlayerContent({
     if (!playerState.isPreview) {
       recordTestResult({ courseId: playerState.courseId, result, stepId });
     }
+    // The two highest grade bands celebrate, like their drawn border; any
+    // other score gets the plain end sound, never a "fail" one.
+    const percent = scorePercent(result.points ?? 0, result.maxPoints ?? 0);
+    playSound(celebrationColor(percent, gradeBands, results.length) ? "celebrate" : "done");
     setGradedResult({
       isNewBest: Boolean(previousBest && isBetterAttempt(result, previousBest)),
       maxPoints: result.maxPoints ?? 0,

@@ -1520,6 +1520,83 @@ describe('rewrite', () => {
   })
 })
 
+// SLJ-147: sound effects in practice tests. Off for a teacher until turned on
+// in Settings; then a right answer, a wrong one and the end each play theirs
+// (heard through the event each sound fires, no real audio).
+describe('sound effects', () => {
+  it('plays nothing until turned on, then right, wrong and the end of a test', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const exercise = (source, solution) => ({
+        kind: 'rewrite',
+        locales: { en: { prompt: 'Write it in direct speech', solutions: [solution], source } },
+        tags: [],
+      })
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Sounds' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Speech' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Sound quiz' })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [
+            exercise('Nena said she would buy bread.', 'Nena said: „I will buy bread.“'),
+            exercise('Mark asked if he could come.', 'Mark asked: „Can I come?“'),
+          ],
+          template: '',
+        },
+        testId,
+      })
+      window.__sounds = []
+      window.addEventListener('matko:sound-effect', (event) => window.__sounds.push(event.detail.effect))
+      return { courseId, testId }
+    })
+    const sounds = () => page.evaluate(() => window.__sounds)
+    const openTest = async () => {
+      await page.evaluate(({ courseId, testId }) => {
+        location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+      }, ids)
+      await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+      await page.locator('[data-testid="rewrite-answer"]').waitFor({ timeout: 15_000 })
+    }
+    const check = async (answer) => {
+      await page.locator('[data-testid="rewrite-answer"]').fill(answer)
+      await page.getByRole('button', { exact: true, name: 'Check answer' }).click()
+    }
+
+    // A teacher's default: silent. (A wrong answer, so the course's spree
+    // has no best yet and the end below isn't a new best's celebration.)
+    await openTest()
+    await check('Nena will buy bread')
+    expect(await sounds()).toEqual([])
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    const toggle = page.locator('[data-testid="settings-sound-effects"]')
+    await toggle.click({ timeout: 15_000 })
+    await page.waitForFunction(async () => (await window.preferences.get()).soundEffects === true)
+
+    await openTest()
+    await check('Nena said: "I will buy bread."')
+    await page.getByRole('button', { exact: true, name: 'Continue' }).click()
+    await check('Mark asked if he could come')
+    await page.locator('[data-testid="show-correct-answer"]').click()
+    await page.getByRole('button', { exact: true, name: 'Continue' }).click()
+    await page.locator('[data-testid="practice-test-result"]').waitFor({ timeout: 15_000 })
+    expect(await sounds()).toEqual(['right', 'wrong', 'done'])
+    await page.locator('[data-testid="test-result-continue"]').click()
+
+    // Back to the teacher's default, so later tests stay silent.
+    await page.evaluate(() => window.preferences.set({ soundEffects: false }))
+  })
+})
+
 // SLJ-139: a numeric exercise with several solutions has a labelled box for
 // each: checking with one empty asks for all, a wrong one is marked, both
 // right moves on.

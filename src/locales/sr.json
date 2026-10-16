@@ -669,7 +669,15 @@
       "useProgramThemes": "Koristi boje programa",
       "useProgramThemesDescription": "Programi mogu da oboje aplikaciju svojom temom na svojoj stranici i u svojim kursevima. Isključi da svuda zadržiš svoje boje.",
       "startTestsInteractive": "Pokreći testove u interaktivnom režimu",
-      "startTestsInteractiveDescription": "Testovi se otvaraju sa jednim zadatkom u isto vreme. Isključi da se otvaraju kao jedna stranica koju možeš da odštampaš."
+      "startTestsInteractiveDescription": "Testovi se otvaraju sa jednim zadatkom u isto vreme. Isključi da se otvaraju kao jedna stranica koju možeš da odštampaš.",
+      "soundEffects": "Zvučni efekti",
+      "soundEffectsDescription": "Kratki zvuci u testovima: za tačan odgovor, za netačan i na kraju testa.",
+      "soundVolume": "Jačina zvuka",
+      "soundVolumes": {
+        "quiet": "Tiho",
+        "medium": "Srednje",
+        "loud": "Glasno"
+      }
     },
     "sharing": {
       "title": "Deljenje",

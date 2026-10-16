@@ -92,6 +92,18 @@ export function InteractiveTestPlayer({
   // A practice test moves on only after a correct answer, or the correct one shown.
   const isPrimaryActionDisabled = !isRevealed && hasSubmitted && !result?.isCorrect;
 
+  // A wrong answer shakes the card a little, beside its sound (SLJ-147).
+  // Each check makes a new result, so checking again wrong shakes again;
+  // typing (an unchecked result), empty or incomplete answers, and going
+  // back to a question answered wrong earlier don't.
+  const isWrongAnswer = !graded && result != null && result.isAnswered && !result.isIncomplete && !result.isCorrect;
+  const shownIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    const isSameQuestion = shownIndexRef.current === currentIndex;
+    shownIndexRef.current = currentIndex;
+    if (isWrongAnswer && isSameQuestion) shake(answerContainerRef.current);
+  }, [currentIndex, isWrongAnswer, result]);
+
   function handlePrimaryAction() {
     if (graded) {
       if (isLast) onFinishGradedTest?.({ confirm: false });
@@ -274,5 +286,22 @@ export function InteractiveTestPlayer({
         </Button>
       </div>
     </form>
+  );
+}
+
+// A short side-to-side shake, settling quickly. Not for anyone who asked
+// their system for less motion.
+function shake(element: HTMLElement | null) {
+  if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  element.animate(
+    [
+      { transform: "translateX(0)" },
+      { transform: "translateX(-6px)" },
+      { transform: "translateX(5px)" },
+      { transform: "translateX(-3px)" },
+      { transform: "translateX(2px)" },
+      { transform: "translateX(0)" },
+    ],
+    { duration: 360, easing: "ease-out" },
   );
 }

@@ -2,6 +2,7 @@ import type { Locale } from '@/lib/i18n'
 import type { CourseListView } from '@/lib/course-list-view'
 import type { ExplorerPanelPreference } from '@/lib/explorer-panel'
 import type { RecentlyViewedEntry } from '@/lib/recently-viewed'
+import type { SoundVolume } from '@/lib/sound-effects'
 import type { TabsState } from '@/lib/tabs'
 
 export type Category =
@@ -48,6 +49,10 @@ export type UserPreferences = {
   // and start at login (in the menu bar, no window).
   keepSharingInBackground?: boolean
   openAtLogin?: boolean
+  // Sound effects in tests (SLJ-147); unset: on for students, off for
+  // teachers. Their volume; medium when unset.
+  soundEffects?: boolean
+  soundVolume?: SoundVolume
   // A test opens in interactive mode, one question at a time (SLJ-132); on
   // when unset. Off: it opens in paper mode.
   startTestsInteractive?: boolean

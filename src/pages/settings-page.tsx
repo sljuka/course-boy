@@ -7,6 +7,7 @@ import { PublisherIdentitySettings } from "@/components/identity/publisher-ident
 import { PageContent } from "@/components/page-content";
 import { ProfileNameSetting } from "@/components/profile/profile-name-setting";
 import { RemoveProfileSetting } from "@/components/profile/remove-profile-setting";
+import { SoundEffectsSettings } from "@/components/sound-effects-settings";
 import { CardDescription, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldDescription, FieldLabel, FieldTitle } from "@/components/ui/field";
@@ -144,6 +145,7 @@ export const SettingsPage = () => {
             </FieldContent>
           </Field>
         </FieldLabel>
+        <SoundEffectsSettings />
         <FieldLabel htmlFor="settings-start-tests-interactive">
           <Field orientation="horizontal">
             <Checkbox

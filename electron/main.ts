@@ -216,6 +216,9 @@ type UserPreferences = {
   useProgramThemes?: boolean
   startTestsInteractive?: boolean
   showMnemonics?: boolean
+  // SLJ-147: sound effects in tests, and their volume.
+  soundEffects?: boolean
+  soundVolume?: 'quiet' | 'medium' | 'loud'
   // SLJ-129: keep sharing when the window is closed (unset: not asked yet),
   // and start at login (in the menu bar, no window).
   keepSharingInBackground?: boolean
@@ -828,6 +831,12 @@ ipcMain.handle(
     }
     if (typeof preferences.startTestsInteractive === 'boolean') {
       profile.preferencesStore.set('startTestsInteractive', preferences.startTestsInteractive)
+    }
+    if (typeof preferences.soundEffects === 'boolean') {
+      profile.preferencesStore.set('soundEffects', preferences.soundEffects)
+    }
+    if (preferences.soundVolume === 'quiet' || preferences.soundVolume === 'medium' || preferences.soundVolume === 'loud') {
+      profile.preferencesStore.set('soundVolume', preferences.soundVolume)
     }
     if (typeof preferences.showBundledCourses === 'boolean') {
       profile.preferencesStore.set('showBundledCourses', preferences.showBundledCourses)

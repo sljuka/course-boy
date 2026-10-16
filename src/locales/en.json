@@ -669,7 +669,15 @@
       "useProgramThemes": "Use program colors",
       "useProgramThemesDescription": "Programs can recolor the app with their own theme on their page and in their courses. Turn this off to keep your own colors everywhere.",
       "startTestsInteractive": "Start tests in interactive mode",
-      "startTestsInteractiveDescription": "Tests open one question at a time. Turn this off to open them as one page you can print."
+      "startTestsInteractiveDescription": "Tests open one question at a time. Turn this off to open them as one page you can print.",
+      "soundEffects": "Sound effects",
+      "soundEffectsDescription": "Short sounds in tests: a right answer, a wrong one, and the end of a test.",
+      "soundVolume": "Volume",
+      "soundVolumes": {
+        "quiet": "Quiet",
+        "medium": "Medium",
+        "loud": "Loud"
+      }
     },
     "sharing": {
       "title": "Sharing",
