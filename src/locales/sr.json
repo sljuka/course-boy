@@ -190,7 +190,8 @@
       "wrong": "Netačno"
     },
     "summaryRegionLegend": "Zeleno: oblasti koje je trebalo izabrati (✓ one koje si izabrao). Crveno: izabrano, a nije trebalo.",
-    "placePunctuation": "Postavi znakove interpunkcije pre provere."
+    "placePunctuation": "Postavi znakove interpunkcije pre provere.",
+    "writeAnswer": "Napiši odgovor pre provere."
   },
   "courseVersions": {
     "actionErrorTitle": "Nešto nije u redu",
@@ -1363,5 +1364,28 @@
     "marksToPlace_other": "{{count}} mesta za znakove",
     "needsMarks": "Napiši rečenicu sa njenim znacima interpunkcije",
     "previewLabel": "Šta učenik vidi"
+  },
+  "rewrite": {
+    "answerLabel": "Tvoj odgovor",
+    "answerPlaceholder": "Ovde napiši odgovor",
+    "promptLabel": "Zadatak",
+    "promptPlaceholder": "Napiši rečenicu u upravnom govoru",
+    "sourceLabel": "Rečenica koju treba preoblikovati",
+    "sourcePlaceholder": "Nena je rekla da će kupiti hleb.",
+    "sourceHelp": "Prikazuje se iznad odgovora. Ostavi prazno kad zadatak kaže sve.",
+    "solutionsLabel": "Tačni odgovori",
+    "solutionLabel": "Tačan odgovor {{number}}",
+    "solutionPlaceholder": "Nena reče: „Kupiću hleb.“",
+    "removeSolution": "Ukloni odgovor {{number}}",
+    "addSolution": "Dodaj još jedan odgovor",
+    "solutionsHelp": "Odgovor je tačan kad se poklapa sa bilo kojim od ovih. Višak razmaka se ne računa; znaci interpunkcije i red reči se računaju.",
+    "matchCase": "Velika slova moraju da se poklope",
+    "matchQuotes": "Vrsta navodnika mora da se poklopi („ “ ili \")",
+    "acceptWithoutDiacritics": "Prihvati slova bez kvačica (c umesto č, ć; dj umesto đ)",
+    "valid": "Ispravno",
+    "invalid": "Neispravno",
+    "solutionCount_one": "{{count}} tačan odgovor",
+    "solutionCount_other": "{{count}} tačnih odgovora",
+    "needsSolution": "Napiši bar jedan tačan odgovor"
   }
 }

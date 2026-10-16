@@ -14,6 +14,7 @@ import { punctuationExerciseRuntime } from "./punctuation";
 import { regionLabelExerciseRuntime } from "./region-label";
 import { regionMarkerExerciseRuntime } from "./region-marker";
 import { regionPickerExerciseRuntime } from "./region-picker";
+import { rewriteExerciseRuntime } from "./rewrite";
 import type { ExerciseKindRuntime } from "./types";
 import { wordTypesExerciseRuntime } from "./word-types";
 
@@ -32,6 +33,7 @@ const EXERCISE_KIND_RUNTIMES: Record<ExerciseKind, ExerciseKindRuntime<any, any>
   "region-label": regionLabelExerciseRuntime,
   "region-marker": regionMarkerExerciseRuntime,
   "region-picker": regionPickerExerciseRuntime,
+  rewrite: rewriteExerciseRuntime,
   "word-types": wordTypesExerciseRuntime,
 };
 

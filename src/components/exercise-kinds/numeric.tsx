@@ -9,9 +9,7 @@ import type {
 
 import { NumericExerciseFields } from "@/components/numeric-exercise-fields";
 import { InlineMarkdown } from "@/components/course-player/inline-markdown";
-import { PrintAnswerBoxArea } from "@/components/course-player/print-answer-box-area";
-import { PrintAnswerLinesArea } from "@/components/course-player/print-answer-lines-area";
-import { PrintAnswerSquaresArea } from "@/components/course-player/print-answer-squares-area";
+import { PrintAnswerArea } from "@/components/course-player/print-answer-area";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
@@ -146,9 +144,6 @@ function resolveSolutionSpaceRows(solutionSpace: NumericCourseExercise["solution
   }
 }
 
-function resolvePrintAnswerAreaMinHeight(rows: number) {
-  return rows === 1 ? "var(--print-answer-single-row)" : `${rows * 2.75}rem`;
-}
 
 function PrintAnswerComponent({
   exercise,
@@ -174,30 +169,6 @@ function PrintAnswerComponent({
   return <PrintAnswerArea printAnswerStyle={printAnswerStyle} rows={resolveSolutionSpaceRows(exercise.solutionSpace)} />;
 }
 
-function PrintAnswerArea({
-  printAnswerStyle,
-  rows: solutionRows,
-}: {
-  printAnswerStyle: PrintAnswerComponentProps<NumericCourseExercise>["printAnswerStyle"];
-  rows: number;
-}) {
-  return (
-    <div className="hidden print:block">
-      {printAnswerStyle === "lines" ? (
-        <PrintAnswerLinesArea rows={solutionRows} />
-      ) : printAnswerStyle === "box" ? (
-        <PrintAnswerBoxArea rows={solutionRows} />
-      ) : printAnswerStyle === "squares" ? (
-        <PrintAnswerSquaresArea rows={solutionRows} />
-      ) : (
-        <div
-          className="bg-transparent"
-          style={{ minHeight: resolvePrintAnswerAreaMinHeight(solutionRows) }}
-        />
-      )}
-    </div>
-  );
-}
 
 const EXAMPLE_EXERCISE: NumericCourseExercise = {
   formula: "x - y + z",

@@ -190,7 +190,8 @@
       "wrong": "Wrong"
     },
     "summaryRegionLegend": "Green: the shapes to pick (✓ the ones you picked). Red: picked, but not one of them.",
-    "placePunctuation": "Place the punctuation marks before checking."
+    "placePunctuation": "Place the punctuation marks before checking.",
+    "writeAnswer": "Write your answer before checking."
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
@@ -1363,5 +1364,28 @@
     "marksToPlace_other": "{{count}} places for marks",
     "needsMarks": "Write the sentence with its punctuation marks",
     "previewLabel": "What the student sees"
+  },
+  "rewrite": {
+    "answerLabel": "Your answer",
+    "answerPlaceholder": "Write your answer here",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Write the sentence in direct speech",
+    "sourceLabel": "Sentence to rewrite",
+    "sourcePlaceholder": "Nena je rekla da će kupiti hleb.",
+    "sourceHelp": "Shown above the answer. Leave it empty when the prompt says it all.",
+    "solutionsLabel": "Correct answers",
+    "solutionLabel": "Correct answer {{number}}",
+    "solutionPlaceholder": "Nena reče: „Kupiću hleb.“",
+    "removeSolution": "Remove answer {{number}}",
+    "addSolution": "Add another answer",
+    "solutionsHelp": "An answer is right when it matches any of these. Extra spaces never count; punctuation and word order do.",
+    "matchCase": "Capital letters must match",
+    "matchQuotes": "The kind of quotes must match („ “ or \")",
+    "acceptWithoutDiacritics": "Accept letters without diacritics (c for č, ć; dj for đ)",
+    "valid": "Valid",
+    "invalid": "Invalid",
+    "solutionCount_one": "{{count}} correct answer",
+    "solutionCount_other": "{{count}} correct answers",
+    "needsSolution": "Write at least one correct answer"
   }
 }

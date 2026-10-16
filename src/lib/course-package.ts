@@ -101,7 +101,8 @@ export type ExerciseKind =
   | "region-picker"
   | "region-marker"
   | "region-label"
-  | "punctuation";
+  | "punctuation"
+  | "rewrite";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -307,6 +308,24 @@ export type PunctuationCourseExercise = {
   words: string[];
 };
 
+// A text the student writes, right when it matches any solution (SLJ-146,
+// lib/rewrite.ts), in the reader's language.
+export type RewriteCourseExercise = {
+  kind: "rewrite";
+  acceptWithoutDiacritics: boolean;
+  hint?: string;
+  id: string;
+  matchCase: boolean;
+  matchQuotes: boolean;
+  // An image or video shown above the prompt (SLJ-56); see lib/exercise-media.ts.
+  media?: CourseExerciseMedia;
+  prompt: string;
+  solutions: string[];
+  // The sentence to rewrite, shown above the answer; "" for none.
+  source: string;
+  tags: string[];
+};
+
 export type CourseExercise = (
   | NumericCourseExercise
   | MultipleChoiceCourseExercise
@@ -316,6 +335,7 @@ export type CourseExercise = (
   | RegionMarkerCourseExercise
   | RegionLabelCourseExercise
   | PunctuationCourseExercise
+  | RewriteCourseExercise
 ) &
   ExercisePointsField;
 
@@ -471,6 +491,20 @@ export type SharedPunctuationTestExerciseDefinition = {
   tags: string[];
 };
 
+// On disk: each language's prompt, sentence to rewrite and solutions. The
+// three settings are written only when on.
+export type SharedRewriteTestExerciseDefinition = {
+  kind: "rewrite";
+  acceptWithoutDiacritics?: boolean;
+  locales: Partial<
+    Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; solutions: string[]; source?: string }>
+  >;
+  matchCase?: boolean;
+  matchQuotes?: boolean;
+  media?: SharedExerciseMedia;
+  tags: string[];
+};
+
 export type SharedTestExerciseDefinition = (
   | SharedNumericTestExerciseDefinition
   | SharedMultipleChoiceTestExerciseDefinition
@@ -480,6 +514,7 @@ export type SharedTestExerciseDefinition = (
   | SharedRegionMarkerTestExerciseDefinition
   | SharedRegionLabelTestExerciseDefinition
   | SharedPunctuationTestExerciseDefinition
+  | SharedRewriteTestExerciseDefinition
 ) &
   ExercisePointsField;
 

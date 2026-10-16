@@ -214,6 +214,22 @@ const questionSchema = z.discriminatedUnion("type", [
     tags,
   }),
   z.object({
+    type: z.literal("rewrite"),
+    image,
+    prompt: z.string().min(1).describe('The instruction, e.g. "Write the sentence in direct speech"'),
+    source: z.string().optional().describe("The sentence to rewrite, shown above the answer field"),
+    solutions: z
+      .array(z.string().trim().min(1))
+      .min(1)
+      .describe("Every answer that counts as right; the student's must match one (spacing never counts, punctuation and word order do)"),
+    matchCase: z.boolean().optional().describe("Capital letters must match too (default false)"),
+    matchQuotes: z.boolean().optional().describe('The kind of quotes must match too, „ “ vs " (default false)'),
+    acceptWithoutDiacritics: z.boolean().optional().describe("Letters without diacritics count, c for č (default false)"),
+    hint: z.string().optional(),
+    points,
+    tags,
+  }),
+  z.object({
     type: z.literal("region_picker"),
     prompt: z.string().min(1).describe('The instruction, e.g. "Click the countries that border Serbia"'),
     map: z.enum(regionPickerSvgPresets.map((preset) => preset.id) as [string, ...string[]]).describe("One of the app's maps"),
@@ -358,6 +374,18 @@ function exerciseFromQuestion(
     };
   }
 
+  if (question.type === "rewrite") {
+    const source = question.source?.trim();
+    return {
+      ...(question.acceptWithoutDiacritics ? { acceptWithoutDiacritics: true } : {}),
+      kind: "rewrite",
+      locales: { [locale]: { ...hint, prompt: question.prompt, solutions: question.solutions, ...(source ? { source } : {}) } },
+      ...(question.matchCase ? { matchCase: true } : {}),
+      ...(question.matchQuotes ? { matchQuotes: true } : {}),
+      tags: [],
+    };
+  }
+
   if (question.type === "fill_in") {
     const named = extractMissingWordVariableNames(question.text);
     if (named.length === 0) throw new Error(`"${question.prompt}": the text has no {{blank}} to fill in`);
@@ -492,6 +520,18 @@ function questionFromExercise(exercise: CourseExercise): Record<string, unknown>
       prompt: exercise.prompt,
       text: joinPunctuationSentence(exercise.words, exercise.gaps),
       type: "punctuation",
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  if (exercise.kind === "rewrite") {
+    return {
+      prompt: exercise.prompt,
+      solutions: exercise.solutions,
+      type: "rewrite",
+      ...(exercise.source ? { source: exercise.source } : {}),
+      ...(exercise.matchCase ? { matchCase: true } : {}),
+      ...(exercise.matchQuotes ? { matchQuotes: true } : {}),
+      ...(exercise.acceptWithoutDiacritics ? { acceptWithoutDiacritics: true } : {}),
       ...(exercise.hint ? { hint: exercise.hint } : {}),
     };
   }

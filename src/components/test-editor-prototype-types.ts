@@ -142,6 +142,26 @@ type PunctuationTestExercise = {
   tagIds: string[];
 };
 
+// A rewrite exercise (SLJ-146): each language's prompt, sentence to rewrite
+// and accepted solutions.
+type RewriteExerciseLocaleContent = {
+  hint: string;
+  prompt: string;
+  solutions: string[];
+  source: string;
+};
+
+type RewriteTestExercise = {
+  kind: "rewrite";
+  acceptWithoutDiacritics: boolean;
+  id: string;
+  matchCase: boolean;
+  matchQuotes: boolean;
+  media?: ExerciseMediaDraft;
+  locales: Record<string, RewriteExerciseLocaleContent>;
+  tagIds: string[];
+};
+
 type RegionPickerExerciseLocaleContent = {
   hint: string;
   prompt: string;
@@ -212,6 +232,7 @@ type TestExercise = (
   | WordTypeTestExercise
   | MissingWordTestExercise
   | PunctuationTestExercise
+  | RewriteTestExercise
   | RegionPickerTestExercise
   | RegionMarkerTestExercise
   | RegionLabelTestExercise
@@ -275,6 +296,8 @@ export type {
   RegionMarkerTestExercise,
   RegionPickerExerciseLocaleContent,
   RegionPickerTestExercise,
+  RewriteExerciseLocaleContent,
+  RewriteTestExercise,
   SolutionValidationResult,
   TestEditorState,
   TestExercise,

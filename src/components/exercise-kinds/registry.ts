@@ -7,6 +7,7 @@ import { punctuationExerciseEditor } from "@/components/exercise-kinds/punctuati
 import { regionLabelExerciseEditor } from "@/components/exercise-kinds/region-label";
 import { regionMarkerExerciseEditor } from "@/components/exercise-kinds/region-marker";
 import { regionPickerExerciseEditor } from "@/components/exercise-kinds/region-picker";
+import { rewriteExerciseEditor } from "@/components/exercise-kinds/rewrite";
 import type { ExerciseKindEditor } from "@/components/exercise-kinds/types";
 import { wordTypesExerciseEditor } from "@/components/exercise-kinds/word-types";
 
@@ -25,6 +26,7 @@ const EXERCISE_KIND_EDITORS: Record<ExerciseKind, ExerciseKindEditor<any, any, a
   "region-label": regionLabelExerciseEditor,
   "region-marker": regionMarkerExerciseEditor,
   "region-picker": regionPickerExerciseEditor,
+  rewrite: rewriteExerciseEditor,
   "word-types": wordTypesExerciseEditor,
 };
 

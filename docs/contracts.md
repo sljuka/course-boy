@@ -887,9 +887,11 @@ besides IPC, and the same rules hold:
   rebinding).
 - **Simple formats for agents:** a lesson is Markdown (wrapped as one `markdown` block;
   a body with `[matko-block]` markers passes through), a test is a list of
-  `multiple_choice`, `number`, `fill_in` or `punctuation` questions (`fill_in` is the
-  `missing-word` kind: a text with `{{name}}` blanks and each blank's accepted answers;
-  `punctuation` is the sentence with its marks, and optionally which marks are taken out). Tests made in the app
+  `multiple_choice`, `number`, `fill_in`, `punctuation` or `rewrite` questions (`fill_in`
+  is the `missing-word` kind: a text with `{{name}}` blanks and each blank's accepted
+  answers; `punctuation` is the sentence with its marks, and optionally which marks are
+  taken out; `rewrite` is a prompt, an optional sentence to rewrite and every written
+  answer that counts as right, SLJ-146). Tests made in the app
   with other kinds read as `{ type, editable: false }`. A question can carry `points`, and
   a test `graded` (SLJ-135); replacing a test's questions keeps whether it's graded, its
   own grade bands, whether it includes the course's other tests (and how many) and its

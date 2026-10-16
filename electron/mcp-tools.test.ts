@@ -206,6 +206,34 @@ describe("questions", () => {
     );
   });
 
+  it("become rewrite exercises (SLJ-146), with the strict settings only when on", () => {
+    const [exercise] = testFromQuestions(
+      [
+        {
+          acceptWithoutDiacritics: true,
+          prompt: "Napiši u upravnom govoru",
+          solutions: ["Nena reče: „Kupiću hleb.“"],
+          source: "Nena je rekla da će kupiti hleb.",
+          type: "rewrite",
+        },
+      ],
+      "sr",
+    ).exercises;
+
+    expect(exercise).toEqual({
+      acceptWithoutDiacritics: true,
+      kind: "rewrite",
+      locales: {
+        sr: {
+          prompt: "Napiši u upravnom govoru",
+          solutions: ["Nena reče: „Kupiću hleb.“"],
+          source: "Nena je rekla da će kupiti hleb.",
+        },
+      },
+      tags: [],
+    });
+  });
+
   it("refuse a correct option that doesn't exist", () => {
     expect(() =>
       testFromQuestions([{ correct: [2], options: ["a", "b"], prompt: "?", type: "multiple_choice" }], "en"),

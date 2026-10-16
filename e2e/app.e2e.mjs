@@ -1471,6 +1471,55 @@ describe('punctuation', () => {
   })
 })
 
+// SLJ-146: a rewrite exercise takes a written answer; it's right when it
+// matches any of the teacher's solutions, whatever the spacing or the kind of
+// quotes.
+describe('rewrite', () => {
+  it('accepts an answer that matches any solution, and shows the nearest one after a wrong answer', async () => {
+    const { page } = harness
+    const exercise = (prompt, source, solutions) => ({
+      kind: 'rewrite',
+      locales: { en: { prompt, solutions, source } },
+      tags: [],
+    })
+    const ids = await page.evaluate(async (exercises) => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Rewrite' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Speech' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Speech quiz' })
+      await window.courses.saveSectionTest({ courseId, sectionId, test: { exercises, template: '' }, testId })
+      return { courseId, testId }
+    }, [
+      exercise('Write it in direct speech', 'Nena said she would buy bread.', ['Nena said: „I will buy bread.“', '„I will buy bread“, said Nena.']),
+      exercise('Write it in direct speech', 'Mark asked if he could come.', ['Mark asked: „Can I come?“', '„Can I come?“ asked Mark.']),
+    ])
+
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const answer = page.locator('[data-testid="rewrite-answer"]')
+    await answer.waitFor({ timeout: 15_000 })
+    expect(await page.locator('[data-testid="rewrite-source"]').innerText()).toBe('Nena said she would buy bread.')
+
+    // The second solution, with plain quotes and odd spacing: right.
+    await answer.fill('"I will buy bread" ,  said Nena.')
+    await page.getByRole('button', { exact: true, name: 'Check answer' }).click()
+    await page.getByRole('button', { exact: true, name: 'Continue' }).click()
+
+    // Wrong: the solution nearest to the answer is the one shown.
+    await waitForText(page, 'Mark asked if he could come.')
+    await answer.fill('Can I come asked Mark')
+    await page.getByRole('button', { exact: true, name: 'Check answer' }).click()
+    await page.locator('[data-testid="show-correct-answer"]').click()
+    expect(await page.locator('[data-testid="exercise-solution-value"]').innerText()).toBe('„Can I come?“ asked Mark.')
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+  })
+})
+
 // SLJ-139: a numeric exercise with several solutions has a labelled box for
 // each: checking with one empty asks for all, a wrong one is marked, both
 // right moves on.

@@ -12,7 +12,8 @@ export type ExerciseInstance =
   | { kind: "region-picker" }
   | { kind: "region-marker" }
   | { kind: "region-label" }
-  | { kind: "punctuation" };
+  | { kind: "punctuation" }
+  | { kind: "rewrite" };
 
 export function interpolateTemplate(
   template: string,
