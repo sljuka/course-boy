@@ -548,7 +548,7 @@ describe('sharing across restarts', () => {
       // The teacher is online and connected: at least one peer.
       await waitFor(
         student,
-        () => Number(document.querySelector('[data-testid="course-info-peers"]')?.textContent) >= 1,
+        () => Number(document.querySelector('[data-testid="course-info-peers"]')?.dataset.count) >= 1,
         { timeout: 15_000 },
       )
 

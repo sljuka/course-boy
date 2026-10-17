@@ -583,8 +583,9 @@ only publishers ever touch, not an onboarding step every user sees.
    - **Peers online.** `CMD_GET_PEERS` (13) returns `drive.core.peers.length` for a
      course shared from this device: your own by course id, an imported one by drive
      key. `getCourseSharing` returns it as `peers`, or null when the course isn't
-     shared here right now. The Share dialog ("Online · Peers online: 2") and the
-     course page's Details panel poll it every 5 s.
+     shared here right now. The Share dialog ("Online · Connected: at least 2") and
+     the course page's Details panel ("Connected now: At least 2") poll it every 5 s,
+     with a (?) saying why it's a lower bound (`src/components/peers-count.tsx`).
      - It counts only peers connected to *this* device for that course, right now.
        It is not how many people have the course.
      - Measured at scale on a local testnet with `scripts/measure-peers.mjs` (2026-10-17;

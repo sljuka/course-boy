@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { ChannelListingToggle } from "@/components/channels/channel-listing-toggle";
 import { CourseChannelLink } from "@/components/channels/course-channel-link";
+import { PeersCount } from "@/components/peers-count";
 import { PanelCard } from "@/components/ui/panel-card";
 import { PropertyList, PropertyRow } from "@/components/ui/property-list";
 import type { CourseDetails } from "@/lib/course-package";
@@ -63,8 +64,8 @@ export function CourseInfoCard({
           <PropertyRow label={t("courseInfo.keptVersions")}>{sharing.versions.kept.length}</PropertyRow>
         )}
         {sharing?.peers !== null && sharing?.peers !== undefined && (
-          <PropertyRow label={t("courseInfo.peersOnline")}>
-            <span data-testid="course-info-peers">{sharing.peers}</span>
+          <PropertyRow label={t("courseInfo.connectedNow")}>
+            <PeersCount count={sharing.peers} testId="course-info-peers" variant="value" />
           </PropertyRow>
         )}
         <PropertyRow label={t("courseInfo.languages")}>

@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PeersCount } from "@/components/peers-count";
 import { ShareCodeFields } from "@/components/share-code-fields";
 import { useProgramSharingQuery } from "@/lib/program-queries";
 
@@ -31,7 +32,7 @@ export function ProgramCode({ programId }: { programId: string }) {
       <ShareCodeFields code={code} codeLabel={t("programSharing.codeLabel")} testId="program-code" />
       {sharing.peers !== null && (
         <CardDescription data-testid="program-code-status">
-          {t("programSharing.peersOnline", { count: sharing.peers })}
+          <PeersCount count={sharing.peers} />
         </CardDescription>
       )}
     </div>

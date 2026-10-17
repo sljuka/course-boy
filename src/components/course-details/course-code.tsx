@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { PeersCount } from "@/components/peers-count";
 import { ShareCodeFields } from "@/components/share-code-fields";
 import { CardDescription } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
@@ -44,11 +45,17 @@ export function CourseCode({ courseId }: { courseId: string }) {
       <div className="flex items-center gap-2" data-testid="course-code-status">
         {sharing.status === "sharing" && <Spinner aria-hidden="true" />}
         <CardDescription>
-          {sharing.status === "shared"
-            ? sharing.peers === null
-              ? t("courseSharing.statusShared")
-              : `${t("courseSharing.statusShared")} · ${t("courseSharing.peersOnline", { count: sharing.peers })}`
-            : sharing.status === "waiting"
+          {sharing.status === "shared" ? (
+            <>
+              {t("courseSharing.statusShared")}
+              {sharing.peers !== null && (
+                <>
+                  {" · "}
+                  <PeersCount count={sharing.peers} />
+                </>
+              )}
+            </>
+          ) : sharing.status === "waiting"
               ? t("courseSharing.statusWaiting")
               : t("courseSharing.statusSharing")}
         </CardDescription>

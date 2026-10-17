@@ -14,7 +14,7 @@ import { queryClient } from "@/lib/query-client";
 
 // A course's code and whether it's online. Sharing runs in the background after
 // Publish (see electron/course-sharing.ts), so poll while it's still going.
-// `watchPeers`: poll every few seconds once online, for a live "Peers online"
+// `watchPeers`: poll every few seconds once online, for a live "Connected: at least N"
 // count (the Share dialog, the Details panel).
 export function useCourseSharingQuery(courseId: string | undefined, { watchPeers = false } = {}) {
   return useQuery<CourseSharingInfo>({

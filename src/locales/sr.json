@@ -278,7 +278,6 @@
     "done": "Gotovo",
     "shareCourse": "Podeli kurs",
     "shareDescriptionImported": "Drugovi iz razreda mogu da preuzmu ovaj kurs ovim kodom. Isti je za svaku verziju.",
-    "peersOnline": "Korisnika na mreži: {{count}}",
     "sharedVersion": "Deljena verzija: {{version}}"
   },
   "importCourse": {
@@ -863,10 +862,10 @@
     "sections": "Sekcije",
     "lessons": "Lekcije",
     "id": "ID",
-    "peersOnline": "Korisnici na mreži",
     "size": "Veličina",
     "onDevice": "Na ovom uređaju",
-    "publisher": "Izdaje"
+    "publisher": "Izdaje",
+    "connectedNow": "Trenutno povezano"
   },
   "mnemonics": {
     "title": "Mnemotehnike",
@@ -1130,7 +1129,6 @@
     "shareDescription": "Učenici mogu da preuzmu ovaj program pomoću ovog koda. Isti je svaki put kad objavite.",
     "shareDescriptionImported": "Drugovi iz razreda mogu da preuzmu ovaj program ovim kodom.",
     "codeLabel": "Kod programa",
-    "peersOnline": "Korisnika na mreži: {{count}}",
     "notPublished": "Objavite program da bi učenici mogli da ga preuzmu.",
     "done": "Gotovo",
     "newCourses": "Novih kurseva: {{count}}",
@@ -1411,5 +1409,12 @@
     "link": "Link",
     "message": "Poruka za slanje",
     "messageText": "Otvori u Matku: {{link}}\nIli nalepi ovaj kod u Uvezi kurs: {{code}}"
+  },
+  "peers": {
+    "connectedAtLeast": "Povezano: najmanje {{count}}",
+    "atLeast": "Najmanje {{count}}",
+    "none": "Trenutno niko nije povezan",
+    "whyLabel": "Zašto „najmanje“?",
+    "why": "Ovde se broje samo računari koji su trenutno povezani sa ovim. Većina ga dobija jedni od drugih, pa je na mreži obično više ljudi nego što ovde piše."
   }
 }

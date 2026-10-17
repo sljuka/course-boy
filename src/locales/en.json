@@ -278,7 +278,6 @@
     "done": "Done",
     "shareCourse": "Share course",
     "shareDescriptionImported": "Classmates can get this course with this code. It's the same for every version.",
-    "peersOnline": "Peers online: {{count}}",
     "sharedVersion": "Shared version: {{version}}"
   },
   "importCourse": {
@@ -863,10 +862,10 @@
     "sections": "Sections",
     "lessons": "Lessons",
     "id": "ID",
-    "peersOnline": "Peers online",
     "size": "Size",
     "onDevice": "On this device",
-    "publisher": "Published by"
+    "publisher": "Published by",
+    "connectedNow": "Connected now"
   },
   "mnemonics": {
     "title": "Mnemonics",
@@ -1130,7 +1129,6 @@
     "shareDescription": "Students can get this program with this code. It's the same every time you publish.",
     "shareDescriptionImported": "Classmates can get this program with this code.",
     "codeLabel": "Program code",
-    "peersOnline": "Peers online: {{count}}",
     "notPublished": "Publish the program so students can get it.",
     "done": "Done",
     "newCourses": "New courses: {{count}}",
@@ -1411,5 +1409,12 @@
     "link": "Link",
     "message": "Message to send",
     "messageText": "Open in Matko: {{link}}\nOr paste this code into Import course: {{code}}"
+  },
+  "peers": {
+    "connectedAtLeast": "Connected: at least {{count}}",
+    "atLeast": "At least {{count}}",
+    "none": "No one connected right now",
+    "whyLabel": "Why \"at least\"?",
+    "why": "This counts only the computers connected to this one right now. Most people get it from each other instead, so usually more are online than this shows."
   }
 }

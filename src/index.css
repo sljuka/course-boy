@@ -4,17 +4,23 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
-/* Emoji, flags included, drawn the same on every computer: Windows has no
-   flag emoji and every OS draws faces its own way, so a course would look
-   different to its teacher and its students. Last in each font stack, so
-   characters the text fonts have (digits, arrows) stay text. Split by
-   character range: only the parts a page uses are loaded. */
-@import "@fontsource/noto-color-emoji";
 
 @custom-variant dark (&:is(.dark *));
 /* Narrow windows, below SIDE_PANELS_INLINE_MIN_WIDTH (src/hooks/use-mobile.ts):
    the editor's side panels are drawers and text buttons turn icon-only. */
 @custom-variant compact (@media (width < 1280px));
+
+/* Emoji, flags included, drawn the same on every computer: Windows has no
+   flag emoji and every OS draws faces its own way, so a course would look
+   different to its teacher and its students. Last in each font stack, so
+   characters the text fonts have (digits, arrows) stay text. One 5 MB file,
+   read from the app's folder the first time a page shows an emoji.
+   See src/assets/fonts/noto-color-emoji/README.md. */
+@font-face {
+  font-family: "Noto Color Emoji";
+  font-display: swap;
+  src: url("./assets/fonts/noto-color-emoji/Noto-COLRv1.ttf") format("truetype");
+}
 
 :root {
   /* The bundled variable font registers as "Inter Variable", not "Inter" —

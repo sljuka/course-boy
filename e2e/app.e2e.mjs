@@ -51,6 +51,32 @@ describe('launch', () => {
     expect(childCount).toBeGreaterThan(0)
   })
 
+  // The bundled emoji font (src/assets/fonts/noto-color-emoji) must be one
+  // Chromium can draw: a font it picks but can't draw (OpenType-SVG) leaves
+  // every emoji blank while still taking its space. So draw a flag with it
+  // and count the colored pixels.
+  it('draws emoji in color with the bundled font', async () => {
+    const colored = await harness.page.evaluate(async () => {
+      const [face] = await document.fonts.load('48px "Noto Color Emoji"', '🇬🇧')
+      if (!face) return -1
+      const canvas = document.createElement('canvas')
+      canvas.width = canvas.height = 64
+      const context = canvas.getContext('2d')
+      context.font = '48px "Noto Color Emoji"'
+      context.textBaseline = 'top'
+      context.fillText('🇬🇧', 0, 0)
+      const { data } = context.getImageData(0, 0, 64, 64)
+      let count = 0
+      for (let i = 0; i < data.length; i += 4) {
+        const [r, g, b, alpha] = data.slice(i, i + 4)
+        // Opaque and not gray: color only a color font gives.
+        if (alpha > 200 && Math.max(r, g, b) - Math.min(r, g, b) > 60) count++
+      }
+      return count
+    })
+    expect(colored).toBeGreaterThan(200)
+  })
+
   // Contract 1 in docs/contracts.md: preload.ts and electron-env.d.ts are
   // hand-maintained mirrors of each other with nothing verifying they agree.
   // This is the only automated check that they do.
