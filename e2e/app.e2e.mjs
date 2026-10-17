@@ -1708,6 +1708,72 @@ describe('links to course content', () => {
   })
 })
 
+// SLJ-148: tabs move with ⌘⇧← / ⌘⇧→ (not while typing) and by dragging; the
+// order is saved with the tabs.
+describe('reordering tabs', () => {
+  it('moves the active tab by keyboard and a tab by dragging, and saves the order', async () => {
+    const { page } = harness
+    const tabs = page.locator('[data-testid="app-tab"]')
+    const ids = () =>
+      page.evaluate(() => window.preferences.get().then((preferences) => preferences.tabs.tabs.map((tab) => tab.id)))
+    const activeIndex = () =>
+      page.evaluate(() => [...document.querySelectorAll('[data-testid="app-tab"]')].findIndex((tab) => tab.hasAttribute('data-active')))
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
+
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    const before = await tabs.count()
+    await page.locator('[data-testid="app-tab-new"]').click()
+    await expect.poll(() => tabs.count()).toBe(before + 1)
+    await expect.poll(activeIndex).toBe(before)
+    await expect.poll(async () => (await ids()).length).toBe(before + 1)
+    const newTabId = (await ids())[before]
+
+    // One place left: still the active tab, its id moved in the saved order.
+    await page.keyboard.press(`${modifier}+Shift+ArrowLeft`)
+    await expect.poll(activeIndex).toBe(before - 1)
+    await expect.poll(async () => (await ids()).indexOf(newTabId)).toBe(before - 1)
+    await page.locator('[aria-live="polite"]').filter({ hasText: `Tab moved to position ${before} of ${before + 1}` }).waitFor()
+
+    // Not while typing: the search box keeps the keys.
+    await page.evaluate(() => {
+      location.hash = '#/'
+    })
+    await page.locator('[data-testid="course-search"]').click()
+    await page.keyboard.press(`${modifier}+Shift+ArrowRight`)
+    expect(await activeIndex()).toBe(before - 1)
+    await page.locator('[data-testid="course-search"]').blur()
+
+    // Dragged back to the end, past the tab on its right.
+    const box = await tabs.nth(before - 1).boundingBox()
+    const last = await tabs.nth(before).boundingBox()
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(box.x + box.width / 2 + 10, box.y + box.height / 2, { steps: 2 })
+    await page.mouse.move(last.x + last.width - 4, box.y + box.height / 2, { steps: 8 })
+    await page.mouse.up()
+    await expect.poll(async () => (await ids()).indexOf(newTabId)).toBe(before)
+
+    // And all the way to the front, past every other tab: with one more tab
+    // open after it, from third place (or later) to first.
+    await page.locator('[data-testid="app-tab-new"]').click()
+    await expect.poll(() => tabs.count()).toBe(before + 2)
+    const end = await tabs.nth(before).boundingBox()
+    const first = await tabs.nth(0).boundingBox()
+    await page.mouse.move(end.x + end.width / 2, end.y + end.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(end.x + end.width / 2 - 10, end.y + end.height / 2, { steps: 2 })
+    await page.mouse.move(first.x + 4, end.y + end.height / 2, { steps: 10 })
+    await page.mouse.up()
+    await expect.poll(async () => (await ids()).indexOf(newTabId)).toBe(0)
+    await tabs.nth(-1).getByRole('button', { name: 'Close tab' }).click()
+    await tabs.nth(0).getByRole('button', { name: 'Close tab' }).click()
+    await expect.poll(() => tabs.count()).toBe(before)
+  })
+})
+
+
 // SLJ-139: a numeric exercise with several solutions has a labelled box for
 // each: checking with one empty asks for all, a wrong one is marked, both
 // right moves on.

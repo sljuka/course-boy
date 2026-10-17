@@ -634,7 +634,8 @@
     },
     "recentlyViewed": "Недавно прегледано",
     "recentlyViewedEmpty": "Још ништа није прегледано",
-    "toggleSidebar": "Прикажи или сакриј бочну траку"
+    "toggleSidebar": "Прикажи или сакриј бочну траку",
+    "tabMoved": "Таб је померен на место {{position}} од {{count}}"
   },
   "page": {
     "breadcrumbs": "Путања"

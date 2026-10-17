@@ -107,6 +107,18 @@ export function closeTab(state: TabsState, id: string, newId: string = createTab
   return { activeId, tabs };
 }
 
+// A tab moved to `toIndex` in the strip (SLJ-148: dragging, ⌘⇧←/→), kept
+// within it. Its history and which tab is active don't change.
+export function moveTab(state: TabsState, id: string, toIndex: number): TabsState {
+  const from = state.tabs.findIndex((tab) => tab.id === id);
+  if (from === -1) return state;
+  const to = Math.min(Math.max(Math.round(toIndex), 0), state.tabs.length - 1);
+  if (to === from) return state;
+  const tabs = state.tabs.filter((tab) => tab.id !== id);
+  tabs.splice(to, 0, state.tabs[from]);
+  return { ...state, tabs };
+}
+
 // The tab `offset` places from the active one, wrapping around (Ctrl+Tab).
 export function neighbourTabId(state: TabsState, offset: number): string {
   const at = state.tabs.findIndex((tab) => tab.id === activeTab(state).id);

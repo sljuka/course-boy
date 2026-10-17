@@ -71,7 +71,8 @@ function WindowTitleBarTabs({ className, ...props }: React.ComponentProps<"div">
 
 // One tab, Linear-style: the active one raised on the page's background, the
 // others muted on the bar's. Icon and title select it; × (on hover, and always
-// on the active one) and a middle-click close it.
+// on the active one) and a middle-click close it. Dragging it is the tab
+// bar's (app-title-bar/use-tab-drag.ts); its look while dragged is here.
 function WindowTitleBarTab({
   active,
   children,
@@ -92,7 +93,10 @@ function WindowTitleBarTab({
       data-active={active ? "" : undefined}
       data-slot="window-title-bar-tab"
       className={cn(
-        "group/tab relative flex h-7 min-w-16 max-w-48 flex-1 basis-40 items-center rounded-md text-xs [-webkit-app-region:no-drag]",
+        // While one is dragged (SLJ-148, `data-dragging`): it follows the
+        // pointer, raised; the others slide (transform) to make room. Right
+        // after the drop (`data-settling`), one frame without transitions.
+        "group/tab relative flex h-7 min-w-16 max-w-48 flex-1 basis-40 items-center rounded-md text-xs transition-transform duration-150 [-webkit-app-region:no-drag] data-dragging:z-10 data-dragging:cursor-grabbing data-dragging:bg-background data-dragging:text-foreground data-dragging:shadow-md data-dragging:transition-none data-settling:transition-none",
         active
           ? "bg-background text-foreground shadow-xs"
           : "text-sidebar-foreground/65 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",

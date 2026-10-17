@@ -634,7 +634,8 @@
     },
     "recentlyViewed": "Recently viewed",
     "recentlyViewedEmpty": "Nothing viewed yet",
-    "toggleSidebar": "Toggle sidebar"
+    "toggleSidebar": "Toggle sidebar",
+    "tabMoved": "Tab moved to position {{position}} of {{count}}"
   },
   "page": {
     "breadcrumbs": "Breadcrumbs"

@@ -9,6 +9,7 @@ import {
   createTabsState,
   currentPath,
   moveInHistory,
+  moveTab,
   neighbourTabId,
   openTab,
   parseTabsPreference,
@@ -111,6 +112,7 @@ export function AppTabsProvider({ children, persist }: { children: ReactNode; pe
       canGoForward: canMove(active, 1),
       close: (id) => show(closeTab(state, id)),
       forward: () => show(moveInHistory(state, 1)),
+      move: (id, toIndex) => show(moveTab(state, id, toIndex)),
       open: (target) => show(openTab(state, target)),
       state,
     };
@@ -165,6 +167,14 @@ function useTabShortcuts(tabs: AppTabsContextValue | null): void {
         tabs.activateNeighbour(event.code === "BracketRight" ? 1 : -1);
         return;
       }
+      // ⌘⇧← / ⌘⇧→ (Ctrl+Shift elsewhere) move the active tab (SLJ-148), but
+      // not while typing: in a text field they select to the line's start or end.
+      if (event.shiftKey && (event.key === "ArrowLeft" || event.key === "ArrowRight") && !isTyping(event.target)) {
+        event.preventDefault();
+        const at = tabs.state.tabs.findIndex((tab) => tab.id === tabs.state.activeId);
+        tabs.move(tabs.state.activeId, at + (event.key === "ArrowRight" ? 1 : -1));
+        return;
+      }
       if (event.shiftKey) return;
       if (event.key.toLowerCase() === "t") {
         event.preventDefault();
@@ -185,4 +195,10 @@ function useTabShortcuts(tabs: AppTabsContextValue | null): void {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [tabs]);
+}
+
+// Focus in something that edits text: an input, a textarea or a rich editor.
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || target.tagName === "TEXTAREA" || (target.tagName === "INPUT" && (target as HTMLInputElement).type !== "checkbox");
 }

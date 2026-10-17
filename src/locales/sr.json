@@ -634,7 +634,8 @@
     },
     "recentlyViewed": "Nedavno pregledano",
     "recentlyViewedEmpty": "Još ništa nije pregledano",
-    "toggleSidebar": "Prikaži ili sakrij bočnu traku"
+    "toggleSidebar": "Prikaži ili sakrij bočnu traku",
+    "tabMoved": "Tab je pomeren na mesto {{position}} od {{count}}"
   },
   "page": {
     "breadcrumbs": "Putanja"

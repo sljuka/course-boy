@@ -810,6 +810,13 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   active tab: main catches it before the app menu (`before-input-event`, which only
   real input reaches, not Playwright's synthetic key presses) and sends
   `window:close-tab`; with one tab left the window asks to close (`window:close`).
+  Tabs reorder by dragging (`app-title-bar/use-tab-drag.ts`: the drag stays inside the
+  tab strip, which is no-drag, so the bar's empty part still moves the window) and with
+  ⌘⇧← / ⌘⇧→ (Ctrl+Shift elsewhere; ignored while typing), through `moveTab` in
+  `src/lib/tabs.ts` (SLJ-148). The first tab lines up with the page card
+  (`app-title-bar/use-align-with-page.ts` measures `[data-slot="page-panel"]`, since
+  the title bar can't read the sidebar's width): a new page layout without `PagePanel`
+  leaves the tabs right after the bar's buttons.
   The course editor keeps its explorer selection in its address
   (`/drafts/<course>?node=<type>:<id>`, `src/lib/editor-node.ts`): `CourseLayout`
   writes it on every selection (a replace, no new history entry) and follows it when

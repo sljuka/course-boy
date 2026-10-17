@@ -8,6 +8,7 @@ import {
   createTabsState,
   currentPath,
   moveInHistory,
+  moveTab,
   neighbourTabId,
   openTab,
   parseTabsPreference,
@@ -87,6 +88,28 @@ describe("opening and closing tabs", () => {
     const state = openTab(openTab(createTabsState("/", "a"), "/", "b"), "/", "c");
     expect(neighbourTabId(state, 1)).toBe("a");
     expect(neighbourTabId(state, -1)).toBe("b");
+  });
+});
+
+// SLJ-148: moving a tab in the strip.
+describe("moveTab", () => {
+  const three = () => openTab(openTab(createTabsState("/", "a"), "/settings", "b"), "/my-courses", "c");
+  const order = (state: ReturnType<typeof three>) => state.tabs.map((tab) => tab.id);
+
+  it("moves a tab, keeping its history and which tab is active", () => {
+    const moved = moveTab(three(), "c", 0);
+    expect(order(moved)).toEqual(["c", "a", "b"]);
+    expect(moved.activeId).toBe("c");
+    expect(order(moveTab(three(), "a", 2))).toEqual(["b", "c", "a"]);
+    expect(currentPath(moved.tabs[2])).toBe("/settings");
+  });
+
+  it("stays within the strip, and ignores an unknown tab", () => {
+    expect(order(moveTab(three(), "a", -3))).toEqual(["a", "b", "c"]);
+    expect(order(moveTab(three(), "a", 9))).toEqual(["b", "c", "a"]);
+    const state = three();
+    expect(moveTab(state, "x", 0)).toBe(state);
+    expect(moveTab(state, "b", 1)).toBe(state);
   });
 });
 

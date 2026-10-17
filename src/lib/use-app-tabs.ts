@@ -12,6 +12,8 @@ export type AppTabsContextValue = {
   canGoForward: boolean;
   close: (id: string) => void;
   forward: () => void;
+  // A tab moved to `toIndex` in the strip (SLJ-148).
+  move: (id: string, toIndex: number) => void;
   // A new tab on `path` (Home when unset), made active.
   open: (path?: string) => void;
   state: TabsState;
