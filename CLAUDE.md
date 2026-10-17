@@ -253,6 +253,7 @@ Not blockers, but do not mistake them for patterns to copy:
   it only ever shows the app, outside links open in the system browser, new windows and
   `<webview>` are refused, and permissions are denied except clipboard write and
   fullscreen. So a hostile link in imported content can't load an outside page with the
-  preload's bridges. CSP for the rest of the app is still open.
+  preload's bridges. `matko://` links to course content (SLJ-60) are handed to the app
+  to open (see contract 9 in docs/contracts.md). CSP for the rest of the app is still open.
 - The `*-prototype` components (`editor-prototype`, `course-structure-prototype`,
   `test-editor-prototype`) are exploratory and hold most of the styling violations.

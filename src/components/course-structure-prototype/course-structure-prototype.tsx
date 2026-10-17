@@ -12,6 +12,7 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
+  Link2,
   PanelRightOpen,
   Pencil,
   SquarePlus,
@@ -41,6 +42,7 @@ import {
 } from "@/components/course-structure-prototype/explorer-delete-dialog";
 import type { CourseSectionPreview } from "@/lib/course-package";
 import { resolveTestIdForLesson } from "@/lib/course-test-id";
+import { courseAppLink, lessonAppLink } from "@/lib/app-links";
 import { editorNodeHref } from "@/lib/editor-node";
 import { useOptionalAppTabs } from "@/lib/use-app-tabs";
 import { useNewTabLink } from "@/lib/use-new-tab-link";
@@ -340,6 +342,7 @@ export function CourseStructurePrototype({
               isExpanded={isCourseRootExpanded}
               isFixed
               isSelected={selectedNodeId === courseRootId}
+              copyLink={courseAppLink(courseId)}
               label="Root"
               newTabHref={editorNodeHref(courseId)}
               onSelect={() =>
@@ -505,6 +508,7 @@ function SectionRow({
                   icon={FileText}
                   isFixed
                   isSelected={selectedNodeId === child.id}
+                  copyLink={lessonAppLink(courseId, child.id)}
                   label="Document"
                   newTabHref={editorNodeHref(courseId, { id: child.id, type: "document" })}
                   onDelete={() =>
@@ -684,6 +688,7 @@ function ExplorerRow({
   isEditing = false,
   isExpanded,
   isSelected = false,
+  copyLink,
   label,
   newTabHref,
   onChange,
@@ -715,6 +720,9 @@ function ExplorerRow({
   isEditing?: boolean;
   isExpanded?: boolean;
   isSelected?: boolean;
+  // A `matko://` link to it (SLJ-60), for right-click → Copy link: the
+  // course and its lessons.
+  copyLink?: string;
   label: string;
   // The node's address (`editorNodeHref`): right-click → Open in new tab,
   // and a middle-click or ⌘-click opens it in a new tab (SLJ-12).
@@ -895,14 +903,18 @@ function ExplorerRow({
 
       <ContextMenuContent className="w-48">
         {newTabHref && tabs && (
-          <>
-            <ContextMenuItem onClick={() => tabs.open(newTabHref)}>
-              <SquarePlus aria-hidden="true" />
-              <span>{t("titleBar.openInNewTab")}</span>
-            </ContextMenuItem>
-            <ContextMenuSeparator />
-          </>
+          <ContextMenuItem onClick={() => tabs.open(newTabHref)}>
+            <SquarePlus aria-hidden="true" />
+            <span>{t("titleBar.openInNewTab")}</span>
+          </ContextMenuItem>
         )}
+        {copyLink && (
+          <ContextMenuItem data-testid="explorer-copy-link" onClick={() => void navigator.clipboard.writeText(copyLink)}>
+            <Link2 aria-hidden="true" />
+            <span>{t("appLinks.copyLink")}</span>
+          </ContextMenuItem>
+        )}
+        {((newTabHref && tabs) || copyLink) && <ContextMenuSeparator />}
         {onInsertDocument && (
           <ContextMenuItem onClick={onInsertDocument}>
             <FileText aria-hidden="true" />

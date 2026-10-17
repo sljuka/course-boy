@@ -12,6 +12,7 @@ import { useVideoPrintFrames } from "@/components/course-player/use-video-print-
 import { hasUnknownBlocks, markdownToBlocks } from "@/lib/lesson-content-markdown";
 import { useAppState } from "@/lib/use-app-state";
 import { useCourseMnemonics } from "@/lib/use-course-mnemonics";
+import { blockNoteLinkOptions } from "@/components/editor-prototype/blocknote-links";
 
 /**
  * The student-facing counterpart to the draft document editor
@@ -37,6 +38,7 @@ export function LessonBlocks({ courseId, source }: { courseId: string; source: s
   const editor = useCreateBlockNote(
     {
       initialContent: decorateBlocksWithMnemonics(editorPrototypeBlocksToBlockNote(blocks, courseId), mnemonics),
+      links: blockNoteLinkOptions,
       schema: lessonPlayerSchema,
     },
     [courseId, source, mnemonics],

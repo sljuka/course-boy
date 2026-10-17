@@ -64,7 +64,7 @@ function HomeProgramRow({ kind, program }: { kind: ProgramKind; program: Program
   const newTabLink = useNewTabLink(href);
 
   return (
-    <ProgramContextMenu href={href} programId={program.id}>
+    <ProgramContextMenu href={href} kind={kind} programId={program.id}>
       <ListRow data-testid={kind === "channel" ? "home-channel" : "home-program"}>
         {/* A channel isn't something to finish (SLJ-31): a red target, like an
             imported course's. */}

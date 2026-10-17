@@ -18,6 +18,11 @@ export function introStepId(sectionId: string): string {
   return `${INTRO_STEP_PREFIX}${sectionId}`;
 }
 
+// A section's intro, shown as a step of its own: not a lesson of the course.
+export function isIntroStepId(stepId: string): boolean {
+  return stepId.startsWith(INTRO_STEP_PREFIX);
+}
+
 export function getEntryStep(
   course: CourseDetails,
 ): { id: string; kind: "lesson" | "test" } | null {

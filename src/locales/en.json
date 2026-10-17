@@ -137,7 +137,7 @@
     "lessonLabel": "Lesson",
     "markAllRegions": "Mark every region before continuing.",
     "markAllWords": "Mark every highlighted word before continuing.",
-    "missing": "This course could not be found.",
+    "missing": "The link leads to a course you don't have yet. Ask whoever shared it for the course's code, then import it from Home.",
     "missingBackToHome": "Back to home",
     "noSectionsHint": "To kick off the creation of the course you can start by adding a new section in the explorer on the left.",
     "noSectionsTitle": "Getting started",
@@ -191,7 +191,9 @@
     },
     "summaryRegionLegend": "Green: the shapes to pick (✓ the ones you picked). Red: picked, but not one of them.",
     "placePunctuation": "Place the punctuation marks before checking.",
-    "writeAnswer": "Write your answer before checking."
+    "writeAnswer": "Write your answer before checking.",
+    "missingTitle": "This course isn't on this device",
+    "missingGoHome": "Go to Home"
   },
   "courseVersions": {
     "actionErrorTitle": "Something went wrong",
@@ -1395,5 +1397,9 @@
     "solutionCount_one": "{{count}} correct answer",
     "solutionCount_other": "{{count}} correct answers",
     "needsSolution": "Write at least one correct answer"
+  },
+  "appLinks": {
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied"
   }
 }

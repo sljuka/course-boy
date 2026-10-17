@@ -58,12 +58,19 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
     );
   }
 
+  // Not on this device: a link to it (SLJ-60) from someone else's lesson, or
+  // a course removed since. Getting it takes its code, from whoever shares it.
   if (!course) {
     return (
       <PageContent>
-        <Card className="overflow-hidden">
-          <CardContent className="py-10">
+        <Card className="overflow-hidden" data-testid="course-missing">
+          <CardContent className="flex flex-col items-start gap-3 py-10">
+            <CardTitle>{t("courseDetails.missingTitle")}</CardTitle>
             <CardDescription>{t("courseDetails.missing")}</CardDescription>
+            <Button onClick={() => navigate("/")} size="sm" variant="secondary">
+              <Home aria-hidden="true" />
+              {t("courseDetails.missingGoHome")}
+            </Button>
           </CardContent>
         </Card>
       </PageContent>

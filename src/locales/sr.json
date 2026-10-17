@@ -137,7 +137,7 @@
     "lessonLabel": "Lekcija",
     "markAllRegions": "Označite svaki region pre nego što nastavite.",
     "markAllWords": "Označite svaku istaknutu reč pre nego što nastavite.",
-    "missing": "Ovaj kurs nije pronađen.",
+    "missing": "Link vodi do kursa koji još nemaš. Zatraži kod kursa od onoga ko ga deli, pa ga uvezi sa Početne.",
     "missingBackToHome": "Nazad na početnu",
     "noSectionsHint": "Da biste započeli pravljenje kursa, dodajte novu sekciju u pregledniku sa leve strane.",
     "noSectionsTitle": "Za početak",
@@ -191,7 +191,9 @@
     },
     "summaryRegionLegend": "Zeleno: oblasti koje je trebalo izabrati (✓ one koje si izabrao). Crveno: izabrano, a nije trebalo.",
     "placePunctuation": "Postavi znakove interpunkcije pre provere.",
-    "writeAnswer": "Napiši odgovor pre provere."
+    "writeAnswer": "Napiši odgovor pre provere.",
+    "missingTitle": "Ovaj kurs nije na ovom uređaju",
+    "missingGoHome": "Idi na Početnu"
   },
   "courseVersions": {
     "actionErrorTitle": "Nešto nije u redu",
@@ -1395,5 +1397,9 @@
     "solutionCount_one": "{{count}} tačan odgovor",
     "solutionCount_other": "{{count}} tačnih odgovora",
     "needsSolution": "Napiši bar jedan tačan odgovor"
+  },
+  "appLinks": {
+    "copyLink": "Kopiraj link",
+    "linkCopied": "Link je kopiran"
   }
 }

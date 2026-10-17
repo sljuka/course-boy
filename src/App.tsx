@@ -17,6 +17,7 @@ import { PublisherPasswordGate } from "@/components/identity/publisher-password-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppStateProvider } from "@/lib/app-state";
 import { AppTabsProvider } from "@/lib/app-tabs";
+import { useAppLinks } from "@/lib/use-app-links";
 import { useTrackRecentlyViewed } from "@/lib/recently-viewed-queries";
 import { CourseCreatePage } from "@/pages/course-create-page";
 import { CourseDetailPage } from "@/pages/course-detail-page";
@@ -156,9 +157,16 @@ const AppFrame = () => {
         {/* Asked by main when the window is closed (SLJ-129). */}
         <KeepSharingDialog />
         <AgentChangesRefresher />
+        {hasTabs && <AppLinkOpener />}
       </AppShell>
     </AppTabsProvider>
   );
+};
+
+// `matko://` links clicked in lessons (SLJ-60), with a profile open.
+const AppLinkOpener = () => {
+  useAppLinks();
+  return null;
 };
 
 // What an agent changed over MCP (SLJ-68) shows up on the open page.

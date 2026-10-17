@@ -1790,7 +1790,13 @@ function createWindow() {
     },
   })
 
-  lockDownWindow(win, [VITE_DEV_SERVER_URL ?? pathToFileURL(path.join(RENDERER_DIST, 'index.html')).href])
+  const mainWindow = win
+  lockDownWindow(
+    mainWindow,
+    [VITE_DEV_SERVER_URL ?? pathToFileURL(path.join(RENDERER_DIST, 'index.html')).href],
+    // A link to course content (SLJ-60): the window opens it itself.
+    (url, { newTab }) => mainWindow.webContents.send('window:open-app-link', { newTab, url }),
+  )
   forwardCloseTabShortcut(win)
   background.attach(win, { hidden: startHidden })
   loadApp(win)

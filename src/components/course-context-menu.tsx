@@ -1,4 +1,4 @@
-import { SquarePlus, Star, StarOff } from "lucide-react";
+import { Link2, SquarePlus, Star, StarOff } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,12 +10,13 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { courseAppLink } from "@/lib/app-links";
 import { useCourseProgressQuery, useSetFavoriteMutation } from "@/lib/course-progress-queries";
 import { useOptionalAppTabs } from "@/lib/use-app-tabs";
 
 // A course in a list (Home, My courses, a program's page) on right-click
-// (SLJ-12): Open in new tab, its star (where the list shows one), then the
-// same actions as its ⋯ menu. `children` is the card or row; a removed
+// (SLJ-12): Open in new tab, Copy link (SLJ-60), its star (where the list
+// shows one), then the same actions as its ⋯ menu. `children` is the card or row; a removed
 // course leaves nowhere, so the list stays where it is.
 export function CourseContextMenu({
   children,
@@ -57,6 +58,10 @@ export function CourseContextMenu({
           <ContextMenuItem onClick={() => tabs?.open(href)}>
             <SquarePlus aria-hidden="true" />
             {t("titleBar.openInNewTab")}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => void navigator.clipboard.writeText(courseAppLink(course.id))}>
+            <Link2 aria-hidden="true" />
+            {t("appLinks.copyLink")}
           </ContextMenuItem>
           {favorite && (
             <ContextMenuItem onClick={() => setFavorite({ courseId: course.id, favorite: !isFavorite })}>

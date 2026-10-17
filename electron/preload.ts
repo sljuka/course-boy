@@ -257,6 +257,14 @@ contextBridge.exposeInMainWorld('appWindow', {
       ipcRenderer.removeListener('window:close-tab', listener)
     }
   },
+  // A `matko://` link clicked in the window (SLJ-60), for the app to open.
+  onOpenAppLink(callback: (link: { newTab: boolean; url: string }) => void) {
+    const listener = (_event: unknown, link: { newTab: boolean; url: string }) => callback(link)
+    ipcRenderer.on('window:open-app-link', listener)
+    return () => {
+      ipcRenderer.removeListener('window:open-app-link', listener)
+    }
+  },
 })
 
 // Agents (SLJ-68): the MCP server's switch and token (Settings → Agents), and

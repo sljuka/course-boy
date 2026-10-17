@@ -7,6 +7,7 @@ import type {
   ImageBlock,
 } from "@/components/editor-prototype/editor-prototype-types";
 import { matkoAssetUrl } from "@/lib/course-assets";
+import { blockNoteLinkOptions } from "@/components/editor-prototype/blocknote-links";
 
 type DocumentEditorSchema = typeof documentEditorSchema;
 type SchemaBlockSchema =
@@ -35,7 +36,7 @@ type DocumentEditorPartialBlock = PartialBlock<
 // runs in the renderer (a real browser environment), so the plain
 // `BlockNoteEditor` works directly — no need for the Node-only
 // `@blocknote/server-util` package.
-const conversionEditor = BlockNoteEditor.create({ schema: documentEditorSchema });
+const conversionEditor = BlockNoteEditor.create({ links: blockNoteLinkOptions, schema: documentEditorSchema });
 
 // The reverse of `matkoAssetUrl` — extracts the bare course-asset filename
 // back out of the URL BlockNote's own image/video/audio blocks display and

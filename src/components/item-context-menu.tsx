@@ -1,4 +1,4 @@
-import { SquarePlus, type LucideIcon } from "lucide-react";
+import { Link2, SquarePlus, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -19,15 +19,18 @@ export type ItemContextAction = {
 };
 
 // An item in a list (a program, an approval) on right-click (SLJ-12): Open
-// in new tab, then what fits the item (`actions`). `children` is the row;
-// courses have their own, `CourseContextMenu`.
+// in new tab, Copy link when it has a `matko://` link (SLJ-60), then what
+// fits the item (`actions`). `children` is the row; courses have their own,
+// `CourseContextMenu`.
 export function ItemContextMenu({
   actions = [],
   children,
+  copyLink,
   href,
 }: {
   actions?: ItemContextAction[];
   children: ReactNode;
+  copyLink?: string;
   href: string;
 }) {
   const { t } = useTranslation();
@@ -41,6 +44,12 @@ export function ItemContextMenu({
           <SquarePlus aria-hidden="true" />
           {t("titleBar.openInNewTab")}
         </ContextMenuItem>
+        {copyLink && (
+          <ContextMenuItem onClick={() => void navigator.clipboard.writeText(copyLink)}>
+            <Link2 aria-hidden="true" />
+            {t("appLinks.copyLink")}
+          </ContextMenuItem>
+        )}
         {actions.length > 0 && <ContextMenuSeparator />}
         {actions.map((action) => (
           <ContextMenuItem key={action.id} onClick={action.onSelect}>

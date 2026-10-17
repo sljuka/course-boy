@@ -28,6 +28,7 @@ import { useCourseDetailsQuery, useUploadCourseAssetBytesMutation } from "@/lib/
 import type { Locale } from "@/lib/i18n";
 import { parseMnemonics } from "@/lib/mnemonics";
 import { useAppState } from "@/lib/use-app-state";
+import { blockNoteLinkOptions } from "@/components/editor-prototype/blocknote-links";
 
 // A document written per language in BlockNote: a lesson body or a section
 // intro (SLJ-45). `useLocalizedDocumentDraft` (its own file) holds every
@@ -100,6 +101,7 @@ function DocumentBlockNoteEditor({
     {
       extensions: [mnemonicDecorationsExtension(() => mnemonicsRef.current)],
       initialContent: editorPrototypeBlocksToBlockNote(blocks, courseId),
+      links: blockNoteLinkOptions,
       schema: documentEditorSchema,
       uploadFile,
     },

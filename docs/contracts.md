@@ -806,6 +806,24 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   the address changes from outside (another tab on the same editor, Back/Forward),
   since the editor stays mounted across those. That's what lets an explorer node open
   in a new tab, and a tab come back to the node it showed.
+- **Links to course content** (SLJ-60): `matko://course/<course>`,
+  `matko://course/<course>/lesson/<lesson>`, `matko://lesson/<lesson>` (the course the
+  lesson is written in), `matko://program/<program>` and `matko://channel/<program>`,
+  parsed and resolved in `src/lib/app-links.ts`. Three places
+  must agree, and nothing checks it:
+  - **The window lock** (`electron/window-security.ts`) classifies the scheme as
+    `app-link` and hands every such link the window navigates to or opens to the app
+    (`window:open-app-link`, `window.appWindow.onOpenAppLink`), never to the system.
+    It repeats the scheme name, since main imports no runtime code from `src/`.
+  - **Every BlockNote editor that shows a lesson** passes `blockNoteLinkOptions`
+    (`editor-prototype/blocknote-links.ts`): the player, the lesson editor and the
+    Markdown conversion. BlockNote's default drops any link that isn't http(s),
+    mailto and the like, so an editor without it silently strips `matko://` links.
+  - **`useAppLinks`** (mounted in `App.tsx` with the tabs) opens them: the lesson, in
+    the editor when that course is being edited, a new tab for ⌘-click or a
+    middle-click, or the course's page (which says it isn't on this device) when the
+    course or lesson is missing. "Copy link" (the lesson player, the explorer, and
+    the context menus of courses, programs and channels) copies the full form.
 - **Minimum window size: 480 × 400** (`minWidth`/`minHeight` in `main.ts`): enough
   for the title bar's buttons and one tab; the sidebar and side panels are drawers
   there.

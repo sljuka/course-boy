@@ -1602,6 +1602,112 @@ describe('sound effects', () => {
   })
 })
 
+// SLJ-60: `matko://` links in a lesson open course content in the app: a
+// lesson of the same course, one of another course, or a page saying a
+// course isn't on this device. ⌘-click opens a new tab; Copy link copies one.
+describe('links to course content', () => {
+  it('opens same-course, other-course and missing-course links, and copies a link', async () => {
+    const { app, page } = harness
+    const tabs = page.locator('[data-testid="app-tab"]')
+    const hash = () => page.evaluate(() => location.hash)
+    const clipboard = () => app.evaluate(({ clipboard }) => clipboard.readText())
+    const missingCourseId = 'aaaaaaaaaaaaaaaa'
+
+    const ids = await page.evaluate(async (missingCourseId) => {
+      const course = async (title, lessonTitles) => {
+        const { courseId } = await window.courses.createDraft({
+          defaultLocale: 'en',
+          locales: { en: { description: '', title } },
+          supportedLocales: ['en'],
+        })
+        const { sectionId } = await window.courses.createSection({ courseId, title: 'Chapter' })
+        const lessonIds = []
+        for (const lessonTitle of lessonTitles) {
+          lessonIds.push((await window.courses.createLesson({ courseId, sectionId, title: lessonTitle })).lessonId)
+        }
+        return { courseId, lessonIds, sectionId }
+      }
+      const other = await course('E2E Links Other', ['Other lesson'])
+      const main = await course('E2E Links', ['Linking lesson', 'Linked lesson'])
+      const { programId } = await window.programs.create({ locale: 'en', title: 'E2E Links Program' })
+      const paragraphs = [
+        `[Next lesson](matko://lesson/${main.lessonIds[1]})`,
+        `[Other course](matko://course/${other.courseId}/lesson/${other.lessonIds[0]})`,
+        `[Missing course](matko://course/${missingCourseId})`,
+        `[A program](matko://program/${programId})`,
+      ]
+      await window.courses.updateLessonContent({
+        courseId: main.courseId,
+        lessonId: main.lessonIds[0],
+        locales: { en: { body: `[matko-block]: <> (markdown)\n${paragraphs.join('\n\n')}` } },
+        sectionId: main.sectionId,
+      })
+      return { main, other, programId }
+    }, missingCourseId)
+    const lessonPath = (courseId, lessonId) => `#/courses/${courseId}/lessons/${lessonId}`
+    const openLinkingLesson = async () => {
+      await page.evaluate((target) => {
+        location.hash = target
+      }, lessonPath(ids.main.courseId, ids.main.lessonIds[0]))
+      await page.getByRole('link', { name: 'Next lesson' }).waitFor({ timeout: 15_000 })
+    }
+
+    // The same course's lesson, in this tab.
+    await openLinkingLesson()
+    await page.getByRole('link', { name: 'Next lesson' }).click()
+    await expect.poll(hash).toBe(lessonPath(ids.main.courseId, ids.main.lessonIds[1]))
+
+    // Copy link in the player: the lesson open now.
+    await page.locator('[data-testid="player-copy-link"]').click()
+    await expect.poll(clipboard).toBe(`matko://course/${ids.main.courseId}/lesson/${ids.main.lessonIds[1]}`)
+
+    // Another course's lesson.
+    await openLinkingLesson()
+    await page.getByRole('link', { name: 'Other course' }).click()
+    await expect.poll(hash).toBe(lessonPath(ids.other.courseId, ids.other.lessonIds[0]))
+
+    // A course that isn't here: its page says so.
+    await openLinkingLesson()
+    await page.getByRole('link', { name: 'Missing course' }).click()
+    await expect.poll(hash).toBe(`#/courses/${missingCourseId}`)
+    await page.locator('[data-testid="course-missing"]').waitFor({ timeout: 15_000 })
+
+    // A program's page.
+    await openLinkingLesson()
+    await page.getByRole('link', { name: 'A program' }).click()
+    await expect.poll(hash).toBe(`#/programs/${ids.programId}`)
+
+    // ⌘-click (Ctrl elsewhere): a new tab, this one staying on the lesson.
+    await openLinkingLesson()
+    const tabCount = await tabs.count()
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
+    await page.getByRole('link', { name: 'Next lesson' }).click({ modifiers: [modifier] })
+    await expect.poll(() => tabs.count()).toBe(tabCount + 1)
+    await tabs.nth(-1).getByRole('button', { name: 'Close tab' }).click()
+    await expect.poll(() => tabs.count()).toBe(tabCount)
+
+    // Copy link on a course in My courses: the first one listed (the list
+    // can still be the one cached before this test made its courses).
+    await page.evaluate(() => {
+      location.hash = '#/my-courses'
+    })
+    const firstCourse = page.locator('a[href^="#/drafts/"]').first()
+    await firstCourse.waitFor({ timeout: 15_000 })
+    const listedCourseId = (await firstCourse.getAttribute('href')).split('/').at(-1)
+    await firstCourse.click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Copy link' }).click()
+    await expect.poll(clipboard).toBe(`matko://course/${listedCourseId}`)
+
+    // Copy link in the editor's explorer.
+    await page.evaluate((id) => {
+      location.hash = `#/drafts/${id}`
+    }, ids.main.courseId)
+    await page.getByText('Linked lesson', { exact: true }).first().click({ button: 'right', timeout: 15_000 })
+    await page.getByRole('menuitem', { name: 'Copy link' }).click()
+    await expect.poll(clipboard).toBe(`matko://course/${ids.main.courseId}/lesson/${ids.main.lessonIds[1]}`)
+  })
+})
+
 // SLJ-139: a numeric exercise with several solutions has a labelled box for
 // each: checking with one empty asks for all, a wrong one is marked, both
 // right moves on.

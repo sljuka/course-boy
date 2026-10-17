@@ -16,6 +16,7 @@ import type { ProgramSummary } from "@/lib/program-package";
 import { useCreateProgramMutation, useProgramsQuery } from "@/lib/program-queries";
 import { useAppState } from "@/lib/use-app-state";
 import { useNewTabLink } from "@/lib/use-new-tab-link";
+import { programAppLink } from "@/lib/app-links";
 
 // My programs (SLJ-32): the teacher's programs, each an ordered set of
 // courses with its own page. New program asks for a title, then opens the
@@ -81,6 +82,7 @@ function MyProgramRow({ program }: { program: ProgramSummary }) {
           onSelect: () => navigate(`/programs/${program.id}`),
         },
       ]}
+      copyLink={programAppLink(program.id)}
       href={href}
     >
       <ListRow data-testid="my-program">
