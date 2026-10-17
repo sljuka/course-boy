@@ -134,6 +134,8 @@ describe('sharing across restarts', () => {
     const publishFromPanel = async () => {
       await page.locator('span', { hasText: new RegExp(`^${version.replace(/\./g, '\\.')}$`) }).first().click({ button: 'right' })
       await page.getByRole('menuitem', { name: 'Publish' }).click()
+      // SLJ-8 follow-up: Publish asks first.
+      await page.click('[data-testid="confirm-publish"]')
     }
     const publishedVersion = async () =>
       (await page.evaluate((id) => window.courses.getVersionHistory(id), newCourseId)).publishedVersion
@@ -250,6 +252,7 @@ describe('sharing across restarts', () => {
     await waitFor(page, (v) => [...document.querySelectorAll('span')].some((e) => e.textContent === v), { arg: version })
     await page.locator('span', { hasText: new RegExp(`^${version.replace(/\./g, '\\.')}$`) }).first().click({ button: 'right' })
     await page.getByRole('menuitem', { name: 'Publish' }).click()
+    await page.click('[data-testid="confirm-publish"]')
     await waitForText(page, `Published ${version}`)
     await page.getByRole('button', { name: 'Done' }).click()
 
@@ -285,6 +288,13 @@ describe('sharing across restarts', () => {
     const publishButton = page.locator('[data-testid="publish-course"]')
     await expect.poll(() => publishButton.getAttribute('aria-label')).toBe(`Publish ${version}`)
     await publishButton.click()
+    // Asked first; Cancel publishes nothing.
+    await page.getByRole('button', { name: 'Cancel' }).click()
+    await page.locator('[data-testid="confirm-publish-dialog"]').waitFor({ state: 'hidden' })
+    expect(await publishButton.getAttribute('aria-label')).toBe(`Publish ${version}`)
+    await publishButton.click()
+    expect(await page.locator('[data-testid="confirm-publish-dialog"]').innerText()).toContain(`Publish version ${version}?`)
+    await page.click('[data-testid="confirm-publish"]')
     await waitForText(page, `Published ${version}`)
     await page.getByRole('button', { name: 'Done' }).click()
     await expect.poll(() => publishButton.getAttribute('aria-label')).toBe(`${version} is already published`)

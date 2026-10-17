@@ -197,6 +197,7 @@ describe('a course maintained by two teachers', () => {
       location.hash = `#/drafts/${id}`
     }, ids.courseId)
     await marko.click('[data-testid="publish-course"]')
+    await marko.click('[data-testid="confirm-publish"]')
     await waitForText(marko, `Version ${version} sent for approval`, { timeout: 30_000 })
     await marko.getByRole('button', { name: 'Done' }).click()
 

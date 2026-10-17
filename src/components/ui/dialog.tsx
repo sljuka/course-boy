@@ -104,7 +104,11 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 px-3 py-2.5 sm:flex-row sm:justify-end",
+        // Sticky: a dialog taller than the window scrolls, and its buttons
+        // stay in view at the bottom (the dialog's own padding is below it,
+        // hence -bottom-4). The background is opaque, so nothing scrolls
+        // through behind them.
+        "sticky -bottom-4 -mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-popover bg-linear-to-b from-muted/50 to-muted/50 px-3 py-2.5 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

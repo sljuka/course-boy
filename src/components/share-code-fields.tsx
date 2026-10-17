@@ -22,13 +22,22 @@ function CopyRow({ label, multiline = false, testId, value }: { label: string; m
   }, [hasCopied]);
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <div className="flex items-start gap-2">
+      <div className="flex min-w-0 items-start gap-2">
         {multiline ? (
-          <Textarea className="resize-none" data-testid={testId} id={id} readOnly rows={3} value={value} />
+          // A fixed size, not grown to the text: the link has no spaces, and
+          // grown to it the box would widen the whole dialog. It wraps instead.
+          <Textarea
+            className="field-sizing-fixed min-w-0 flex-1 resize-none"
+            data-testid={testId}
+            id={id}
+            readOnly
+            rows={4}
+            value={value}
+          />
         ) : (
-          <Input data-testid={testId} id={id} readOnly value={value} />
+          <Input className="min-w-0 flex-1" data-testid={testId} id={id} readOnly value={value} />
         )}
         <Button
           aria-label={t("shareCode.copy", { what: label })}
@@ -53,7 +62,7 @@ export function ShareCodeFields({ code, codeLabel, testId }: { code: string; cod
   const link = importAppLink(code);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       <CopyRow label={t("shareCode.link")} testId="share-link" value={link} />
       <CopyRow label={codeLabel} testId={testId} value={code} />
       <CopyRow label={t("shareCode.message")} multiline testId="share-message" value={t("shareCode.messageText", { code, link })} />

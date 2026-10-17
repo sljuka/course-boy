@@ -68,6 +68,7 @@ describe("the identity's password", () => {
       location.hash = `#/drafts/${id}`
     }, ids.courseId)
     await page.click('[data-testid="publish-course"]')
+    await page.click('[data-testid="confirm-publish"]')
     const dialog = page.locator('[data-testid="unlock-identity-dialog"]')
     await dialog.waitFor()
     expect(await dialog.count()).toBe(1)

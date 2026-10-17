@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CourseCodeDialog } from "@/components/course-details/course-code-dialog";
+import { ConfirmPublishDialog } from "@/components/course-details/confirm-publish-dialog";
 import { SetUpIdentityDialog } from "@/components/identity/set-up-identity-dialog";
 import { UnlockIdentityDialog } from "@/components/identity/unlock-identity-dialog";
 import { usePublishCourseVersionMutation } from "@/lib/course-queries";
@@ -9,7 +10,8 @@ import { useMaintainersQuery } from "@/lib/maintainers-queries";
 import { fetchIdentityStatus } from "@/lib/publisher-identity-queries";
 
 // Publish puts a version online (SLJ-38), signed with the publishing identity,
-// and then shows the course's code. Creating, editing and printing never get
+// and then shows the course's code. It asks first ("Publish version 0.4?"):
+// once a student has downloaded a version, it can't be taken back. Creating, editing and printing never get
 // here, so teachers who only print never see this.
 //
 // Before it publishes (SLJ-55): without an identity yet, the setup wizard runs
@@ -33,6 +35,8 @@ export function usePublishWithConsent(courseId: string): {
   const { data: maintainers } = useMaintainersQuery(courseId);
   const isShared = Boolean(maintainers?.sharedKey);
   const [publishedVersion, setPublishedVersion] = useState<string | null>(null);
+  // The version asked about ("Publish version 0.4?"), until confirmed.
+  const [confirmVersion, setConfirmVersion] = useState<string | null>(null);
   // The version waiting for the identity to be set up, or unlocked.
   const [setUpForVersion, setSetUpForVersion] = useState<string | null>(null);
   const [unlockForVersion, setUnlockForVersion] = useState<string | null>(null);
@@ -41,7 +45,8 @@ export function usePublishWithConsent(courseId: string): {
     publishMutation.mutate({ courseId, version }, { onSuccess: () => setPublishedVersion(version) });
   }
 
-  async function requestPublish(version: string) {
+  async function confirmPublish(version: string) {
+    setConfirmVersion(null);
     const status = await fetchIdentityStatus().catch(() => null);
 
     if (status && !status.exists) {
@@ -62,6 +67,12 @@ export function usePublishWithConsent(courseId: string): {
 
   const dialogs = (
     <>
+      <ConfirmPublishDialog
+        isShared={isShared}
+        onCancel={() => setConfirmVersion(null)}
+        onConfirm={() => confirmVersion && void confirmPublish(confirmVersion)}
+        version={confirmVersion}
+      />
       <SetUpIdentityDialog
         beforePublish
         onClose={() => setSetUpForVersion(null)}
@@ -92,5 +103,5 @@ export function usePublishWithConsent(courseId: string): {
     </>
   );
 
-  return { dialogs, isShared, publishMutation, requestPublish: (version) => void requestPublish(version) };
+  return { dialogs, isShared, publishMutation, requestPublish: setConfirmVersion };
 }

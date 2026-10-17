@@ -256,7 +256,11 @@
     "publishButton": "Objavi",
     "incompleteTitle": "Nije napisano na svim jezicima: {{count}}",
     "incompleteDescription": "Možeš svejedno da sačuvaš verziju; učenici koji čitaju na drugom jeziku tamo gde nešto nedostaje dobijaju glavni jezik kursa.",
-    "incompleteShow": "Prikaži sve ({{count}})"
+    "incompleteShow": "Prikaži sve ({{count}})",
+    "confirmPublishTitle": "Objaviti verziju {{version}}?",
+    "confirmPublishDescription": "Verzija ide na mrežu: svako ko ima kod kursa može da je preuzme, a učenicima koji već imaju kurs biće ponuđena kao novija. Kada je neko preuzme, ne može se povući.",
+    "confirmAskApprovalTitle": "Zatražiti objavljivanje verzije {{version}}?",
+    "confirmAskApprovalDescription": "Ostali koji održavaju kurs treba da je odobre. Na mrežu ide kada je odobri dovoljno vas, a učenicima koji već imaju kurs tada se nudi kao novija."
   },
   "courseTags": {
     "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."

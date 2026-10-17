@@ -1937,16 +1937,12 @@ describe('section summary and intro', () => {
       return { courseId, lessonId, sectionId }
     })
     const sectionDir = path.join(DATA_DIR, 'courses', ids.courseId, 'draft', ids.sectionId)
+    // By its address (SLJ-12): a click in the explorer right after the
+    // address changes can lose to the editor following that address.
     const openSectionPage = async () => {
-      await page.evaluate((id) => {
-        location.hash = `#/drafts/${id}`
-      }, ids.courseId)
-      await waitFor(page, () =>
-        [...document.querySelectorAll('span,button,div')].some((el) => el.textContent === 'Intro section'),
-      )
-      await page.evaluate(() =>
-        [...document.querySelectorAll('span,button,div')].filter((el) => el.textContent === 'Intro section').pop().click(),
-      )
+      await page.evaluate(({ courseId, sectionId }) => {
+        location.hash = `#/drafts/${courseId}?node=${encodeURIComponent(`section:${sectionId}`)}`
+      }, ids)
       await page.getByLabel('Section summary').waitFor()
     }
 

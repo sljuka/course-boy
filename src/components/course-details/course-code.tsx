@@ -39,7 +39,7 @@ export function CourseCode({ courseId }: { courseId: string }) {
   const code = sharing.code;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-2">
       <ShareCodeFields code={code} codeLabel={t("courseSharing.codeLabel")} testId="course-code" />
       <div className="flex items-center gap-2" data-testid="course-code-status">
         {sharing.status === "sharing" && <Spinner aria-hidden="true" />}
