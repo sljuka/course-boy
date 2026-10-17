@@ -6,6 +6,7 @@ import {
   courseIdOfPath,
   importAppLink,
   lessonAppLink,
+  newestAppLink,
   parseAppLink,
   programAppLink,
   thisCourseLessonAppLink,
@@ -86,5 +87,26 @@ describe("appLinkPath", () => {
     expect(courseIdOfPath(`/drafts/${COURSE}`)).toBe(COURSE);
     expect(courseIdOfPath("/courses/new")).toBeNull();
     expect(courseIdOfPath("/")).toBeNull();
+  });
+});
+
+// SLJ-151: of links that arrive together, only the newest valid one opens.
+describe("newestAppLink", () => {
+  const code = "ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1u";
+
+  it("takes the newest link and skips what isn't one", () => {
+    expect(
+      newestAppLink([
+        { newTab: false, url: "matko://lesson/lesson-01" },
+        { newTab: true, url: `matko://import/${code}` },
+        { newTab: false, url: "matko://import/not-a-code" },
+        { newTab: false, url: "https://example.com" },
+      ]),
+    ).toEqual({ link: { code, kind: "import" }, newTab: true });
+  });
+
+  it("is null for none, or none valid", () => {
+    expect(newestAppLink([])).toBeNull();
+    expect(newestAppLink([{ newTab: false, url: "matko://wipe/everything" }])).toBeNull();
   });
 });

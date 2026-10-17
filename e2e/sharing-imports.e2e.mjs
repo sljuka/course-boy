@@ -6,7 +6,8 @@
 import { describe, expect, it } from 'vitest'
 import { cutAndPublish, finishOnboarding, setUpIdentity, sharingSuite, waitForSharing, writeLesson } from './sharing-suite.mjs'
 
-const { close, launch } = sharingSuite('imports', {
+const { apps, close, launch } = sharingSuite('imports', {
+  linkStudent: 'link-student',
   waitingStudent: 'waiting-student',
   waitingTeacher: 'waiting-teacher',
 })
@@ -67,4 +68,33 @@ describe('imports that wait', () => {
     await expect.poll(() => student.evaluate(() => window.sharing.listImports()), { timeout: 30_000 }).toEqual([])
     await student.locator('[data-testid="home-group-downloading"]').waitFor({ state: 'detached', timeout: 30_000 })
   }, 300_000)
+
+  // SLJ-151: a code from a link is looked up, on the student's click, before
+  // Import: what the course is and who published it. Nothing downloads.
+  it("a link's code shows the course and its publisher before Import", async () => {
+    const student = await launch('linkStudent')
+    await finishOnboarding(student, 'student')
+    const openUrl = (url) => apps.linkStudent.app.evaluate(({ app }, url) => app.emit('open-url', { preventDefault() {} }, url), url)
+
+    await openUrl(`matko://import/${code}`)
+    await student.locator('[data-testid="import-from-link"]').waitFor({ timeout: 20_000 })
+    // Only Look it up until it has been looked up.
+    await expect.poll(() => student.getByRole('button', { name: 'Import', exact: true }).count()).toBe(0)
+    await student.locator('[data-testid="import-look-up"]').click()
+    const preview = student.locator('[data-testid="linked-course-preview"]')
+    await expect.poll(() => preview.textContent().catch(() => ''), { timeout: 30_000 }).toContain('E2E Waiting Course')
+    expect(await preview.textContent()).toContain('by')
+    await student.getByRole('button', { name: 'Import', exact: true }).waitFor()
+    expect(await student.evaluate(() => window.sharing.listImports())).toEqual([])
+
+    // A code nobody shares: it says so, and can still be imported.
+    const unknownCode = 'ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1u'
+    await openUrl(`matko://import/${unknownCode}`)
+    await expect.poll(() => student.locator('[data-testid="import-course-code"]').inputValue()).toBe(unknownCode)
+    await student.locator('[data-testid="import-look-up"]').click()
+    await expect
+      .poll(() => preview.textContent().catch(() => ''), { timeout: 40_000 })
+      .toContain('Nobody sharing this code is online')
+    expect(await student.evaluate(() => window.sharing.listImports())).toEqual([])
+  }, 120_000)
 })

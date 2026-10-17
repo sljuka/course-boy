@@ -289,7 +289,15 @@
     "importing": "Uvoženje...",
     "openButton": "Uvezi kurs",
     "title": "Uvezi kurs",
-    "fromLink": "Ovaj kod je stigao preko linka. Uvezi ga samo ako veruješ onome ko ga je poslao."
+    "fromLink": "Ovaj kod je stigao preko linka. Uvezi ga samo ako veruješ onome ko ga je poslao.",
+    "lookUpButton": "Proveri",
+    "lookingUp": "Proverava se...",
+    "lookUpBy": "izdavač:",
+    "lookUpNoPublisher": "Nepoznato ko je objavio",
+    "lookUpVersion": "verzija {{version}}",
+    "lookUpUntitled": "Kurs bez naslova",
+    "lookUpNotFound": "Trenutno niko ko deli ovaj kod nije na mreži, pa ne može da se proveri. I dalje možete da ga uvezete: preuzeće se kad se vrate.",
+    "lookUpNotCourse": "Ovo nije kod kursa. Možda je kod programa: uvoz će pokazati šta je."
   },
   "courseItems": {
     "additionAndSubtraction": {

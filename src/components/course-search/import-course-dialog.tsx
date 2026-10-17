@@ -13,7 +13,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { LinkedCoursePreview } from "@/components/course-search/linked-course-preview";
+import { usePeekCourseMutation } from "@/lib/program-queries";
 import { discardImport, useImportCourseMutation, useTransferQuery } from "@/lib/sharing-queries";
+import { useAppState } from "@/lib/use-app-state";
 
 type ImportCourseDialogProps = {
   // A code from a `matko://import/…` link (SLJ-8): filled in, never imported
@@ -28,9 +31,15 @@ type ImportCourseDialogProps = {
 // dialog closes and Home lists the course under Downloading, with its progress
 // and Cancel, until it lands under Imported. An error before that (a bad code)
 // is shown here instead.
+//
+// A code from a link (SLJ-151) is first looked up ("Look it up"): its title
+// and publisher, from people sharing it, before Import. Only on that click,
+// since looking up contacts them: a link alone never reaches the network.
 export function ImportCourseDialog({ initialCode = null, onOpenChange, open }: ImportCourseDialogProps) {
   const { t } = useTranslation();
+  const { locale } = useAppState();
   const [code, setCode] = useState("");
+  const lookUp = usePeekCourseMutation();
   const [error, setError] = useState<Error | null>(null);
   // The import being started, until it's handed off to Home.
   const [transferId, setTransferId] = useState<string | null>(null);
@@ -42,16 +51,23 @@ export function ImportCourseDialog({ initialCode = null, onOpenChange, open }: I
     setCode("");
     setError(null);
     setTransferId(null);
+    lookUp.reset();
     // Detaches this dialog from the import; it keeps running for Home.
     importMutation.reset();
     onOpenChange(false);
   }
 
   // Opened from a link: its code, ready to import.
+  // Another link's code replaces the first, and its look-up.
+  const { reset: resetLookUp } = lookUp;
   useEffect(() => {
-    if (open && initialCode) setCode(initialCode);
-  }, [initialCode, open]);
+    if (open && initialCode) {
+      setCode(initialCode);
+      resetLookUp();
+    }
+  }, [initialCode, open, resetLookUp]);
   const isFromLink = Boolean(initialCode) && code === initialCode;
+  const needsLookUp = isFromLink && (lookUp.isIdle || lookUp.isPending);
 
   // The worker knows the transfer: the download has started, hand it off.
   useEffect(() => {
@@ -111,16 +127,24 @@ export function ImportCourseDialog({ initialCode = null, onOpenChange, open }: I
             <AlertDescription>{t("importCourse.fromLink")}</AlertDescription>
           </Alert>
         )}
+        {isFromLink && <LinkedCoursePreview error={lookUp.error} locale={locale} result={lookUp.data} />}
         {error && (
           <Alert variant="destructive">
             <AlertTitle>{t("importCourse.errorTitle")}</AlertTitle>
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         )}
-        <Button disabled={!code.trim() || isStarting} onClick={handleImport}>
-          {isStarting && <Spinner aria-hidden="true" />}
-          {isStarting ? t("importCourse.importing") : t("importCourse.importButton")}
-        </Button>
+        {needsLookUp ? (
+          <Button data-testid="import-look-up" disabled={lookUp.isPending} onClick={() => lookUp.mutate(code.trim())}>
+            {lookUp.isPending && <Spinner aria-hidden="true" />}
+            {lookUp.isPending ? t("importCourse.lookingUp") : t("importCourse.lookUpButton")}
+          </Button>
+        ) : (
+          <Button disabled={!code.trim() || isStarting} onClick={handleImport}>
+            {isStarting && <Spinner aria-hidden="true" />}
+            {isStarting ? t("importCourse.importing") : t("importCourse.importButton")}
+          </Button>
+        )}
       </DialogContent>
     </Dialog>
   );

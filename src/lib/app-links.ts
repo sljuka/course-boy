@@ -95,6 +95,21 @@ export function programAppLink(programId: string, kind: "channel" | "program" = 
   return `${APP_LINK_SCHEME}//${kind}/${programId}`;
 }
 
+// Of the links that arrived together, the one to open: the newest that is a
+// link at all (SLJ-151). One click is one page: a burst of links (a page
+// firing the link over and over, or several clicked while onboarding showed)
+// never flickers through pages or leaves them in Back. Each request's url
+// comes from outside the app, so it's checked here before anything uses it.
+export function newestAppLink<T extends { newTab: boolean; url: string }>(
+  requests: readonly T[],
+): { link: AppLink; newTab: boolean } | null {
+  for (let index = requests.length - 1; index >= 0; index -= 1) {
+    const link = parseAppLink(requests[index].url);
+    if (link) return { link, newTab: requests[index].newTab };
+  }
+  return null;
+}
+
 // The course a page belongs to, for a link without one: the player and the
 // course page (`/courses/<id>…`) or the editor (`/drafts/<id>`).
 export function courseIdOfPath(pathname: string): string | null {

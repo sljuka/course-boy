@@ -834,7 +834,10 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
     `window.appWindow.takeAppLinks` / `onAppLinksWaiting`): clicked in the window, the
     link that launched the app (an argument on Windows and Linux, `open-url` on
     macOS), or one from a second launch (`second-instance`). So a link that arrives
-    before a profile is open (launcher, onboarding) waits for one.
+    before a profile is open (launcher, onboarding) waits for one. Main keeps only a
+    plain link (`isAcceptableAppLink`: the scheme, then id characters, no spaces,
+    quotes, `?`, `#` or `%`, SLJ-151), and from a second launch's arguments only that
+    link: never `--profile=…` or anything else, so a link can't choose the profile.
   - **The window lock** (`electron/window-security.ts`) classifies the scheme as
     `app-link` and adds every such link the window navigates to or opens to that
     queue, never handing it to the system. It and the intake repeat the scheme name,
@@ -859,7 +862,11 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
     The lesson editor writes them with "Link to a lesson" (`/` menu and formatting
     toolbar, `editor-prototype/lesson-link-dialog.tsx`): a lesson of the same course as
     `matko://lesson/<lesson>`, another course's with its course.
-  - **`useAppLinks`** (mounted in `App.tsx` with the tabs) takes and opens them: the lesson, in
+  - **`useAppLinks`** (mounted in `App.tsx` with the tabs) takes them and opens only the
+    newest of those that arrived together (`newestAppLink`), dropping a course lookup a
+    newer link overtook (SLJ-151). An import link only fills in Import; its code is
+    looked up (title and publisher) on the student's click, never on arrival, since
+    that contacts peers. It opens them: the lesson, in
     the editor when that course is being edited, a new tab for ⌘-click or a
     middle-click, or the course's page (which says it isn't on this device) when the
     course or lesson is missing. "Copy link" (the lesson player, the explorer, and

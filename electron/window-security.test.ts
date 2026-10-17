@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ shell: { openExternal: vi.fn() } }))
 
+import { shell } from 'electron'
 import { classifyUrl, lockDownWindow } from './window-security'
 
 const builtApp = ['file:///Applications/Matko.app/Contents/Resources/app/dist/index.html']
@@ -65,6 +66,7 @@ function fakeWindow() {
 
 describe('lockDownWindow', () => {
   it('hands course links to the app, in a new tab for ⌘-click, and never loads them', () => {
+    vi.mocked(shell.openExternal).mockClear()
     const window = fakeWindow()
     const onAppLink = vi.fn()
     lockDownWindow(window.win, builtApp, onAppLink)
@@ -77,5 +79,8 @@ describe('lockDownWindow', () => {
       ['matko://lesson/lesson-02', { newTab: true }],
       ['matko://course/thys2vej6my5mpxt', { newTab: false }],
     ])
+    // Never to the system (SLJ-151): Matko is the system's handler for
+    // `matko://`, so it would come back as a second launch, maybe in a loop.
+    expect(shell.openExternal).not.toHaveBeenCalled()
   })
 })

@@ -67,5 +67,46 @@ describe('import links from outside the app', () => {
     await openUrl(`matko://import/${OPEN_URL_CODE}`)
     const input = page.locator('[data-testid="import-course-code"]')
     await expect.poll(() => input.inputValue().catch(() => ''), { timeout: 20_000 }).toBe(OPEN_URL_CODE)
+    await page.keyboard.press('Escape')
+    await input.waitFor({ state: 'hidden' })
+  })
+
+  // SLJ-151: a burst of links (a page firing them over and over) opens only
+  // the newest, and Back never brings an earlier one back.
+  it('opens only the newest of links that arrive together, and Back never reopens one', async () => {
+    const { app, page } = harness
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await page.waitForFunction(() => location.hash === '#/settings')
+    await app.evaluate(({ app }, urls) => {
+      for (const url of urls) app.emit('open-url', { preventDefault() {} }, url)
+    }, [`matko://import/${LAUNCH_CODE}`, `matko://import/${SECOND_CODE}`, `matko://import/${OPEN_URL_CODE}`])
+    const input = page.locator('[data-testid="import-course-code"]')
+    await expect.poll(() => input.inputValue().catch(() => ''), { timeout: 20_000 }).toBe(OPEN_URL_CODE)
+    await page.keyboard.press('Escape')
+    await input.waitFor({ state: 'hidden' })
+
+    // Back: to Settings, with no Import on the way.
+    await page.goBack()
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe('#/settings')
+    await page.waitForTimeout(1_000)
+    expect(await input.isVisible()).toBe(false)
+  })
+
+  // SLJ-151: a second launch's other arguments never reach the running app:
+  // it takes only the link, so a link can't choose the profile.
+  it("ignores a second launch's other arguments", async () => {
+    const { page } = harness
+    const profileBefore = await page.evaluate(() => window.profiles.getState().then((state) => state.active?.id))
+    const second = spawn(
+      electronBinary(),
+      [`--user-data-dir=${USER_DATA}`, `--profile=${E2E_PROFILE_ID}`, APP_DIR, '--profile=someone-else', `matko://import/${SECOND_CODE}`],
+      { cwd: APP_DIR, stdio: 'ignore' },
+    )
+    expect(await new Promise((resolve) => second.on('exit', resolve))).toBe(0)
+    const input = page.locator('[data-testid="import-course-code"]')
+    await expect.poll(() => input.inputValue().catch(() => ''), { timeout: 20_000 }).toBe(SECOND_CODE)
+    expect(await page.evaluate(() => window.profiles.getState().then((state) => state.active?.id))).toEqual(profileBefore)
   })
 })

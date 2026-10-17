@@ -28,9 +28,23 @@ export const APP_LINK_SCHEME = 'matko'
 
 export type AppLinkRequest = { newTab: boolean; url: string }
 
-// The `matko://` link among a launch's arguments, if any.
+// What a link from outside the app may look like before main keeps it
+// (SLJ-151): the scheme, then only the characters course, lesson and program
+// ids and codes use. No spaces, quotes, `?`, `#` or `%`, so a crafted link
+// can't carry anything else along (on Windows a link arrives as a command-line
+// argument, the way CVE-2018-1000006 smuggled in Chromium switches). The
+// window still checks each link exactly (`parseAppLink` in src/lib/app-links.ts).
+const ACCEPTABLE_APP_LINK = new RegExp(`^${APP_LINK_SCHEME}://[a-z0-9._/-]{1,500}$`, 'i')
+
+export function isAcceptableAppLink(url: unknown): url is string {
+  return typeof url === 'string' && ACCEPTABLE_APP_LINK.test(url)
+}
+
+// The `matko://` link among a launch's arguments, if any. Only that one
+// argument is ever used: a second launch's other arguments (`--profile=…`,
+// `--user-data-dir=…`) never reach the running app.
 export function findAppLinkInArgv(argv: readonly string[]): string | null {
-  return argv.find((argument) => argument.toLowerCase().startsWith(`${APP_LINK_SCHEME}://`)) ?? null
+  return argv.find(isAcceptableAppLink) ?? null
 }
 
 // Links waiting for the window. `notify`: tell the window one is waiting.
@@ -38,6 +52,7 @@ export function createAppLinkQueue(notify: () => void) {
   let waiting: AppLinkRequest[] = []
   return {
     add(request: AppLinkRequest) {
+      if (!isAcceptableAppLink(request.url)) return
       // Bounded: links only come from clicks, never a stream.
       waiting = [...waiting, request].slice(-10)
       notify()

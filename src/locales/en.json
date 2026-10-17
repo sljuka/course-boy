@@ -289,7 +289,15 @@
     "importing": "Importing...",
     "openButton": "Import course",
     "title": "Import course",
-    "fromLink": "This code came from a link. Import it only if you trust whoever sent it."
+    "fromLink": "This code came from a link. Import it only if you trust whoever sent it.",
+    "lookUpButton": "Look it up",
+    "lookingUp": "Looking it up...",
+    "lookUpBy": "by",
+    "lookUpNoPublisher": "Publisher unknown",
+    "lookUpVersion": "version {{version}}",
+    "lookUpUntitled": "Untitled course",
+    "lookUpNotFound": "Nobody sharing this code is online right now, so it can't be checked. You can still import it: it downloads when they're back.",
+    "lookUpNotCourse": "This isn't a course's code. It may be a program's: Import shows what it is."
   },
   "courseItems": {
     "additionAndSubtraction": {
