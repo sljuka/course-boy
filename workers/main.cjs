@@ -18,6 +18,7 @@ const { movedToKey, unchangedFileKeys, verifySource } = require('./course-source
 const { createMaintainers, requestHash } = require('./maintainers.cjs')
 const { clearOldVersions } = require('./drive-storage.cjs')
 const { NoSymlinkLocaldrive, assertNoSymlinksOnDisk } = require('./drive-safety.cjs')
+const { limitConnections } = require('./connection-limit.cjs')
 const {
   commitProposal,
   createProposal,
@@ -137,10 +138,12 @@ async function start() {
   // notify main.
   let rpc = null
   const swarmKeyPair = await store.createKeyPair('swarm')
-  const swarm = new Hyperswarm({ bootstrap, keyPair: swarmKeyPair })
+  const allowlist = new Set() // hex-encoded stable swarm public keys, vetted for gated content
+  // At most MAX_CONNECTIONS (connection-limit.cjs), except vetted peers.
+  const limit = limitConnections({ isVetted: (publicKey) => allowlist.has(publicKey.toString('hex')) })
+  const swarm = limit.attach(new Hyperswarm({ bootstrap, firewall: limit.firewall, keyPair: swarmKeyPair }))
   const pairing = new BlindPairing(swarm)
 
-  const allowlist = new Set() // hex-encoded stable swarm public keys, vetted for gated content
   const connectionsByPeerKey = new Map() // hex peer key -> live conn, for upgrading an already-open one
   const invites = new Map() // hex invite id -> { driveKey, expiresAt, invitePublicKey, maxUses, usedCount }
   const gatedMembers = new Map() // hex discoveryKey -> blind-pairing Member (one per gated course)

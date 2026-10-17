@@ -13,10 +13,12 @@
 // what CMD_GET_PEERS returns) next to how many students are online and how many
 // of them got the course.
 //
-//   node scripts/measure-peers.mjs [students=25] [--per-process=25] [--hold=60]
+//   node scripts/measure-peers.mjs [students=25] [--per-process=25] [--hold=60] [--max=256]
 //
 // Students join in waves of one process each and stay `--hold` seconds after
-// the last wave. Each process holds `--per-process` students. Prints a table
+// the last wave. Each process holds `--per-process` students. Every swarm has
+// the worker's connection limit (workers/connection-limit.cjs), `--max` to try
+// another. Prints a table
 // and writes the samples to /tmp/matko-measure-peers-<students>.json.
 
 import { fork } from 'node:child_process'
@@ -27,10 +29,17 @@ import Corestore from 'corestore'
 import Hyperdrive from 'hyperdrive'
 import createTestnet from 'hyperdht/testnet.js'
 import Hyperswarm from 'hyperswarm'
+import connectionLimit from '../workers/connection-limit.cjs'
 
 const ROOT = '/tmp/matko-measure-peers'
 const SAMPLE_MS = 3_000
 const WAVE_MS = 15_000
+
+// A swarm with the worker's connection limit.
+function limitedSwarm(options, max) {
+  const limit = connectionLimit.limitConnections({ max })
+  return limit.attach(new Hyperswarm({ ...options, firewall: limit.firewall }))
+}
 
 const args = process.argv.slice(2)
 const option = (name, fallback) => {
@@ -43,6 +52,7 @@ if (args[0] === '--students-process') {
 } else {
   await runTeacher({
     hold: option('hold', 60),
+    max: option('max', connectionLimit.MAX_CONNECTIONS),
     perProcess: option('per-process', 25),
     students: Number(args.find((arg) => !arg.startsWith('--')) ?? 25),
   })
@@ -50,11 +60,11 @@ if (args[0] === '--students-process') {
 
 // One process of students: each its own swarm and store, like separate
 // computers. Reports how many are online and how many have the course.
-async function runStudents({ bootstrap, count, dir, driveKey }) {
+async function runStudents({ bootstrap, count, dir, driveKey, max }) {
   const students = []
   for (let index = 0; index < count; index++) {
     const store = new Corestore(path.join(dir, String(index)))
-    const swarm = new Hyperswarm({ bootstrap, keyPair: await store.createKeyPair('swarm') })
+    const swarm = limitedSwarm({ bootstrap, keyPair: await store.createKeyPair('swarm') }, max)
     swarm.on('connection', (conn) => store.replicate(conn))
     const drive = new Hyperdrive(store.session(), Buffer.from(driveKey, 'hex'))
     await drive.ready()
@@ -94,14 +104,14 @@ async function runStudents({ bootstrap, count, dir, driveKey }) {
   })
 }
 
-async function runTeacher({ hold, perProcess, students }) {
+async function runTeacher({ hold, max, perProcess, students }) {
   fs.rmSync(ROOT, { force: true, recursive: true })
   fs.mkdirSync(ROOT, { recursive: true })
   const testnet = await createTestnet(5)
   const bootstrap = testnet.bootstrap
 
   const store = new Corestore(path.join(ROOT, 'teacher'))
-  const swarm = new Hyperswarm({ bootstrap, keyPair: await store.createKeyPair('swarm') })
+  const swarm = limitedSwarm({ bootstrap, keyPair: await store.createKeyPair('swarm') }, max)
   swarm.on('connection', (conn) => store.replicate(conn))
   const drive = new Hyperdrive(store.session())
   await drive.put('/course.json', Buffer.from(JSON.stringify({ id: 'measure-peers', title: 'Peers at scale' })))
@@ -118,7 +128,7 @@ async function runTeacher({ hold, perProcess, students }) {
     return sum
   }
 
-  console.log(`${students} students in processes of ${perProcess}, a wave every ${WAVE_MS / 1000}s, then ${hold}s.`)
+  console.log(`${students} students in processes of ${perProcess}, a wave every ${WAVE_MS / 1000}s, then ${hold}s; at most ${max} connections each.`)
   console.log('  time  online  with course  teacher sees  teacher conns  avg student conns       memory')
   const sample = () => {
     const { connections, online, rssMb, withCourse } = total()
@@ -152,7 +162,7 @@ async function runTeacher({ hold, perProcess, students }) {
     const count = Math.min(perProcess, students - first)
     const child = fork(self, [
       '--students-process',
-      JSON.stringify({ bootstrap, count, dir: path.join(ROOT, `students-${first}`), driveKey: drive.key.toString('hex') }),
+      JSON.stringify({ bootstrap, count, dir: path.join(ROOT, `students-${first}`), driveKey: drive.key.toString('hex'), max }),
     ])
     child.on('message', (report) => latest.set(child.pid, report))
     processes.push(child)

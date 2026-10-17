@@ -598,10 +598,17 @@ only publishers ever touch, not an onboarding step every user sees.
        | 400             | 181          |
 
        Every student got the course, most of them from other students.
-     - There is no fixed ceiling. Hyperswarm's `maxPeers` (64) limits only the
-       connections a device opens itself. A teacher seeds as server only and accepts
-       connections without a limit. A student stops connecting out once it holds 64
-       connections, so the students who arrive later often never reach the teacher.
+     - Hyperswarm's `maxPeers` (64) limits only the connections a device opens itself.
+       A student stops connecting out once it holds 64 connections, so the students who
+       arrive later often never reach the teacher. Hyperswarm itself sets no limit on
+       connections a device accepts (`maxServerConnections` is never checked in 4.17),
+       so the table above has none.
+     - The worker caps every computer at 256 connections, for all its courses
+       together (`workers/connection-limit.cjs`). When it's full, new peers are
+       refused at the handshake, and their ban is lifted at once so they're welcome
+       when there's room. Vetted peers of invite-only courses are always let in.
+       With `--max=40` and 100 students, the teacher held 40 connections and every
+       student still got the course. The count can't go above the cap.
      - So the count is a lower bound, and its share of the audience falls as the
        audience grows. The local testnet has no NAT and no lag, so on the real network
        expect it to be lower still.
