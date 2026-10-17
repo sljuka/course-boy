@@ -74,7 +74,7 @@
     background: var(--muted);
     border-radius: 0.35rem;
     color: var(--foreground);
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace, "Noto Color Emoji";
     font-size: 0.9em;
     padding: 0.12rem 0.35rem;
   }
