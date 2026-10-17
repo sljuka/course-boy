@@ -587,6 +587,24 @@ only publishers ever touch, not an onboarding step every user sees.
      course page's Details panel poll it every 5 s.
      - It counts only peers connected to *this* device for that course, right now.
        It is not how many people have the course.
+     - Measured at scale on a local testnet with `scripts/measure-peers.mjs` (2026-10-17;
+       all students online at once, joining 25 at a time):
+
+       | Students online | Teacher sees |
+       | --------------- | ------------ |
+       | 25              | 25           |
+       | 100             | 87           |
+       | 200             | 131          |
+       | 400             | 181          |
+
+       Every student got the course, most of them from other students.
+     - There is no fixed ceiling. Hyperswarm's `maxPeers` (64) limits only the
+       connections a device opens itself. A teacher seeds as server only and accepts
+       connections without a limit. A student stops connecting out once it holds 64
+       connections, so the students who arrive later often never reach the teacher.
+     - So the count is a lower bound, and its share of the audience falls as the
+       audience grows. The local testnet has no NAT and no lag, so on the real network
+       expect it to be lower still.
      - Students can share a publicly imported course too: `code` is the drive key
        they imported with. A `gated` followed course (invite-only, not in the UI yet)
        gets no code.

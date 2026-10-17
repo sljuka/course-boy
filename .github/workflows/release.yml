@@ -80,6 +80,16 @@ jobs:
       - name: Install rpm tools (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm
+      # macOS's malware scanner (XProtect) scans the DMG while electron-builder
+      # has it mounted, and hdiutil then can't eject it ("Resource busy"),
+      # failing the build now and then, mostly on the Intel runners. Stopping it
+      # on this throwaway runner is the runner-images maintainers' workaround
+      # (actions/runner-images#7522).
+      - name: Stop XProtect (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          sudo pkill -9 XProtect >/dev/null || true
+          while pgrep XProtect; do sleep 3; done
       - name: Package (unsigned)
         run: npx electron-builder ${{ matrix.builder-args }} --publish never -c.mac.identity=null
         shell: bash
