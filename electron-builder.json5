@@ -6,6 +6,18 @@
   // read inside an asar archive, and the OS can't run the `bare` binary from one.
   "asar": false,
   "productName": "Matko",
+  // `matko://` links (SLJ-8, SLJ-60) open the app: the macOS Info.plist, the
+  // Windows installer's registry entries, and the Linux packages' desktop
+  // entry. The app also registers at startup (electron/app-link-intake.ts),
+  // which is what makes it work for the AppImage.
+  "protocols": [
+    {
+      "name": "Matko link",
+      "schemes": [
+        "matko"
+      ]
+    }
+  ],
   "directories": {
     "output": "release/${version}"
   },
@@ -45,10 +57,20 @@
     "allowToChangeInstallationDirectory": true,
     "deleteAppDataOnUninstall": false
   },
+  // The AppImage runs anywhere without installing; the deb (Ubuntu, Debian)
+  // and rpm (Fedora) install normally and register `matko://` links on
+  // install. Building the rpm needs `rpmbuild` (the `rpm` package on the
+  // Linux runner, see .github/workflows/release.yml).
   "linux": {
     "target": [
-      "AppImage"
+      "AppImage",
+      "deb",
+      "rpm"
     ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    "artifactName": "${productName}-Linux-${version}.${ext}",
+    "category": "Education",
+    "maintainer": "Matko maintainers",
+    "synopsis": "Make, take and share courses",
+    "description": "Matko is an app for making, taking and sharing courses, peer to peer."
   }
 }

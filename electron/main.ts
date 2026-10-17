@@ -154,6 +154,12 @@ import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '
 import { isLocale, type Locale } from '../src/lib/i18n'
 import { createPublishers, isPublisherId, type KnownPublisher, type PublishersState } from './publishers'
 import { resolveAssetInside } from './asset-path'
+import {
+  APP_LINK_SCHEME,
+  createAppLinkQueue,
+  findAppLinkInArgv,
+  registerAppImageScheme,
+} from './app-link-intake'
 import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
@@ -180,12 +186,29 @@ initProfiles(process.argv)
 // side by side) still each get their own.
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
 
+// `matko://` links (SLJ-8, SLJ-60), waiting for the window to take them
+// (electron/app-link-intake.ts). One that launched the app is the first.
+const appLinks = createAppLinkQueue(() => {
+  for (const window of BrowserWindow.getAllWindows()) window.webContents.send('window:app-links-waiting')
+})
+const launchLink = findAppLinkInArgv(process.argv)
+if (launchLink) appLinks.add({ newTab: false, url: launchLink })
+
 if (!gotSingleInstanceLock) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv) => {
+    // A link clicked in another app while this one runs (Windows, Linux).
+    const link = findAppLinkInArgv(argv)
+    if (link) appLinks.add({ newTab: false, url: link })
     // Also when it was running in the background (SLJ-129).
     background.show()
+  })
+  // macOS hands every link over this way, also the one that launched the app.
+  app.on('open-url', (event, url) => {
+    event.preventDefault()
+    appLinks.add({ newTab: false, url })
+    if (app.isReady()) background.show()
   })
 }
 
@@ -1786,7 +1809,7 @@ function createWindow() {
     mainWindow,
     [VITE_DEV_SERVER_URL ?? pathToFileURL(path.join(RENDERER_DIST, 'index.html')).href],
     // A link to course content (SLJ-60): the window opens it itself.
-    (url, { newTab }) => mainWindow.webContents.send('window:open-app-link', { newTab, url }),
+    (url, { newTab }) => appLinks.add({ newTab, url }),
   )
   forwardCloseTabShortcut(win)
   background.attach(win, { hidden: startHidden })
@@ -1841,6 +1864,9 @@ function forwardCloseTabShortcut(window: BrowserWindow): void {
   })
 }
 
+// The `matko://` links waiting for the window (SLJ-8, SLJ-60), handed over once.
+ipcMain.handle('window:take-app-links', () => appLinks.take())
+
 ipcMain.handle('window:close', (event) => {
   BrowserWindow.fromWebContents(event.sender)?.close()
 })
@@ -1881,9 +1907,23 @@ app.whenReady().then(() => {
 
   protocol.handle('matko-asset', handleCourseAssetRequest)
   lockDownSession(session.defaultSession)
+  registerAppLinkScheme()
   createWindow()
   startProfile()
 })
+
+// Makes `matko://` links open this app (SLJ-8), in packaged builds only: in
+// development it would point the system at the development copy of
+// Electron. The installers register it too (electron-builder `protocols`);
+// this covers a moved app, and the Linux AppImage, which is never installed.
+function registerAppLinkScheme(): void {
+  if (!app.isPackaged) return
+  if (process.platform === 'linux') {
+    if (process.env.APPIMAGE) void registerAppImageScheme(process.env.APPIMAGE)
+    return
+  }
+  app.setAsDefaultProtocolClient(APP_LINK_SCHEME)
+}
 
 // The open profile's background work: its P2P worker (on its own p2p/ store)
 // and sharing. The launcher (no profile open) only picks or creates one: no

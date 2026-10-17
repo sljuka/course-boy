@@ -5,6 +5,7 @@
 //
 // Run through `npm run check:packaged`, which builds first.
 
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -82,9 +83,14 @@ if (shippedTests.length > 0) {
   fail(`test files shipped in workers/: ${shippedTests.join(', ')}`)
 }
 
-// 2. The running app: bundled course seeded, Bare worker up.
+// 2. The running app: bundled course seeded, Bare worker up, and `matko://`
+// links reaching it (SLJ-8) as a launch argument and from a second launch,
+// the way Windows and Linux hand them over. The fresh profile is still at
+// onboarding, so the links wait in main to be taken.
 const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'matko-packaged-'))
-const harness = await launchApp({ packagedExecutable: packaged.executable, userData })
+const launchLink = `matko://import/${'y'.repeat(52)}`
+const secondLink = `matko://import/${'b'.repeat(52)}`
+const harness = await launchApp({ args: [launchLink], packagedExecutable: packaged.executable, userData })
 
 try {
   const courses = await harness.page.evaluate(() => window.courses.list('en'))
@@ -108,6 +114,29 @@ try {
     console.log('✔ the Bare worker started and answered')
   } else {
     fail(`the Bare worker did not answer: ${String(workerState)}`)
+  }
+
+  const takeLinks = async () =>
+    (await harness.page.evaluate(() => window.appWindow.takeAppLinks())).map((request) => request.url)
+  // macOS hands links over with `open-url`, never as an argument.
+  if (process.platform !== 'darwin') {
+    const launched = await takeLinks()
+    if (launched.includes(launchLink)) console.log('✔ receives the link it was launched with')
+    else fail(`the launch link did not arrive (got: ${launched.join(', ') || 'none'})`)
+
+    const second = spawn(packaged.executable, [`--user-data-dir=${userData}`, secondLink], { stdio: 'ignore' })
+    const exitCode = await new Promise((resolve) => second.on('exit', resolve))
+    const deadline = Date.now() + 10_000
+    let handedOver = []
+    while (!handedOver.includes(secondLink) && Date.now() < deadline) {
+      handedOver = [...handedOver, ...(await takeLinks())]
+      await new Promise((resolve) => setTimeout(resolve, 250))
+    }
+    if (exitCode === 0 && handedOver.includes(secondLink)) {
+      console.log('✔ a second launch hands its link over and quits')
+    } else {
+      fail(`a second launch's link did not arrive (exit ${exitCode}, got: ${handedOver.join(', ') || 'none'})`)
+    }
   }
 } finally {
   await harness.close()

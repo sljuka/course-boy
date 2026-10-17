@@ -257,12 +257,17 @@ contextBridge.exposeInMainWorld('appWindow', {
       ipcRenderer.removeListener('window:close-tab', listener)
     }
   },
-  // A `matko://` link clicked in the window (SLJ-60), for the app to open.
-  onOpenAppLink(callback: (link: { newTab: boolean; url: string }) => void) {
-    const listener = (_event: unknown, link: { newTab: boolean; url: string }) => callback(link)
-    ipcRenderer.on('window:open-app-link', listener)
+  // `matko://` links for the app to open (SLJ-8, SLJ-60): clicked in the
+  // window, in another app, or the one that launched it. Main keeps them
+  // until taken, and says when one is waiting.
+  takeAppLinks() {
+    return ipcRenderer.invoke('window:take-app-links') as Promise<{ newTab: boolean; url: string }[]>
+  },
+  onAppLinksWaiting(callback: () => void) {
+    const listener = () => callback()
+    ipcRenderer.on('window:app-links-waiting', listener)
     return () => {
-      ipcRenderer.removeListener('window:open-app-link', listener)
+      ipcRenderer.removeListener('window:app-links-waiting', listener)
     }
   },
 })

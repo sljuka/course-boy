@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { appLinkPath, courseAppLink, courseIdOfPath, lessonAppLink, parseAppLink, programAppLink } from "@/lib/app-links";
+import {
+  appLinkPath,
+  courseAppLink,
+  courseIdOfPath,
+  importAppLink,
+  lessonAppLink,
+  parseAppLink,
+  programAppLink,
+} from "@/lib/app-links";
 
 const COURSE = "thys2vej6my5mpxt";
 
@@ -27,6 +35,10 @@ describe("parseAppLink", () => {
     expect(parseAppLink("matko://course/not-a-course-id")).toBeNull();
     expect(parseAppLink(`matko://course/${COURSE}/lesson/../../etc`)).toBeNull();
     expect(parseAppLink("matko://import/abc")).toBeNull();
+    const code = "ybndrfg8ejkmcpqxot1uwisza345h769".repeat(2).slice(0, 52);
+    expect(parseAppLink(importAppLink(code))).toEqual({ code, kind: "import" });
+    expect(parseAppLink(`matko://import/${code.toUpperCase()}`)).toEqual({ code, kind: "import" });
+    expect(parseAppLink(`matko://import/${"ab".repeat(32)}`)).toEqual({ code: "ab".repeat(32), kind: "import" });
     expect(parseAppLink(programAppLink(COURSE))).toEqual({ kind: "program", programId: COURSE });
     expect(parseAppLink(programAppLink(COURSE, "channel"))).toEqual({ kind: "channel", programId: COURSE });
     expect(parseAppLink("matko://program/nope")).toBeNull();
@@ -56,6 +68,10 @@ describe("appLinkPath", () => {
     const link = { courseId: COURSE, kind: "lesson", lessonId: "gone" } as const;
     expect(appLinkPath(link, { course, currentPath: "/" })).toBe(`/courses/${COURSE}`);
     expect(appLinkPath(link, { course: null, currentPath: "/" })).toBe(`/courses/${COURSE}`);
+  });
+
+  it("opens Import on Home for an import link", () => {
+    expect(appLinkPath({ code: "c0de", kind: "import" }, { course: null, currentPath: "/settings" })).toBe("/?import=c0de");
   });
 
   it("opens a program's or a channel's page", () => {

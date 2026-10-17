@@ -1,20 +1,16 @@
-import { Check, Copy } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Button } from "@/components/ui/button";
+import { ShareCodeFields } from "@/components/share-code-fields";
 import { CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { useCourseSharingQuery } from "@/lib/sharing-queries";
 
-// A course's code (what students type to get it) with a copy button and whether
-// the course is online. The code is the same for every version of the course.
+// A course's code (what students type to get it), its import link and a
+// message to send (SLJ-8), each to copy, and whether the course is online.
+// The code is the same for every version of the course.
 export function CourseCode({ courseId }: { courseId: string }) {
   const { t } = useTranslation();
   const { data: sharing } = useCourseSharingQuery(courseId, { watchPeers: true });
-  const [hasCopied, setHasCopied] = useState(false);
 
   if (!sharing) {
     return null;
@@ -44,18 +40,7 @@ export function CourseCode({ courseId }: { courseId: string }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <Label htmlFor="course-code">{t("courseSharing.codeLabel")}</Label>
-      <div className="flex gap-2">
-        <Input data-testid="course-code" id="course-code" readOnly value={code} />
-        <Button
-          aria-label={t("courseSharing.copyCode")}
-          onClick={() => void navigator.clipboard.writeText(code).then(() => setHasCopied(true))}
-          size="icon"
-          variant="secondary"
-        >
-          {hasCopied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-        </Button>
-      </div>
+      <ShareCodeFields code={code} codeLabel={t("courseSharing.codeLabel")} testId="course-code" />
       <div className="flex items-center gap-2" data-testid="course-code-status">
         {sharing.status === "sharing" && <Spinner aria-hidden="true" />}
         <CardDescription>

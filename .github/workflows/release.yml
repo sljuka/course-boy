@@ -76,6 +76,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx vite build
+      # The rpm package (Fedora) is built with rpmbuild.
+      - name: Install rpm tools (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
       - name: Package (unsigned)
         run: npx electron-builder ${{ matrix.builder-args }} --publish never -c.mac.identity=null
         shell: bash
@@ -102,6 +106,8 @@ jobs:
             release/*/*.dmg
             release/*/*.exe
             release/*/*.AppImage
+            release/*/*.deb
+            release/*/*.rpm
 
   draft-release:
     needs: build

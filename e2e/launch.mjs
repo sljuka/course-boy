@@ -17,7 +17,7 @@ export const APP_DIR = path.resolve(import.meta.dirname, '..')
 export const INTERACTIVE_SELECTOR =
   'button, a, input, textarea, select, [role="button"], [role="option"], [role="combobox"], [role="tab"], [role="menuitem"], [role="radio"]'
 
-function electronBinary() {
+export function electronBinary() {
   const base = path.join(APP_DIR, 'node_modules/electron/dist')
   return process.platform === 'darwin'
     ? path.join(base, 'Electron.app/Contents/MacOS/Electron')
@@ -81,20 +81,23 @@ export async function launchApp({
   if (fresh) fs.rmSync(userData, { recursive: true, force: true })
 
   const dataDir = profile ? ensureProfile(userData, profile) : null
-  const appArgs = [`--user-data-dir=${userData}`, ...(profile ? [`--profile=${profile}`] : []), ...args]
+  const appArgs = [`--user-data-dir=${userData}`, ...(profile ? [`--profile=${profile}`] : [])]
   const appEnv = { ...process.env, ...env }
 
   const app = await electron.launch(
     packagedExecutable
       ? {
           executablePath: packagedExecutable,
-          args: appArgs,
+          args: [...appArgs, ...args],
           env: appEnv,
           timeout,
         }
       : {
           executablePath: electronBinary(),
-          args: [...appArgs, APP_DIR],
+          // `args` after the app's folder: Electron takes the first argument
+          // that isn't a flag as the folder (a `matko://` link would be it);
+          // flags are read wherever they are.
+          args: [...appArgs, APP_DIR, ...args],
           cwd: APP_DIR,
           env: appEnv,
           timeout,

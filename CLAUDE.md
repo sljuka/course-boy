@@ -39,7 +39,8 @@ Release builds come from `.github/workflows/release.yml`, never from a laptop: i
 one runner per OS (macOS arm64 and x64, Windows x64, Linux x64), because the Bare worker's
 runtime binary is installed per platform by npm and a cross-built package ships the wrong
 one. A `v<version>` tag matching `package.json` produces a *draft* GitHub Release; "Run
-workflow" only builds. Builds are unsigned for now (SLJ-34).
+workflow" only builds (its files are downloads on the run for 7 days). Linux ships as an
+AppImage, a deb and an rpm (Fedora). Builds are unsigned for now (SLJ-34).
 
 `dependencies` holds only what loads from `node_modules` at runtime — the Bare worker's
 imports and `bare-runtime` — because electron-builder ships every one of them. Anything Vite

@@ -16,6 +16,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { discardImport, useImportCourseMutation, useTransferQuery } from "@/lib/sharing-queries";
 
 type ImportCourseDialogProps = {
+  // A code from a `matko://import/…` link (SLJ-8): filled in, never imported
+  // by itself, with a word about where it came from.
+  initialCode?: string | null;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 };
@@ -25,7 +28,7 @@ type ImportCourseDialogProps = {
 // dialog closes and Home lists the course under Downloading, with its progress
 // and Cancel, until it lands under Imported. An error before that (a bad code)
 // is shown here instead.
-export function ImportCourseDialog({ onOpenChange, open }: ImportCourseDialogProps) {
+export function ImportCourseDialog({ initialCode = null, onOpenChange, open }: ImportCourseDialogProps) {
   const { t } = useTranslation();
   const [code, setCode] = useState("");
   const [error, setError] = useState<Error | null>(null);
@@ -43,6 +46,12 @@ export function ImportCourseDialog({ onOpenChange, open }: ImportCourseDialogPro
     importMutation.reset();
     onOpenChange(false);
   }
+
+  // Opened from a link: its code, ready to import.
+  useEffect(() => {
+    if (open && initialCode) setCode(initialCode);
+  }, [initialCode, open]);
+  const isFromLink = Boolean(initialCode) && code === initialCode;
 
   // The worker knows the transfer: the download has started, hand it off.
   useEffect(() => {
@@ -89,6 +98,7 @@ export function ImportCourseDialog({ onOpenChange, open }: ImportCourseDialogPro
           <Label htmlFor="import-course-code">{t("importCourse.codeLabel")}</Label>
           <Input
             autoFocus
+            data-testid="import-course-code"
             disabled={isStarting}
             id="import-course-code"
             onChange={(event) => setCode(event.target.value)}
@@ -96,6 +106,11 @@ export function ImportCourseDialog({ onOpenChange, open }: ImportCourseDialogPro
             value={code}
           />
         </div>
+        {isFromLink && (
+          <Alert data-testid="import-from-link" variant="info">
+            <AlertDescription>{t("importCourse.fromLink")}</AlertDescription>
+          </Alert>
+        )}
         {error && (
           <Alert variant="destructive">
             <AlertTitle>{t("importCourse.errorTitle")}</AlertTitle>

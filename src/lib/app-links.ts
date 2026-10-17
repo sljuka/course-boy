@@ -7,11 +7,13 @@
 //                                                 written in
 //   matko://program/<programId>                   a program's page
 //   matko://channel/<programId>                   a channel's page
+//   matko://import/<code>                         Import with the code filled
+//                                                 in (SLJ-8); never imports
+//                                                 by itself
 //
-// The scheme matches APP_LINK_SCHEME in electron/window-security.ts, which
-// hands every such link the window tries to open over to the app instead of
-// leaving it to the system. Share links that import a course (SLJ-8) will
-// use the same scheme with their own path.
+// The scheme matches APP_LINK_SCHEME in electron/window-security.ts and
+// electron/app-link-intake.ts: main hands every such link to the window,
+// whether clicked in it (SLJ-60) or in another app (SLJ-8).
 
 import { isValidCourseId } from "@/lib/course-id";
 
@@ -21,10 +23,19 @@ export type AppLink =
   | { courseId: string; kind: "course" }
   | { courseId: string | null; kind: "lesson"; lessonId: string }
   | { kind: "channel"; programId: string }
-  | { kind: "program"; programId: string };
+  | { kind: "program"; programId: string }
+  | { code: string; kind: "import" };
 
 // A lesson id: lowercase letters, digits and dashes ("lesson-01-welcome").
 const LESSON_ID = /^[a-z0-9][a-z0-9-]{0,127}$/;
+
+// A course's or program's code: its key, as z-base-32 (52 characters, what
+// Share shows) or hex (64).
+const SHARE_CODE = /^(?:[ybndrfg8ejkmcpqxot1uwisza345h769]{52}|[0-9a-f]{64})$/;
+
+export function isShareCode(code: string): boolean {
+  return SHARE_CODE.test(code);
+}
 
 export function isAppLink(href: string): boolean {
   return href.trim().toLowerCase().startsWith(`${APP_LINK_SCHEME}//`);
@@ -41,6 +52,11 @@ export function parseAppLink(href: string): AppLink | null {
     }
   });
   const [first, second, third, fourth] = parts;
+
+  if (first === "import" && parts.length === 2) {
+    const code = second.toLowerCase();
+    return isShareCode(code) ? { code, kind: "import" } : null;
+  }
 
   if (parts.length === 2 && first === "lesson" && LESSON_ID.test(second)) {
     return { courseId: null, kind: "lesson", lessonId: second };
@@ -63,6 +79,10 @@ export function courseAppLink(courseId: string): string {
 
 export function lessonAppLink(courseId: string, lessonId: string): string {
   return `${APP_LINK_SCHEME}//course/${courseId}/lesson/${lessonId}`;
+}
+
+export function importAppLink(code: string): string {
+  return `${APP_LINK_SCHEME}//import/${code}`;
 }
 
 export function programAppLink(programId: string, kind: "channel" | "program" = "program"): string {
@@ -88,6 +108,7 @@ export function appLinkPath(
     currentPath,
   }: { course: { lessonIds: readonly string[] } | null; currentPath: string },
 ): string | null {
+  if (link.kind === "import") return `/?import=${link.code}`;
   if (link.kind === "program") return `/programs/${link.programId}`;
   if (link.kind === "channel") return `/channels/${link.programId}`;
   const courseId = link.courseId ?? courseIdOfPath(currentPath);

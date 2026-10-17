@@ -816,20 +816,34 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   the address changes from outside (another tab on the same editor, Back/Forward),
   since the editor stays mounted across those. That's what lets an explorer node open
   in a new tab, and a tab come back to the node it showed.
-- **Links to course content** (SLJ-60): `matko://course/<course>`,
+- **Links to course content** (SLJ-60, SLJ-8): `matko://course/<course>`,
   `matko://course/<course>/lesson/<lesson>`, `matko://lesson/<lesson>` (the course the
-  lesson is written in), `matko://program/<program>` and `matko://channel/<program>`,
-  parsed and resolved in `src/lib/app-links.ts`. Three places
-  must agree, and nothing checks it:
+  lesson is written in), `matko://program/<program>`, `matko://channel/<program>` and
+  `matko://import/<code>` (Import on Home with the code filled in, never importing by
+  itself), parsed and resolved in `src/lib/app-links.ts`. These places must agree,
+  and nothing checks it:
+  - **Main keeps every link in one queue** (`electron/app-link-intake.ts`) until the
+    window takes it (`window:take-app-links`, told by `window:app-links-waiting`;
+    `window.appWindow.takeAppLinks` / `onAppLinksWaiting`): clicked in the window, the
+    link that launched the app (an argument on Windows and Linux, `open-url` on
+    macOS), or one from a second launch (`second-instance`). So a link that arrives
+    before a profile is open (launcher, onboarding) waits for one.
   - **The window lock** (`electron/window-security.ts`) classifies the scheme as
-    `app-link` and hands every such link the window navigates to or opens to the app
-    (`window:open-app-link`, `window.appWindow.onOpenAppLink`), never to the system.
-    It repeats the scheme name, since main imports no runtime code from `src/`.
+    `app-link` and adds every such link the window navigates to or opens to that
+    queue, never handing it to the system. It and the intake repeat the scheme name,
+    since main imports no runtime code from `src/`.
+  - **The system knows the scheme from** electron-builder's `protocols` (macOS
+    Info.plist, the Windows installer, the deb/rpm desktop entry) and, in packaged
+    builds only, from main at startup (`registerAppLinkScheme`: Windows and macOS, and
+    the Linux AppImage's own desktop entry). Never in development, which would point
+    links at the development copy of Electron. `scripts/check-packaged.mjs` checks
+    that a packaged build receives a launch link and a second launch's link
+    (Windows and Linux).
   - **Every BlockNote editor that shows a lesson** passes `blockNoteLinkOptions`
     (`editor-prototype/blocknote-links.ts`): the player, the lesson editor and the
     Markdown conversion. BlockNote's default drops any link that isn't http(s),
     mailto and the like, so an editor without it silently strips `matko://` links.
-  - **`useAppLinks`** (mounted in `App.tsx` with the tabs) opens them: the lesson, in
+  - **`useAppLinks`** (mounted in `App.tsx` with the tabs) takes and opens them: the lesson, in
     the editor when that course is being edited, a new tab for ⌘-click or a
     middle-click, or the course's page (which says it isn't on this device) when the
     course or lesson is missing. "Copy link" (the lesson player, the explorer, and

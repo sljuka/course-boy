@@ -267,7 +267,6 @@
     "publishedDescription": "Učenici mogu da preuzmu ovaj kurs pomoću ovog koda. Kod je isti za svaku verziju, pa učenicima koji već imaju kurs ne treba novi.",
     "shareDescription": "Učenici mogu da preuzmu ovaj kurs pomoću ovog koda. Isti je za svaku verziju koju objavite.",
     "codeLabel": "Kod kursa",
-    "copyCode": "Kopiraj kod",
     "statusSharing": "Kurs se postavlja na mrežu…",
     "statusShared": "Na mreži",
     "statusWaiting": "Čeka se povezivanje. Matko nastavlja da pokušava u pozadini.",
@@ -286,7 +285,8 @@
     "importButton": "Uvezi",
     "importing": "Uvoženje...",
     "openButton": "Uvezi kurs",
-    "title": "Uvezi kurs"
+    "title": "Uvezi kurs",
+    "fromLink": "Ovaj kod je stigao preko linka. Uvezi ga samo ako veruješ onome ko ga je poslao."
   },
   "courseItems": {
     "additionAndSubtraction": {
@@ -1125,7 +1125,6 @@
     "shareDescription": "Učenici mogu da preuzmu ovaj program pomoću ovog koda. Isti je svaki put kad objavite.",
     "shareDescriptionImported": "Drugovi iz razreda mogu da preuzmu ovaj program ovim kodom.",
     "codeLabel": "Kod programa",
-    "copyCode": "Kopiraj kod",
     "peersOnline": "Korisnika na mreži: {{count}}",
     "notPublished": "Objavite program da bi učenici mogli da ga preuzmu.",
     "done": "Gotovo",
@@ -1401,5 +1400,11 @@
   "appLinks": {
     "copyLink": "Kopiraj link",
     "linkCopied": "Link je kopiran"
+  },
+  "shareCode": {
+    "copy": "Kopiraj: {{what}}",
+    "link": "Link",
+    "message": "Poruka za slanje",
+    "messageText": "Otvori u Matku: {{link}}\nIli nalepi ovaj kod u Uvezi kurs: {{code}}"
   }
 }

@@ -163,8 +163,10 @@ interface Window {
   appWindow: {
     close: () => Promise<void>
     onCloseTabRequest: (callback: () => void) => () => void
-    // A `matko://` link clicked in the window (SLJ-60).
-    onOpenAppLink: (callback: (link: { newTab: boolean; url: string }) => void) => () => void
+    // `matko://` links for the app to open (SLJ-8, SLJ-60), kept by main
+    // until taken; `onAppLinksWaiting` says one arrived.
+    takeAppLinks: () => Promise<{ newTab: boolean; url: string }[]>
+    onAppLinksWaiting: (callback: () => void) => () => void
   }
   // Agents (SLJ-68): the MCP server in Settings → Agents.
   mcp: {

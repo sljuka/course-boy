@@ -267,7 +267,6 @@
     "publishedDescription": "Students can get this course with this code. It's the same code for every version, so students who already have it don't need a new one.",
     "shareDescription": "Students can get this course with this code. It's the same for every version you publish.",
     "codeLabel": "Course code",
-    "copyCode": "Copy code",
     "statusSharing": "Putting the course online…",
     "statusShared": "Online",
     "statusWaiting": "Waiting to go online. Matko keeps trying in the background.",
@@ -286,7 +285,8 @@
     "importButton": "Import",
     "importing": "Importing...",
     "openButton": "Import course",
-    "title": "Import course"
+    "title": "Import course",
+    "fromLink": "This code came from a link. Import it only if you trust whoever sent it."
   },
   "courseItems": {
     "additionAndSubtraction": {
@@ -1125,7 +1125,6 @@
     "shareDescription": "Students can get this program with this code. It's the same every time you publish.",
     "shareDescriptionImported": "Classmates can get this program with this code.",
     "codeLabel": "Program code",
-    "copyCode": "Copy code",
     "peersOnline": "Peers online: {{count}}",
     "notPublished": "Publish the program so students can get it.",
     "done": "Done",
@@ -1401,5 +1400,11 @@
   "appLinks": {
     "copyLink": "Copy link",
     "linkCopied": "Link copied"
+  },
+  "shareCode": {
+    "copy": "Copy: {{what}}",
+    "link": "Link",
+    "message": "Message to send",
+    "messageText": "Open in Matko: {{link}}\nOr paste this code into Import course: {{code}}"
   }
 }
