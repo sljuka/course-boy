@@ -7,7 +7,7 @@ import type {
   ImageBlock,
 } from "@/components/editor-prototype/editor-prototype-types";
 import { matkoAssetUrl } from "@/lib/course-assets";
-import { blockNoteLinkOptions } from "@/components/editor-prototype/blocknote-links";
+import { blockNoteLinkOptions, repairAppLinks } from "@/components/editor-prototype/blocknote-links";
 
 type DocumentEditorSchema = typeof documentEditorSchema;
 type SchemaBlockSchema =
@@ -63,7 +63,7 @@ function markdownRunToBlockNoteBlocks(markdown: string): DocumentEditorPartialBl
     return [];
   }
 
-  return stripSpacesAfterHardBreaks(conversionEditor.tryParseMarkdownToBlocks(markdown));
+  return stripSpacesAfterHardBreaks(conversionEditor.tryParseMarkdownToBlocks(repairAppLinks(markdown)));
 }
 
 function blockNoteBlocksToMarkdownRun(blocks: DocumentEditorBlock[]): string {

@@ -1,5 +1,8 @@
 @import "tailwindcss";
 @source "../node_modules/@blocknote/shadcn";
+/* The e2e tests' Playwright selectors (`[data-testid="…"]:visible`) look
+   like class names to Tailwind and became invalid CSS. */
+@source not "../e2e";
 @import "./typeset.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";

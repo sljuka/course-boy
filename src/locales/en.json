@@ -1416,5 +1416,16 @@
     "none": "No one connected right now",
     "whyLabel": "Why \"at least\"?",
     "why": "This counts only the computers connected to this one right now. Most people get it from each other instead, so usually more are online than this shows."
+  },
+  "lessonLink": {
+    "title": "Link to a lesson",
+    "description": "Choose a lesson from this course or another course on this device.",
+    "course": "Course",
+    "thisCourse": "{{title}} (this course)",
+    "lesson": "Lesson",
+    "searchPlaceholder": "Search lessons",
+    "noLessons": "This course has no lessons yet.",
+    "noMatch": "No lessons found.",
+    "slashSubtext": "A link that opens a lesson of this or another course"
   }
 }

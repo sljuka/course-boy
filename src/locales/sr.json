@@ -1416,5 +1416,16 @@
     "none": "Trenutno niko nije povezan",
     "whyLabel": "Zašto „najmanje“?",
     "why": "Ovde se broje samo računari koji su trenutno povezani sa ovim. Većina ga dobija jedni od drugih, pa je na mreži obično više ljudi nego što ovde piše."
+  },
+  "lessonLink": {
+    "title": "Veza ka lekciji",
+    "description": "Izaberite lekciju iz ovog kursa ili drugog kursa na ovom uređaju.",
+    "course": "Kurs",
+    "thisCourse": "{{title}} (ovaj kurs)",
+    "lesson": "Lekcija",
+    "searchPlaceholder": "Pretraži lekcije",
+    "noLessons": "Ovaj kurs još nema lekcija.",
+    "noMatch": "Nema pronađenih lekcija.",
+    "slashSubtext": "Veza koja otvara lekciju ovog ili drugog kursa"
   }
 }

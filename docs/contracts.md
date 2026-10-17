@@ -850,6 +850,15 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
     (`editor-prototype/blocknote-links.ts`): the player, the lesson editor and the
     Markdown conversion. BlockNote's default drops any link that isn't http(s),
     mailto and the like, so an editor without it silently strips `matko://` links.
+    The same file adds `matko` to BlockNote's `VALID_LINK_PROTOCOLS`: without it,
+    BlockNote's link field (⌘K, the link button, editing a link) turns a
+    `matko://` link into `https://matko://…`, which opens the browser. Links already
+    broken that way are mended when a lesson is read (`repairAppLinks`). After a
+    BlockNote upgrade, check that its link field still reads that list
+    (`blocknote-links.test.ts` checks the list, the e2e picker test the field).
+    The lesson editor writes them with "Link to a lesson" (`/` menu and formatting
+    toolbar, `editor-prototype/lesson-link-dialog.tsx`): a lesson of the same course as
+    `matko://lesson/<lesson>`, another course's with its course.
   - **`useAppLinks`** (mounted in `App.tsx` with the tabs) takes and opens them: the lesson, in
     the editor when that course is being edited, a new tab for ⌘-click or a
     middle-click, or the course's page (which says it isn't on this device) when the

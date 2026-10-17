@@ -81,6 +81,12 @@ export function lessonAppLink(courseId: string, lessonId: string): string {
   return `${APP_LINK_SCHEME}//course/${courseId}/lesson/${lessonId}`;
 }
 
+// A lesson of the course the link is written in. It names no course, so it
+// opens in whichever course shows it.
+export function thisCourseLessonAppLink(lessonId: string): string {
+  return `${APP_LINK_SCHEME}//lesson/${lessonId}`;
+}
+
 export function importAppLink(code: string): string {
   return `${APP_LINK_SCHEME}//import/${code}`;
 }

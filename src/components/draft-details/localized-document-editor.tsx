@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { filterSuggestionItems } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
@@ -20,6 +21,9 @@ import {
 import { DocumentEditorContextProvider } from "@/components/editor-prototype/document-editor-context";
 import type { EditorPrototypeBlock } from "@/components/editor-prototype/editor-prototype-types";
 import { createExerciseSlashMenuItem } from "@/components/editor-prototype/exercise-block";
+import { LessonLinkButton } from "@/components/editor-prototype/lesson-link-button";
+import { LessonLinkDialog, type PickedLessonLink } from "@/components/editor-prototype/lesson-link-dialog";
+import { createLessonLinkSlashMenuItem } from "@/components/editor-prototype/lesson-link-slash-item";
 import { mnemonicDecorationsExtension, refreshMnemonicDecorations } from "@/components/editor-prototype/mnemonic-decorations";
 import { LocalesTabs } from "@/components/locales-tabs";
 import type { CourseAssetKind } from "@/lib/course-asset-id";
@@ -63,8 +67,13 @@ function DocumentBlockNoteEditor({
   courseId: string;
   onChange: (blocks: EditorPrototypeBlock[]) => void;
 }) {
+  const { t } = useTranslation();
   const { locale, theme } = useAppState();
   const hasAutoFocusedRef = useRef(false);
+  // "Link to a lesson" (SLJ-60): from the `/` menu it writes the lesson's
+  // title as a link at the cursor ("insert"); from the formatting toolbar it
+  // links the selected text ("selection"). Null: the picker is closed.
+  const [lessonLinkMode, setLessonLinkMode] = useState<"insert" | "selection" | null>(null);
   // `mutateAsync` itself is stable across renders — depending on the whole
   // mutation object here instead would recreate `uploadFile` (and, via
   // `useCreateBlockNote`, silently go stale) on every unrelated re-render.
@@ -112,6 +121,14 @@ function DocumentBlockNoteEditor({
     refreshMnemonicDecorations(editor);
   }, [editor, mnemonics]);
 
+  // The editor keeps its selection while the picker has focus.
+  function insertLessonLink({ href, title }: PickedLessonLink) {
+    const mode = lessonLinkMode;
+    setLessonLinkMode(null);
+    editor.focus();
+    editor.createLink(href, mode === "insert" ? title : undefined);
+  }
+
   useEffect(() => {
     if (autoFocusOnMount && !hasAutoFocusedRef.current) {
       editor.focus();
@@ -120,33 +137,64 @@ function DocumentBlockNoteEditor({
   }, [autoFocusOnMount, editor]);
 
   return (
-    <BlockNoteView
-      editable
-      editor={editor}
-      formattingToolbar={false}
-      onChange={() => onChange(blockNoteBlocksToEditorPrototype(editor.document))}
-      slashMenu={false}
-      theme={theme}
-    >
-      {/* BlockNote's toolbar without its Download button for a selected
-          image/video/audio: the media player has its own download. */}
-      <FormattingToolbarController
-        formattingToolbar={() => (
-          <FormattingToolbar>
-            {getFormattingToolbarItems().filter((item) => item.key !== "fileDownloadButton")}
-          </FormattingToolbar>
-        )}
+    <>
+      <BlockNoteView
+        editable
+        editor={editor}
+        formattingToolbar={false}
+        onChange={() => onChange(blockNoteBlocksToEditorPrototype(editor.document))}
+        slashMenu={false}
+        theme={theme}
+      >
+        {/* BlockNote's toolbar without its Download button for a selected
+            image/video/audio (the media player has its own download), and
+            with "Link to a lesson" after its link button. */}
+        <FormattingToolbarController
+          formattingToolbar={() => (
+            <FormattingToolbar>
+              {getFormattingToolbarItems().flatMap((item) => {
+                if (item.key === "fileDownloadButton") return [];
+                if (item.key !== "createLinkButton") return [item];
+                return [
+                  item,
+                  <LessonLinkButton key="lessonLinkButton" onClick={() => setLessonLinkMode("selection")} />,
+                ];
+              })}
+            </FormattingToolbar>
+          )}
+        />
+        <SuggestionMenuController
+          getItems={async (query) =>
+            filterSuggestionItems(
+              [
+                ...getDefaultReactSlashMenuItems(editor),
+                createExerciseSlashMenuItem(editor),
+                createLessonLinkSlashMenuItem({
+                  onClick: () => setLessonLinkMode("insert"),
+                  subtext: t("lessonLink.slashSubtext"),
+                  title: t("lessonLink.title"),
+                }),
+              ],
+              query,
+            )
+          }
+          triggerCharacter="/"
+        />
+      </BlockNoteView>
+      {/* Beside the editor, not in it: React events bubble through portals to
+          their React parents, so typing here would reach the editor. */}
+      <LessonLinkDialog
+        courseId={courseId}
+        locale={activeLocale}
+        onOpenChange={(open) => {
+          if (open) return;
+          setLessonLinkMode(null);
+          editor.focus();
+        }}
+        onPick={insertLessonLink}
+        open={lessonLinkMode !== null}
       />
-      <SuggestionMenuController
-        getItems={async (query) =>
-          filterSuggestionItems(
-            [...getDefaultReactSlashMenuItems(editor), createExerciseSlashMenuItem(editor)],
-            query,
-          )
-        }
-        triggerCharacter="/"
-      />
-    </BlockNoteView>
+    </>
   );
 }
 

@@ -1732,6 +1732,101 @@ describe('links to course content', () => {
     await page.getByRole('menuitem', { name: 'Copy link' }).click()
     await expect.poll(clipboard).toBe(`matko://course/${ids.main.courseId}/lesson/${ids.main.lessonIds[1]}`)
   })
+
+  // "Link to a lesson" in the editor: from the `/` menu it writes a lesson's
+  // title as a link (this course's: no course in the link); from the
+  // formatting toolbar it links the selected text, here to another course.
+  it('links lessons from the editor with the lesson picker', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const course = async (title, lessonTitle) => {
+        const { courseId } = await window.courses.createDraft({
+          defaultLocale: 'en',
+          locales: { en: { description: '', title } },
+          supportedLocales: ['en'],
+        })
+        const { sectionId } = await window.courses.createSection({ courseId, title: 'Chapter' })
+        const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: lessonTitle })
+        return { courseId, lessonId, sectionId }
+      }
+      const other = await course('E2E Picker Other', 'Faraway lesson')
+      const main = await course('E2E Picker', 'Writing lesson')
+      const { lessonId: targetId } = await window.courses.createLesson({
+        courseId: main.courseId,
+        sectionId: main.sectionId,
+        title: 'Target lesson',
+      })
+      await window.courses.updateLessonContent({
+        courseId: main.courseId,
+        lessonId: main.lessonId,
+        // A link BlockNote's link field once broke (`https://` in front).
+        locales: { en: { body: `[matko-block]: <> (markdown)\n[Broken](https://matko://lesson/${targetId})\n\nStart here` } },
+        sectionId: main.sectionId,
+      })
+      return { main, other, targetId }
+    })
+    const savedBody = () =>
+      page.evaluate(
+        ({ courseId, lessonId }) =>
+          window.courses
+            .get(courseId, 'en')
+            .then((course) => course.sections.flatMap((section) => section.lessons).find((lesson) => lesson.id === lessonId)?.body ?? ''),
+        ids.main,
+      )
+    await page.evaluate(({ courseId, lessonId }) => {
+      location.hash = `#/drafts/${courseId}?node=${encodeURIComponent(`document:${lessonId}`)}`
+    }, ids.main)
+    const editor = page.locator('.bn-editor')
+    await editor.getByText('Start here').click({ timeout: 15_000 })
+    // The broken link is mended when the lesson is read.
+    await editor.locator(`a[href="matko://lesson/${ids.targetId}"]`, { hasText: 'Broken' }).waitFor()
+    await page.keyboard.press('End')
+
+    // `/` menu: the lesson's title as a link at the cursor.
+    await page.keyboard.type(' /Link to a lesson')
+    await page.getByRole('option', { name: /Link to a lesson/ }).first().waitFor()
+    await page.keyboard.press('Enter')
+    const dialog = page.locator('[data-testid="lesson-link-dialog"]')
+    await dialog.waitFor()
+    await page.locator('[data-testid="lesson-link-search"]').fill('Target')
+    await page.locator('[data-testid="lesson-link-option"]', { hasText: 'Target lesson' }).click()
+    await dialog.waitFor({ state: 'hidden' })
+    await editor.locator(`a[href="matko://lesson/${ids.targetId}"]`, { hasText: 'Target lesson' }).waitFor()
+
+    // Toolbar: the selected word becomes a link to another course's lesson.
+    await page.keyboard.press('End')
+    await page.keyboard.type(' and far')
+    for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+ArrowLeft')
+    await page.locator('[data-testid="lesson-link-button"]').click()
+    await dialog.waitFor()
+    await page.locator('[data-testid="lesson-link-course"]').click()
+    await page.getByRole('option', { name: 'E2E Picker Other' }).click()
+    await page.locator('[data-testid="lesson-link-search"]').click()
+    await page.locator('[data-testid="lesson-link-option"]', { hasText: 'Faraway lesson' }).click()
+    await dialog.waitFor({ state: 'hidden' })
+    await editor
+      .locator(`a[href="matko://course/${ids.other.courseId}/lesson/${ids.other.lessonId}"]`, { hasText: /^far$/ })
+      .waitFor()
+
+    // BlockNote's own link field (⌘K) keeps a typed `matko://` link as it is.
+    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
+    await page.keyboard.press('End')
+    await page.keyboard.type(' typed')
+    for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowLeft')
+    await page.keyboard.press(`${modifier}+k`)
+    await page.keyboard.type(`matko://lesson/${ids.targetId}`)
+    await page.keyboard.press('Enter')
+    await editor.locator(`a[href="matko://lesson/${ids.targetId}"]`, { hasText: /^typed$/ }).waitFor()
+
+    // Both saved with the lesson.
+    await expect
+      .poll(savedBody, { timeout: 15_000 })
+      .toContain(`[Target lesson](matko://lesson/${ids.targetId})`)
+    expect(await savedBody()).toContain(`[far](matko://course/${ids.other.courseId}/lesson/${ids.other.lessonId})`)
+    await expect.poll(savedBody, { timeout: 15_000 }).toContain(`[typed](matko://lesson/${ids.targetId})`)
+    expect(await savedBody()).toContain(`[Broken](matko://lesson/${ids.targetId})`)
+    expect(await savedBody()).not.toContain('https://matko://')
+  })
 })
 
 // SLJ-148: tabs move with ⌘⇧← / ⌘⇧→ (not while typing) and by dragging; the

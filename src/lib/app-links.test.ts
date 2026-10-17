@@ -8,6 +8,7 @@ import {
   lessonAppLink,
   parseAppLink,
   programAppLink,
+  thisCourseLessonAppLink,
 } from "@/lib/app-links";
 
 const COURSE = "thys2vej6my5mpxt";
@@ -31,6 +32,7 @@ describe("parseAppLink", () => {
   it("round-trips what Copy link makes, and refuses anything else", () => {
     expect(parseAppLink(lessonAppLink(COURSE, "lesson-02"))).toMatchObject({ courseId: COURSE, lessonId: "lesson-02" });
     expect(parseAppLink(courseAppLink(COURSE))).toMatchObject({ courseId: COURSE, kind: "course" });
+    expect(parseAppLink(thisCourseLessonAppLink("lesson-02"))).toEqual({ courseId: null, kind: "lesson", lessonId: "lesson-02" });
     expect(parseAppLink("https://example.com")).toBeNull();
     expect(parseAppLink("matko://course/not-a-course-id")).toBeNull();
     expect(parseAppLink(`matko://course/${COURSE}/lesson/../../etc`)).toBeNull();

@@ -1,4 +1,22 @@
+import { VALID_LINK_PROTOCOLS } from "@blocknote/core/extensions";
+
 import { isAppLink } from "@/lib/app-links";
+
+// BlockNote's link field (the link button, ⌘K, and editing a link from its
+// toolbar) puts `https://` in front of any link whose protocol isn't in this
+// list, which turned `matko://lesson/…` into `https://matko://lesson/…`, a
+// web link that opened the browser. The list is BlockNote's own, shared by
+// its React components, so `matko` is added to it once, here.
+if (!VALID_LINK_PROTOCOLS.includes("matko")) {
+  VALID_LINK_PROTOCOLS.push("matko");
+}
+
+// Links the link field broke before that (`https://matko://…`), mended when a
+// lesson is read, so they open in the app again and are saved right with the
+// next edit.
+export function repairAppLinks(markdown: string): string {
+  return markdown.replace(/\bhttps?:\/\/(?=matko:\/\/)/gi, "");
+}
 
 // BlockNote's own rule for which links a document keeps (`isAllowedUri` in
 // @blocknote/core, copied: its types export it, but the installed version
