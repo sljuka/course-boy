@@ -14,6 +14,7 @@ import {
   type ProgramManifest,
   type ProgramSummary,
 } from "../src/lib/program-package";
+import { resolveAssetInside } from "./asset-path";
 import { storeCourseAsset, writeFileAtomic } from "./course-paths";
 import { getProfileDataDir } from "./profile-context";
 import { normalizePublisherName } from "../src/lib/publishers";
@@ -215,13 +216,11 @@ export async function resolveProgramAsset(
   if (!isValidProgramId(programId) || !filename) return null;
 
   const mimeType = assetMimeTypesByExtension[path.extname(filename).toLowerCase()];
-  const filePath = path.join(programDirectory(programId), ASSETS_DIRECTORY, filename);
   if (!mimeType) return null;
 
-  return fs
-    .access(filePath)
-    .then(() => ({ filePath, mimeType }))
-    .catch(() => null);
+  // Only a regular file really inside assets/, never through a symlink (SLJ-150).
+  const filePath = await resolveAssetInside(path.join(programDirectory(programId), ASSETS_DIRECTORY), filename);
+  return filePath ? { filePath, mimeType } : null;
 }
 
 // ─── Sharing (SLJ-32 phase 2) ───────────────────────────────────────────────

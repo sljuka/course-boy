@@ -223,7 +223,9 @@ renderer never touches the filesystem directly; the `matko-asset://<courseId>/<f
 protocol registered in `electron/main.ts` resolves and streams the file, rejecting any
 filename containing `/`, `\`, or `..` via `resolveAssetFilename()` in
 [src/lib/course-asset-id.ts](../src/lib/course-asset-id.ts:1) before it ever reaches the
-filesystem.
+filesystem, and then serving only a regular file whose real path (symlinks resolved) is
+inside that `assets/` folder (`resolveAssetInside` in
+[electron/asset-path.ts](../electron/asset-path.ts:1), SLJ-150; program images too).
 
 Asset filenames are **content-addressed**: `<slug-of-original-name>-<first 16 hex of the
 file's sha256>.<ext>` (`createAssetFilename`). Assets are never edited after upload, so
@@ -490,7 +492,15 @@ Going back is `switchImportedCourseVersion`: only `release.json` changes.
 **Anything that writes into a hardlinked copy must replace files, never write them in
 place.** That's why the worker's Localdrive there is `{ atomic: true }`: Localdrive's
 default opens existing files with `O_TRUNC`, which on a hardlink rewrites the previous
-version too. Whose course it is *on this device* is
+version too.
+**No symlink from a drive ever reaches the disk** (SLJ-150): a drive's entries are whatever
+its publisher chose, and Localdrive would recreate a symlink like `assets -> ../../..`, so
+the next file written "into" it lands outside the course. Every copy of a drive onto disk
+goes through `mirrorOntoDisk` / `mirrorWithProgress` in `workers/main.cjs`, which write
+into a `NoSymlinkLocaldrive` (refuses symlink entries, failing the import or update) and
+check the folder with `lstat` before and after
+([workers/drive-safety.cjs](../workers/drive-safety.cjs:1)). Never mirror a drive into a
+plain `Localdrive`. Hardlinks are ordinary files to `lstat` and pass. Whose course it is *on this device* is
 never stored in the package, since
 the same package is authored on one machine and imported on another:
 `resolveCourseDistribution` in

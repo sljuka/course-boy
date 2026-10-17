@@ -17,6 +17,7 @@ const { isValidCourseId } = require('./course-id.cjs')
 const { movedToKey, unchangedFileKeys, verifySource } = require('./course-source.cjs')
 const { createMaintainers, requestHash } = require('./maintainers.cjs')
 const { clearOldVersions } = require('./drive-storage.cjs')
+const { NoSymlinkLocaldrive, assertNoSymlinksOnDisk } = require('./drive-safety.cjs')
 const {
   commitProposal,
   createProposal,
@@ -528,7 +529,7 @@ async function start() {
       const localMeta = await fsp.readFile(path.join(targetPath, 'version-meta.json'), 'utf8').catch(() => null)
       const unchanged = unchangedFileKeys(remoteMeta ? remoteMeta.toString() : null, localMeta)
       const filter = unchanged.size > 0 ? (key) => !unchanged.has(key) : null
-      const changedFiles = await mirrorWithProgress(drive, new Localdrive(targetPath, { atomic: true }), transfer, filter)
+      const changedFiles = await mirrorWithProgress(drive, targetPath, transfer, { atomic: true, filter })
       finishTransfer(transferId, transfer, 'done')
       clearOldVersionsSoon(drive)
       return { changedFiles }
@@ -709,11 +710,23 @@ async function start() {
     return entry && entry.value.blob ? entry.value.blob.byteLength : 0
   }
 
-  // Mirrors `drive` onto `local`, tracking progress on `transfer`, cancellable.
+  // Every copy of a drive onto disk goes into a NoSymlinkLocaldrive, with the
+  // folder checked for symlinks before and after (SLJ-150, drive-safety.cjs):
+  // a drive's entries are whatever its publisher chose. `atomic`: for a folder
+  // of hardlinks main made (see downloadUpdate).
+  async function mirrorOntoDisk(source, targetPath, { atomic = false, filter = null } = {}) {
+    await assertNoSymlinksOnDisk(fsp, path, targetPath)
+    await source.mirror(new NoSymlinkLocaldrive(targetPath, { atomic }), { filter }).done()
+    await assertNoSymlinksOnDisk(fsp, path, targetPath)
+  }
+
+  // mirrorOntoDisk, tracking progress on `transfer`, cancellable.
   // The total counts only what will be written: every file for an import, the
   // added and changed files for an update.
   // `filter`: drive paths to leave alone (see unchangedFileKeys).
-  async function mirrorWithProgress(drive, local, transfer, filter = null) {
+  async function mirrorWithProgress(drive, targetPath, transfer, { atomic = false, filter = null } = {}) {
+    await assertNoSymlinksOnDisk(fsp, path, targetPath)
+    const local = new NoSymlinkLocaldrive(targetPath, { atomic })
     let total = 0
     const plan = drive.mirror(local, { dryRun: true, filter })
     for await (const diff of plan) {
@@ -737,6 +750,7 @@ async function start() {
       }
     }
 
+    await assertNoSymlinksOnDisk(fsp, path, targetPath)
     return changedFiles
   }
 
@@ -927,7 +941,7 @@ async function start() {
       if (isProgram) {
         await fsp.mkdir(programsRoot, { recursive: true })
         stagingPath = stagingPathFor(programsRoot)
-        await mirrorWithProgress(drive, new Localdrive(stagingPath), transfer)
+        await mirrorWithProgress(drive, stagingPath, transfer)
         const { programId, publisherId } = await finalizeImportedProgram(stagingPath, programsRoot, drive.key)
         followedDrives.set(keyHex, { discovery, drive })
         watchFollowedDrive(drive)
@@ -936,7 +950,7 @@ async function start() {
       }
 
       stagingPath = stagingPathFor(coursesRoot)
-      await mirrorWithProgress(drive, new Localdrive(stagingPath), transfer)
+      await mirrorWithProgress(drive, stagingPath, transfer)
 
       const { courseId, publisherId } = await finalizeImportedCourse(stagingPath, coursesRoot, drive.key)
       followedDrives.set(keyHex, { discovery, drive })
@@ -1032,7 +1046,12 @@ async function start() {
     await drive.update()
 
     const stagingPath = stagingPathFor(coursesRoot)
-    await drive.mirror(new Localdrive(stagingPath)).done()
+    try {
+      await mirrorOntoDisk(drive, stagingPath)
+    } catch (error) {
+      await fsp.rm(stagingPath, { recursive: true, force: true }).catch(() => {})
+      throw error
+    }
 
     const { courseId, publisherId } = await finalizeImportedCourse(stagingPath, coursesRoot, drive.key)
     return { courseId, driveKey: drive.key, publisherId }
@@ -1098,7 +1117,7 @@ async function start() {
       // The newest version any connected peer has.
       await untilCancelled(transfer, drive.update({ wait: true }))
       transfer.course = await readCourseTitles(drive, transfer)
-      await mirrorWithProgress(drive, new Localdrive(stagingPath), transfer)
+      await mirrorWithProgress(drive, stagingPath, transfer)
 
       const manifest = JSON.parse(await fsp.readFile(path.join(stagingPath, 'course.json'), 'utf8'))
       if (!isValidCourseId(manifest.id)) {
@@ -1150,7 +1169,7 @@ async function start() {
       clearTimeout(timer)
       await untilCancelled(transfer, drive.update({ wait: true }))
       transfer.course = await readCourseTitles(drive, transfer, '/program.json')
-      await mirrorWithProgress(drive, new Localdrive(stagingPath), transfer)
+      await mirrorWithProgress(drive, stagingPath, transfer)
 
       const manifest = JSON.parse(await fsp.readFile(path.join(stagingPath, 'program.json'), 'utf8'))
       if (!isValidCourseId(manifest.id)) {
@@ -1385,11 +1404,10 @@ async function start() {
             const remoteMeta = await withTimeout(version.get('/version-meta.json'), REMOTE_READ_TIMEOUT_MS, 'NO_META').catch(() => null)
             const localMeta = await fsp.readFile(path.join(args.stagingPath, 'version-meta.json'), 'utf8').catch(() => null)
             const unchanged = unchangedFileKeys(remoteMeta ? remoteMeta.toString() : null, localMeta)
-            await version
-              .mirror(new Localdrive(args.stagingPath, { atomic: true }), {
-                filter: (key) => key !== SOURCE_FILE_KEY && !unchanged.has(key),
-              })
-              .done()
+            await mirrorOntoDisk(version, args.stagingPath, {
+              atomic: true,
+              filter: (key) => key !== SOURCE_FILE_KEY && !unchanged.has(key),
+            })
           } finally {
             await version.close()
           }
@@ -1403,7 +1421,7 @@ async function start() {
       case 'downloadShared': {
         const drive = await ensureSharedDrive(spec)
         await withTimeout(drive.core.update({ wait: true }), REMOTE_READ_TIMEOUT_MS, 'Nobody sharing this course is online')
-        await drive.mirror(new Localdrive(args.stagingPath)).done()
+        await mirrorOntoDisk(drive, args.stagingPath)
         const manifest = JSON.parse(await fsp.readFile(path.join(args.stagingPath, 'course.json'), 'utf8'))
         return { courseId: manifest.id, version: manifest.version }
       }

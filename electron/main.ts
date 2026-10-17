@@ -153,6 +153,7 @@ import type {
 import type { ProfileRemovalSummary, ProfilesState, RemoveProfileResult } from '../src/lib/profiles'
 import { isLocale, type Locale } from '../src/lib/i18n'
 import { createPublishers, isPublisherId, type KnownPublisher, type PublishersState } from './publishers'
+import { resolveAssetInside } from './asset-path'
 import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
@@ -1654,19 +1655,7 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
     }
 
     for (const packageDirectoryPath of await resolvePackageDirectoryCandidates(courseRootPath)) {
-      const assetsDirectoryPath = path.join(packageDirectoryPath, 'assets')
-      const resolvedAssetPath = path.resolve(assetsDirectoryPath, filename)
-      const relativeToAssetsDirectory = path.relative(assetsDirectoryPath, resolvedAssetPath)
-
-      if (
-        relativeToAssetsDirectory.startsWith('..') ||
-        path.isAbsolute(relativeToAssetsDirectory)
-      ) {
-        continue
-      }
-
-      const mimeType =
-        assetMimeTypesByExtension[path.extname(resolvedAssetPath).toLowerCase()]
+      const mimeType = assetMimeTypesByExtension[path.extname(filename).toLowerCase()]
 
       if (!mimeType) {
         continue
@@ -1674,10 +1663,12 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
 
       // Not in this candidate (e.g. an imported course has no draft/): try the
       // next one. Checked here, before the range branch, whose `statFile` would
-      // otherwise throw and turn the whole request into a 404.
-      const assetStat = await statFile(resolvedAssetPath).catch(() => null)
+      // otherwise throw and turn the whole request into a 404. Only a regular
+      // file really inside assets/, never through a symlink (SLJ-150).
+      const resolvedAssetPath = await resolveAssetInside(path.join(packageDirectoryPath, 'assets'), filename)
+      const assetStat = resolvedAssetPath ? await statFile(resolvedAssetPath).catch(() => null) : null
 
-      if (!assetStat?.isFile()) {
+      if (!resolvedAssetPath || !assetStat?.isFile()) {
         continue
       }
 
