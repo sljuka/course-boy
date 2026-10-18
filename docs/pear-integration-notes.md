@@ -1390,7 +1390,7 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   needed, named from the Publisher name given at the identity setup (now "Channel name",
   the nickname to start with), and rebuilt from "Show on my channel" whenever a course
   goes online or its listing changes.
-- **"Show on my channel":** a checkbox after Publish and on the course's page. On at a
+- **"Show on my channel":** a checkbox after Publish (the Share dialog) and in the course's settings in the editor. On at a
   course's first publish, off for courses published before channels, so nothing already
   out there became findable without its teacher choosing it.
 - **Checked, not claimed:** a listed course's `source.json` names the channel

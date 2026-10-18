@@ -1,7 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { ChannelListingToggle } from "@/components/channels/channel-listing-toggle";
 import { CourseChannelLink } from "@/components/channels/course-channel-link";
 import { PeersCount } from "@/components/peers-count";
 import { PanelCard } from "@/components/ui/panel-card";
@@ -97,7 +96,6 @@ export function CourseInfoCard({
           </PropertyRow>
         )}
       </PropertyList>
-      {course.distribution === "local" && <ChannelListingToggle courseId={course.id} />}
     </PanelCard>
   );
 }

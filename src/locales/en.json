@@ -259,7 +259,8 @@
     "confirmPublishTitle": "Publish version {{version}}?",
     "confirmPublishDescription": "It goes online: anyone with the course's code can download it, and students who already have the course are offered the update. Once someone has downloaded it, it can't be taken back.",
     "confirmAskApprovalTitle": "Ask to publish version {{version}}?",
-    "confirmAskApprovalDescription": "The other maintainers are asked to approve it. It goes online once enough of them do, and students who already have the course are then offered the update."
+    "confirmAskApprovalDescription": "The other maintainers are asked to approve it. It goes online once enough of them do, and students who already have the course are then offered the update.",
+    "notPublished": "Not published"
   },
   "courseTags": {
     "helpTooltip": "These can be used to tag exercise difficulty, but also other parts of the course."

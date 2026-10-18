@@ -1,3 +1,4 @@
+import { ChannelListingToggle } from "@/components/channels/channel-listing-toggle";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Eye, History, Info, Undo2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -563,16 +564,6 @@ export function CourseMetadataEditor({
             value={draft.serbianScript}
           />
         )}
-        {/* The course's mnemonics in the language the tabs above pick (the
-            generated Serbian script has none of its own: it's made on save). */}
-        {!isGeneratedLocale(generatedLocale, activeCourseLocale) && (
-          <CourseMnemonicsEditor
-            key={activeCourseLocale}
-            locale={activeCourseLocale}
-            mnemonics={draft.localizedCourse[activeCourseLocale]?.mnemonics ?? []}
-            onChange={(mnemonics) => updateLocalizedMnemonics(activeCourseLocale, mnemonics)}
-          />
-        )}
         <FieldSet>
           <FieldGroup>
             <Field>
@@ -630,6 +621,11 @@ export function CourseMetadataEditor({
               </Field>
             </FieldLabel>
 
+            {/* "Show on my channel" (SLJ-31): only once the course is
+                published (it hides itself before that). Saved at once, not
+                with the form: it's the channel's list, not the course's. */}
+            <ChannelListingToggle courseId={courseId} />
+
             <Accordion>
               <AccordionItem value="grade-bands">
                 <div className="flex items-center gap-1">
@@ -672,6 +668,17 @@ export function CourseMetadataEditor({
             </Accordion>
           </FieldGroup>
         </FieldSet>
+        {/* The course's mnemonics, last in the form, in the language the tabs
+            at the top pick (the generated Serbian script has none of its own:
+            it's made on save). */}
+        {!isGeneratedLocale(generatedLocale, activeCourseLocale) && (
+          <CourseMnemonicsEditor
+            key={activeCourseLocale}
+            locale={activeCourseLocale}
+            mnemonics={draft.localizedCourse[activeCourseLocale]?.mnemonics ?? []}
+            onChange={(mnemonics) => updateLocalizedMnemonics(activeCourseLocale, mnemonics)}
+          />
+        )}
         {courseSections.length === 0 && (
           <Alert variant="info">
             <Info aria-hidden="true" className="size-4" />

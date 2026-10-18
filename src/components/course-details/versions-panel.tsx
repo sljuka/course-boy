@@ -14,6 +14,7 @@ import {
 import { ListRow, ListRowMeta } from "@/components/ui/list-row";
 import { PanelCard } from "@/components/ui/panel-card";
 import { StatusIcon } from "@/components/ui/status-icon";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseDetailsQuery, useCourseVersionHistoryQuery } from "@/lib/course-queries";
 import { formatShortDate } from "@/lib/format-date";
 import { useCommitBlockerMessage } from "@/lib/use-commit-blocker";
@@ -27,7 +28,7 @@ import { VersionHistoryDialog } from "./version-history-dialog";
 // uncommitted changes (like Git's working copy: "Changes since 0.4", or "Not
 // committed yet" before the first version), then every cut version, newest
 // first. The version the draft is based on is highlighted and marked Current —
-// after a revert that's an older one; the published one has its own badge.
+// after a revert that's an older one; the published one has its own icon.
 // Revert / Publish are in each row's context menu (right-click, like the
 // explorer). Publish also puts the version online (see
 // use-publish-with-consent). The Draft row's context menu opens the same
@@ -123,12 +124,22 @@ export function VersionsPanel({
             <ContextMenu key={entry.version}>
               <ContextMenuTrigger>
                 <ListRow className="h-9 gap-2 px-1.5" selected={isDraftBase}>
-                  <StatusIcon status={entry.isCurrentlyPublished ? "published" : "local"} />
+                  {/* Published or not is said by the icon alone (a filled target
+                      or a dashed circle), named in a tooltip and for screen
+                      readers: the row has no room for a word. */}
+                  <Tooltip>
+                    <TooltipTrigger render={<span className="flex shrink-0" />}>
+                      <StatusIcon
+                        aria-label={entry.isCurrentlyPublished ? t("courseVersions.publishedBadge") : t("courseVersions.notPublished")}
+                        status={entry.isCurrentlyPublished ? "published" : "local"}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {entry.isCurrentlyPublished ? t("courseVersions.publishedBadge") : t("courseVersions.notPublished")}
+                    </TooltipContent>
+                  </Tooltip>
                   <span className="shrink-0 font-medium">{entry.version}</span>
                   {isDraftBase && <Badge variant="outline">{t("courseVersions.activeBadge")}</Badge>}
-                  {entry.isCurrentlyPublished && (
-                    <Badge variant="secondary">{t("courseVersions.publishedBadge")}</Badge>
-                  )}
                   {entry.cutAt && (
                     <ListRowMeta className="ml-auto" title={new Date(entry.cutAt).toLocaleString(locale)}>
                       {formatShortDate(entry.cutAt, locale)}

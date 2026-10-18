@@ -259,7 +259,8 @@
     "confirmPublishTitle": "Objaviti verziju {{version}}?",
     "confirmPublishDescription": "Verzija ide na mrežu: svako ko ima kod kursa može da je preuzme, a učenicima koji već imaju kurs biće ponuđena kao novija. Kada je neko preuzme, ne može se povući.",
     "confirmAskApprovalTitle": "Zatražiti objavljivanje verzije {{version}}?",
-    "confirmAskApprovalDescription": "Ostali koji održavaju kurs treba da je odobre. Na mrežu ide kada je odobri dovoljno vas, a učenicima koji već imaju kurs tada se nudi kao novija."
+    "confirmAskApprovalDescription": "Ostali koji održavaju kurs treba da je odobre. Na mrežu ide kada je odobri dovoljno vas, a učenicima koji već imaju kurs tada se nudi kao novija.",
+    "notPublished": "Nije objavljena"
   },
   "courseTags": {
     "helpTooltip": "Ovo se može koristiti za označavanje težine vežbi, ali i drugih delova kursa."
