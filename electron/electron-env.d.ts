@@ -225,6 +225,7 @@ interface Window {
     cancelTransfer: (transferId: string) => Promise<void>
     finishOnVersion: (courseId: string) => Promise<void>
     switchCourseVersion: (courseId: string, version: string) => Promise<void>
+    findCode: (code: string) => Promise<import('../src/lib/sharing').FoundCode>
     importCourse: (
       input: import('../src/lib/sharing').ImportCourseInput,
     ) => Promise<import('../src/lib/sharing').ImportCourseResult>

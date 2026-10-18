@@ -1,3 +1,4 @@
+import { ProgramCopyCodeItem } from "@/components/copy-code-menu-item";
 import { Eye, Library, Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -82,6 +83,7 @@ function MyProgramRow({ program }: { program: ProgramSummary }) {
           onSelect: () => navigate(`/programs/${program.id}`),
         },
       ]}
+      copyCode={<ProgramCopyCodeItem programId={program.id} />}
       copyLink={programAppLink(program.id)}
       href={href}
     >

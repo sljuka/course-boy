@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusIcon } from "@/components/ui/status-icon";
 import type { PendingImport } from "@/lib/sharing-queries";
+import { transferErrorText } from "@/lib/transfer-errors";
 
 // An import in Home's list view (SLJ-49): the course's title once known, then
 // the full progress (bar, sizes, speed, Cancel), or the error and Dismiss.
@@ -27,7 +28,7 @@ export function PendingImportCard({ pendingImport }: { pendingImport: PendingImp
           <>
             <Alert variant="destructive">
               <AlertTitle>{t("importCourse.errorTitle")}</AlertTitle>
-              <AlertDescription>{pendingImport.error.message}</AlertDescription>
+              <AlertDescription>{transferErrorText(pendingImport.error, t)}</AlertDescription>
             </Alert>
             <div className="flex justify-end">
               <Button onClick={pendingImport.dismiss} size="sm" variant="secondary">

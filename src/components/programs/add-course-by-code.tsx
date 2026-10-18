@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import type { ProgramCourse } from "@/lib/program-package";
 import { usePeekCourseMutation } from "@/lib/program-queries";
+import { transferErrorText } from "@/lib/transfer-errors";
 
 const CODE_PATTERN = /^[a-z0-9]{52,64}$/i;
 
@@ -35,7 +36,7 @@ export function AddCourseByCode({
     }
     setProblem(null);
     peekMutation.mutate(trimmed, {
-      onError: (error) => setProblem(error.message),
+      onError: (error) => setProblem(transferErrorText(error, t)),
       onSuccess: (result) => {
         if ("notFound" in result) {
           setProblem(t("programSharing.courseNotFound"));

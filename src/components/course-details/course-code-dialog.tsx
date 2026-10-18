@@ -37,7 +37,7 @@ export function CourseCodeDialog({
 
   return (
     <Dialog onOpenChange={(nextOpen) => !nextOpen && onClose()} open={open}>
-      <DialogContent className="w-[min(36rem,calc(100vw-2rem))]">
+      <DialogContent className="w-[min(36rem,calc(100vw-2rem))] sm:max-w-[36rem]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

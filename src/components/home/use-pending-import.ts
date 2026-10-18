@@ -9,6 +9,7 @@ import {
   transferPercent,
 } from "@/lib/transfer-progress";
 import { useAppState } from "@/lib/use-app-state";
+import { transferErrorText } from "@/lib/transfer-errors";
 
 // What Home shows for one import in its Downloading group (SLJ-49): the
 // course's title once known, a one-line status, and how far along it is.
@@ -20,7 +21,7 @@ export function usePendingImportView(pendingImport: PendingImport) {
   const isDownloading = transfer?.phase === "downloading" && percent !== null;
 
   const status = pendingImport.error
-    ? pendingImport.error.message
+    ? transferErrorText(pendingImport.error, t)
     : isDownloading
       ? t("transfer.downloading", {
           done: formatBytes(transfer.bytesDone, locale),

@@ -94,8 +94,12 @@ describe('programs online', () => {
       location.hash = '#/'
     })
     await page.getByRole('button', { name: 'Import course' }).first().click()
-    await page.getByLabel('Course or program code').fill(programCode)
-    await page.getByRole('button', { name: 'Import', exact: true }).click()
+    await page.getByLabel('Code or link').fill(programCode)
+    // Found first (SLJ-153): a program, so "Import program".
+    const importProgram = page.locator('[data-testid="import-confirm"]')
+    await importProgram.waitFor({ timeout: 45_000 })
+    expect(await importProgram.innerText()).toBe('Import program')
+    await importProgram.click()
     await page.getByRole('dialog').waitFor({ state: 'detached' })
     await waitFor(page, () => document.querySelector('[data-testid="home-group-programs"]')?.textContent?.includes('E2E Program'), {
       timeout: 60_000,

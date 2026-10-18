@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+
 import {
   ArrowDown,
   ArrowUp,
@@ -20,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { CourseCopyCodeItem } from "@/components/copy-code-menu-item";
 import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import {
@@ -342,6 +344,7 @@ export function CourseStructurePrototype({
               isExpanded={isCourseRootExpanded}
               isFixed
               isSelected={selectedNodeId === courseRootId}
+              copyCode={<CourseCopyCodeItem courseId={courseId} />}
               copyLink={courseAppLink(courseId)}
               label="Root"
               newTabHref={editorNodeHref(courseId)}
@@ -688,6 +691,7 @@ function ExplorerRow({
   isEditing = false,
   isExpanded,
   isSelected = false,
+  copyCode,
   copyLink,
   label,
   newTabHref,
@@ -723,6 +727,8 @@ function ExplorerRow({
   // A `matko://` link to it (SLJ-60), for right-click → Copy link: the
   // course and its lessons.
   copyLink?: string;
+  // The course's "Copy code" (the root only), after Copy link.
+  copyCode?: ReactNode;
   label: string;
   // The node's address (`editorNodeHref`): right-click → Open in new tab,
   // and a middle-click or ⌘-click opens it in a new tab (SLJ-12).
@@ -914,6 +920,7 @@ function ExplorerRow({
             <span>{t("appLinks.copyLink")}</span>
           </ContextMenuItem>
         )}
+        {copyCode}
         {((newTabHref && tabs) || copyLink) && <ContextMenuSeparator />}
         {onInsertDocument && (
           <ContextMenuItem onClick={onInsertDocument}>

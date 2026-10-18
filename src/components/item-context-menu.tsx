@@ -25,11 +25,14 @@ export type ItemContextAction = {
 export function ItemContextMenu({
   actions = [],
   children,
+  copyCode,
   copyLink,
   href,
 }: {
   actions?: ItemContextAction[];
   children: ReactNode;
+  // A program's or channel's "Copy code" (`ProgramCopyCodeItem`), after Copy link.
+  copyCode?: ReactNode;
   copyLink?: string;
   href: string;
 }) {
@@ -50,6 +53,7 @@ export function ItemContextMenu({
             {t("appLinks.copyLink")}
           </ContextMenuItem>
         )}
+        {copyCode}
         {actions.length > 0 && <ContextMenuSeparator />}
         {actions.map((action) => (
           <ContextMenuItem key={action.id} onClick={action.onSelect}>

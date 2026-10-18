@@ -12,6 +12,7 @@ import {
   useCourseSharingQuery,
   useFinishOnVersionMutation,
 } from "@/lib/sharing-queries";
+import { transferErrorText } from "@/lib/transfer-errors";
 import { CourseUpdateDialog } from "./course-update-dialog";
 
 // On an imported course's page (SLJ-39): a newer version from the teacher.
@@ -81,7 +82,7 @@ export function CourseUpdateNotice({ courseId }: { courseId: string }) {
         <Alert variant="destructive">
           <CircleAlert aria-hidden="true" />
           <AlertTitle>{t("courseUpdates.errorTitle")}</AlertTitle>
-          <AlertDescription>{applyMutation.error.message}</AlertDescription>
+          <AlertDescription>{transferErrorText(applyMutation.error, t)}</AlertDescription>
         </Alert>
       )}
       {update?.visibility === "prominent" && (

@@ -9,6 +9,7 @@ import {
   newestAppLink,
   parseAppLink,
   programAppLink,
+  shareCodeFromText,
   thisCourseLessonAppLink,
 } from "@/lib/app-links";
 
@@ -108,5 +109,25 @@ describe("newestAppLink", () => {
   it("is null for none, or none valid", () => {
     expect(newestAppLink([])).toBeNull();
     expect(newestAppLink([{ newTab: false, url: "matko://wipe/everything" }])).toBeNull();
+  });
+});
+
+// Import accepts a code or a share link (SLJ-8).
+describe("shareCodeFromText", () => {
+  const code = "ybndrfg8ejkmcpqxot1uwisza345h769ybndrfg8ejkmcpqxot1u";
+
+  it("takes a code, or the code in a share link", () => {
+    expect(shareCodeFromText(code)).toBe(code);
+    expect(shareCodeFromText(`  ${code.toUpperCase()}\n`)).toBe(code);
+    expect(shareCodeFromText(`matko://import/${code}`)).toBe(code);
+    expect(shareCodeFromText(` MATKO://import/${code} `)).toBe(code);
+  });
+
+  it("is null for anything else", () => {
+    expect(shareCodeFromText("")).toBeNull();
+    expect(shareCodeFromText("not a code")).toBeNull();
+    expect(shareCodeFromText("matko://lesson/lesson-01")).toBeNull();
+    expect(shareCodeFromText("matko://import/short")).toBeNull();
+    expect(shareCodeFromText(`https://example.com/${code}`)).toBeNull();
   });
 });

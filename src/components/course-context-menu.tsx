@@ -2,6 +2,7 @@ import { Link2, SquarePlus, Star, StarOff } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { CourseCopyCodeItem } from "@/components/copy-code-menu-item";
 import { type CourseAction, type CourseActionsCourse, useCourseActions } from "@/components/use-course-actions";
 import {
   ContextMenu,
@@ -15,7 +16,8 @@ import { useCourseProgressQuery, useSetFavoriteMutation } from "@/lib/course-pro
 import { useOptionalAppTabs } from "@/lib/use-app-tabs";
 
 // A course in a list (Home, My courses, a program's page) on right-click
-// (SLJ-12): Open in new tab, Copy link (SLJ-60), its star (where the list
+// (SLJ-12): Open in new tab, Copy link (SLJ-60), Copy code (when it has one),
+// its star (where the list
 // shows one), then the same actions as its ⋯ menu. `children` is the card or row; a removed
 // course leaves nowhere, so the list stays where it is.
 export function CourseContextMenu({
@@ -63,6 +65,7 @@ export function CourseContextMenu({
             <Link2 aria-hidden="true" />
             {t("appLinks.copyLink")}
           </ContextMenuItem>
+          <CourseCopyCodeItem courseId={course.id} />
           {favorite && (
             <ContextMenuItem onClick={() => setFavorite({ courseId: course.id, favorite: !isFavorite })}>
               {isFavorite ? <StarOff aria-hidden="true" /> : <Star aria-hidden="true" />}

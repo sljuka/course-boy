@@ -2,12 +2,14 @@ import { Star, StarOff } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { ProgramCopyCodeItem } from "@/components/copy-code-menu-item";
 import { ItemContextMenu } from "@/components/item-context-menu";
 import { programAppLink } from "@/lib/app-links";
 import { useCourseProgressQuery, useSetProgramFavoriteMutation } from "@/lib/course-progress-queries";
 
 // A program or channel you follow, in a list (Home, a channel's programs) on
-// right-click (SLJ-12): Open in new tab, Copy link (SLJ-60) and its star.
+// right-click (SLJ-12): Open in new tab, Copy link (SLJ-60), Copy code (once
+// it has one) and its star.
 export function ProgramContextMenu({
   children,
   href,
@@ -34,6 +36,7 @@ export function ProgramContextMenu({
           onSelect: () => setFavorite({ favorite: !isFavorite, programId }),
         },
       ]}
+      copyCode={<ProgramCopyCodeItem programId={programId} />}
       copyLink={programAppLink(programId, kind)}
       href={href}
     >

@@ -6,6 +6,7 @@ import type {
   CourseSharingInfo,
   TransferInfo,
   CourseUpdateInfo,
+  FoundCode,
   ImportCourseInput,
   ImportCourseResult,
   RunningImport,
@@ -77,6 +78,20 @@ export function useFinishOnVersionMutation() {
   return useMutation<void, Error, string>({
     mutationFn: (courseId) => window.sharing.finishOnVersion(courseId),
     onSuccess: (_result, courseId) => invalidateAfterUpdateChange(courseId),
+  });
+}
+
+// What a code is, before importing it (SLJ-153). Keyed by the code, so a new
+// code's answer never shows for another. Not retried: "nobody online" is an
+// answer, and finding again is the student's choice.
+export function useFindCodeQuery(code: string | null) {
+  return useQuery<FoundCode>({
+    enabled: code !== null,
+    gcTime: 60_000,
+    queryFn: () => window.sharing.findCode(code!),
+    queryKey: ["sharing", "find-code", code],
+    retry: false,
+    staleTime: 60_000,
   });
 }
 

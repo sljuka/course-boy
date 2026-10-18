@@ -230,10 +230,32 @@ export async function seedProgram(programId: string, driveKey: string): Promise<
 
 // A course's course.json and claimed publisher by its code, without importing
 // it. Fails with `code` NOT_FOUND when nobody sharing it is online.
+// What a drive has in it, read from peers without importing it: a course's
+// or a program's (channel's) manifest and who published it. `withContents`:
+// also what importing it would bring (size, files, a course's sections,
+// lessons and tests, or the download limit it crosses; SLJ-153), from its
+// listing. Throws code NOT_FOUND (nobody sharing it is online) or NOT_MATKO.
+export type PeekedDriveContents = {
+  bytes: number | null
+  files: number | null
+  lessons: number
+  limit: 'COURSE_TOO_BIG' | 'TOO_MANY_FILES' | null
+  sections: number
+  tests: number
+}
+
 export async function peekCourse(
   driveKey: string,
-): Promise<{ manifest: unknown; peers?: number; publisherId: string | null; publisherName?: string | null }> {
-  return sendCommand(CMD_PEEK_COURSE, { driveKey })
+  { withContents = false }: { withContents?: boolean } = {},
+): Promise<{
+  contents: PeekedDriveContents | null
+  kind?: 'course' | 'program'
+  manifest: unknown
+  peers?: number
+  publisherId: string | null
+  publisherName?: string | null
+}> {
+  return sendCommand(CMD_PEEK_COURSE, { driveKey, withContents })
 }
 
 // Reopens an imported course's drive and announces it again (after a restart).
@@ -587,9 +609,16 @@ export function spawnBareWorker(): void {
     // Test-only: point the worker's swarm at a local DHT testnet instead of the
     // public one (see e2e/sharing-suite.mjs). Unset in the app.
     const bootstrap = process.env.MATKO_DHT_BOOTSTRAP ?? ''
+    // Test-only: smaller download limits (workers/download-limits.cjs), as
+    // JSON, so an e2e test can cross them with a tiny course. Unset in the app.
+    const downloadLimits = process.env.MATKO_DOWNLOAD_LIMITS ?? ''
 
     const worker = spawnBare('bare', {
-      args: bootstrap ? [workerPath, storagePath, bootstrap] : [workerPath, storagePath],
+      args: downloadLimits
+        ? [workerPath, storagePath, bootstrap, downloadLimits]
+        : bootstrap
+          ? [workerPath, storagePath, bootstrap]
+          : [workerPath, storagePath],
       stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
     })
     workerProcess = worker

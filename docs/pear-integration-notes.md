@@ -1423,6 +1423,27 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   computer reached, so at least that many), or "Not available right now", and the header
   says "N of M courses available right now". Import stays offered either way: it waits,
   and downloads once someone who has the course comes online.
+- **Find before importing (SLJ-153):** Import course finds what a code is before anything
+  is downloaded (`sharing:find-code` → `FoundCode`, `src/lib/sharing.ts`). The worker's
+  `peekCourse` with `withContents` reads a course's or a program's (channel's) manifest
+  and `source.json`, and plans the copy from the drive's listing alone
+  (`planDownload`, `workers/download-limits.cjs`). That gives the size, the file count, a
+  course's sections, lessons and tests, or the download limit it crosses.
+  `foundCodeFromPeek` (`src/lib/found-code.ts`) keeps only well-formed fields, since it all
+  comes from a stranger's drive. The dialog shows it (`FoundCodeCard`), with a note when
+  the publisher isn't one the student has imported from.
+  - A typed or pasted code is found as soon as it's whole. A code from a link is found only
+    on **Find** (SLJ-151): finding contacts the people sharing it.
+  - Over a limit there's nothing to import. "Nobody sharing this code is online" can still
+    be imported (it waits).
+  - The program pages' availability checks call `peekCourse` without `withContents`, so
+    they don't list whole drives.
+- **Download limits (SLJ-153):** every copy from a drive onto disk is planned first. It's
+  refused at the first file over 50,000 files or 20 GB (`TOO_MANY_FILES`,
+  `COURSE_TOO_BIG`), or when twice its size plus 1 GB isn't free (`NOT_ENOUGH_SPACE`),
+  before any file data is downloaded. The worker's error message starts with the code,
+  which `src/lib/transfer-errors.ts` turns into a sentence (IPC keeps only messages).
+  `MATKO_DOWNLOAD_LIMITS` (JSON, test-only) lowers the limits for e2e.
 - **Imports that wait survive a restart (SLJ-128):** main keeps every import it's running
   (`course-sharing` store `imports`: `{ code, transferId, startedAt }`) until it lands, is
   cancelled, or the worker reports a real failure (not a course, say); a worker that stops

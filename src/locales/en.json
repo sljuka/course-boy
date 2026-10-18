@@ -280,23 +280,45 @@
     "sharedVersion": "Shared version: {{version}}"
   },
   "importCourse": {
-    "codeLabel": "Course or program code",
-    "codePlaceholder": "Paste a course or program code",
-    "description": "Paste the code of a course or a program you got from your teacher or a classmate.",
+    "codeLabel": "Code or link",
+    "codePlaceholder": "Paste the code or link",
+    "description": "Paste the code or link of a course, program or channel you got from your teacher or a classmate. Matko finds it and shows what it is before you import it.",
     "errorTitle": "Couldn't import",
-    "importButton": "Import",
     "importing": "Importing...",
     "openButton": "Import course",
     "title": "Import course",
     "fromLink": "This code came from a link. Import it only if you trust whoever sent it.",
-    "lookUpButton": "Look it up",
-    "lookingUp": "Looking it up...",
-    "lookUpBy": "by",
-    "lookUpNoPublisher": "Publisher unknown",
-    "lookUpVersion": "version {{version}}",
-    "lookUpUntitled": "Untitled course",
-    "lookUpNotFound": "Nobody sharing this code is online right now, so it can't be checked. You can still import it: it downloads when they're back.",
-    "lookUpNotCourse": "This isn't a course's code. It may be a program's: Import shows what it is."
+    "find": {
+      "button": "Find",
+      "finding": "Finding…",
+      "invalid": "This isn't a Matko code or link. Check that you copied all of it.",
+      "kind": {
+        "course": "Course",
+        "program": "Program",
+        "channel": "Channel"
+      },
+      "import": {
+        "course": "Import course",
+        "program": "Import program",
+        "channel": "Follow channel"
+      },
+      "importAnyway": "Import anyway",
+      "untitled": "Untitled",
+      "publisher": "Published by",
+      "noPublisher": "It doesn't say",
+      "version": "Version",
+      "languages": "Languages",
+      "contents": "Contents",
+      "size": "Size",
+      "courseContents": "Sections: {{sections}} · Lessons: {{lessons}} · Tests: {{tests}}",
+      "courses": "Courses: {{count}}",
+      "sizeValue": "{{size}} · files: {{files}}",
+      "unknown": "Couldn't be read in time",
+      "large": "This is a large download ({{size}}). Make sure that's what you expected.",
+      "newPublisher": "You haven't imported anything from this publisher before. A name can say anything: check the Publisher ID with whoever gave you the code.",
+      "nobodyOnline": "Nobody sharing this code is online right now, so it couldn't be checked. You can still import it: it downloads when they're back.",
+      "notMatko": "This code isn't a Matko course, program or channel."
+    }
   },
   "courseItems": {
     "additionAndSubtraction": {
@@ -836,7 +858,13 @@
     "downloading": "Downloading {{done}} of {{total}}",
     "speed": "{{speed}}/s",
     "cancel": "Cancel",
-    "nobodyOnlineShort": "Nobody sharing it is online"
+    "nobodyOnlineShort": "Nobody sharing it is online",
+    "errors": {
+      "COURSE_TOO_BIG": "This course is too big to download (over 20 GB). It may not be a real course.",
+      "TOO_MANY_FILES": "This course has too many files to download (over 50,000). It may not be a real course.",
+      "NOT_ENOUGH_SPACE": "Not enough free space on this computer to download this course. Free up some space and try again.",
+      "NOT_MATKO": "This code isn't a Matko course, program or channel."
+    }
   },
   "home": {
     "groups": {
@@ -1410,7 +1438,8 @@
   },
   "appLinks": {
     "copyLink": "Copy link",
-    "linkCopied": "Link copied"
+    "linkCopied": "Link copied",
+    "copyCode": "Copy code"
   },
   "shareCode": {
     "copy": "Copy: {{what}}",

@@ -37,6 +37,17 @@ export function isShareCode(code: string): boolean {
   return SHARE_CODE.test(code);
 }
 
+// The code in what a student pasted into Import: a code, or a share link
+// (`matko://import/<code>`, SLJ-8). Null for anything else, a link to a
+// lesson included: that isn't a code.
+export function shareCodeFromText(text: string): string | null {
+  const trimmed = text.trim();
+  const link = parseAppLink(trimmed);
+  if (link) return link.kind === "import" ? link.code : null;
+  const code = trimmed.toLowerCase();
+  return isShareCode(code) ? code : null;
+}
+
 export function isAppLink(href: string): boolean {
   return href.trim().toLowerCase().startsWith(`${APP_LINK_SCHEME}//`);
 }

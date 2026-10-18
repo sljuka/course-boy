@@ -522,14 +522,24 @@ describe('sharing across restarts', () => {
         location.hash = '#/'
       })
       await student.getByRole('button', { name: 'Import course' }).first().click()
-      await student.getByLabel('Course or program code').fill(homeCode)
-      await student.getByRole('button', { name: 'Import', exact: true }).click()
+      await student.getByLabel('Code or link').fill(homeCode)
+      // Found first (SLJ-153), then "Import course".
+      await student.locator('[data-testid="found-code"]').waitFor({ timeout: 45_000 })
+      await student.locator('[data-testid="import-confirm"]').click()
       await student.getByRole('dialog').waitFor({ state: 'detached' })
 
       await waitFor(student, () =>
         document.querySelector('[data-testid="home-group-imported"]')?.textContent?.includes('E2E Home Import'),
         { timeout: 30_000 },
       )
+
+      // Its context menu copies its code (the one it was imported with).
+      await student.locator('[data-testid="home-group-imported"]').getByText('E2E Home Import').first().click({ button: 'right' })
+      await student.locator('[data-testid="copy-code"]').click()
+      await expect
+        .poll(() => apps.student3.app.evaluate(({ clipboard }) => clipboard.readText()))
+        .toBe(homeCode)
+      await student.keyboard.press('Escape')
       expect(await student.locator('[data-testid="pending-import"]').count()).toBe(0)
 
       // The course page's Details panel: where it came from, its version and
@@ -582,8 +592,10 @@ describe('sharing across restarts', () => {
         location.hash = '#/'
       })
       await student.getByRole('button', { name: 'Import course' }).first().click()
-      await student.getByLabel('Course or program code').fill(offlineCode)
-      await student.getByRole('button', { name: 'Import', exact: true }).click()
+      await student.getByLabel('Code or link').fill(offlineCode)
+      // Nobody sharing it is online (SLJ-153): it can be imported anyway.
+      await student.locator('[data-testid="found-code-nobody-online"]').waitFor({ timeout: 45_000 })
+      await student.locator('[data-testid="import-confirm"]').click()
       // The dialog hands off to Home (SLJ-49): the course waits under Downloading.
       await student.getByRole('dialog').waitFor({ state: 'detached' })
       await waitFor(student, () =>

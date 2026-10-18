@@ -164,10 +164,12 @@ import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
   CourseUpdateInfo,
+  FoundCode,
   ImportCourseInput,
   ImportCourseResult,
   RunningImport,
 } from '../src/lib/sharing'
+import { foundCodeFromPeek } from '../src/lib/found-code'
 
 // First: choose the profile and move Chromium's own data into the data
 // folder's browser/ (SLJ-57, profile-context.ts), before anything reads paths.
@@ -1633,6 +1635,22 @@ ipcMain.handle('sharing:import-course', async (_event, input: ImportCourseInput)
   if (typeof input?.code !== 'string' || input.code.trim().length === 0) throw new Error('Invalid code')
   const transferId = typeof input.transferId === 'string' ? input.transferId : randomUUID()
   return startImport(profile, input.code, transferId) satisfies Promise<ImportCourseResult>
+})
+
+// What a code is, before importing it (SLJ-153): found among the people
+// sharing it, from its manifest and listing, so the student sees what they're
+// about to download. Never imports, never throws for a code that isn't
+// Matko's or nobody shares right now: those are answers too.
+ipcMain.handle('sharing:find-code', async (_event, code: unknown): Promise<FoundCode> => {
+  if (typeof code !== 'string' || !/^[a-z0-9]{52,64}$/i.test(code.trim())) return { status: 'not-matko' }
+  try {
+    return foundCodeFromPeek(await peekCourse(code.trim(), { withContents: true }))
+  } catch (error) {
+    const errorCode = (error as { code?: string }).code
+    if (errorCode === 'NOT_FOUND') return { status: 'nobody-online' }
+    if (errorCode === 'NOT_MATKO' || (error as { fromWorker?: boolean }).fromWorker) return { status: 'not-matko' }
+    throw error
+  }
 })
 
 // Imports running or waiting (SLJ-128), for Home's Downloading group: the

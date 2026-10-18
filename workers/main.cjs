@@ -19,6 +19,7 @@ const { createMaintainers, requestHash } = require('./maintainers.cjs')
 const { clearOldVersions } = require('./drive-storage.cjs')
 const { NoSymlinkLocaldrive, assertNoSymlinksOnDisk } = require('./drive-safety.cjs')
 const { limitConnections } = require('./connection-limit.cjs')
+const { DOWNLOAD_LIMITS, assertFreeSpace, blobSize, planDownload } = require('./download-limits.cjs')
 const {
   commitProposal,
   createProposal,
@@ -109,6 +110,22 @@ const bootstrap = Bare.argv[3]
 // identity is held by main and handed over in memory (CMD_SET_IDENTITY); every
 // core is created from its public manifest, and only a writing session gets the
 // key pair, in memory. See "Publisher key at rest" in docs/pear-integration-notes.md.
+// Test-only: smaller download limits, as JSON (MATKO_DOWNLOAD_LIMITS, see
+// electron/bare-worker.ts). Only known limits with positive numbers count.
+const downloadLimits = (() => {
+  const given = (() => {
+    try {
+      return Bare.argv[4] ? JSON.parse(Bare.argv[4]) : {}
+    } catch {
+      return {}
+    }
+  })()
+  const limits = { ...DOWNLOAD_LIMITS }
+  for (const key of Object.keys(DOWNLOAD_LIMITS)) {
+    if (typeof given[key] === 'number' && given[key] > 0) limits[key] = given[key]
+  }
+  return limits
+})()
 const store = new Corestore(storagePath)
 // Separate from `store`, not a `.namespace()` of it: a Corestore's `.replicate()`
 // serves every namespace sharing its root `cores`/`storage`, and Protomux only keeps
@@ -382,7 +399,53 @@ async function start() {
   // (a program's curator adding someone else's course, SLJ-32). From a drive
   // already open here when there is one: a second drive on the same key never
   // opens.
-  async function peekCourse(driveKey) {
+  function notMatko() {
+    return Object.assign(new Error('NOT_MATKO: This code is not a Matko course, program or channel'), { code: 'NOT_MATKO' })
+  }
+
+  function parseJson(buffer) {
+    try {
+      return JSON.parse(buffer.toString())
+    } catch {
+      return null
+    }
+  }
+
+  // What copying a drive would write, from its listing alone (no file data):
+  // size, files, and a course's sections, lessons and tests by their files'
+  // names. `limit`: the download limit it crosses (then the counts stop
+  // there). Null when the listing didn't come in time.
+  async function planPeek(drive, timeoutMs) {
+    const counted = { lessons: 0, sections: 0, tests: 0 }
+    const countEntry = (diff) => {
+      if (diff.op !== 'add') return
+      const name = diff.key.split('/').pop() ?? ''
+      if (name === 'section.json') counted.sections += 1
+      else if (/^lesson-.+\.json$/.test(name)) counted.lessons += 1
+      else if (/^(?:section-)?test-.+\.json$/.test(name)) counted.tests += 1
+    }
+    // Planned against a folder that doesn't exist: everything counts as new,
+    // and nothing is written.
+    const nowhere = new NoSymlinkLocaldrive(path.join(storagePath, '.peek-plan-nowhere'))
+    try {
+      const { bytes, files } = await withTimeout(
+        planDownload(drive, nowhere, { limits: downloadLimits, onEntry: countEntry }),
+        timeoutMs,
+        'PLAN_TIMEOUT',
+      )
+      return { ...counted, bytes, files, limit: null }
+    } catch (error) {
+      if (error.code === 'TOO_MANY_FILES' || error.code === 'COURSE_TOO_BIG') {
+        return { ...counted, bytes: null, files: null, limit: error.code }
+      }
+      return null
+    }
+  }
+
+  // `withContents`: also plan what importing it would bring (its listing,
+  // more network): for Import's find (SLJ-153), not for a program page's
+  // checks of which of its courses can be had.
+  async function peekCourse(driveKey, { withContents = false } = {}) {
     const keyHex = IdEncoding.decode(driveKey).toString('hex')
     const open =
       followedDrives.get(keyHex)?.drive ??
@@ -408,13 +471,21 @@ async function start() {
       if (drive.core.length === 0) throw Object.assign(new Error('Not found'), { code: 'NOT_FOUND' })
 
       const read = (key) => withTimeout(drive.get(key), Math.max(deadline - Date.now(), 1_000), 'NOT_FOUND')
-      const manifestBuffer = await read('/course.json')
-      if (!manifestBuffer) throw new Error('This code is not a course')
-      const manifest = JSON.parse(manifestBuffer.toString())
+      // A course's code, or a program's or channel's (their drive has
+      // program.json instead, SLJ-32): anything else isn't Matko's.
+      const courseBuffer = await read('/course.json')
+      const programBuffer = courseBuffer ? null : await read('/program.json').catch(() => null)
+      if (!courseBuffer && !programBuffer) throw notMatko()
+      const kind = courseBuffer ? 'course' : 'program'
+      const manifest = parseJson(courseBuffer ?? programBuffer)
+      if (!manifest || !isValidCourseId(manifest.id)) throw notMatko()
       const sourceBuffer = await read(SOURCE_FILE_KEY).catch(() => null)
-      const source = sourceBuffer ? JSON.parse(sourceBuffer.toString()) : null
-      if (!isValidCourseId(manifest.id)) throw new Error('This code is not a course')
+      const source = sourceBuffer ? parseJson(sourceBuffer) : null
       return {
+        // What importing it would bring onto this computer (SLJ-153), for
+        // the student to check before importing.
+        contents: withContents ? await planPeek(drive, Math.max(deadline - Date.now(), 5_000)) : null,
+        kind,
         manifest,
         // How many people this device reached who have it (SLJ-127): who it
         // could be downloaded from right now.
@@ -708,17 +779,18 @@ async function start() {
     }
   }
 
-  async function blobSize(drive, key) {
-    const entry = await drive.entry(key)
-    return entry && entry.value.blob ? entry.value.blob.byteLength : 0
-  }
-
   // Every copy of a drive onto disk goes into a NoSymlinkLocaldrive, with the
   // folder checked for symlinks before and after (SLJ-150, drive-safety.cjs):
   // a drive's entries are whatever its publisher chose. `atomic`: for a folder
   // of hardlinks main made (see downloadUpdate).
   async function mirrorOntoDisk(source, targetPath, { atomic = false, filter = null } = {}) {
     await assertNoSymlinksOnDisk(fsp, path, targetPath)
+    // Within the download limits and the free space first (SLJ-153).
+    const { bytes } = await planDownload(source, new NoSymlinkLocaldrive(targetPath, { atomic }), {
+      filter,
+      limits: downloadLimits,
+    })
+    await assertFreeSpace(fsp, storagePath, bytes, { limits: downloadLimits })
     await source.mirror(new NoSymlinkLocaldrive(targetPath, { atomic }), { filter }).done()
     await assertNoSymlinksOnDisk(fsp, path, targetPath)
   }
@@ -730,12 +802,16 @@ async function start() {
   async function mirrorWithProgress(drive, targetPath, transfer, { atomic = false, filter = null } = {}) {
     await assertNoSymlinksOnDisk(fsp, path, targetPath)
     const local = new NoSymlinkLocaldrive(targetPath, { atomic })
-    let total = 0
-    const plan = drive.mirror(local, { dryRun: true, filter })
-    for await (const diff of plan) {
-      if (transfer.isCancelled) throw new TransferCancelled()
-      if (diff.op === 'add' || diff.op === 'change') total += await blobSize(drive, diff.key)
-    }
+    // What it would write, within the download limits and the free space
+    // (SLJ-153): refused before any file data comes over.
+    const { bytes: total } = await planDownload(drive, local, {
+      filter,
+      limits: downloadLimits,
+      onEntry: () => {
+        if (transfer.isCancelled) throw new TransferCancelled()
+      },
+    })
+    await assertFreeSpace(fsp, storagePath, total, { limits: downloadLimits })
     transfer.bytesTotal = total
     transfer.phase = 'downloading'
 
@@ -1529,11 +1605,12 @@ async function start() {
 
     if (req.command === CMD_PEEK_COURSE) {
       try {
-        const { driveKey } = JSON.parse(req.data.toString())
-        req.reply(JSON.stringify(await peekCourse(driveKey)))
+        const { driveKey, withContents = false } = JSON.parse(req.data.toString())
+        req.reply(JSON.stringify(await peekCourse(driveKey, { withContents })))
       } catch (error) {
         const notFound = error.code === 'NOT_FOUND' || error.message === 'NOT_FOUND'
-        req.reply(JSON.stringify({ code: notFound ? 'NOT_FOUND' : 'ERROR', error: error.message }))
+        const code = notFound ? 'NOT_FOUND' : error.code === 'NOT_MATKO' ? 'NOT_MATKO' : 'ERROR'
+        req.reply(JSON.stringify({ code, error: error.message }))
       }
       return
     }

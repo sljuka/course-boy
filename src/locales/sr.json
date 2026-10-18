@@ -280,23 +280,45 @@
     "sharedVersion": "Deljena verzija: {{version}}"
   },
   "importCourse": {
-    "codeLabel": "Kod kursa ili programa",
-    "codePlaceholder": "Nalepi kod kursa ili programa",
-    "description": "Nalepite kod kursa ili programa koji ste dobili od nastavnika ili nekog iz razreda.",
+    "codeLabel": "Kod ili link",
+    "codePlaceholder": "Nalepi kod ili link",
+    "description": "Nalepite kod ili link kursa, programa ili kanala koji ste dobili od nastavnika ili druga iz razreda. Matko će ga pronaći i pokazati šta je pre nego što ga uvezete.",
     "errorTitle": "Uvoz nije uspeo",
-    "importButton": "Uvezi",
     "importing": "Uvoženje...",
     "openButton": "Uvezi kurs",
     "title": "Uvezi kurs",
     "fromLink": "Ovaj kod je stigao preko linka. Uvezi ga samo ako veruješ onome ko ga je poslao.",
-    "lookUpButton": "Proveri",
-    "lookingUp": "Proverava se...",
-    "lookUpBy": "izdavač:",
-    "lookUpNoPublisher": "Nepoznato ko je objavio",
-    "lookUpVersion": "verzija {{version}}",
-    "lookUpUntitled": "Kurs bez naslova",
-    "lookUpNotFound": "Trenutno niko ko deli ovaj kod nije na mreži, pa ne može da se proveri. I dalje možete da ga uvezete: preuzeće se kad se vrate.",
-    "lookUpNotCourse": "Ovo nije kod kursa. Možda je kod programa: uvoz će pokazati šta je."
+    "find": {
+      "button": "Pronađi",
+      "finding": "Traži se…",
+      "invalid": "Ovo nije Matko kod ni link. Proverite da li ste kopirali ceo.",
+      "kind": {
+        "course": "Kurs",
+        "program": "Program",
+        "channel": "Kanal"
+      },
+      "import": {
+        "course": "Uvezi kurs",
+        "program": "Uvezi program",
+        "channel": "Prati kanal"
+      },
+      "importAnyway": "Ipak uvezi",
+      "untitled": "Bez naslova",
+      "publisher": "Izdaje",
+      "noPublisher": "Nije navedeno",
+      "version": "Verzija",
+      "languages": "Jezici",
+      "contents": "Sadržaj",
+      "size": "Veličina",
+      "courseContents": "Sekcije: {{sections}} · Lekcije: {{lessons}} · Testovi: {{tests}}",
+      "courses": "Kursevi: {{count}}",
+      "sizeValue": "{{size}} · fajlova: {{files}}",
+      "unknown": "Nije pročitano na vreme",
+      "large": "Ovo je veliko preuzimanje ({{size}}). Proverite da li ste to očekivali.",
+      "newPublisher": "Do sada niste uvezli ništa od ovog izdavača. Ime može biti bilo kakvo: proverite ID izdavača sa onim ko vam je dao kod.",
+      "nobodyOnline": "Trenutno niko ko deli ovaj kod nije na mreži, pa ne može da se proveri. I dalje možete da ga uvezete: preuzeće se kad se vrate.",
+      "notMatko": "Ovaj kod nije Matko kurs, program ni kanal."
+    }
   },
   "courseItems": {
     "additionAndSubtraction": {
@@ -836,7 +858,13 @@
     "downloading": "Preuzeto {{done}} od {{total}}",
     "speed": "{{speed}}/s",
     "cancel": "Otkaži",
-    "nobodyOnlineShort": "Niko ko ga deli nije na mreži"
+    "nobodyOnlineShort": "Niko ko ga deli nije na mreži",
+    "errors": {
+      "COURSE_TOO_BIG": "Ovaj kurs je prevelik za preuzimanje (preko 20 GB). Možda nije pravi kurs.",
+      "TOO_MANY_FILES": "Ovaj kurs ima previše fajlova za preuzimanje (preko 50.000). Možda nije pravi kurs.",
+      "NOT_ENOUGH_SPACE": "Na ovom računaru nema dovoljno slobodnog prostora za ovaj kurs. Oslobodite malo prostora i pokušajte ponovo.",
+      "NOT_MATKO": "Ovaj kod nije Matko kurs, program ni kanal."
+    }
   },
   "home": {
     "groups": {
@@ -1410,7 +1438,8 @@
   },
   "appLinks": {
     "copyLink": "Kopiraj link",
-    "linkCopied": "Link je kopiran"
+    "linkCopied": "Link je kopiran",
+    "copyCode": "Kopiraj kod"
   },
   "shareCode": {
     "copy": "Kopiraj: {{what}}",

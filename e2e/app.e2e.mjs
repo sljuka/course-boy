@@ -157,6 +157,7 @@ describe('launch', () => {
       'applyCourseUpdate',
       'cancelTransfer',
       'chooseIdentityFile',
+      'findCode',
       'finishOnVersion',
       'getCourseSharing',
       'getCreatorKey',

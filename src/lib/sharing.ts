@@ -83,3 +83,40 @@ export type ImportCourseInput = {
 
 // A code is a course's or a program's (SLJ-32).
 export type ImportCourseResult = { courseId: string } | { programId: string } | Cancelled
+
+// What a code is, found among the people sharing it before importing it
+// (Import course, SLJ-153): for the student to check what they're about to
+// download. Read from the drive's manifest and listing; nothing is imported.
+// - found: a course, a program or a channel, with what importing it brings.
+//   `contents` is null when its listing didn't come in time; `limit` set:
+//   it's over a download limit and can't be imported.
+// - nobody-online: nobody sharing it is online right now (it may still be
+//   fine: importing waits for them).
+// - not-matko: what's behind it isn't a Matko course, program or channel.
+export type FoundCode =
+  | {
+      contents: FoundCodeContents | null
+      kind: 'channel' | 'course' | 'program'
+      // Titles and descriptions, per language the code's owner wrote.
+      locales: Partial<Record<string, { description: string; title: string }>>
+      // Programs and channels: how many courses they list.
+      courseCount: number | null
+      // Courses only.
+      contentRating: string | null
+      publisherId: string | null
+      publisherName: string | null
+      status: 'found'
+      supportedLocales: string[]
+      version: string | null
+    }
+  | { status: 'nobody-online' }
+  | { status: 'not-matko' }
+
+export type FoundCodeContents = {
+  bytes: number | null
+  files: number | null
+  lessons: number
+  limit: 'COURSE_TOO_BIG' | 'TOO_MANY_FILES' | null
+  sections: number
+  tests: number
+}

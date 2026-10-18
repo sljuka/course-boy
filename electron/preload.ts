@@ -61,6 +61,7 @@ import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
   CourseUpdateInfo,
+  FoundCode,
   ImportCourseInput,
   ImportCourseResult,
   RunningImport,
@@ -448,6 +449,11 @@ contextBridge.exposeInMainWorld('sharing', {
   },
   finishOnVersion(courseId: string) {
     return ipcRenderer.invoke('sharing:finish-on-version', courseId) as Promise<void>
+  },
+  // What a code is, before importing it (SLJ-153): found, nobody online, or
+  // not Matko's.
+  findCode(code: string) {
+    return ipcRenderer.invoke('sharing:find-code', code) as Promise<FoundCode>
   },
   importCourse(input: ImportCourseInput) {
     return ipcRenderer.invoke('sharing:import-course', input) as Promise<ImportCourseResult>
