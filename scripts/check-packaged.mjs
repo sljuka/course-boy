@@ -100,14 +100,18 @@ try {
     fail(`the bundled course is not listed (got: ${courses.map((course) => course.id).join(', ') || 'none'})`)
   }
 
-  // The worker reports its state on a main-process global (electron/bare-worker.ts):
-  // 'spawning' until it answers, then 'ready', or 'error: …'.
+  // The Bare worker answers: setting up a publishing identity (in this
+  // throwaway profile) seals it in the worker, so `ok` comes only from a
+  // running worker. Retried while it's still starting.
   const deadline = Date.now() + WORKER_TIMEOUT_MS
   let workerState
   do {
-    workerState = await harness.app.evaluate(() => globalThis.__matkoWorkerStatus)
-    if (workerState && workerState !== 'spawning') break
-    await new Promise((resolve) => setTimeout(resolve, 250))
+    const result = await harness.page
+      .evaluate(() => window.sharing.setUpIdentity('packaged check password'))
+      .catch((error) => ({ error: String(error) }))
+    workerState = result?.ok ? 'ready' : JSON.stringify(result)
+    if (workerState === 'ready') break
+    await new Promise((resolve) => setTimeout(resolve, 500))
   } while (Date.now() < deadline)
 
   if (workerState === 'ready') {
@@ -141,6 +145,34 @@ try {
 } finally {
   await harness.close()
   fs.rmSync(userData, { force: true, recursive: true })
+}
+
+// The fuses (electron-builder.json5, SLJ-152): the packaged program ignores
+// ELECTRON_RUN_AS_NODE, NODE_OPTIONS and --inspect. If either variable worked,
+// the probe would run and leave its mark; --inspect would print "Debugger
+// listening". With them off Matko just starts (in a throwaway folder) and is
+// closed after a few seconds.
+{
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'matko-fuses-'))
+  const mark = path.join(folder, 'probe-ran')
+  const probe = path.join(folder, 'probe.cjs')
+  fs.writeFileSync(probe, `require('node:fs').writeFileSync(${JSON.stringify(mark)}, 'ran'); process.exit(0)\n`)
+  const child = spawn(packaged.executable, [probe, '--inspect=0', `--user-data-dir=${path.join(folder, 'data')}`], {
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', NODE_OPTIONS: `--require ${probe}` },
+    stdio: ['ignore', 'ignore', 'pipe'],
+  })
+  let stderr = ''
+  child.stderr.on('data', (chunk) => (stderr += chunk))
+  const exited = new Promise((resolve) => child.on('exit', resolve))
+  await Promise.race([exited, new Promise((resolve) => setTimeout(resolve, 8_000))])
+  if (child.exitCode === null) {
+    child.kill()
+    await exited
+  }
+  if (fs.existsSync(mark)) fail('ran a script through ELECTRON_RUN_AS_NODE or NODE_OPTIONS: the fuses are not set')
+  else if (/Debugger listening/.test(stderr)) fail('opened the --inspect debugger: the fuse is not set')
+  else console.log('✔ ignores ELECTRON_RUN_AS_NODE, NODE_OPTIONS and --inspect (fuses)')
+  fs.rmSync(folder, { force: true, recursive: true })
 }
 
 console.log(process.exitCode ? '\nPackaged check failed.' : '\nPackaged check passed.')

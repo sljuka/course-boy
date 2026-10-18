@@ -29,12 +29,15 @@ type LessonOption = { id: string; sectionTitle: string; title: string };
 export function LessonLinkDialog({
   courseId,
   locale,
+  onClosed,
   onOpenChange,
   onPick,
   open,
 }: {
   courseId: string;
   locale: Locale;
+  // Once it has finished closing (picked or not): where focus goes back.
+  onClosed: () => void;
   onOpenChange: (open: boolean) => void;
   onPick: (link: PickedLessonLink) => void;
   open: boolean;
@@ -87,8 +90,17 @@ export function LessonLinkDialog({
   }
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="w-[min(30rem,calc(100vw-2rem))]" data-testid="lesson-link-dialog">
+    <Dialog onOpenChange={onOpenChange} onOpenChangeComplete={(isOpen) => !isOpen && onClosed()} open={open}>
+      {/* `finalFocus={false}`: the editor takes focus back itself, in
+          `onClosed`, once the dialog has finished closing (before that, its
+          focus trap keeps focus in). Left to the dialog, focus went back to
+          the toolbar button that opened it, gone by then, and what the
+          teacher typed next was lost. */}
+      <DialogContent
+        className="w-[min(30rem,calc(100vw-2rem))]"
+        data-testid="lesson-link-dialog"
+        finalFocus={false}
+      >
         <DialogHeader>
           <DialogTitle>{t("lessonLink.title")}</DialogTitle>
           <DialogDescription>{t("lessonLink.description")}</DialogDescription>

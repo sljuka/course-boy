@@ -1639,6 +1639,14 @@ ipcMain.handle('sharing:list-imports', (): RunningImport[] => profile.courseShar
 // clash.
 const PROGRAM_ASSET_HOST_PREFIX = 'program-'
 
+// Every asset answer allows any origin: the window (a `file://` page) reads a
+// video's first frame into a canvas to print it (use-video-print-frames.ts),
+// and with the newer Chromium (seen moving Electron 30 → 44) a
+// `matko-asset://` video counts as another origin, so without this the canvas
+// is "tainted" and can't be read. Only Matko's own window can reach this
+// scheme, and it shows every asset anyway.
+const ASSET_CORS_HEADERS = { 'Access-Control-Allow-Origin': '*' } as const
+
 async function handleProgramAssetRequest(requestUrl: URL): Promise<Response> {
   const asset = await resolveProgramAsset(
     requestUrl.hostname.slice(PROGRAM_ASSET_HOST_PREFIX.length),
@@ -1649,6 +1657,7 @@ async function handleProgramAssetRequest(requestUrl: URL): Promise<Response> {
   const fileResponse = await net.fetch(pathToFileURL(asset.filePath).toString())
   const headers = new Headers(fileResponse.headers)
   headers.set('Content-Type', asset.mimeType)
+  headers.set('Access-Control-Allow-Origin', ASSET_CORS_HEADERS['Access-Control-Allow-Origin'])
   return new Response(fileResponse.body, { headers, status: fileResponse.status })
 }
 
@@ -1725,6 +1734,7 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
 
           return new Response(buffer, {
             headers: {
+              ...ASSET_CORS_HEADERS,
               'Accept-Ranges': 'bytes',
               'Content-Length': String(chunkSize),
               'Content-Range': `bytes ${start}-${end}/${totalSize}`,
@@ -1746,6 +1756,7 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
       const responseHeaders = new Headers(fileResponse.headers)
       responseHeaders.set('Content-Type', mimeType)
       responseHeaders.set('Accept-Ranges', 'bytes')
+      responseHeaders.set('Access-Control-Allow-Origin', ASSET_CORS_HEADERS['Access-Control-Allow-Origin'])
 
       return new Response(fileResponse.body, {
         headers: responseHeaders,

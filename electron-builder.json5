@@ -6,6 +6,22 @@
   // read inside an asar archive, and the OS can't run the `bare` binary from one.
   "asar": false,
   "productName": "Matko",
+  // Electron's fuses (SLJ-152): switches in the Electron program itself, set
+  // here when packaging, that nothing can turn back on at run time. Off: running
+  // the app as plain Node (ELECTRON_RUN_AS_NODE), loading a script through
+  // NODE_OPTIONS, and the --inspect debugger: with any of them, a program on the
+  // computer (or a crafted launch argument, SLJ-151) could run its own code as
+  // Matko. Matko uses none of them: the P2P worker runs in Bare, not Electron
+  // as Node. Development (`npm run dev`) is unaffected. The asar fuses stay off
+  // with asar. `npm run check:packaged` checks they hold.
+  "electronFuses": {
+    "runAsNode": false,
+    "enableNodeOptionsEnvironmentVariable": false,
+    "enableNodeCliInspectArguments": false,
+    // Flipping a fuse changes the program, which voids the ad-hoc signature
+    // Electron ships with on macOS; Apple Silicon won't start it unsigned.
+    "resetAdHocDarwinSignature": true
+  },
   // `matko://` links (SLJ-8, SLJ-60) open the app: the macOS Info.plist, the
   // Windows installer's registry entries, and the Linux packages' desktop
   // entry. The app also registers at startup (electron/app-link-intake.ts),

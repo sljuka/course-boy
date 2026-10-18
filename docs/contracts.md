@@ -226,6 +226,11 @@ filename containing `/`, `\`, or `..` via `resolveAssetFilename()` in
 filesystem, and then serving only a regular file whose real path (symlinks resolved) is
 inside that `assets/` folder (`resolveAssetInside` in
 [electron/asset-path.ts](../electron/asset-path.ts:1), SLJ-150; program images too).
+Every answer carries `Access-Control-Allow-Origin: *`, and lesson videos load with
+`crossOrigin="anonymous"` (`use-video-print-frames.ts`): the window, a `file://` page,
+reads a video's first frame into a canvas to print it, and the newer Chromium treats a
+`matko-asset://` video as another origin. Without either side, the canvas is "tainted",
+the frame can't be read, and the video prints as an empty box.
 
 Asset filenames are **content-addressed**: `<slug-of-original-name>-<first 16 hex of the
 file's sha256>.<ext>` (`createAssetFilename`). Assets are never edited after upload, so

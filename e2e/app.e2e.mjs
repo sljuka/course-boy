@@ -1808,13 +1808,17 @@ describe('links to course content', () => {
       .locator(`a[href="matko://course/${ids.other.courseId}/lesson/${ids.other.lessonId}"]`, { hasText: /^far$/ })
       .waitFor()
 
-    // BlockNote's own link field (⌘K) keeps a typed `matko://` link as it is.
-    const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
+    // BlockNote's own link field (its link button; ⌘K opens the same) keeps a
+    // typed `matko://` link as it is. Typed once the cursor is back in the
+    // editor: it takes focus back when the picker has finished closing.
+    await page.waitForFunction(() => document.activeElement?.classList.contains('bn-editor'))
     await page.keyboard.press('End')
     await page.keyboard.type(' typed')
     for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowLeft')
-    await page.keyboard.press(`${modifier}+k`)
-    await page.keyboard.type(`matko://lesson/${ids.targetId}`)
+    await page.locator('[data-test="createLink"]').click()
+    const linkField = page.locator('.bn-form-popover input').first()
+    await linkField.waitFor()
+    await linkField.fill(`matko://lesson/${ids.targetId}`)
     await page.keyboard.press('Enter')
     await editor.locator(`a[href="matko://lesson/${ids.targetId}"]`, { hasText: /^typed$/ }).waitFor()
 
@@ -2312,9 +2316,10 @@ describe('lessons from a newer app version', () => {
     })
     expect(await bodyText(page)).toContain('Content from a newer version of Matko')
 
-    // Type at the end of the lesson so autosave writes it back to disk.
-    await page.click('.bn-editor')
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+End')
+    // Type at the end of the lesson's last paragraph so autosave writes it
+    // back to disk. Clicked in that paragraph, as a person would: the middle
+    // of the editor is the unknown block, which can't be edited.
+    await page.locator('.bn-editor').getByText('Text after the unknown block.').click()
     await page.keyboard.press('End')
     await page.keyboard.type(' Edited.')
     const saved = await expect

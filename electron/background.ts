@@ -33,9 +33,11 @@ export function isStartingHidden(): boolean {
   return process.argv.includes('--hidden') || (process.platform === 'darwin' && app.getLoginItemSettings().wasOpenedAtLogin)
 }
 
+// Starting hidden: `--hidden` on Windows; on macOS, `wasOpenedAtLogin`
+// (Electron dropped `openAsHidden`, which macOS 13+ ignored anyway).
 export function setOpenAtLogin(openAtLogin: boolean): void {
   if (!isBackgroundSupported) return
-  app.setLoginItemSettings({ args: ['--hidden'], openAsHidden: true, openAtLogin })
+  app.setLoginItemSettings({ args: ['--hidden'], openAtLogin })
 }
 
 // The tray icon: a target (the app's "shared" mark), drawn here so nothing

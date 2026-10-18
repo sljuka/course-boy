@@ -121,11 +121,11 @@ function DocumentBlockNoteEditor({
     refreshMnemonicDecorations(editor);
   }, [editor, mnemonics]);
 
-  // The editor keeps its selection while the picker has focus.
+  // The editor keeps its selection while the picker has focus; it takes
+  // focus back once the picker has closed (`onClosed`).
   function insertLessonLink({ href, title }: PickedLessonLink) {
     const mode = lessonLinkMode;
     setLessonLinkMode(null);
-    editor.focus();
     editor.createLink(href, mode === "insert" ? title : undefined);
   }
 
@@ -186,10 +186,9 @@ function DocumentBlockNoteEditor({
       <LessonLinkDialog
         courseId={courseId}
         locale={activeLocale}
+        onClosed={() => editor.focus()}
         onOpenChange={(open) => {
-          if (open) return;
-          setLessonLinkMode(null);
-          editor.focus();
+          if (!open) setLessonLinkMode(null);
         }}
         onPick={insertLessonLink}
         open={lessonLinkMode !== null}

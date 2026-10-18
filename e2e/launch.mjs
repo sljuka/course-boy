@@ -7,7 +7,10 @@
 // Plain .mjs on purpose: it stays out of `tsconfig.json#include` (["src", "electron"])
 // so the test harness never affects `npm run typecheck`.
 
-import { _electron as electron } from 'playwright-core'
+import { _electron as electron, chromium } from 'playwright-core'
+import { spawn } from 'node:child_process'
+import net from 'node:net'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import fs from 'node:fs'
 
@@ -17,13 +20,11 @@ export const APP_DIR = path.resolve(import.meta.dirname, '..')
 export const INTERACTIVE_SELECTOR =
   'button, a, input, textarea, select, [role="button"], [role="option"], [role="combobox"], [role="tab"], [role="menuitem"], [role="radio"]'
 
+// The Electron program, from the `electron` package: since Electron 43 it
+// isn't downloaded at `npm install` any more but the first time it's asked
+// for, which `require('electron')` does.
 export function electronBinary() {
-  const base = path.join(APP_DIR, 'node_modules/electron/dist')
-  return process.platform === 'darwin'
-    ? path.join(base, 'Electron.app/Contents/MacOS/Electron')
-    : process.platform === 'win32'
-      ? path.join(base, 'electron.exe')
-      : path.join(base, 'electron')
+  return createRequire(import.meta.url)('electron')
 }
 
 /**
@@ -58,7 +59,11 @@ export async function launchApp({
   fresh = true,
   timeout = 60_000,
   // A packaged app's executable (see scripts/check-packaged.mjs). It carries its
-  // own code, so no repo path is passed and no dev build is needed.
+  // own code, so no repo path is passed and no dev build is needed. Driven
+  // through Chromium's DevTools port, not Playwright's usual --inspect: the
+  // packaged app's fuses turn --inspect off (electron-builder.json5), so the
+  // build checked is the one that ships. Then there's a `page` but no `app`
+  // (main can't be evaluated).
   packagedExecutable = null,
   // Extra environment variables for the app, e.g. MATKO_DHT_BOOTSTRAP to keep a
   // sharing test on a local DHT testnet (see e2e/sharing-suite.mjs).
@@ -84,25 +89,20 @@ export async function launchApp({
   const appArgs = [`--user-data-dir=${userData}`, ...(profile ? [`--profile=${profile}`] : [])]
   const appEnv = { ...process.env, ...env }
 
-  const app = await electron.launch(
-    packagedExecutable
-      ? {
-          executablePath: packagedExecutable,
-          args: [...appArgs, ...args],
-          env: appEnv,
-          timeout,
-        }
-      : {
-          executablePath: electronBinary(),
-          // `args` after the app's folder: Electron takes the first argument
-          // that isn't a flag as the folder (a `matko://` link would be it);
-          // flags are read wherever they are.
-          args: [...appArgs, APP_DIR, ...args],
-          cwd: APP_DIR,
-          env: appEnv,
-          timeout,
-        },
-  )
+  if (packagedExecutable) {
+    return launchPackagedApp({ args: [...appArgs, ...args], dataDir, env: appEnv, executable: packagedExecutable, timeout, userData })
+  }
+
+  const app = await electron.launch({
+    executablePath: electronBinary(),
+    // `args` after the app's folder: Electron takes the first argument
+    // that isn't a flag as the folder (a `matko://` link would be it);
+    // flags are read wherever they are.
+    args: [...appArgs, APP_DIR, ...args],
+    cwd: APP_DIR,
+    env: appEnv,
+    timeout,
+  })
 
   // Keeps the display and the computer awake while the app runs. A run is
   // often left alone, and once the display turns off, macOS no longer takes
@@ -136,6 +136,56 @@ export async function launchApp({
     errors,
     close: () => app.close().catch(() => {}),
   }
+}
+
+// The packaged app, connected to over Chromium's DevTools port: one picked
+// here, free, and connected to once it answers (never read from the app's
+// output, which a packaged Windows app may not write).
+async function launchPackagedApp({ args, dataDir, env, executable, timeout, userData }) {
+  const port = await freePort()
+  const child = spawn(executable, [`--remote-debugging-port=${port}`, ...args], { env, stdio: 'ignore' })
+  const exited = new Promise((resolve) => child.on('exit', resolve))
+  const deadline = Date.now() + timeout
+  let browser = null
+  while (!browser) {
+    if (child.exitCode !== null) throw new Error(`The packaged app exited (${child.exitCode}) before its DevTools port answered.`)
+    if (Date.now() > deadline) {
+      child.kill()
+      throw new Error(`The packaged app's DevTools port ${port} didn't answer within ${timeout} ms.`)
+    }
+    browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, { timeout: 2_000 }).catch(() => null)
+    if (!browser) await new Promise((resolve) => setTimeout(resolve, 250))
+  }
+  const context = browser.contexts()[0]
+  const page = context.pages()[0] ?? (await context.waitForEvent('page', { timeout }))
+  await page.waitForFunction(() => (document.getElementById('root')?.childElementCount ?? 0) > 0, null, { timeout: 30_000 })
+
+  return {
+    app: null,
+    page,
+    userData,
+    dataDir,
+    errors: [],
+    close: async () => {
+      await browser.close().catch(() => {})
+      if (child.exitCode === null) {
+        child.kill()
+        await exited
+      }
+    },
+  }
+}
+
+// A port nothing listens on right now.
+function freePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.on('error', reject)
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address()
+      server.close(() => resolve(port))
+    })
+  })
 }
 
 /** Everything a user could interact with, in a stable order. */

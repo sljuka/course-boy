@@ -5,7 +5,7 @@ sharing courses — not just a local course player. Courses live on disk today; 
 architecture is being taken peer-to-peer. Written to be maintained by outside
 contributors after open sourcing, so favour clarity and explicitness over cleverness.
 
-Stack: Electron 30 + Vite 5 + React 19 + TypeScript, Tailwind 4 with shadcn/base-ui
+Stack: Electron 44 + Vite 5 + React 19 + TypeScript, Tailwind 4 with shadcn/base-ui
 primitives, TanStack Query, i18next, `electron-store` for preferences, course packages as
 files on disk.
 
@@ -32,8 +32,16 @@ app). Run it when you touch `electron/`, the preload bridge, onboarding, or i18n
 `check:packaged` (~1 min) builds an unpacked, unsigned app into `release/` — a local
 build, not a release — and checks what only packaging can break: files the app reads from
 its own folder (`workers/`, `courses/`, `presets/`), asar staying off, and the Bare worker
-starting outside the repo. Run it when you touch `electron-builder.json5`, dependencies,
-the worker, or anything read from `APP_ROOT`.
+starting outside the repo, and Electron's fuses (below). Run it when you touch
+`electron-builder.json5`, dependencies, the worker, or anything read from `APP_ROOT`.
+
+Release builds have Electron's **fuses** set (`electronFuses` in `electron-builder.json5`,
+SLJ-152): the packaged program ignores `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and
+`--inspect`, so nothing can run its own code as Matko through them. Development is
+unaffected. Playwright normally drives Electron through `--inspect`, so the packaged
+check connects over Chromium's DevTools port instead (`launchApp({ packagedExecutable })`),
+with a `page` but no `app`. Since Electron 43 its program isn't downloaded at
+`npm install` but on first use (`require('electron')`, which `e2e/launch.mjs` calls).
 
 Release builds come from `.github/workflows/release.yml`, never from a laptop: it builds on
 one runner per OS (macOS arm64 and x64, Windows x64, Linux x64), because the Bare worker's

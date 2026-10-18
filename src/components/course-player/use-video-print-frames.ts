@@ -35,6 +35,12 @@ export function useVideoPrintFrames(containerRef: RefObject<HTMLElement | null>,
     function watch(video: HTMLVideoElement) {
       if (video.dataset.printFrame) return;
       video.dataset.printFrame = "pending";
+      // A `matko-asset://` video is another origin to the window, so its frame
+      // can only be read into the canvas when it's loaded with CORS (the asset
+      // handler in electron/main.ts allows it). Set before the listeners below,
+      // then reloaded: the setting only applies to a new load.
+      const needsCors = video.crossOrigin === null;
+      if (needsCors) video.crossOrigin = "anonymous";
       // A loaded video hasn't necessarily drawn a frame yet (only metadata is
       // preloaded, and a frame read too early is black): seek to the start and
       // capture once a frame has really been presented.
@@ -56,7 +62,8 @@ export function useVideoPrintFrames(containerRef: RefObject<HTMLElement | null>,
         video.removeEventListener("seeked", onSeeked);
         video.removeEventListener("loadedmetadata", onMetadata);
       });
-      if (video.readyState >= 1) onMetadata();
+      if (needsCors) video.load();
+      else if (video.readyState >= 1) onMetadata();
     }
 
     container.querySelectorAll("video").forEach(watch);
