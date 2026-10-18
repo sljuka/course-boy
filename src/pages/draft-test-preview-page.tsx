@@ -88,8 +88,6 @@ export function DraftTestPreviewPage() {
       isPreview: true,
       isSectionIntro: false,
       moveToNextStep: closePreview,
-      progressCurrent: 1,
-      progressTotal: 1,
       sectionTitle: section?.title ?? "",
       status: "ready",
     };

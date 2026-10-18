@@ -48,6 +48,8 @@ type CourseLayoutOutletContext = {
   courseDescription: string;
   // Graded tests' grade bands (SLJ-135); null: the defaults.
   courseGradeBands: GradeBand[] | null;
+  // Students can open the course index in the player (SLJ-158).
+  courseIndex: boolean;
   courseSections: CourseSectionPreview[];
   courseTitle: string;
   defaultLocale: Locale;
@@ -299,6 +301,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
                     courseDetailsQuery.data?.descriptiveTags ?? [],
                   courseDescription,
                   courseGradeBands: courseDetailsQuery.data?.gradeBands ?? null,
+                  courseIndex: courseDetailsQuery.data?.courseIndex ?? true,
                   courseSections: courseDetailsQuery.data?.sections ?? [],
                   courseTitle,
                   defaultLocale,

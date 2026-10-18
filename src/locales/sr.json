@@ -96,7 +96,6 @@
     "dismissPrintHint": "Zatvori savet za štampu",
     "previewBadge": "Pregled",
     "previewDocument": "Pregledaj dokument",
-    "progress": "Lekcija {{current}} od {{total}}",
     "printHintBody": "Možeš da odštampaš ovaj test, rešiš ga olovkom na papiru, pa zatim ovde uneseš odgovore da proveriš da li su tačni.",
     "printHintTitle": "Više ti odgovara papir? Prvo odštampaj test.",
     "printNameField": "Polje za ime",
@@ -734,7 +733,8 @@
       "defaultLocale": "Izmenjen glavni jezik",
       "serbianScript": "Izmenjeno generisanje ćirilice i latinice",
       "mnemonics": "Promenjene mnemotehnike",
-      "gradeBands": "Izmenjeni opsezi ocena"
+      "gradeBands": "Izmenjeni opsezi ocena",
+      "courseIndex": "Promenjeno da li učenici mogu da otvore sadržaj kursa"
     },
     "language": {
       "added": "Dodat jezik: {{language}}",
@@ -1423,7 +1423,11 @@
     "atLeast": "Najmanje {{count}}",
     "none": "Trenutno niko nije povezan",
     "whyLabel": "Zašto „najmanje“?",
-    "why": "Ovde se broje samo računari koji su trenutno povezani sa ovim. Većina ga dobija jedni od drugih, pa je na mreži obično više ljudi nego što ovde piše."
+    "why": {
+      "course": "Broj uređaja koji su trenutno povezani sa ovim uređajem radi razmene fajlova ovog kursa. To nije broj svih uređaja koji su sada na kursu: on može biti veći, jer se uređaji povezuju i međusobno, bez ovog uređaja.",
+      "program": "Broj uređaja koji su trenutno povezani sa ovim uređajem radi razmene fajlova ovog programa. To nije broj svih uređaja koji sada imaju program: on može biti veći, jer se uređaji povezuju i međusobno, bez ovog uređaja.",
+      "channel": "Broj uređaja koji su trenutno povezani sa ovim uređajem radi razmene fajlova ovog kanala. To nije broj svih uređaja koji sada prate kanal: on može biti veći, jer se uređaji povezuju i međusobno, bez ovog uređaja."
+    }
   },
   "lessonLink": {
     "title": "Veza ka lekciji",
@@ -1435,5 +1439,12 @@
     "noLessons": "Ovaj kurs još nema lekcija.",
     "noMatch": "Nema pronađenih lekcija.",
     "slashSubtext": "Veza koja otvara lekciju ovog ili drugog kursa"
+  },
+  "courseIndex": {
+    "title": "Sadržaj kursa",
+    "toggle": "Prikaži ili sakrij sadržaj kursa",
+    "lessonTest": "Test",
+    "settingLabel": "Učenici mogu da otvore sadržaj kursa",
+    "settingDescription": "Spisak sekcija, lekcija i testova kursa pored svake lekcije, sa napretkom, za prelazak na drugu. Isključeno: učenici prolaze kroz kurs sa stranice kursa."
   }
 }

@@ -38,12 +38,16 @@ import {
   ComboboxList,
   ComboboxValue,
 } from "@/components/ui/combobox";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
+  FieldContent,
+  FieldDescription,
   FieldGroup,
   FieldLabel,
   FieldLegend,
   FieldSet,
+  FieldTitle,
 } from "@/components/ui/field";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Input } from "@/components/ui/input";
@@ -97,6 +101,8 @@ import { GradeBandsEditor } from "@/components/grade-bands-editor";
 
 type CourseMetadataDraft = {
   contentRating: ContentRating;
+  // Students can open the course index (SLJ-158).
+  courseIndex: boolean;
   descriptiveTags: CourseTagDefinition[];
   // Null: the defaults (SLJ-135).
   gradeBands: GradeBand[] | null;
@@ -120,6 +126,7 @@ export function CourseMetadataEditor({
   contentRating,
   courseGradeBands,
   courseId,
+  courseIndex,
   courseSections,
   defaultLocale,
   descriptiveTags,
@@ -131,6 +138,7 @@ export function CourseMetadataEditor({
   contentRating: ContentRating;
   courseGradeBands: GradeBand[] | null;
   courseId: string;
+  courseIndex: boolean;
   courseSections: CourseSectionPreview[];
   defaultLocale: Locale;
   descriptiveTags: CourseTagDefinition[];
@@ -147,6 +155,7 @@ export function CourseMetadataEditor({
   const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
   const [seed] = useState<CourseMetadataDraft>(() => ({
     contentRating,
+    courseIndex,
     descriptiveTags,
     gradeBands: courseGradeBands,
     localizedCourse,
@@ -178,6 +187,7 @@ export function CourseMetadataEditor({
     (value: CourseMetadataDraft): UpdateCourseDraftMetadataInput => ({
       contentRating: value.contentRating,
       courseId,
+      courseIndex: value.courseIndex,
       defaultLocale: value.supportedLocales.includes(defaultLocale)
         ? defaultLocale
         : (value.supportedLocales[0] ?? defaultLocale),
@@ -601,6 +611,24 @@ export function CourseMetadataEditor({
                 </SelectContent>
               </Select>
             </Field>
+
+            {/* SLJ-158: on by default; off hides the index in the player. */}
+            <FieldLabel htmlFor="draft-course-index">
+              <Field orientation="horizontal">
+                <Checkbox
+                  checked={draft.courseIndex}
+                  data-testid="course-index-setting"
+                  id="draft-course-index"
+                  onCheckedChange={(checked) =>
+                    setDraft((current) => ({ ...current, courseIndex: checked === true }))
+                  }
+                />
+                <FieldContent>
+                  <FieldTitle>{t("courseIndex.settingLabel")}</FieldTitle>
+                  <FieldDescription>{t("courseIndex.settingDescription")}</FieldDescription>
+                </FieldContent>
+              </Field>
+            </FieldLabel>
 
             <Accordion>
               <AccordionItem value="grade-bands">

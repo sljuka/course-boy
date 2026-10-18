@@ -6,7 +6,8 @@ import { createContext, useContext, type ReactNode } from "react";
 // the left one before its scrolling body and the right one after it, with
 // their toggles at the start and end of the page's action bar.
 //
-// - left: the course editor's explorer.
+// - left: the course editor's explorer, or the player's course index
+//   (SLJ-158; it provides its own).
 // - right: the course editor's Versions (cut versions, revert, publish), or
 //   the course page's Details (id, version, dates; it provides its own).
 //
@@ -25,6 +26,10 @@ export type PageSidePanelValue = {
   onOpenChange: (open: boolean) => void;
   // Inline (wide windows) only; a drawer starts closed and never changes it.
   open: boolean;
+  // Still shown in full screen, where every other panel is hidden: the
+  // player's course index (SLJ-158), which a student reading full screen
+  // still moves through the course with.
+  keepsInFullScreen?: boolean;
   toggleLabel: string;
 };
 

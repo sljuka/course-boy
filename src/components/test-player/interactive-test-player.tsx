@@ -105,6 +105,10 @@ export function InteractiveTestPlayer({
   }, [currentIndex, isWrongAnswer, result]);
 
   function handlePrimaryAction() {
+    // Enter too, not only the (disabled) button: after a wrong answer a
+    // practice test waits for a new answer or the correct one shown.
+    if (isPrimaryActionDisabled) return;
+
     if (graded) {
       if (isLast) onFinishGradedTest?.({ confirm: false });
       else onIndexChange(currentIndex + 1);
@@ -180,6 +184,8 @@ export function InteractiveTestPlayer({
         }
 
         event.preventDefault();
+        // Holding Enter repeats it: only the first press acts (SLJ-159).
+        if (event.repeat) return;
         handlePrimaryAction();
       }}
     >
@@ -271,7 +277,14 @@ export function InteractiveTestPlayer({
         )}
         <Button
           disabled={isPrimaryActionDisabled}
-          onClick={handlePrimaryAction}
+          // A double click is one press (SLJ-159): the button's meaning
+          // changes with the first click (Check answer → Continue), so its
+          // second click (`detail` 2, by the system's double-click speed)
+          // would move on, then check the next question empty.
+          onClick={(event) => {
+            if (event.detail > 1) return;
+            handlePrimaryAction();
+          }}
           size="lg"
           type="button"
           variant={graded ? (isLast ? "default" : "secondary") : result.isCorrect ? "success" : "secondary"}

@@ -77,8 +77,6 @@ export function DraftLessonPreviewPage() {
       // preview of the lesson's attached test would need that test
       // editor's own in-memory state, which this page doesn't have.
       moveToNextStep: closePreview,
-      progressCurrent: 1,
-      progressTotal: 1,
       sectionTitle: section?.title ?? "",
       status: "ready",
     };

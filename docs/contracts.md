@@ -543,6 +543,16 @@ written. Cyrillic → Latin is exact; Latin → Cyrillic splits a few known digr
 (`LATIN_DIGRAPH_EXCEPTIONS`, e.g. "nadživeti" → надживети). The setting is course
 content, so changing it counts as a change since the last cut.
 
+**`courseIndex` (SLJ-158)** is an optional `course.json` boolean: whether students can
+open the course index beside a lesson in the player. Only `false` is ever written (the
+teacher switched it off); missing means on, which is how every course before it works,
+so readers must treat anything but `false` as on (`courseIndex !== false` in
+`course-registry.ts`, exposed as `CourseDetails.courseIndex`). The manifest validator
+rejects a non-boolean. It's course content: changing it counts as a change since the last
+cut (the Commit list says so) and reaches students with the next published version. It
+only hides the index; it doesn't make students go in order (the course page still opens
+any item).
+
 **`mnemonics` (SLJ-37)** is an optional field inside each language's entry in
 `course.json`:
 `locales[locale].mnemonics: { term, mnemonic, aliases?, showFirst? }[]`. Missing means
@@ -788,8 +798,10 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   `src/lib/use-page-side-panel.ts`): `left` is the explorer, `right` the course's
   Versions. `<Page>` renders each beside its `PageBody` (a drawer on narrow windows,
   see below) and its toggle at that end of the page's second row, the `PageActionBar` — the first
-  row (`PageToolbar`) is breadcrumbs only. Each panel's open state persists in the
-  preferences store (`explorerPanel`, `versionsPanel`), both validated in `main.ts` by
+  row (`PageToolbar`) is breadcrumbs only. The course page (Details, right) and the
+  players (the course index, left, SLJ-158: `CourseIndexSidePanel`) provide their own.
+  Each panel's open state persists in the preferences store (`explorerPanel`,
+  `versionsPanel`, `courseInfoPanel`, `courseIndexPanel`), all validated in `main.ts` by
   `parseExplorerPanelPreference`; a new panel needs its key in `UserPreferences` on
   both sides and in that validation.
   Each editor page draws its own `<Page>`, so a panel's content would be mounted anew with
@@ -900,7 +912,9 @@ and **only the page's `PageBody` scrolls** — the window never does. Rules that
   document editor's "Full screen", ⌘⇧F / Ctrl+Shift+F) puts the window in full screen and
   hides the title bar, the app sidebar, the page's toolbars and side panels, and the page
   card's frame (`PagePanel immersive`); the status bar stays. Each of these reads the mode
-  itself, so a new piece of frame chrome must too, or it shows in full screen. Esc
+  itself, so a new piece of frame chrome must too, or it shows in full screen. A side
+  panel can stay with `keepsInFullScreen` (the player's course index, SLJ-158), and a
+  page can keep its action bar with `keepsActionBarInFullScreen` (the players). Esc
   leaves it (Electron doesn't end a page's full screen on Esc by itself), as does
   closing the editor.
 

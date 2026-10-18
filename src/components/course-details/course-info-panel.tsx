@@ -65,7 +65,7 @@ export function CourseInfoCard({
         )}
         {sharing?.peers !== null && sharing?.peers !== undefined && (
           <PropertyRow label={t("courseInfo.connectedNow")}>
-            <PeersCount count={sharing.peers} testId="course-info-peers" variant="value" />
+            <PeersCount count={sharing.peers} subject="course" testId="course-info-peers" variant="value" />
           </PropertyRow>
         )}
         <PropertyRow label={t("courseInfo.languages")}>

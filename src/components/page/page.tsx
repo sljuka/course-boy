@@ -70,10 +70,16 @@ export function Page({
 }: PageProps) {
   const layoutBreadcrumbs = useLayoutBreadcrumbs();
   // Full screen: no toolbars (but the action bar, if the page keeps it) or
-  // side panels, the content at a reading width (see lib/immersive-mode.tsx).
+  // side panels (but one that `keepsInFullScreen`), the content at a reading
+  // width (see lib/immersive-mode.tsx).
   const { isImmersive } = useImmersiveMode();
   const layoutPanels = usePageSidePanels();
-  const panels = isImmersive ? {} : layoutPanels;
+  const panels = isImmersive
+    ? {
+        left: layoutPanels.left?.keepsInFullScreen ? layoutPanels.left : undefined,
+        right: layoutPanels.right?.keepsInFullScreen ? layoutPanels.right : undefined,
+      }
+    : layoutPanels;
   // Below the side panels' compact width they become drawers (sheets).
   const isMobile = useIsCompactSidePanels();
   const trail = breadcrumbs ?? layoutBreadcrumbs ?? undefined;

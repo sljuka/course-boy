@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { PeersCount } from "@/components/peers-count";
 import { ShareCodeFields } from "@/components/share-code-fields";
-import { useProgramSharingQuery } from "@/lib/program-queries";
+import { useProgramQuery, useProgramSharingQuery } from "@/lib/program-queries";
 
 // A program's code (what students type to get it, SLJ-32 phase 2), its
 // import link and a message to send (SLJ-8), each to copy, and how many peers
@@ -20,6 +20,8 @@ import { useProgramSharingQuery } from "@/lib/program-queries";
 export function ProgramCode({ programId }: { programId: string }) {
   const { t } = useTranslation();
   const { data: sharing } = useProgramSharingQuery(programId, { watchPeers: true });
+  // A channel is shared as a program (SLJ-31); the (?) names which.
+  const { data: program } = useProgramQuery(programId);
 
   if (!sharing) return null;
   if (!sharing.code) {
@@ -32,7 +34,7 @@ export function ProgramCode({ programId }: { programId: string }) {
       <ShareCodeFields code={code} codeLabel={t("programSharing.codeLabel")} testId="program-code" />
       {sharing.peers !== null && (
         <CardDescription data-testid="program-code-status">
-          <PeersCount count={sharing.peers} />
+          <PeersCount count={sharing.peers} subject={program?.kind === "channel" ? "channel" : "program"} />
         </CardDescription>
       )}
     </div>

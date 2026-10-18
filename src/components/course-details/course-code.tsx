@@ -51,7 +51,7 @@ export function CourseCode({ courseId }: { courseId: string }) {
               {sharing.peers !== null && (
                 <>
                   {" · "}
-                  <PeersCount count={sharing.peers} />
+                  <PeersCount count={sharing.peers} subject="course" />
                 </>
               )}
             </>

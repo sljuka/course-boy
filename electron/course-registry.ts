@@ -163,6 +163,7 @@ function isRawCourseManifest(value: unknown): value is RawCourseManifest {
     typeof manifest.builtin === "boolean" &&
     (typeof manifest.contentRating === "undefined" ||
       isContentRating(manifest.contentRating)) &&
+    (typeof manifest.courseIndex === "undefined" || typeof manifest.courseIndex === "boolean") &&
     typeof manifest.slug === "string" &&
     (typeof manifest.status === "undefined" || isCourseStatus(manifest.status)) &&
     Boolean(manifest.locales) &&
@@ -1356,6 +1357,7 @@ export async function getCourseDetails(
       previewItems,
     )),
     builtin: courseRecord.manifest.builtin,
+    courseIndex: courseRecord.manifest.courseIndex !== false,
     createdAt: courseRecord.manifest.createdAt ?? null,
     entrySectionId: sectionIds[0] ?? null,
     gradeBands: courseRecord.manifest.gradeBands ?? null,

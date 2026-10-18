@@ -3,6 +3,7 @@ import { Printer } from "lucide-react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+import { CourseIndexSidePanel } from "@/components/course-player/course-index-panel";
 import { CourseLessonContent } from "@/components/course-player/course-lesson-content";
 import { MnemonicsToggle } from "@/components/course-player/mnemonics-toggle";
 import { CoursePlayerActions } from "@/components/course-player/course-player-actions";
@@ -114,62 +115,59 @@ export function LessonPlayerView({
   );
 
   return (
-    <Page
-      breadcrumbs={buildPlayerBreadcrumbs(playerState, activeLesson.title)}
-      // No heading: the breadcrumbs say which course, section and lesson this
-      // is. Where the student is in the section (and that a teacher is only
-      // previewing) sits quietly in the action bar.
-      actionBarStart={
-        <div className="flex items-center gap-2">
-          {playerState.isPreview && <Badge variant="secondary">{t("courseDetails.previewBadge")}</Badge>}
-          {
-            // In preview the progress is synthetic (one fake section, "1 of 1"): skip it.
-            !playerState.isPreview && (
-              <CardDescription data-testid="lesson-progress">
-                {playerState.isSectionIntro
-                  ? t("courseDetails.sectionIntro")
-                  : t("courseDetails.progress", {
-                      current: playerState.progressCurrent,
-                      total: playerState.progressTotal,
-                    })}
-              </CardDescription>
-            )
-          }
-        </div>
-      }
-      actions={playerActions}
-      keepsActionBarInFullScreen
+    <CourseIndexSidePanel
+      courseId={playerState.courseId}
+      currentItemId={activeLesson.id}
+      isPreview={playerState.isPreview}
     >
-      <PrintDocumentHeader
-        courseTitle={playerState.courseTitle}
-        label={t("courseDetails.lessonLabel")}
-        show={printOptions.showHeader}
-        sectionTitle={playerState.sectionTitle}
-        title={activeLesson.title}
-      />
-      <CourseLessonContent
-        activeLesson={activeLesson}
-        courseId={playerState.courseId}
-        onContinueFromLesson={(lesson) => {
-          // Moving past a lesson or a section intro marks it done (SLJ-50);
-          // an intro shows Done on the course page but isn't counted in
-          // "N of M done" (it isn't one of the course's steps). A preview
-          // records nothing.
-          if (!playerState.isPreview) {
-            recordStepDone(playerState.courseId, lesson.id);
-          }
-          // A final test (SLJ-136) has exercises when anything in its pool does.
-          const hasTest = lesson.test?.includeCourseExercises
-            ? buildCourseExercisePool(lesson.test, playerState.courseTests).length > 0
-            : (lesson.test?.exercises.length ?? 0) > 0;
-          if (!hasTest) {
-            playerState.moveToNextStep();
-            return;
-          }
+      <Page
+        breadcrumbs={buildPlayerBreadcrumbs(playerState, activeLesson.title)}
+        // No heading: the breadcrumbs say which course, section and lesson this
+        // is. The action bar only says when it's a section's intro, or that a
+        // teacher is previewing. No "Lesson 3 of 9" counter: the course index
+        // (SLJ-158) shows where the student is.
+        actionBarStart={
+          <div className="flex items-center gap-2">
+            {playerState.isPreview && <Badge variant="secondary">{t("courseDetails.previewBadge")}</Badge>}
+            {!playerState.isPreview && playerState.isSectionIntro && (
+              <CardDescription data-testid="lesson-section-intro">{t("courseDetails.sectionIntro")}</CardDescription>
+            )}
+          </div>
+        }
+        actions={playerActions}
+        keepsActionBarInFullScreen
+      >
+        <PrintDocumentHeader
+          courseTitle={playerState.courseTitle}
+          label={t("courseDetails.lessonLabel")}
+          show={printOptions.showHeader}
+          sectionTitle={playerState.sectionTitle}
+          title={activeLesson.title}
+        />
+        <CourseLessonContent
+          activeLesson={activeLesson}
+          courseId={playerState.courseId}
+          onContinueFromLesson={(lesson) => {
+            // Moving past a lesson or a section intro marks it done (SLJ-50);
+            // an intro shows Done on the course page but isn't counted in
+            // "N of M done" (it isn't one of the course's steps). A preview
+            // records nothing.
+            if (!playerState.isPreview) {
+              recordStepDone(playerState.courseId, lesson.id);
+            }
+            // A final test (SLJ-136) has exercises when anything in its pool does.
+            const hasTest = lesson.test?.includeCourseExercises
+              ? buildCourseExercisePool(lesson.test, playerState.courseTests).length > 0
+              : (lesson.test?.exercises.length ?? 0) > 0;
+            if (!hasTest) {
+              playerState.moveToNextStep();
+              return;
+            }
 
-          navigate(buildLessonTestPath(playerState.courseId, lesson.id));
-        }}
-      />
-    </Page>
+            navigate(buildLessonTestPath(playerState.courseId, lesson.id));
+          }}
+        />
+      </Page>
+    </CourseIndexSidePanel>
   );
 }

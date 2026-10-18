@@ -236,6 +236,7 @@ type UserPreferences = {
   programView?: CourseListView
   versionsPanel?: ExplorerPanelPreference
   courseInfoPanel?: ExplorerPanelPreference
+  courseIndexPanel?: ExplorerPanelPreference
   showBundledCourses?: boolean
   useProgramThemes?: boolean
   startTestsInteractive?: boolean
@@ -886,6 +887,10 @@ ipcMain.handle(
 
     if (typeof preferences.courseInfoPanel === 'object' && preferences.courseInfoPanel !== null) {
       profile.preferencesStore.set('courseInfoPanel', parseExplorerPanelPreference(preferences.courseInfoPanel))
+    }
+
+    if (typeof preferences.courseIndexPanel === 'object' && preferences.courseIndexPanel !== null) {
+      profile.preferencesStore.set('courseIndexPanel', parseExplorerPanelPreference(preferences.courseIndexPanel))
     }
 
     if (typeof preferences.versionsPanel === 'object' && preferences.versionsPanel !== null) {

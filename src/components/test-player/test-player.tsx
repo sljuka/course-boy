@@ -13,6 +13,7 @@ import { CourseSpree } from "@/components/course-player/course-spree";
 import { CourseTestContent } from "@/components/course-player/course-test-content";
 import { PrintDocumentHeader } from "@/components/course-player/print-document-header";
 import { useCoursePlayer, type CoursePlayerReadyState } from "@/components/course-player/use-course-player";
+import { CourseIndexSidePanel } from "@/components/course-player/course-index-panel";
 import { Page } from "@/components/page/page";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -383,180 +384,175 @@ function TestPlayerContent({
   );
 
   return (
-    <Page
-      // No breadcrumbs in the test player (either mode): only the action bar,
-      // with the test's own controls — and, in interactive mode, the stepper.
-      header={
-        !isInteractiveMode &&
-        !isShowingResult && (
-          <PageHeader
-            className="print:hidden"
-            title={
-              <div className="flex items-center gap-2">
-                <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
-                {playerState.isPreview && (
-                  <Badge variant="secondary">{t("courseDetails.previewBadge")}</Badge>
-                )}
-              </div>
-            }
-            subtitle={
-              <div className="flex flex-col gap-1">
-                {activeItem.description && (
-                  <CardDescription className="text-base">
-                    {activeItem.description}
-                  </CardDescription>
-                )}
-                {/* The section/progress line is synthetic in preview (a single
-                    fake "Preview" section, always "1 of 1") — skip it there. */}
-                {!playerState.isPreview && (
-                  <CardDescription className="text-base">
-                    {playerState.sectionTitle}
-                    {" · "}
-                    {t("courseDetails.progress", {
-                      current: playerState.progressCurrent,
-                      total: playerState.progressTotal,
-                    })}
-                  </CardDescription>
-                )}
-              </div>
-            }
-          />
-        )
-      }
-      actions={toolbarActions}
-      keepsActionBarInFullScreen
-      // Interactive mode centres its one exercise in the page body's height.
-      className={isInteractiveMode ? "min-h-full" : undefined}
-      // Interactive mode: the course's spree in the corner (SLJ-134).
-      actionBarStart={
-        isInteractiveMode &&
-        !isGraded &&
-        !isShowingResult &&
-        !showsStartScreen && <CourseSpree best={spree.best} current={spree.current} />
-      }
-      // Interactive mode steps through one exercise at a time; its stepper
-      // sits centred in the action bar.
-      actionBarCenter={
-        isInteractiveMode &&
-        !isShowingResult &&
-        !showsStartScreen && (
-          <ExerciseStepper
-            answered={isGraded ? gradeAll().map((result) => result.isAnswered) : undefined}
-            currentIndex={currentExerciseIndex}
-            onSelectStep={setCurrentExerciseIndex}
-            reachedIndex={reachedExerciseIndex}
-            total={activeTestExercises.length}
-          />
-        )
-      }
-    >
-      <PrintDocumentHeader
-        courseTitle={playerState.courseTitle}
-        description={activeItem.description}
-        label={t("courseDetails.testLabel")}
-        show={printOptions.showHeader}
-        sectionTitle={playerState.sectionTitle}
-        title={activeItem.title}
-      />
-      <PrintFillInFields showDate={printOptions.showDateField} showName={printOptions.showNameField} />
-      <PromptMnemonicsContext.Provider value={allowsMnemonics ? shownMnemonics : NO_MNEMONICS}>
-        {gradedResult && isShowingSummary ? (
-          <GradedTestSummary
-            answers={exerciseAnswers}
-            exercises={activeTestExercises}
-            instances={activeTestInstances}
-            onBack={() => setIsShowingSummary(false)}
-            onContinue={playerState.moveToNextStep}
-            partialCredit={activeItem.test?.partialCredit === true}
-            results={gradedResult.results}
-          />
-        ) : gradedResult ? (
-          <GradedTestResult
-            bands={gradeBands}
-            isNewBest={gradedResult.isNewBest}
-            maxPoints={gradedResult.maxPoints}
-            onContinue={playerState.moveToNextStep}
-            onShowSummary={activeItem.test?.showSummary === false ? undefined : () => setIsShowingSummary(true)}
-            onTryAgain={tryGradedTestAgain}
-            points={gradedResult.points}
-            questionCount={activeTestExercises.length}
-          />
-        ) : practiceResult ? (
-          <PracticeTestResult
-            bands={gradeBands}
-            isPreview={playerState.isPreview}
-            onContinue={playerState.moveToNextStep}
-            onTryAgain={tryPracticeTestAgain}
-            result={practiceResult}
-          />
-        ) : showsStartScreen ? (
-          <TestStartScreen
-            description={activeItem.description}
-            graded={isGraded}
-            maxPoints={activeTestExercises.reduce((sum, exercise) => sum + exercisePoints(exercise), 0)}
-            onStart={() => setHasStarted(true)}
-            partialCredit={activeItem.test?.partialCredit === true}
-            questionCount={activeTestExercises.length}
-            title={activeItem.title}
-          />
-        ) : isInteractiveMode ? (
-          <InteractiveTestPlayer
-            activeTestExercises={activeTestExercises}
-            activeTestInstances={activeTestInstances}
-            allowShowAnswer={allowShowAnswer}
-            currentIndex={currentExerciseIndex}
-            exerciseAnswers={exerciseAnswers}
-            exerciseResults={exerciseResults}
-            graded={isGraded}
-            onContinueAfterExercise={finishPracticeTest}
-            onFinishGradedTest={finishGradedTest}
-            onIndexChange={setCurrentExerciseIndex}
-            onRevealAnswer={revealAnswer}
-            onSubmitExercise={submitSingleExercise}
-            onUpdateExerciseAnswer={updateExerciseAnswer}
-            revealedAnswers={revealedAnswers}
-          />
-        ) : (
-          <>
-            {isPrintHintVisible && (
-              <TestPlayerPrintHint
-                graded={isGraded}
-                onDismiss={() => setIsPrintHintVisible(false)}
-                onPrintOptionsChange={setPrintOptions}
-                printOptions={printOptions}
-              />
-            )}
-            <CourseTestContent
+    <CourseIndexSidePanel courseId={playerState.courseId} currentItemId={stepId} isPreview={playerState.isPreview}>
+      <Page
+        // No breadcrumbs in the test player (either mode): only the action bar,
+        // with the test's own controls — and, in interactive mode, the stepper.
+        header={
+          !isInteractiveMode &&
+          !isShowingResult && (
+            <PageHeader
+              className="print:hidden"
+              title={
+                <div className="flex items-center gap-2">
+                  <CardTitle size="lg">{playerState.courseTitle}</CardTitle>
+                  {playerState.isPreview && (
+                    <Badge variant="secondary">{t("courseDetails.previewBadge")}</Badge>
+                  )}
+                </div>
+              }
+              subtitle={
+                <div className="flex flex-col gap-1">
+                  {activeItem.description && (
+                    <CardDescription className="text-base">
+                      {activeItem.description}
+                    </CardDescription>
+                  )}
+                  {/* The section is synthetic in preview (a single fake
+                      "Preview" section) — skip it there. */}
+                  {!playerState.isPreview && (
+                    <CardDescription className="text-base">{playerState.sectionTitle}</CardDescription>
+                  )}
+                </div>
+              }
+            />
+          )
+        }
+        actions={toolbarActions}
+        keepsActionBarInFullScreen
+        // Interactive mode centres its one exercise in the page body's height.
+        className={isInteractiveMode ? "min-h-full" : undefined}
+        // Interactive mode: the course's spree in the corner (SLJ-134).
+        actionBarStart={
+          isInteractiveMode &&
+          !isGraded &&
+          !isShowingResult &&
+          !showsStartScreen && <CourseSpree best={spree.best} current={spree.current} />
+        }
+        // Interactive mode steps through one exercise at a time; its stepper
+        // sits centred in the action bar.
+        actionBarCenter={
+          isInteractiveMode &&
+          !isShowingResult &&
+          !showsStartScreen && (
+            <ExerciseStepper
+              answered={isGraded ? gradeAll().map((result) => result.isAnswered) : undefined}
+              currentIndex={currentExerciseIndex}
+              onSelectStep={setCurrentExerciseIndex}
+              reachedIndex={reachedExerciseIndex}
+              total={activeTestExercises.length}
+            />
+          )
+        }
+      >
+        <PrintDocumentHeader
+          courseTitle={playerState.courseTitle}
+          description={activeItem.description}
+          label={t("courseDetails.testLabel")}
+          show={printOptions.showHeader}
+          sectionTitle={playerState.sectionTitle}
+          title={activeItem.title}
+        />
+        <PrintFillInFields showDate={printOptions.showDateField} showName={printOptions.showNameField} />
+        <PromptMnemonicsContext.Provider value={allowsMnemonics ? shownMnemonics : NO_MNEMONICS}>
+          {gradedResult && isShowingSummary ? (
+            <GradedTestSummary
+              answers={exerciseAnswers}
+              exercises={activeTestExercises}
+              instances={activeTestInstances}
+              onBack={() => setIsShowingSummary(false)}
+              onContinue={playerState.moveToNextStep}
+              partialCredit={activeItem.test?.partialCredit === true}
+              results={gradedResult.results}
+            />
+          ) : gradedResult ? (
+            <GradedTestResult
+              bands={gradeBands}
+              isNewBest={gradedResult.isNewBest}
+              maxPoints={gradedResult.maxPoints}
+              onContinue={playerState.moveToNextStep}
+              onShowSummary={activeItem.test?.showSummary === false ? undefined : () => setIsShowingSummary(true)}
+              onTryAgain={tryGradedTestAgain}
+              points={gradedResult.points}
+              questionCount={activeTestExercises.length}
+            />
+          ) : practiceResult ? (
+            <PracticeTestResult
+              bands={gradeBands}
+              isPreview={playerState.isPreview}
+              onContinue={playerState.moveToNextStep}
+              onTryAgain={tryPracticeTestAgain}
+              result={practiceResult}
+            />
+          ) : showsStartScreen ? (
+            <TestStartScreen
+              description={activeItem.description}
+              graded={isGraded}
+              maxPoints={activeTestExercises.reduce((sum, exercise) => sum + exercisePoints(exercise), 0)}
+              onStart={() => setHasStarted(true)}
+              partialCredit={activeItem.test?.partialCredit === true}
+              questionCount={activeTestExercises.length}
+              title={activeItem.title}
+            />
+          ) : isInteractiveMode ? (
+            <InteractiveTestPlayer
               activeTestExercises={activeTestExercises}
               activeTestInstances={activeTestInstances}
               allowShowAnswer={allowShowAnswer}
+              currentIndex={currentExerciseIndex}
               exerciseAnswers={exerciseAnswers}
               exerciseResults={exerciseResults}
               graded={isGraded}
-              isTestPassed={isTestPassed}
               onContinueAfterExercise={finishPracticeTest}
               onFinishGradedTest={finishGradedTest}
+              onIndexChange={setCurrentExerciseIndex}
               onRevealAnswer={revealAnswer}
-              onSubmitExercise={submitExercise}
+              onSubmitExercise={submitSingleExercise}
               onUpdateExerciseAnswer={updateExerciseAnswer}
-              printAnswerStyle={printOptions.answerStyle}
-              printPoints={isGraded && printOptions.showPoints}
-              printExerciseHintStyle={printOptions.exerciseHintStyle}
               revealedAnswers={revealedAnswers}
-              showPrintDecorativeMedia={printOptions.showDecorativeMedia}
-              showPrintTestSeparators={printOptions.showTestSeparators}
-              testFeedback={testFeedback}
             />
-          </>
-        )}
-      </PromptMnemonicsContext.Provider>
-      <FinishGradedTestDialog
-        focusFinish={isFinishByEnter}
-        onConfirm={() => pendingFinish && completeGradedTest(pendingFinish)}
-        onOpenChange={(open) => !open && setPendingFinish(null)}
-        open={pendingFinish !== null}
-        unansweredCount={pendingFinish?.filter((result) => !result.isAnswered).length ?? 0}
-      />
-    </Page>
+          ) : (
+            <>
+              {isPrintHintVisible && (
+                <TestPlayerPrintHint
+                  graded={isGraded}
+                  onDismiss={() => setIsPrintHintVisible(false)}
+                  onPrintOptionsChange={setPrintOptions}
+                  printOptions={printOptions}
+                />
+              )}
+              <CourseTestContent
+                activeTestExercises={activeTestExercises}
+                activeTestInstances={activeTestInstances}
+                allowShowAnswer={allowShowAnswer}
+                exerciseAnswers={exerciseAnswers}
+                exerciseResults={exerciseResults}
+                graded={isGraded}
+                isTestPassed={isTestPassed}
+                onContinueAfterExercise={finishPracticeTest}
+                onFinishGradedTest={finishGradedTest}
+                onRevealAnswer={revealAnswer}
+                onSubmitExercise={submitExercise}
+                onUpdateExerciseAnswer={updateExerciseAnswer}
+                printAnswerStyle={printOptions.answerStyle}
+                printPoints={isGraded && printOptions.showPoints}
+                printExerciseHintStyle={printOptions.exerciseHintStyle}
+                revealedAnswers={revealedAnswers}
+                showPrintDecorativeMedia={printOptions.showDecorativeMedia}
+                showPrintTestSeparators={printOptions.showTestSeparators}
+                testFeedback={testFeedback}
+              />
+            </>
+          )}
+        </PromptMnemonicsContext.Provider>
+        <FinishGradedTestDialog
+          focusFinish={isFinishByEnter}
+          onConfirm={() => pendingFinish && completeGradedTest(pendingFinish)}
+          onOpenChange={(open) => !open && setPendingFinish(null)}
+          open={pendingFinish !== null}
+          unansweredCount={pendingFinish?.filter((result) => !result.isAnswered).length ?? 0}
+        />
+      </Page>
+    </CourseIndexSidePanel>
   );
 }

@@ -8,9 +8,9 @@ import {
 } from "@/lib/explorer-panel";
 
 // Side panels, each remembered across restarts under its own preferences key:
-// the course editor's explorer (left) and Versions (right), and the course
-// page's Details (right).
-type SidePanelKey = "courseInfoPanel" | "explorerPanel" | "versionsPanel";
+// the course editor's explorer (left) and Versions (right), the course page's
+// Details (right), and the player's course index (left, SLJ-158).
+type SidePanelKey = "courseIndexPanel" | "courseInfoPanel" | "explorerPanel" | "versionsPanel";
 
 // A side panel's state (open or closed). Updates are applied to the cache
 // immediately and persisted in the background.

@@ -35,8 +35,6 @@ export type CoursePlayerReadyState = {
   // progress ("Lesson 2 of 5") and labelled "Introduction" instead.
   isSectionIntro: boolean;
   moveToNextStep: () => void;
-  progressCurrent: number;
-  progressTotal: number;
   sectionTitle: string;
   status: "ready";
 };
@@ -185,9 +183,6 @@ export function useCoursePlayer({
     return { status: "missing" };
   }
 
-  // Intros aren't counted: progress is over lessons and tests.
-  const countedSteps = stepSequence.filter((entry) => !entry.isSectionIntro);
-
   return {
     activeStep: activeStepEntry,
     courseId,
@@ -198,8 +193,6 @@ export function useCoursePlayer({
     isPreview: false,
     isSectionIntro: activeStepEntry.isSectionIntro,
     moveToNextStep,
-    progressCurrent: countedSteps.findIndex((entry) => entry.item.id === activeStepEntry.item.id) + 1,
-    progressTotal: countedSteps.length,
     sectionTitle: activeStepEntry.sectionTitle,
     status: "ready",
   };

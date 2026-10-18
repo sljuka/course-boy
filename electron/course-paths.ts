@@ -2240,10 +2240,17 @@ export async function updateLocalCourseDraftMetadata(
   ) as CourseManifest["locales"];
 
   const {
+    courseIndex: previousCourseIndex,
     gradeBands: previousGradeBands,
     serbianScript: previousSerbianScript,
     ...manifestWithoutSerbianScript
   } = manifest;
+  // The course index (SLJ-158): omitted keeps the course's; only "off" is
+  // written, so a course that never switched it off has no field.
+  if (input.courseIndex !== undefined && typeof input.courseIndex !== "boolean") {
+    throw new Error("Invalid course index setting");
+  }
+  const courseIndex = input.courseIndex ?? previousCourseIndex ?? true;
   // Grade bands (SLJ-135): omitted keeps the course's, null goes back to the
   // defaults (dropped from the file).
   if (input.gradeBands !== undefined && input.gradeBands !== null && !isGradeBands(input.gradeBands)) {
@@ -2259,6 +2266,7 @@ export async function updateLocalCourseDraftMetadata(
   await writeCourseManifest(courseDirectoryPath, {
     ...manifestWithoutSerbianScript,
     ...(gradeBands ? { gradeBands } : {}),
+    ...(courseIndex === false ? { courseIndex: false } : {}),
     contentRating: normalizeContentRating(input.contentRating),
     defaultLocale: input.defaultLocale,
     descriptiveTags: input.descriptiveTags,

@@ -10,10 +10,13 @@ import { InfoTooltip } from "@/components/ui/info-tooltip";
 // ("At least 3") next to a label that already says what it counts.
 export function PeersCount({
   count,
+  subject,
   testId,
   variant = "labelled",
 }: {
   count: number;
+  // What is shared, for the (?) to name it.
+  subject: "channel" | "course" | "program";
   testId?: string;
   variant?: "labelled" | "value";
 }) {
@@ -28,7 +31,7 @@ export function PeersCount({
   return (
     <span className="inline-flex items-center gap-1" data-count={count} data-testid={testId}>
       {text}
-      <InfoTooltip aria-label={t("peers.whyLabel")}>{t("peers.why")}</InfoTooltip>
+      <InfoTooltip aria-label={t("peers.whyLabel")}>{t(`peers.why.${subject}`)}</InfoTooltip>
     </span>
   );
 }

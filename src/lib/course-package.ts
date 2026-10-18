@@ -28,6 +28,10 @@ export type CourseDistribution = "local" | "bundled" | "imported";
 export type CourseManifest = {
   builtin: boolean;
   contentRating: ContentRating;
+  // Whether students can open the course index beside a lesson (SLJ-158).
+  // Only `false` is ever written: missing means on, so every course made
+  // before it keeps the index.
+  courseIndex?: boolean;
   // ISO time the course was created. Missing in some hand-made packages.
   createdAt?: string;
   defaultLocale: Locale;
@@ -671,6 +675,9 @@ export type CourseDetails = CourseSummary & {
   // `backPath`: its review page.
   preview?: { backPath: string; version: string };
   builtin: boolean;
+  // Students can open the course index in the player (SLJ-158); false only
+  // when the teacher switched it off (`course.json` `courseIndex`).
+  courseIndex: boolean;
   // When the course was first created (`course.json` `createdAt`), or null if
   // the package doesn't say.
   createdAt: string | null;
@@ -824,6 +831,8 @@ export type DeleteCourseSectionTestInput = {
 
 export type UpdateCourseDraftMetadataInput = {
   contentRating: ContentRating;
+  // Omitted: keep the course's setting (SLJ-158).
+  courseIndex?: boolean;
   courseId: string;
   defaultLocale: Locale;
   descriptiveTags: CourseTagDefinition[];
@@ -906,6 +915,7 @@ export type CourseChange =
       target: "course";
       field:
         | "contentRating"
+        | "courseIndex"
         | "defaultLocale"
         | "description"
         | "gradeBands"

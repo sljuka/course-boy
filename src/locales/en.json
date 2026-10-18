@@ -96,7 +96,6 @@
     "dismissPrintHint": "Dismiss print hint",
     "previewBadge": "Preview",
     "previewDocument": "Preview document",
-    "progress": "Lesson {{current}} of {{total}}",
     "printHintBody": "You can print this test, solve it with pen and paper, and then enter the answers here to check whether they are correct.",
     "printHintTitle": "Prefer paper? Print this test first.",
     "printNameField": "Name field",
@@ -734,7 +733,8 @@
       "defaultLocale": "Changed the main language",
       "serbianScript": "Changed which Serbian script is generated",
       "mnemonics": "Changed the mnemonics",
-      "gradeBands": "Changed the grade bands"
+      "gradeBands": "Changed the grade bands",
+      "courseIndex": "Changed whether students can open the course index"
     },
     "language": {
       "added": "Added language: {{language}}",
@@ -1423,7 +1423,11 @@
     "atLeast": "At least {{count}}",
     "none": "No one connected right now",
     "whyLabel": "Why \"at least\"?",
-    "why": "This counts only the computers connected to this one right now. Most people get it from each other instead, so usually more are online than this shows."
+    "why": {
+      "course": "The number of devices connected to this one right now to exchange this course's files. It isn't the number of all devices on the course right now: that can be higher, because devices also connect to each other, without this one.",
+      "program": "The number of devices connected to this one right now to exchange this program's files. It isn't the number of all devices with the program right now: that can be higher, because devices also connect to each other, without this one.",
+      "channel": "The number of devices connected to this one right now to exchange this channel's files. It isn't the number of all devices following the channel right now: that can be higher, because devices also connect to each other, without this one."
+    }
   },
   "lessonLink": {
     "title": "Link to a lesson",
@@ -1435,5 +1439,12 @@
     "noLessons": "This course has no lessons yet.",
     "noMatch": "No lessons found.",
     "slashSubtext": "A link that opens a lesson of this or another course"
+  },
+  "courseIndex": {
+    "title": "Course index",
+    "toggle": "Toggle course index",
+    "lessonTest": "Test",
+    "settingLabel": "Students can open the course index",
+    "settingDescription": "A list of the course's sections, lessons and tests beside each lesson, with progress, to jump to another one. Off: students go through the course from the course page."
   }
 }

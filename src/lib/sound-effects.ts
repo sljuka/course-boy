@@ -104,11 +104,24 @@ const NOTES: Record<
 
 let context: AudioContext | null = null;
 
+// Creating the context opens the audio device: about 200 ms that block the
+// window in Electron on a Mac, longer on Windows (SLJ-159). Never on a click:
+// a player with sounds on warms it up while the student reads
+// (`warmUpSoundEffects`), and a sound is synthesised only after the click's
+// result is on screen (`playSoundEffect`).
 function audioContext(): AudioContext | null {
   if (context) return context;
   if (typeof AudioContext === "undefined") return null;
   context = new AudioContext();
   return context;
+}
+
+// Opens the audio device in idle time, so the first sound costs nothing.
+export function warmUpSoundEffects(): void {
+  if (context) return;
+  const warmUp = () => void audioContext();
+  if (typeof requestIdleCallback === "function") requestIdleCallback(warmUp, { timeout: 2_000 });
+  else setTimeout(warmUp, 200);
 }
 
 export function playSoundEffect(
@@ -119,6 +132,12 @@ export function playSoundEffect(
     new CustomEvent(SOUND_EFFECT_EVENT, { detail: { effect } }),
   );
 
+  // After the next paint: the result the sound goes with shows first, even
+  // if the audio device still has to open (a frame later can't be heard).
+  requestAnimationFrame(() => setTimeout(() => synthesise(effect, volume), 0));
+}
+
+function synthesise(effect: SoundEffect, volume: SoundVolume) {
   const audio = audioContext();
   if (!audio) return;
   if (audio.state === "suspended") void audio.resume();

@@ -884,10 +884,11 @@ describe('learner flow: attend a course and complete its test', () => {
         timeout: 10_000,
       })
       .toBe(true)
-    // The action bar stays: Close course, the lesson's place in the section.
+    // The action bar stays (Close course), and so does the course index
+    // (SLJ-158): the student still moves through the course with it.
     await button('Exit full screen').waitFor()
     expect(await button('Close course').count()).toBe(1)
-    expect(await page.locator('[data-testid="lesson-progress"]').count()).toBe(1)
+    expect(await page.locator('[data-testid="course-index"]').count()).toBe(1)
 
     await button('Continue').click()
     await button('Paper mode').waitFor({ timeout: 15_000 })
@@ -1269,8 +1270,11 @@ describe('graded test', () => {
     await score.waitFor({ timeout: 15_000 })
     expect(await score.innerText()).toBe('30/40')
     expect(await score.getAttribute('data-tone')).toBe('yellow')
-    // The print size ends with the test.
-    expect(await page.evaluate(() => document.documentElement.hasAttribute('data-print-density'))).toBe(false)
+    // The print size ends with the test (once the test player has unmounted,
+    // which can be a moment after the course page shows).
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.hasAttribute('data-print-density')))
+      .toBe(false)
   })
 })
 
@@ -1625,6 +1629,116 @@ describe('sound effects', () => {
 
     // Back to the teacher's default, so later tests stay silent.
     await page.evaluate(() => window.preferences.set({ soundEffects: false }))
+  })
+
+  // SLJ-159: a quick double click on "Check answer" is one press. The second
+  // click used to land on the Continue the first one made, skip to the next
+  // question and "check" it empty.
+  it('takes a double click on Check answer as one press', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Double Click' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Speech' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Double click quiz' })
+      const exercise = (source, solution) => ({
+        kind: 'rewrite',
+        locales: { en: { prompt: 'Write it in direct speech', solutions: [solution], source } },
+        tags: [],
+      })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [
+            exercise('Nena said she would buy bread.', 'Nena said: „I will buy bread.“'),
+            exercise('Mark asked if he could come.', 'Mark asked: „Can I come?“'),
+          ],
+          template: '',
+        },
+        testId,
+      })
+      return { courseId, testId }
+    })
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const answer = page.locator('[data-testid="rewrite-answer"]')
+    await answer.waitFor({ timeout: 15_000 })
+    await answer.fill('Nena said: "I will buy bread."')
+
+    await page.getByRole('button', { exact: true, name: 'Check answer' }).dblclick()
+
+    // Still the first question, checked right: its answer in the box, Continue next.
+    await page.getByRole('button', { exact: true, name: 'Continue' }).waitFor()
+    await page.waitForTimeout(500)
+    expect(await answer.inputValue()).toBe('Nena said: "I will buy bread."')
+    expect(await page.getByRole('button', { exact: true, name: 'Continue' }).count()).toBe(1)
+
+    // A deliberate second press, a moment later, still moves on.
+    await page.getByRole('button', { exact: true, name: 'Continue' }).click()
+    await expect.poll(() => answer.inputValue()).toBe('')
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+  })
+})
+
+// After a wrong answer, a practice test waits for a new answer (or the
+// correct one shown): Enter doesn't move on, just as the disabled button
+// doesn't. It used to skip to the next question.
+describe('Enter after a wrong answer', () => {
+  it('stays on the question until it is answered right', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Enter Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Sums' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Enter quiz' })
+      const sum = (prompt, formula) => ({
+        kind: 'numeric',
+        locales: { en: { prompt } },
+        solution: { formula, precision: 0 },
+        tags: [],
+        variables: {},
+      })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: { exercises: [sum('Two plus two', '4'), sum('Three plus three', '6')], template: '' },
+        testId,
+      })
+      return { courseId, testId }
+    })
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const answer = page.locator('input:visible').first()
+    await answer.waitFor({ timeout: 15_000 })
+
+    // Wrong, then Enter again: still the first question, its answer kept.
+    await answer.fill('5')
+    await answer.press('Enter')
+    await waitForText(page, 'Two plus two')
+    await page.waitForTimeout(300)
+    await answer.press('Enter')
+    await page.waitForTimeout(500)
+    expect(await bodyText(page)).toContain('Two plus two')
+    expect(await answer.inputValue()).toBe('5')
+
+    // Right: Enter checks, the next Enter moves on.
+    await answer.fill('4')
+    await answer.press('Enter')
+    await page.getByRole('button', { exact: true, name: 'Continue' }).waitFor()
+    await page.keyboard.press('Enter')
+    await waitForText(page, 'Three plus three')
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
   })
 })
 
@@ -2166,12 +2280,12 @@ describe('section summary and intro', () => {
     await page.getByRole('button', { name: 'Start course' }).first().click()
     await waitForText(page, 'Welcome to this section.')
     expect(await page.evaluate(() => location.hash)).toContain('/lessons/intro-')
-    // The intro isn't counted as a lesson.
     // The breadcrumbs name the section; the action bar says it's the intro.
-    expect(await page.locator('[data-testid="lesson-progress"]').innerText()).toBe('Introduction')
+    expect(await page.locator('[data-testid="lesson-section-intro"]').innerText()).toBe('Introduction')
     expect(await clickText(page, 'Continue')).toContain('OK')
     await waitForText(page, 'Lesson one text.')
-    await expect.poll(() => page.locator('[data-testid="lesson-progress"]').innerText()).toBe('Lesson 1 of 1')
+    // A lesson has no label there (no "Lesson 1 of 1": the course index shows where it is).
+    await expect.poll(() => page.locator('[data-testid="lesson-section-intro"]').count()).toBe(0)
 
     // Teacher: removing an intro that was never committed says it's gone for good.
     await openSectionPage()
@@ -3538,3 +3652,82 @@ describe('course list views', () => {
   })
 })
 
+
+// SLJ-158: the course index beside a lesson. Students jump to any item and see
+// their progress; a teacher can switch it off for the course (`courseIndex`
+// in course.json, written only when off), which the Commit list reports.
+describe('course index', () => {
+  it('jumps between lessons with progress, and a teacher can switch it off', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Index Course' } },
+        supportedLocales: ['en'],
+      })
+      const lesson = async (sectionId, title) => {
+        const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title })
+        await window.courses.updateLessonContent({
+          courseId,
+          lessonId,
+          locales: { en: { body: `[matko-block]: <> (markdown)\n${title} text.` } },
+          sectionId,
+        })
+        return lessonId
+      }
+      const { sectionId: first } = await window.courses.createSection({ courseId, title: 'First part' })
+      const { sectionId: second } = await window.courses.createSection({ courseId, title: 'Second part' })
+      const firstLesson = await lesson(first, 'Index lesson one')
+      const secondLesson = await lesson(first, 'Index lesson two')
+      const laterLesson = await lesson(second, 'Index later lesson')
+      // A version to compare with, so the switch shows as a change.
+      await window.courses.cutVersion({ courseId, releaseType: 'minor' })
+      return { courseId, firstLesson, laterLesson, secondLesson }
+    })
+    const lessonPath = (lessonId) => `#/courses/${ids.courseId}/lessons/${lessonId}`
+    const open = (target) =>
+      page.evaluate((target) => {
+        location.hash = target
+      }, target)
+    const index = page.locator('[data-testid="course-index"]')
+    const row = (title) => index.locator('[data-testid="course-index-item"]', { hasText: title })
+
+    // The index beside the first lesson, that lesson marked as the current one.
+    await open(lessonPath(ids.firstLesson))
+    await index.waitFor({ timeout: 15_000 })
+    await expect.poll(() => row('Index lesson one').getAttribute('data-selected')).toBe('true')
+
+    // Continue marks it done; the index shows it.
+    await page.click('[data-testid="lesson-continue"]')
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe(lessonPath(ids.secondLesson))
+    await row('Index lesson one').locator('[data-testid="step-progress-done"]').waitFor()
+
+    // A lesson in another section, a click away (that section opened first).
+    await index.getByText('Second part').click()
+    await row('Index later lesson').locator('a').click()
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe(lessonPath(ids.laterLesson))
+    await expect.poll(() => row('Index later lesson').getAttribute('data-selected')).toBe('true')
+
+    // The teacher switches it off in the course settings: written as
+    // `courseIndex: false`, reported in Commit's list of changes.
+    await open(`#/drafts/${ids.courseId}`)
+    const setting = page.locator('[data-testid="course-index-setting"]')
+    await setting.waitFor({ timeout: 15_000 })
+    expect(await setting.getAttribute('aria-checked')).toBe('true')
+    await setting.click()
+    const manifest = () =>
+      JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'courses', ids.courseId, 'draft', 'course.json'), 'utf8'))
+    await expect.poll(() => manifest().courseIndex, { timeout: 15_000 }).toBe(false)
+    const preview = await page.evaluate((courseId) => window.courses.previewDraftChanges(courseId), ids.courseId)
+    expect(preview.changes).toContainEqual({ field: 'courseIndex', kind: 'edited', target: 'course' })
+
+    // No index in the player now.
+    await open(lessonPath(ids.firstLesson))
+    await page.locator('[data-testid="lesson-continue"]').waitFor({ timeout: 15_000 })
+    await page.waitForTimeout(500)
+    expect(await index.count()).toBe(0)
+    // No left panel and no toggle for it (the player has no other left panel).
+    expect(await page.locator('[data-slot="page-side-panel"][data-side="left"]').count()).toBe(0)
+    expect(await page.getByRole('button', { name: /course index|sadržaj kursa|садржај курса/i }).count()).toBe(0)
+  })
+})

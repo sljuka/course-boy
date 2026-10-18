@@ -1,7 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { playSoundEffect, type SoundEffect, type SoundVolume } from "@/lib/sound-effects";
+import { playSoundEffect, warmUpSoundEffects, type SoundEffect, type SoundVolume } from "@/lib/sound-effects";
 import { useAppState } from "@/lib/use-app-state";
 
 const queryKey = ["preferences", "soundEffects"] as const;
@@ -50,9 +50,15 @@ export function useSoundEffectsPreference(): {
   };
 }
 
-// What the players call: plays the sound when the setting is on.
+// What the players call: plays the sound when the setting is on. With it on,
+// the audio device opens while the player shows, not on the first answer
+// (SLJ-159).
 export function useSoundEffects(): (effect: SoundEffect) => void {
   const { enabled, volume } = useSoundEffectsPreference();
+
+  useEffect(() => {
+    if (enabled) warmUpSoundEffects();
+  }, [enabled]);
 
   return useCallback(
     (effect: SoundEffect) => {

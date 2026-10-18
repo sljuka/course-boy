@@ -321,6 +321,11 @@ function diffCourseManifest(
     changes.push({ field: "contentRating", kind: "edited", target: "course" });
   }
 
+  // Missing means on (SLJ-158).
+  if ((before.courseIndex ?? true) !== (after.courseIndex ?? true)) {
+    changes.push({ field: "courseIndex", kind: "edited", target: "course" });
+  }
+
   if (JSON.stringify(before.descriptiveTags ?? []) !== JSON.stringify(after.descriptiveTags ?? [])) {
     changes.push({ field: "tags", kind: "edited", target: "course" });
   }

@@ -17,6 +17,7 @@ export function DraftDetailPage() {
     contentRating,
     courseDescriptiveTags,
     courseGradeBands,
+    courseIndex,
     courseSections,
     defaultLocale,
     isCourseDetailsLoading,
@@ -47,6 +48,7 @@ export function DraftDetailPage() {
         contentRating={contentRating}
         courseGradeBands={courseGradeBands}
         courseId={courseId}
+        courseIndex={courseIndex}
         courseSections={courseSections}
         defaultLocale={defaultLocale}
         descriptiveTags={courseDescriptiveTags}

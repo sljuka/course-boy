@@ -21,6 +21,8 @@ export type UserPreferences = {
   category?: Category
   // The course page's right panel (Details): open or closed.
   courseInfoPanel?: ExplorerPanelPreference
+  // The player's left panel, the course index (SLJ-158): open or closed.
+  courseIndexPanel?: ExplorerPanelPreference
   explorerPanel?: ExplorerPanelPreference
   // Home: compact rows ("table") or cards ("list").
   homeView?: CourseListView
