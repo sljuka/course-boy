@@ -74,6 +74,8 @@
   --chart-4: oklch(0.367 0.016 35.7);
   --chart-5: oklch(0.268 0.011 36.5);
   --radius: 0.625rem;
+  /* The app frame. electron/main.ts (WINDOW_BACKGROUND) repeats it, light and
+     dark, as hex: the window's color before the app draws. */
   --sidebar: oklch(0.96 0.002 17.2);
   --sidebar-foreground: oklch(0.147 0.004 49.3);
   --sidebar-primary: oklch(0.666 0.179 58.318);

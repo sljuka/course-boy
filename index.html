@@ -7,6 +7,11 @@
     <title>Vite + React + TS</title>
   </head>
   <body>
+    <script>
+      // Matko's theme before the first paint (?theme=, from electron/main.ts
+      // loadApp), so nothing flashes in the other theme while the app loads.
+      if (new URLSearchParams(location.search).get('theme') === 'dark') document.documentElement.classList.add('dark')
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

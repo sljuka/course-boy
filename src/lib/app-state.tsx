@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useState,
   type ReactNode,
 } from 'react'
@@ -8,8 +9,16 @@ import { detectLocale, i18n, type Locale } from '@/lib/i18n'
 import type { Category, Persona, Theme, UserRole } from '@/lib/preferences'
 import { AppStateContext } from '@/lib/use-app-state'
 
+// The theme to start with: the one index.html already applied (main passes
+// the profile's in the address), else the system's.
 function detectTheme(): Theme {
+  if (typeof document !== 'undefined' && document.documentElement.classList.contains('dark')) {
+    return 'dark'
+  }
   if (typeof window === 'undefined' || !window.matchMedia) {
+    return 'light'
+  }
+  if (new URLSearchParams(window.location.search).get('theme') === 'light') {
     return 'light'
   }
 
@@ -69,7 +78,8 @@ function AppStateProvider({ children }: { children: ReactNode }) {
     void window.preferences.set({ locale })
   }, [isLoaded, locale])
 
-  useEffect(() => {
+  // Before paint, so a frame is never drawn in the other theme.
+  useLayoutEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
   }, [theme])
 

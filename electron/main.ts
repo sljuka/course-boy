@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, screen, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, protocol, screen, session, shell } from 'electron'
 import { randomBytes, randomUUID } from 'node:crypto'
 import { readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -814,6 +814,7 @@ ipcMain.handle(
 
     if (typeof preferences.theme === 'string') {
       profile.preferencesStore.set('theme', preferences.theme)
+      win?.setBackgroundColor(windowBackgroundColor())
     }
 
     // Applied at the next update, not now: lowering it never deletes a version
@@ -1793,6 +1794,26 @@ async function handleCourseAssetRequest(request: Request): Promise<Response> {
   }
 }
 
+// The window's color before the app has drawn (at start, and while a profile
+// switch reloads it): the app frame's (`--sidebar` in src/index.css, as hex)
+// in the profile's theme, else the system's, as the window picks it
+// (src/lib/app-state.tsx). Electron's default is white, which flashed.
+const WINDOW_BACKGROUND = { dark: '#0c0a09', light: '#f3f1f1' } as const
+
+function windowTheme(): Theme {
+  let theme: Theme | undefined
+  try {
+    theme = profile.preferencesStore.get('theme')
+  } catch {
+    theme = undefined
+  }
+  return theme ?? (nativeTheme.shouldUseDarkColors ? 'dark' : 'light')
+}
+
+function windowBackgroundColor(): string {
+  return WINDOW_BACKGROUND[windowTheme()]
+}
+
 function createWindow() {
   // Start wide enough for the app sidebar and the editor's side panels to sit
   // inline (their drawer thresholds are 1024px / 1280px, src/hooks/use-mobile.ts),
@@ -1803,6 +1824,7 @@ function createWindow() {
   // Started at login (SLJ-129): just the menu bar icon until it's opened.
   const startHidden = isBackgroundSupported && isStartingHidden()
   win = new BrowserWindow({
+    backgroundColor: windowBackgroundColor(),
     show: !startHidden,
     width: Math.min(1440, workArea.width),
     height: Math.min(900, workArea.height),
@@ -1906,10 +1928,17 @@ ipcMain.handle('window:close', (event) => {
 })
 
 function loadApp(window: BrowserWindow): void {
+  // The profile opened may have another theme (a switch reloads the window).
+  // The page gets it in its address too (`?theme=`), so index.html draws its
+  // very first frame in it, before the app has read the preferences.
+  window.setBackgroundColor(windowBackgroundColor())
+  const theme = windowTheme()
   if (VITE_DEV_SERVER_URL) {
-    void window.loadURL(VITE_DEV_SERVER_URL)
+    const url = new URL(VITE_DEV_SERVER_URL)
+    url.searchParams.set('theme', theme)
+    void window.loadURL(url.toString())
   } else {
-    void window.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    void window.loadFile(path.join(RENDERER_DIST, 'index.html'), { query: { theme } })
   }
 }
 

@@ -641,10 +641,6 @@
     "showSummaryHelp": "Only in a graded test: after the score, the student can open a summary of their answers, with the correct ones. Off, there’s no summary.",
     "solutionFormulaEarlier": "Can use the result of the solutions above: {{names}}."
   },
-  "theme": {
-    "switchToDark": "Switch to dark theme",
-    "switchToLight": "Switch to light theme"
-  },
   "welcomeSubtitle": "Matko is an open platform for creating and attending courses. Tests and documents that make up the courses are adjusted to be print-friendly. The focus is on making learning and teaching an enjoyable experience.",
   "welcomeTitle": "Welcome!",
   "titleBar": {

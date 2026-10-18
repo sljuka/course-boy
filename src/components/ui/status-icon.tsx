@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils"
 // `pending` is the same pie, never spinning (how many approved so far),
 // `attention` a red circle with "!" (changes asked for), `canceled` a grey
 // circle with a cross (replaced).
-// `channel`: the published target in red, a followed channel (SLJ-31).
+// `channel`: the published target, in the same color, for a followed
+// channel (SLJ-31).
 const statusIconVariants = cva("size-3.5 shrink-0", {
   variants: {
     status: {
@@ -26,7 +27,7 @@ const statusIconVariants = cva("size-3.5 shrink-0", {
       pending: "text-info",
       attention: "text-destructive",
       canceled: "text-muted-foreground",
-      channel: "text-destructive",
+      channel: "text-primary",
     },
   },
   defaultVariants: { status: "local" },

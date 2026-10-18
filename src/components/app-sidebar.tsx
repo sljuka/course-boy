@@ -9,7 +9,6 @@ import { AppSidebarFavorites } from "@/components/app-sidebar-favorites";
 import { AppSidebarItem } from "@/components/app-sidebar-item";
 import { AppSidebarPublishers } from "@/components/app-sidebar-publishers";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -20,8 +19,9 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { DEFAULT_PERSONA, PERSONAS, getPersonaIconUrl } from "@/lib/personas";
+import { getPersonaIconUrl } from "@/lib/personas";
 import type { UserRole } from "@/lib/preferences";
+import { useProfilesStateQuery } from "@/lib/profiles-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 // `roles` limits a group to those roles; groups without it show for everyone.
@@ -68,27 +68,26 @@ function AppSidebar() {
   useEffect(() => {
     setOpenMobile(false);
   }, [location.pathname, setOpenMobile]);
-  const { locale, persona, role, setLocale, setTheme, theme } = useAppState();
+  const { locale, persona, role, setLocale } = useAppState();
+  const { data: profiles } = useProfilesStateQuery();
   const visibleGroups = sidebarGroups.filter(
     (group) => !group.roles || (role !== null && group.roles.includes(role)),
   );
-  const personaLabelKey =
-    PERSONAS.find((option) => option.id === persona)?.labelKey ??
-    PERSONAS.find((option) => option.id === DEFAULT_PERSONA)!.labelKey;
 
   return (
     <Sidebar closeLabel={t("drawer.close")}>
       <SidebarHeader className="space-y-4 px-4 py-5">
-        <div className="flex items-center justify-between gap-2">
-          <Link
-            className="flex items-center gap-2 text-base font-bold text-foreground transition-colors hover:text-foreground/80"
-            to="/"
-          >
-            <img alt="" className="h-7 w-7 shrink-0 rounded-full" src={getPersonaIconUrl(persona)} />
-            <span>{t(personaLabelKey)}</span>
-          </Link>
-          <ThemeToggle onThemeChange={setTheme} theme={theme} />
-        </div>
+        {/* Whose profile this is (SLJ-57), its name as typed; the theme is in
+            Settings. */}
+        <Link
+          className="flex min-w-0 items-center gap-2 text-sm text-foreground transition-colors hover:text-foreground/80"
+          data-testid="sidebar-profile-name"
+          title={profiles?.active?.name}
+          to="/"
+        >
+          <img alt="" className="size-5 shrink-0 rounded-full" src={getPersonaIconUrl(persona)} />
+          <span className="truncate">{profiles?.active?.name}</span>
+        </Link>
         <div className="flex items-center gap-2">
           <AppMenu />
           <LanguageSwitcher

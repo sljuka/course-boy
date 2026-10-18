@@ -641,10 +641,6 @@
     "showSummaryHelp": "Samo u testu sa ocenom: posle rezultata učenik može da otvori pregled svojih odgovora, sa tačnim odgovorima. Ako je isključeno, pregleda nema.",
     "solutionFormulaEarlier": "Može da koristi rezultat rešenja iznad: {{names}}."
   },
-  "theme": {
-    "switchToDark": "Prebaci na tamnu temu",
-    "switchToLight": "Prebaci na svetlu temu"
-  },
   "welcomeSubtitle": "Matko je otvorena platforma za kreiranje i pohađanje kurseva. Testovi i dokumenti od kojih su kursevi sastavljeni prilagođeni su za štampanje. Fokus je na tome da učenje i podučavanje budu prijatno iskustvo.",
   "welcomeTitle": "Dobrodošli!",
   "titleBar": {

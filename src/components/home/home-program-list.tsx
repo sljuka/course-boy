@@ -66,8 +66,8 @@ function HomeProgramRow({ kind, program }: { kind: ProgramKind; program: Program
   return (
     <ProgramContextMenu href={href} kind={kind} programId={program.id}>
       <ListRow data-testid={kind === "channel" ? "home-channel" : "home-program"}>
-        {/* A channel isn't something to finish (SLJ-31): a red target, like an
-            imported course's. */}
+        {/* A channel isn't something to finish (SLJ-31): no progress, just the
+            target in the published color, like the other targets. */}
         {kind === "channel" ? (
           <StatusIcon data-testid="home-channel-icon" status="channel" />
         ) : (
