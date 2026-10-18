@@ -647,11 +647,16 @@ async function start() {
   // How many peers this device is connected to for a course it shares: your
   // own (by course id) or an imported one (by drive key). Null when it isn't
   // shared here right now.
+  // A course maintained with others (SLJ-11) is shared from its own drive
+  // (`sharedDrives`), not `publishedDrives`: main passes its code too, so its
+  // maintainers see their peers as well.
   function countPeers({ courseId, driveKey }) {
-    const entry = courseId
-      ? publishedDrives.get(courseId)
-      : followedDrives.get(IdEncoding.decode(driveKey).toString('hex'))
-    return entry ? entry.drive.core.peers.length : null
+    const published = courseId ? publishedDrives.get(courseId) : null
+    if (published) return published.drive.core.peers.length
+    if (!driveKey) return null
+    const hex = IdEncoding.decode(driveKey).toString('hex')
+    const drive = followedDrives.get(hex)?.drive ?? sharedDrives.get(hex)
+    return drive ? drive.core.peers.length : null
   }
 
   async function stopSharing({ courseId, driveKey }) {

@@ -7,7 +7,7 @@ import { PanelCard } from "@/components/ui/panel-card";
 import { PropertyList, PropertyRow } from "@/components/ui/property-list";
 import type { CourseDetails } from "@/lib/course-package";
 import type { Locale } from "@/lib/i18n";
-import { useCourseDiskUsageQuery } from "@/lib/course-queries";
+import { useCourseDiskUsageQuery, useCourseVersionHistoryQuery } from "@/lib/course-queries";
 import { useSidePanelPreference } from "@/lib/explorer-panel-queries";
 import { getLocaleFlag } from "@/lib/locale-flags";
 import { useCourseSharingQuery } from "@/lib/sharing-queries";
@@ -46,6 +46,14 @@ export function CourseInfoCard({
   // Refetched after edits (the editor saves as you type), not polled.
   const { data: diskUsage } = useCourseDiskUsageQuery(course.id, course.updatedAt);
   const lessonCount = course.sections.reduce((count, section) => count + section.lessons.length, 0);
+  // Versions kept on this device: an imported course's (the one in use and
+  // the previous ones, SLJ-40), or your own course's committed versions.
+  const { data: history } = useCourseVersionHistoryQuery(course.distribution === "local" ? course.id : undefined);
+  const keptVersions = isImported
+    ? (sharing?.versions?.kept.length ?? null)
+    : course.distribution === "local"
+      ? (history?.versions.length ?? null)
+      : null;
   // Who published it (SLJ-108): their name in Publishers, else the short id.
   const { data: channel } = useCourseChannelQuery(isImported ? course.id : undefined);
 
@@ -59,8 +67,10 @@ export function CourseInfoCard({
         <DateRow date={course.versionCutAt} label={t("courseInfo.versionDate")} locale={locale} />
         {isImported && <DateRow date={sharing?.importedAt ?? null} label={t("courseInfo.imported")} locale={locale} />}
         <DateRow date={course.createdAt} label={t("courseInfo.created")} locale={locale} />
-        {isImported && sharing?.versions && (
-          <PropertyRow label={t("courseInfo.keptVersions")}>{sharing.versions.kept.length}</PropertyRow>
+        {keptVersions !== null && (
+          <PropertyRow label={t("courseInfo.keptVersions")}>
+            <span data-testid="course-info-kept-versions">{keptVersions}</span>
+          </PropertyRow>
         )}
         {sharing?.peers !== null && sharing?.peers !== undefined && (
           <PropertyRow label={t("courseInfo.connectedNow")}>

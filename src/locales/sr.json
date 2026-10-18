@@ -1471,6 +1471,6 @@
     "toggle": "Prikaži ili sakrij sadržaj kursa",
     "lessonTest": "Test",
     "settingLabel": "Učenici mogu da otvore sadržaj kursa",
-    "settingDescription": "Spisak sekcija, lekcija i testova kursa pored svake lekcije, sa napretkom, za prelazak na drugu. Isključeno: učenici prolaze kroz kurs sa stranice kursa."
+    "settingDescription": "Spisak sekcija, lekcija i testova kursa pored svake lekcije, sa napretkom, za prelazak na drugu. Isključeno: učenici prelaze kroz kurs redom, dugmetom „Nastavi“, bez spiska lekcija pored lekcije."
   }
 }

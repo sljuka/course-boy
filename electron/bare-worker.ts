@@ -293,7 +293,7 @@ export async function cancelTransfer(transferId: string): Promise<void> {
 
 // Peers connected for a course shared from this device (your own by course id,
 // an imported one by drive key); null when it isn't shared here right now.
-export async function getPeers(target: { courseId: string } | { driveKey: string }): Promise<number | null> {
+export async function getPeers(target: { courseId: string; driveKey?: string } | { driveKey: string }): Promise<number | null> {
   return (await sendCommand<{ peers: number | null }>(CMD_GET_PEERS, target)).peers
 }
 

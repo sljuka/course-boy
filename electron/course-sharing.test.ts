@@ -227,6 +227,19 @@ describe('course sharing: student', () => {
     expect(await sharing.getPeers('unknown')).toBeNull()
   })
 
+  // A course maintained with others is shared from its own drive (SLJ-11):
+  // the worker gets its code too, to find it there.
+  it('asks for a published course by its id and its code', async () => {
+    const { sharing, worker } = setup({
+      initial: { followed: {}, published: { 'course-a': { code: 'code-a' } } },
+    })
+    sharing.onPublished('course-a')
+    await flush()
+    expect(sharing.getInfo('course-a').status).toBe('shared')
+    await sharing.getPeers('course-a')
+    expect(worker.getPeers).toHaveBeenCalledWith({ courseId: 'course-a', driveKey: 'code-course-a' })
+  })
+
   it('gives no code for a course the teacher shared only with chosen students', () => {
     const { sharing } = setup({
       initial: {

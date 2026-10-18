@@ -168,7 +168,7 @@ export type CourseSharingWorker = {
     transferId?: string,
   ): Promise<{ changedFiles: { key: string; op: string }[] }>
   followCourse(driveKey: string): Promise<void>
-  getPeers(target: { courseId: string } | { driveKey: string }): Promise<number | null>
+  getPeers(target: { courseId: string; driveKey?: string } | { driveKey: string }): Promise<number | null>
   importCourse(
     code: string,
     transferId?: string,
@@ -503,8 +503,10 @@ export function createCourseSharing(deps: CourseSharingDeps) {
     async getPeers(courseId: string): Promise<number | null> {
       const state = deps.store.read()
       const followed = state.followed[courseId]
-      const target = state.published[courseId]
-        ? { courseId }
+      const published = state.published[courseId]
+      // Its code too: a course maintained with others is shared from that drive.
+      const target = published
+        ? { courseId, ...(published.code ? { driveKey: published.code } : {}) }
         : followed
           ? { driveKey: followed.driveKey }
           : null

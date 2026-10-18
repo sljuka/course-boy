@@ -1471,6 +1471,6 @@
     "toggle": "Toggle course index",
     "lessonTest": "Test",
     "settingLabel": "Students can open the course index",
-    "settingDescription": "A list of the course's sections, lessons and tests beside each lesson, with progress, to jump to another one. Off: students go through the course from the course page."
+    "settingDescription": "A list of the course's sections, lessons and tests beside each lesson, with progress, to jump to another one. Off: students go through the course in order, with Continue, without the list beside the lesson."
   }
 }
