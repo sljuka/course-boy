@@ -43,6 +43,7 @@ export type CoursePlayerState =
   | CoursePlayerReadyState
   | {
       status: "complete";
+      courseId: string;
       onExitPlayer: () => void;
     }
   | {
@@ -175,6 +176,7 @@ export function useCoursePlayer({
   if (isCourseComplete) {
     return {
       status: "complete",
+      courseId,
       onExitPlayer: exitPlayer,
     };
   }

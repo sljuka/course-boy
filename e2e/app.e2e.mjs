@@ -3745,3 +3745,84 @@ describe('course index', () => {
     expect(await page.getByRole('button', { name: /course index|sadržaj kursa|садржај курса/i }).count()).toBe(0)
   })
 })
+
+// SLJ-171: the course page's ▶ is Start, Resume or Retake from the student's
+// progress; the end screen says "You reached the end" when steps were
+// skipped; Retake asks Review (keep progress) or Start over (clear it).
+describe('start, resume and retake', () => {
+  let ids
+
+  const enterState = () => harness.page.locator('[data-testid="course-enter"]').getAttribute('data-entry-state')
+  async function openCoursePage() {
+    await harness.page.evaluate((id) => {
+      location.hash = `#/courses/${id}`
+    }, ids.courseId)
+    await harness.page.locator('[data-testid="course-enter"]').waitFor()
+  }
+
+  it('starts, and after skipping to the last lesson says the end was reached with steps missing', async () => {
+    const { page } = harness
+    ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Retake Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const first = await window.courses.createLesson({ courseId, sectionId, title: 'First lesson' })
+      const second = await window.courses.createLesson({ courseId, sectionId, title: 'Second lesson' })
+      return { courseId, first: first.lessonId, second: second.lessonId }
+    })
+    await openCoursePage()
+    expect(await enterState()).toBe('start')
+
+    // Straight to the last lesson, then on past it.
+    await page.evaluate(({ courseId, second }) => {
+      location.hash = `#/courses/${courseId}/lessons/${second}`
+    }, ids)
+    // In the app's language (an earlier test may have left it in Serbian).
+    await page.click('[data-testid="lesson-continue"]')
+    const end = page.locator('[data-testid="course-end"]')
+    await end.waitFor()
+    expect(await end.getAttribute('data-end')).toBe('reached-end')
+    expect(await end.getAttribute('data-steps-done')).toBe('1')
+
+    // "Go to what's missing": the first lesson.
+    await page.click('[data-testid="course-end-missing"]')
+    await waitFor(page, (lessonId) => location.hash.includes(lessonId), { arg: ids.first })
+  })
+
+  it('resumes at the first step not done, and completes', async () => {
+    const { page } = harness
+    await openCoursePage()
+    expect(await enterState()).toBe('resume')
+    await page.click('[data-testid="course-enter"]')
+    await waitFor(page, (lessonId) => location.hash.includes(lessonId), { arg: ids.first })
+    await page.click('[data-testid="lesson-continue"]')
+    await waitFor(page, (lessonId) => location.hash.includes(lessonId), { arg: ids.second })
+    await page.click('[data-testid="lesson-continue"]')
+    await expect.poll(() => page.locator('[data-testid="course-end"]').getAttribute('data-end')).toBe('complete')
+    expect(await page.locator('[data-testid="course-end-retake"]').count()).toBe(1)
+  })
+
+  it('retakes: Review keeps the progress, Start over clears it', async () => {
+    const { page } = harness
+    await openCoursePage()
+    expect(await enterState()).toBe('retake')
+
+    await page.click('[data-testid="course-enter"]')
+    await page.locator('[data-testid="retake-course-dialog"]').waitFor()
+    await page.click('[data-testid="retake-review"]')
+    await waitFor(page, (lessonId) => location.hash.includes(lessonId), { arg: ids.first })
+    const kept = await page.evaluate((id) => window.progress.get().then((state) => state.courses[id]?.steps), ids.courseId)
+    expect(Object.keys(kept ?? {}).sort()).toEqual([ids.first, ids.second].sort())
+
+    await openCoursePage()
+    await page.click('[data-testid="course-enter"]')
+    await page.click('[data-testid="retake-start-over"]')
+    await waitFor(page, (lessonId) => location.hash.includes(lessonId), { arg: ids.first })
+    await expect
+      .poll(() => page.evaluate((id) => window.progress.get().then((state) => Object.keys(state.courses[id]?.steps ?? {}).length), ids.courseId))
+      .toBe(0)
+  })
+})

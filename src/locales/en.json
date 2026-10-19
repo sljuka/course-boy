@@ -84,7 +84,7 @@
     "fullScreen": "Full screen",
     "exitFullScreen": "Exit full screen",
     "spree": "Course streak: {{current}} right on the first try in a row · best {{best}}",
-    "completedDescription": "You finished the current lesson flow for this course.",
+    "completedDescription": "You did every lesson and test in this course.",
     "completedTitle": "Course complete",
     "correctAnswer": "Correct. You can continue to the next lesson.",
     "enterAnswer": "Enter a valid answer before continuing.",
@@ -1531,5 +1531,18 @@
       "turnOn": "Students can post on this course's board",
       "onBadge": "On"
     }
+  },
+  "courseEntry": {
+    "start": "Start course",
+    "resume": "Resume course",
+    "retake": "Retake course",
+    "retakeTitle": "Retake “{{title}}”?",
+    "review": "Review",
+    "reviewDescription": "Go through it again from the start, keeping your progress and test scores.",
+    "startOver": "Start over",
+    "startOverDescription": "Clear your progress and test scores in this course and begin fresh. Your previous progress can’t be restored.",
+    "reachedEndTitle": "You reached the end",
+    "reachedEndDescription": "{{done}} of {{total}} steps done. Go back to what you skipped to finish the course.",
+    "goToMissing": "Go to what’s missing"
   }
 }

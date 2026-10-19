@@ -84,7 +84,7 @@
     "fullScreen": "Ceo ekran",
     "exitFullScreen": "Izađi iz celog ekrana",
     "spree": "Niz: {{current}} tačnih iz prvog pokušaja zaredom · najbolji {{best}}",
-    "completedDescription": "Završio si trenutni tok lekcija za ovaj kurs.",
+    "completedDescription": "Uradio si svaku lekciju i test u ovom kursu.",
     "completedTitle": "Kurs je završen",
     "correctAnswer": "Tačno. Možeš da nastaviš na sledeću lekciju.",
     "enterAnswer": "Unesi ispravan odgovor pre nastavka.",
@@ -1531,5 +1531,18 @@
       "turnOn": "Učenici mogu da pišu na tabli ovog kursa",
       "onBadge": "Uključena"
     }
+  },
+  "courseEntry": {
+    "start": "Započni kurs",
+    "resume": "Nastavi kurs",
+    "retake": "Ponovo prođi kurs",
+    "retakeTitle": "Ponovo prođi „{{title}}“?",
+    "review": "Pregledaj",
+    "reviewDescription": "Prođi kurs ponovo od početka; napredak i rezultati testova ostaju.",
+    "startOver": "Počni ispočetka",
+    "startOverDescription": "Obriši napredak i rezultate testova u ovom kursu i počni iz početka. Prethodni napredak nije moguće vratiti.",
+    "reachedEndTitle": "Stigao si do kraja",
+    "reachedEndDescription": "Urađeno koraka: {{done}} od {{total}}. Vrati se na ono što si preskočio da završiš kurs.",
+    "goToMissing": "Idi na ono što nedostaje"
   }
 }

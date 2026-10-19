@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, BookOpen, CheckCheck, History, Home, Play } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCheck, History, Home, Play, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -16,6 +16,7 @@ import {
 } from "@/components/course-preview-strip";
 import { CourseActionsMenu } from "@/components/course-actions-menu";
 import { CourseFavoriteToggle } from "@/components/course-progress/course-favorite-toggle";
+import { RetakeCourseDialog } from "@/components/course-progress/retake-course-dialog";
 import { CourseProgressBadge } from "@/components/course-progress/course-progress-badge";
 import { PageContent } from "@/components/page-content";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -26,6 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useCourseBoardQuery } from "@/lib/board-queries";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { courseViewFromState, type CourseView } from "@/lib/course-view";
+import { courseEntryState, firstStepNotDone } from "@/lib/course-entry";
 import { boardIfOn } from "@/lib/course-board";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { useCourseSharingQuery } from "@/lib/sharing-queries";
@@ -48,6 +50,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   const { t } = useTranslation();
   const { data: progress } = useCourseProgressQuery();
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const [isRetakeOpen, setIsRetakeOpen] = useState(false);
   const location = useLocation();
   const [view, setView] = useState<CourseView>(() => courseViewFromState(location.state));
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
@@ -118,23 +121,43 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
     );
   }
 
+  // Start, Resume or Retake (SLJ-171), from the student's progress: Resume
+  // goes to the first step not done; Retake asks first.
+  const entryState = courseEntryState(resolvedCourse.sections, progress?.courses[courseId]);
+  const entryLabel = t(`courseEntry.${entryState}`);
+
+  function enterCourse() {
+    if (entryState === "retake") {
+      setIsRetakeOpen(true);
+      return;
+    }
+    const next = entryState === "resume" ? firstStepNotDone(resolvedCourse.sections, progress?.courses[courseId]) : null;
+    if (!next) {
+      startCourse();
+      return;
+    }
+    navigate(next.kind === "lesson" ? buildLessonPath(courseId, next.id) : buildLessonTestPath(courseId, next.lessonId));
+  }
+
   const actions = (
     <>
       <Tooltip>
         <TooltipTrigger
           render={
             <Button
-              aria-label={t("courseDetails.startCourse")}
+              aria-label={entryLabel}
+              data-entry-state={entryState}
+              data-testid="course-enter"
               disabled={!entryStep}
-              onClick={startCourse}
+              onClick={enterCourse}
               shape="circle"
               size="icon-sm"
             />
           }
         >
-          <Play aria-hidden="true" />
+          {entryState === "retake" ? <RotateCcw aria-hidden="true" /> : <Play aria-hidden="true" />}
         </TooltipTrigger>
-        <TooltipContent>{t("courseDetails.startCourse")}</TooltipContent>
+        <TooltipContent>{entryLabel}</TooltipContent>
       </Tooltip>
       {/* Your own course, or an imported one shared publicly (students can
           pass it on); never the bundled one, nor one shared only with you. */}
@@ -294,6 +317,11 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       >
         {resolvedCourse.distribution === "imported" && <CourseUpdateNotice courseId={courseId} />}
         {boardOn && shownView === "board" ? <CourseBoardPanel board={boardOn} courseId={courseId} /> : sectionsContent}
+        <RetakeCourseDialog
+          course={isRetakeOpen ? { id: courseId, title: resolvedCourse.title } : null}
+          onOpen={startCourse}
+          onOpenChange={setIsRetakeOpen}
+        />
         <VersionHistoryDialog
           courseId={courseId}
           mode="history"

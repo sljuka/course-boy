@@ -41,7 +41,7 @@ export function CoursePlayerShell({
   }
 
   if (playerState.status === "complete") {
-    return <CourseCompleted onExitPlayer={playerState.onExitPlayer} />;
+    return <CourseCompleted courseId={playerState.courseId} onExitPlayer={playerState.onExitPlayer} />;
   }
 
   return <>{children}</>;
