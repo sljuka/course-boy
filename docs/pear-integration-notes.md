@@ -1472,3 +1472,60 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   (`isBackgroundSupported`), and the settings aren't shown.
 - **Code:** `electron/background.ts` (close handling, tray, login item), its texts from the
   locale files via `electron/main-texts.ts`. Tested by `e2e/sharing-background.e2e.mjs`.
+
+### Course boards: messages (SLJ-149 phase 1, 2026-10-19)
+
+- **What:** short messages between a course's students and the teacher, with no server.
+  Off until the teacher turns it on in the course form (next to "Show on my channel").
+  While it's on, "Course | Board" pill tabs sit at the start of the action bar: in the
+  teacher's editor (the layout provides them through `LayoutActionBarStartContext`, like
+  its breadcrumbs) and on the student's course page; the view is page state, not the
+  address (the editor rewrites its address), passed by links as
+  `{ courseView: "board" }`. Decisions are recorded on SLJ-149 in Linear.
+- **Transport:** a Protomux channel `matko-board/1` per course on every connection the
+  worker already has (`workers/board-sync.cjs`), next to Hypercore's channels on the same
+  Protomux (so `boards.attach(conn)` runs after `store.replicate(conn)`). Its id is a hash
+  of the course's code, so only devices that have the course can pair. A board opened
+  while already connected pairs through `mux.pair` (Protomux otherwise refuses a channel
+  the other side opened first).
+- **Sync:** on open, each side sends a hello (its newest 1,000 message ids, its limit,
+  its moderation list's `seq`); each then sends what the other is missing among its
+  newest, up to the other's limit, and a newer moderation list. New messages and lists
+  are passed on to every other connection for that board, so they reach students who
+  never connect to the teacher. "Show older messages" asks connected devices for
+  messages older than the last one shown (in practice the teacher's, who keeps more);
+  they're shown, not kept.
+- **Messages (`workers/board-messages.cjs`):** at most 256 characters counted as people
+  see them (`Intl.Segmenter`, which Bare has) and 1 KB, a name of at most 40, a date,
+  signed by the sender's key for the course (a student's from the worker's store,
+  `createKeyPair('board-<code>')`: one per course, so students can't be linked across
+  courses). Dated more than 5 minutes ahead: refused. At most 10 per sender in any 2
+  days, counted by every device that receives them; the teacher has no limit.
+- **The teacher's key:** a course's code is a hash of its drive's manifest, not a key, so
+  the moderation list and the teacher's messages are signed by the key that signs the
+  drive (`courseKeyPair`). The teacher's device derives it from the identity (and checks
+  it gives the code); a student's reads it from the drive's manifest. A drive signed by
+  several maintainers (SLJ-11) has no one key: no board for those courses yet.
+- **Moderation:** one list per board, signed by the course's key: on/off, the students'
+  storage limit, hidden messages, blocked senders. The highest `seq` wins; every device
+  applies it and passes it on. Hidden and blocked messages stay in the files but are
+  never shown or passed on; a blocked sender's own device refuses their posts.
+- **Storage (`workers/board-store.cjs`):** per course, in `<profile>/p2p-boards/`:
+  `<code hex>.messages.jsonl` (appended) and `<code hex>.moderation.json`. Over its limit
+  the oldest messages go and the file is rewritten (temp file, then rename) down to 90%.
+  Limits: a student's device keeps what the teacher set (default 10 MB, about 30,000 messages); the teacher's
+  device keeps its own setting (Settings → Course boards, default 100 MB per course).
+- **Main (`electron/course-boards.ts`):** opens a board for each published course of this
+  profile (as the teacher, once the identity is unlocked) and each imported one, unless
+  switched off (Settings → "Show course boards", or a course's ⋯ → "Show this course's
+  board"). It re-syncs whenever the sharing or maintainers state changes, and on unlock.
+  Its state (settings, what was read) is the profile's `course-boards.json`. Worker
+  command `CMD_BOARD` (26, `op` names the operation), event `EVENT_BOARD_CHANGED` (102).
+- **Names:** the board name from Settings, never the profile name; without one, a name
+  made from the sender's key for that course ("Blue Otter", `src/lib/board-names.ts`).
+  Every name shows a 4-character tag from the key. The teacher's messages carry their
+  channel's name and a "Teacher" badge.
+- **Activity:** a Teaching sidebar item below My channel; for now the boards' unread
+  messages per course (SLJ-168 adds imported/started/finished).
+- **Tests:** `workers/board-*.test.mjs`, `electron/course-boards.test.ts`, and
+  `e2e/sharing-board.e2e.mjs` (a teacher and two students on a local testnet).

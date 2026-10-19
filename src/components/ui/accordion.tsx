@@ -46,6 +46,8 @@ function AccordionTrigger({
   )
 }
 
+// Open, the content ends with room below it (`pb-5`), so the next title
+// (another accordion, in a form) reads as a new section without a line.
 function AccordionContent({
   className,
   children,
@@ -59,7 +61,7 @@ function AccordionContent({
     >
       <div
         className={cn(
-          "h-(--accordion-panel-height) pt-0 pb-2.5 data-ending-style:h-0 data-starting-style:h-0 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
+          "h-(--accordion-panel-height) pt-0 pb-5 data-ending-style:h-0 data-starting-style:h-0 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
           className
         )}
       >

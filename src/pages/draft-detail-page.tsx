@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, useOutletContext, useParams } from "react-router-dom";
 
+import { CourseBoardPanel } from "@/components/course-board/course-board-panel";
 import { CourseMetadataEditor } from "@/components/draft-details/course-metadata-editor";
 import { DraftDocumentEditor } from "@/components/draft-details/draft-document-editor";
 import { DraftSectionEditor } from "@/components/draft-details/draft-section-editor";
@@ -8,6 +9,7 @@ import { DraftTestEditor } from "@/components/draft-details/draft-test-editor";
 import { courseRootId } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import type { CourseLayoutOutletContext } from "@/components/course-layout";
 import { PageContent } from "@/components/page-content";
+import { useCourseBoardQuery } from "@/lib/board-queries";
 import { useAppState } from "@/lib/use-app-state";
 
 export function DraftDetailPage() {
@@ -19,6 +21,7 @@ export function DraftDetailPage() {
     courseGradeBands,
     courseIndex,
     courseSections,
+    courseView,
     defaultLocale,
     isCourseDetailsLoading,
     localizedCourse,
@@ -33,6 +36,7 @@ export function DraftDetailPage() {
   useEffect(() => {
     setEditorStatusAction(null);
   }, [setEditorStatusAction]);
+  const { data: board } = useCourseBoardQuery(courseView === "board" ? courseId : undefined);
 
   if (!courseId) {
     return <Navigate replace to="/my-courses" />;
@@ -40,6 +44,15 @@ export function DraftDetailPage() {
 
   if (isCourseDetailsLoading) {
     return <PageContent>{null}</PageContent>;
+  }
+
+  // The course's board (SLJ-149), from "Course | Board" in the action bar.
+  if (courseView === "board" && board?.status === "on") {
+    return (
+      <PageContent>
+        <CourseBoardPanel board={board} courseId={courseId} />
+      </PageContent>
+    );
   }
 
   if (selectedNode.id === courseRootId) {

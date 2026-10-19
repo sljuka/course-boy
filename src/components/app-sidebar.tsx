@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
+import { AppSidebarActivity } from "@/components/activity/app-sidebar-activity";
 import { AppMenu } from "@/components/app-menu";
 import { AppSidebarApprovals } from "@/components/app-sidebar-approvals";
 import { AppSidebarFavorites } from "@/components/app-sidebar-favorites";
@@ -117,7 +118,9 @@ function AppSidebar() {
                     <span>{t(`sidebar.${item.id}`)}</span>
                   </AppSidebarItem>
                 ))}
-                {/* Under Teaching: versions waiting for your approval (SLJ-11). */}
+                {/* Under Teaching: what's new on your courses (SLJ-149), then
+                    versions waiting for your approval (SLJ-11). */}
+                {group.label === "teaching" && <AppSidebarActivity />}
                 {group.label === "teaching" && <AppSidebarApprovals />}
               </SidebarMenu>
             </SidebarGroupContent>

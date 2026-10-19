@@ -17,6 +17,8 @@ import {
   getPeers,
   getTransfer,
   importCourse,
+  boardOp,
+  onBoardChanged,
   onDriveChanged,
   onMaintainerJoined,
   openIdentity,
@@ -33,6 +35,8 @@ import {
   stopBareWorker,
   stopSharing,
 } from './bare-worker'
+import type { BoardCursor } from '../src/lib/course-board'
+import { createCourseBoards, DEFAULT_BOARD_SETTINGS, type CourseBoards, type CourseBoardsState } from './course-boards'
 import { createCourseProgress } from './course-progress'
 import {
   applyProgramUpdate,
@@ -299,7 +303,13 @@ function openProfileServices(dataDir: string) {
     worker: {
       openIdentity: whileOpen(openIdentity),
       sealIdentity: whileOpen(sealIdentity),
-      setIdentity: whileOpen(setIdentity),
+      // Unlocked (or locked), the teacher's boards open (or close): they're
+      // signed with the course's key, from the identity.
+      setIdentity: whileOpen(async (key: Buffer | null) => {
+        const publisherId = await setIdentity(key)
+        void courseBoards?.sync()
+        return publisherId
+      }),
     },
   })
 
@@ -328,6 +338,7 @@ function openProfileServices(dataDir: string) {
   // The channel (SLJ-31), created after the services it builds on; read
   // lazily by the ones that need its name or code.
   let channels: ChannelsService | null = null
+  let courseBoards: CourseBoards | null = null
   // The name this teacher's courses carry: their channel's, else (no channel
   // yet) the Publisher name they gave at the identity setup.
   const ownPublisherName = async () => {
@@ -686,6 +697,26 @@ function openProfileServices(dataDir: string) {
     writeOwnChannelId: (programId) => programSharingStore.set('ownChannelId', programId),
   })
 
+  // Course boards (SLJ-149): which are open follows what's published and
+  // imported, so every change to that re-syncs them.
+  const courseBoardsStore = new Store<CourseBoardsState>({
+    cwd: dataDir,
+    defaults: { lastRead: {}, settings: DEFAULT_BOARD_SETTINGS },
+    name: 'course-boards',
+  })
+  courseBoards = createCourseBoards({
+    isShared: (courseId) => maintainers.isShared(courseId),
+    op: whileOpen(boardOp) as typeof boardOp,
+    teacherName: ownPublisherName,
+    sharingState: () => ({ followed: courseSharingStore.get('followed'), published: courseSharingStore.get('published') }),
+    store: { read: () => courseBoardsStore.store, write: (state) => (courseBoardsStore.store = state) },
+  })
+  const boardsOpened = courseBoards
+  const stopWatchingSharing = [
+    courseSharingStore.onDidAnyChange(() => void boardsOpened.sync()),
+    maintainersStore.onDidAnyChange(() => void boardsOpened.sync()),
+  ]
+
   // SLJ-68: agents on this computer make courses and programs through MCP,
   // when turned on in Settings → Agents. Its settings (the token too) stay in
   // main: not in preferences, which the window reads wholesale.
@@ -705,9 +736,12 @@ function openProfileServices(dataDir: string) {
 
   return {
     channels,
+    courseBoards: boardsOpened,
     close() {
       closed = true
       void mcp.stop()
+      for (const stop of stopWatchingSharing) stop()
+      boardsOpened.stop()
       courseSharing.stop()
       identityRestore.stop()
       maintainers.stop()
@@ -752,6 +786,12 @@ onDriveChanged((driveKey) => {
   profile.courseSharing.onDriveChanged(driveKey)
   profile.programSharing.onDriveChanged(driveKey)
   profile.maintainers.onDriveChanged(driveKey)
+})
+
+// A board's messages or moderation list changed: the window reads it again.
+onBoardChanged((driveKey) => {
+  const courseId = profile.courseBoards.courseForDriveKey(driveKey)
+  if (courseId) win?.webContents.send('boards:changed', courseId)
 })
 
 onMaintainerJoined((joined) => {
@@ -1091,8 +1131,35 @@ ipcMain.handle(
 ipcMain.handle('courses:remove', async (_event, courseId: string) => {
   await removeLocalCourse(courseId)
   await profile.courseSharing.forgetCourse(courseId)
+  await profile.courseBoards.forget(courseId).catch((error) => console.error('[course-boards] forgetting failed:', error))
   profile.courseProgress.forgetCourse(courseId)
 })
+
+// ─── Course boards (SLJ-149) ────────────────────────────────────────────────
+// A course's board, the teacher's moderation, and this profile's board
+// settings. Inputs are checked by the service (electron/course-boards.ts) and
+// again by the worker.
+
+const boardCourseId = (courseId: unknown) => {
+  if (!isValidCourseId(courseId)) throw new Error('Invalid course id')
+  return courseId
+}
+
+ipcMain.handle('boards:get', (_event, courseId: unknown) => profile.courseBoards.get(boardCourseId(courseId)))
+ipcMain.handle('boards:read-older', (_event, courseId: unknown, before: BoardCursor) =>
+  profile.courseBoards.readOlder(boardCourseId(courseId), before),
+)
+ipcMain.handle('boards:post', (_event, courseId: unknown, text: unknown) => profile.courseBoards.post(boardCourseId(courseId), text))
+ipcMain.handle('boards:moderate', (_event, courseId: unknown, changes: unknown) =>
+  profile.courseBoards.moderate(boardCourseId(courseId), changes),
+)
+ipcMain.handle('boards:mark-read', (_event, courseId: unknown) => profile.courseBoards.markRead(boardCourseId(courseId)))
+ipcMain.handle('boards:list-unread', () => profile.courseBoards.listUnread())
+ipcMain.handle('boards:get-settings', () => profile.courseBoards.getSettings())
+ipcMain.handle('boards:set-settings', (_event, changes: unknown) => profile.courseBoards.setSettings(changes))
+ipcMain.handle('boards:set-shown', (_event, courseId: unknown, shown: unknown) =>
+  profile.courseBoards.setShown(boardCourseId(courseId), shown as boolean),
+)
 
 // ─── Agents (SLJ-68) ────────────────────────────────────────────────────────
 // The MCP server's switch and token, in Settings → Agents.
@@ -2009,7 +2076,12 @@ function startProfile(): void {
     .catch((error) => console.error('[course-sharing] following the built-in course failed:', error))
     .then(() =>
       profile === opened
-        ? Promise.all([opened.courseSharing.start(), opened.programSharing.start(), opened.maintainers.start()])
+        ? Promise.all([
+            opened.courseSharing.start(),
+            opened.programSharing.start(),
+            opened.maintainers.start(),
+            opened.courseBoards.start(),
+          ])
         : undefined,
     )
 }

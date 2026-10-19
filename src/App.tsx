@@ -29,6 +29,7 @@ import { DraftLessonPreviewPage } from "@/pages/draft-lesson-preview-page";
 import { DraftTestPreviewPage } from "@/pages/draft-test-preview-page";
 import { HomePage } from "@/pages/home-page";
 import { MyChannelPage } from "@/pages/my-channel-page";
+import { ActivityPage } from "@/pages/activity-page";
 import { MyProgramsPage } from "@/pages/my-programs-page";
 import { ApprovalReviewPage } from "@/pages/approval-review-page";
 import { ApprovalsPage } from "@/pages/approvals-page";
@@ -45,6 +46,7 @@ import { WelcomePage } from "@/pages/welcome-page";
 import { useAppState } from "@/lib/use-app-state";
 import { useProfilesStateQuery } from "@/lib/profiles-queries";
 import { useRefreshOnAgentChanges } from "@/lib/mcp-queries";
+import { useRefreshOnBoardChanges } from "@/lib/board-queries";
 
 const AppRoutes = () => {
   const { isLoaded } = useAppState();
@@ -82,6 +84,7 @@ const AppRoutes = () => {
             <Route element={<MyCoursesPage />} path="/my-courses" />
             <Route element={<MyProgramsPage />} path="/my-programs" />
             <Route element={<MyChannelPage />} path="/my-channel" />
+            <Route element={<ActivityPage />} path="/activity" />
             <Route element={<ApprovalsPage />} path="/approvals" />
             <Route element={<ApprovalReviewPage />} path="/approvals/:publicId/:hash" />
             <Route element={<ProgramEditorPage />} path="/my-programs/:programId" />
@@ -172,6 +175,7 @@ const AppLinkOpener = () => {
 // What an agent changed over MCP (SLJ-68) shows up on the open page.
 const AgentChangesRefresher = () => {
   useRefreshOnAgentChanges();
+  useRefreshOnBoardChanges();
 
   return null;
 };

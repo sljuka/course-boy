@@ -1,5 +1,6 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { ChannelForCourse } from '../src/lib/channels'
+import type { BoardCursor, BoardMessage, BoardModerationChanges, BoardSettings, CourseBoard } from '../src/lib/course-board'
 import type { CourseProgressState, CourseSpree, RecordTestResultInput } from '../src/lib/course-progress'
 import type { ApprovalsList, MaintainersInfo, ProposalReview } from '../src/lib/maintainers'
 import type { McpStatus } from '../src/lib/mcp'
@@ -292,6 +293,45 @@ contextBridge.exposeInMainWorld('mcp', {
   },
   setEnabled(enabled: boolean) {
     return ipcRenderer.invoke('mcp:set-enabled', enabled) as Promise<McpStatus>
+  },
+})
+
+// Course boards (SLJ-149): a course's messages, the teacher's moderation,
+// and this profile's board settings.
+contextBridge.exposeInMainWorld('boards', {
+  get(courseId: string) {
+    return ipcRenderer.invoke('boards:get', courseId) as Promise<CourseBoard>
+  },
+  getSettings() {
+    return ipcRenderer.invoke('boards:get-settings') as Promise<BoardSettings>
+  },
+  listUnread() {
+    return ipcRenderer.invoke('boards:list-unread') as Promise<Record<string, number>>
+  },
+  markRead(courseId: string) {
+    return ipcRenderer.invoke('boards:mark-read', courseId) as Promise<void>
+  },
+  moderate(courseId: string, changes: BoardModerationChanges) {
+    return ipcRenderer.invoke('boards:moderate', courseId, changes) as Promise<void>
+  },
+  onChanged(callback: (courseId: string) => void) {
+    const listener = (_event: unknown, courseId: string) => callback(courseId)
+    ipcRenderer.on('boards:changed', listener)
+    return () => {
+      ipcRenderer.removeListener('boards:changed', listener)
+    }
+  },
+  post(courseId: string, text: string) {
+    return ipcRenderer.invoke('boards:post', courseId, text) as Promise<BoardMessage>
+  },
+  readOlder(courseId: string, before: BoardCursor) {
+    return ipcRenderer.invoke('boards:read-older', courseId, before) as Promise<BoardMessage[]>
+  },
+  setSettings(changes: Partial<Pick<BoardSettings, 'enabled' | 'name' | 'ownLimitBytes'>>) {
+    return ipcRenderer.invoke('boards:set-settings', changes) as Promise<BoardSettings>
+  },
+  setShown(courseId: string, shown: boolean) {
+    return ipcRenderer.invoke('boards:set-shown', courseId, shown) as Promise<void>
   },
 })
 

@@ -36,6 +36,11 @@ import type { EntityAutosaveStatus } from "@/lib/use-entity-autosave";
 import { useAppState } from "@/lib/use-app-state";
 import { useSidePanelPreference } from "@/lib/explorer-panel-queries";
 import { LayoutBreadcrumbsContext } from "@/lib/use-layout-breadcrumbs";
+import { LayoutActionBarStartContext } from "@/lib/use-layout-action-bar-start";
+import { CourseViewTabs } from "@/components/course-board/course-view-tabs";
+import { useCourseBoardQuery } from "@/lib/board-queries";
+import { CourseViewContext, courseViewFromState, type CourseView } from "@/lib/course-view";
+import { boardIfOn } from "@/lib/course-board";
 import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-panel";
 import { SerbianScriptContext } from "@/lib/use-serbian-script";
 import type { Locale } from "@/lib/i18n";
@@ -43,6 +48,8 @@ import { useImmersiveMode } from "@/lib/use-immersive-mode";
 import { usePersistentPanelContent } from "@/lib/use-persistent-panel-content";
 
 type CourseLayoutOutletContext = {
+  // The course itself or its board (SLJ-149); "board" only while it's on.
+  courseView: CourseView;
   contentRating: ContentRating;
   courseDescriptiveTags: CourseTagDefinition[];
   courseDescription: string;
@@ -124,7 +131,16 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   // pages it opens. A pick in it closes it ("show me the page"); selecting
   // what was just added doesn't, so the teacher sees it and can keep adding.
   const [isExplorerDrawerOpen, setIsExplorerDrawerOpen] = useState(false);
+  // "Course | Board" (SLJ-149), while the course's board is on. Arriving with
+  // `{ courseView: "board" }` (Activity's link) opens the board; picking
+  // something in the explorer goes back to the course.
+  const [view, setView] = useState<CourseView>(() => courseViewFromState(location.state));
+  const { data: board } = useCourseBoardQuery(courseId);
+  const boardOn = boardIfOn(board);
+  const courseView: CourseView = boardOn ? view : "course";
+  const courseViewContext = useMemo(() => ({ setView, view: courseView }), [courseView]);
   const handleExplorerSelection = useCallback((selection: StructureSelection) => {
+    setView("course");
     setSelectedNode(selection);
     if (!selection.keepPanelOpen) setIsExplorerDrawerOpen(false);
   }, []);
@@ -290,6 +306,10 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
         <SerbianScriptContext.Provider value={courseDetailsQuery.data?.serbianScript ?? null}>
         <PageSidePanelsContext.Provider value={sidePanels}>
         <LayoutBreadcrumbsContext.Provider value={breadcrumbs}>
+        <LayoutActionBarStartContext.Provider
+          value={boardOn && <CourseViewTabs board={boardOn} onViewChange={setView} view={courseView} />}
+        >
+        <CourseViewContext.Provider value={courseViewContext}>
         <PagePanel immersive={isImmersive}>
           {explorer.portal}
           <div className="flex min-h-0 flex-1 flex-col">
@@ -304,6 +324,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
                   courseIndex: courseDetailsQuery.data?.courseIndex ?? true,
                   courseSections: courseDetailsQuery.data?.sections ?? [],
                   courseTitle,
+                  courseView,
                   defaultLocale,
                   isCourseDetailsLoading: courseDetailsQuery.isLoading,
                   localizedCourse,
@@ -347,6 +368,8 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
             />
           </AppStatusBarEnd>
         </PagePanel>
+        </CourseViewContext.Provider>
+        </LayoutActionBarStartContext.Provider>
         </LayoutBreadcrumbsContext.Provider>
         </PageSidePanelsContext.Provider>
         </SerbianScriptContext.Provider>

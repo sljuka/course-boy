@@ -1,4 +1,5 @@
 import { ChannelListingToggle } from "@/components/channels/channel-listing-toggle";
+import { CourseBoardSettings } from "@/components/course-board/course-board-settings";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Eye, History, Info, Undo2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -625,6 +626,10 @@ export function CourseMetadataEditor({
                 published (it hides itself before that). Saved at once, not
                 with the form: it's the channel's list, not the course's. */}
             <ChannelListingToggle courseId={courseId} />
+
+            {/* The course's board (SLJ-149): only once the course is published
+                (it hides itself before that). */}
+            <CourseBoardSettings courseId={courseId} />
 
             <Accordion>
               <AccordionItem value="grade-bands">

@@ -31,6 +31,7 @@
     "hyperswarm": "^4.17.0",
     "localdrive": "^2.2.1",
     "mirror-drive": "^1.14.2",
+    "protomux": "^3.11.0",
     "sodium-native": "^5.1.0"
   },
   "devDependencies": {

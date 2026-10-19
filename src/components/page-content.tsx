@@ -5,6 +5,8 @@ import type { PageBreadcrumb } from "@/components/page/page-breadcrumbs";
 
 type PageContentProps = {
   children: ReactNode;
+  // The start of the page's action bar (view tabs).
+  actionBarStart?: ReactNode;
   // Page actions, shown at the end of the page's action bar.
   actions?: ReactNode;
   breadcrumbs?: readonly PageBreadcrumb[];
@@ -20,6 +22,7 @@ type PageContentProps = {
 // Kept for pages not yet moved to `<Page>` directly (SLJ-13 migration): the
 // same thing under its older prop names. New pages should use `Page`.
 export const PageContent = ({
+  actionBarStart,
   actions,
   breadcrumbs,
   children,
@@ -30,6 +33,7 @@ export const PageContent = ({
 }: PageContentProps) => {
   return (
     <Page
+      actionBarStart={actionBarStart}
       actions={actions}
       breadcrumbs={breadcrumbs}
       className={className}

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/page-toolbar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsCompactSidePanels } from "@/hooks/use-mobile";
+import { useLayoutActionBarStart } from "@/lib/use-layout-action-bar-start";
 import { useLayoutBreadcrumbs } from "@/lib/use-layout-breadcrumbs";
 import { useImmersiveMode } from "@/lib/use-immersive-mode";
 import { usePageSidePanels, type PageSidePanelValue } from "@/lib/use-page-side-panel";
@@ -58,7 +59,7 @@ type PageProps = {
 // See docs/working-conventions.md.
 export function Page({
   actionBarCenter,
-  actionBarStart,
+  actionBarStart: ownActionBarStart,
   actions,
   breadcrumbs,
   children,
@@ -69,6 +70,8 @@ export function Page({
   keepsActionBarInFullScreen = false,
 }: PageProps) {
   const layoutBreadcrumbs = useLayoutBreadcrumbs();
+  const layoutActionBarStart = useLayoutActionBarStart();
+  const actionBarStart = ownActionBarStart ?? layoutActionBarStart;
   // Full screen: no toolbars (but the action bar, if the page keeps it) or
   // side panels (but one that `keepsInFullScreen`), the content at a reading
   // width (see lib/immersive-mode.tsx).

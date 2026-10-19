@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { AgentsSettings } from "@/components/agents/agents-settings";
 import { BackgroundSettings } from "@/components/background/background-settings";
+import { BoardNameSetting, BoardOwnLimitSetting, BoardsEnabledSetting } from "@/components/course-board/board-settings";
 import { PublisherIdentitySettings } from "@/components/identity/publisher-identity-settings";
 import { PageContent } from "@/components/page-content";
 import { ProfileNameSetting } from "@/components/profile/profile-name-setting";
@@ -192,6 +193,17 @@ export const SettingsPage = () => {
         </Field>
         <BackgroundSettings />
         <PublisherIdentitySettings />
+      </SettingsSection>
+      {/* Course boards (SLJ-149): the board name, boards on or off here, and
+          how much of your own courses' boards this computer keeps. */}
+      <SettingsSection
+        data-testid="board-settings"
+        description={t("board.settings.description")}
+        title={t("board.settings.title")}
+      >
+        <BoardNameSetting />
+        <BoardsEnabledSetting />
+        {role === "teacher" && <BoardOwnLimitSetting />}
       </SettingsSection>
       {/* Agents on this computer making courses over MCP (SLJ-68). */}
       <SettingsSection

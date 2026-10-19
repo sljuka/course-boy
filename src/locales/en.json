@@ -592,7 +592,8 @@
     "myPrograms": "My programs",
     "approvals": "Approvals",
     "publishers": "Publishers",
-    "myChannel": "My channel"
+    "myChannel": "My channel",
+    "activity": "Activity"
   },
   "testEditor": {
     "allowShowAnswer": "Let students show the correct answer",
@@ -1472,5 +1473,63 @@
     "lessonTest": "Test",
     "settingLabel": "Students can open the course index",
     "settingDescription": "A list of the course's sections, lessons and tests beside each lesson, with progress, to jump to another one. Off: students go through the course in order, with Continue, without the list beside the lesson."
+  },
+  "activity": {
+    "title": "Activity",
+    "description": "What's new on your courses. For now, board messages you haven't read.",
+    "empty": "Nothing new on your courses’ boards.",
+    "unreadMessages_one": "{{count}} new message",
+    "unreadMessages_other": "{{count}} new messages"
+  },
+  "board": {
+    "tabs": {
+      "course": "Course",
+      "board": "Board"
+    },
+    "empty": "No messages yet. Write the first one.",
+    "teacherBadge": "Teacher",
+    "showOlder": "Show older messages",
+    "showThisBoard": "Show this course's board",
+    "moderation": {
+      "menu": "Message options",
+      "hide": "Hide message",
+      "block": "Block sender",
+      "hidden": "The message is hidden for everyone.",
+      "blocked": "The sender is blocked: their messages are hidden, and they can’t post.",
+      "undo": "Undo"
+    },
+    "composer": {
+      "label": "Message",
+      "placeholder": "Write to the class…",
+      "postingAs": "Posting as {{name}} · {{tag}}",
+      "count": "{{length}} / {{max}}",
+      "post": "Post"
+    },
+    "errors": {
+      "rateLimited": "You’ve sent 10 messages in the last 2 days. Try again later.",
+      "blocked": "The teacher blocked you on this board.",
+      "tooLong": "The message is too long.",
+      "off": "The teacher turned the board off.",
+      "generic": "The message wasn’t sent."
+    },
+    "settings": {
+      "title": "Course boards",
+      "description": "Short messages on a course’s page, between its students and the teacher. They travel between computers that have the course, with no server.",
+      "enabled": "Course board",
+      "enabledHint": "Students and you can post short messages on the course’s page. You can hide messages and block senders.",
+      "studentLimit": "Each student keeps",
+      "studentLimitHint": "The newest messages, up to this much on each student’s computer.",
+      "name": "Board name",
+      "nameHint": "Others see it next to your messages on every course’s board. Empty, each course gives you a name of its own. Never your profile name.",
+      "namePlaceholder": "A name per course",
+      "nameTooLong": "At most {{max}} characters.",
+      "showBoards": "Show course boards",
+      "showBoardsHint": "Off, this computer doesn’t fetch any course’s board.",
+      "ownLimit": "Space for your courses’ boards",
+      "ownLimitHint": "This computer keeps the newest messages of each course you teach, up to this much.",
+      "open": "Open the board",
+      "turnOn": "Students can post on this course's board",
+      "onBadge": "On"
+    }
   }
 }

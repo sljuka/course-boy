@@ -169,6 +169,23 @@ interface Window {
     onAppLinksWaiting: (callback: () => void) => () => void
   }
   // Agents (SLJ-68): the MCP server in Settings → Agents.
+  boards: {
+    get: (courseId: string) => Promise<import('../src/lib/course-board').CourseBoard>
+    getSettings: () => Promise<import('../src/lib/course-board').BoardSettings>
+    listUnread: () => Promise<Record<string, number>>
+    markRead: (courseId: string) => Promise<void>
+    moderate: (courseId: string, changes: import('../src/lib/course-board').BoardModerationChanges) => Promise<void>
+    onChanged: (callback: (courseId: string) => void) => () => void
+    post: (courseId: string, text: string) => Promise<import('../src/lib/course-board').BoardMessage>
+    readOlder: (
+      courseId: string,
+      before: import('../src/lib/course-board').BoardCursor,
+    ) => Promise<import('../src/lib/course-board').BoardMessage[]>
+    setSettings: (
+      changes: Partial<Pick<import('../src/lib/course-board').BoardSettings, 'enabled' | 'name' | 'ownLimitBytes'>>,
+    ) => Promise<import('../src/lib/course-board').BoardSettings>
+    setShown: (courseId: string, shown: boolean) => Promise<void>
+  }
   mcp: {
     getStatus: () => Promise<import('../src/lib/mcp').McpStatus>
     onChanged: (callback: () => void) => () => void

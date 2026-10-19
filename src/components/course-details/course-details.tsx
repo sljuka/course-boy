@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { ArrowLeft, BookOpen, CheckCheck, History, Home, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
+import { BoardShownMenuItem } from "@/components/course-board/board-shown-menu-item";
+import { CourseBoardPanel } from "@/components/course-board/course-board-panel";
+import { CourseViewTabs } from "@/components/course-board/course-view-tabs";
 import { CourseLoadingCard } from "@/components/course-loading-card";
 import {
   buildSectionPreviewItems,
@@ -20,7 +23,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCourseBoardQuery } from "@/lib/board-queries";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
+import { courseViewFromState, type CourseView } from "@/lib/course-view";
+import { boardIfOn } from "@/lib/course-board";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { useCourseSharingQuery } from "@/lib/sharing-queries";
 import { CourseInfoSidePanel } from "@/components/course-details/course-info-panel";
@@ -42,6 +48,8 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   const { t } = useTranslation();
   const { data: progress } = useCourseProgressQuery();
   const [isVersionHistoryOpen, setIsVersionHistoryOpen] = useState(false);
+  const location = useLocation();
+  const [view, setView] = useState<CourseView>(() => courseViewFromState(location.state));
   const { data: course, isLoading } = useCourseDetailsQuery(courseId, locale, {
     throwOnError: true,
   });
@@ -49,6 +57,13 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   const { data: sharing } = useCourseSharingQuery(
     course?.distribution === "imported" && !isPreview ? courseId : undefined,
   );
+  // An imported course's board (SLJ-149): "Course | Board" while it's on. The
+  // teacher's own course has them in the editor instead.
+  const { data: board } = useCourseBoardQuery(
+    course?.distribution === "imported" && !isPreview ? courseId : undefined,
+  );
+  const boardOn = boardIfOn(board);
+  const shownView: CourseView = boardOn ? view : "course";
 
   if (isLoading) {
     return (
@@ -133,6 +148,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       <CourseActionsMenu
         afterRemovePath={resolvedCourse.distribution === "local" ? "/my-courses" : "/"}
         course={resolvedCourse}
+        items={resolvedCourse.distribution === "imported" ? <BoardShownMenuItem courseId={courseId} /> : undefined}
       />
     </>
   );
@@ -270,13 +286,14 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   return (
     <CourseInfoSidePanel course={resolvedCourse}>
       <PageContent
+        actionBarStart={boardOn && <CourseViewTabs board={boardOn} onViewChange={setView} view={shownView} />}
         actions={actions}
         breadcrumbs={breadcrumbs}
         crumbActions={crumbActions}
         pageHero={pageHero}
       >
         {resolvedCourse.distribution === "imported" && <CourseUpdateNotice courseId={courseId} />}
-        {sectionsContent}
+        {boardOn && shownView === "board" ? <CourseBoardPanel board={boardOn} courseId={courseId} /> : sectionsContent}
         <VersionHistoryDialog
           courseId={courseId}
           mode="history"

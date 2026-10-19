@@ -83,6 +83,7 @@ describe('launch', () => {
   it('exposes the full preload bridge surface', async () => {
     const surface = await harness.page.evaluate(() => ({
       background: Object.keys(window.background ?? {}).sort(),
+      boards: Object.keys(window.boards ?? {}).sort(),
       channels: Object.keys(window.channels ?? {}).sort(),
       courses: Object.keys(window.courses ?? {}).sort(),
       maintainers: Object.keys(window.maintainers ?? {}).sort(),
@@ -96,6 +97,18 @@ describe('launch', () => {
     }))
 
     expect(surface.background).toEqual(['isSupported', 'onAskKeepSharing'])
+    expect(surface.boards).toEqual([
+      'get',
+      'getSettings',
+      'listUnread',
+      'markRead',
+      'moderate',
+      'onChanged',
+      'post',
+      'readOlder',
+      'setSettings',
+      'setShown',
+    ])
     expect(surface.channels).toEqual(['getForCourse', 'own', 'setCourseListed'])
     expect(surface.mcp).toEqual(['getStatus', 'onChanged', 'regenerateToken', 'setEnabled'])
     expect(surface.courses).toEqual([
@@ -277,7 +290,7 @@ describe('sidebar by role', () => {
     await waitFor(harness.page, () => Boolean(document.querySelector('#settings-role-teacher')))
     await harness.page.click('label[for="settings-role-teacher"]')
     await waitFor(harness.page, () => document.querySelectorAll('[data-sidebar=menu-button]').length > 1)
-    expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses', 'My programs', 'My channel', 'Publishers'])
+    expect(await sidebarLinkTexts()).toEqual(['Home', 'My courses', 'My programs', 'My channel', 'Activity', 'Publishers'])
     const prefs = await harness.page.evaluate(() => window.preferences.get())
     expect(prefs.role).toBe('teacher')
 

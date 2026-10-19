@@ -426,6 +426,13 @@ the original owner as `publisher.id`. How it fits together:
 - **Decisions:** `electron/maintainers.ts` decides when, with its state in the profile's
   `maintainers.json` electron-store file. The renderer reaches it through
   `window.maintainers` (`maintainers:*` IPC).
+- **Course boards (SLJ-149):** `workers/board-sync.cjs` carries messages and the
+  moderation list between devices; `electron/course-boards.ts` decides which boards are
+  open, through `window.boards` (`boards:*` IPC, and `boards:changed` to the window). The
+  worker command is `CMD_BOARD` (26, `op` names the operation) and the event
+  `EVENT_BOARD_CHANGED` (102). What's signed (messages, the moderation list) is a fixed
+  byte layout in `workers/board-messages.cjs`: changing it makes every device refuse the
+  others' messages, so it needs a new protocol name (`matko-board/2`).
 - **Publishers (SLJ-108):** the profile's address book, `electron/publishers.ts`, through
   `window.publishers` (`publishers:*` IPC). It derives entries from the followed courses
   and programs and the maintainers state; renaming fields there changes what it lists.

@@ -66,7 +66,7 @@ bundles (all renderer libraries, and main-process ones like `electron-store`) is
   isolated userData directory.
 - **Automated:** `e2e/app.e2e.mjs` via `npm run check:e2e`. Sharing between app
   instances is `e2e/sharing-*.e2e.mjs`, one file per area (restarts and updates,
-  restore, password, programs, maintainers): teachers and students as separate
+  restore, password, programs, maintainers, boards): teachers and students as separate
   instances, each file on its own local DHT testnet (`MATKO_DHT_BOOTSTRAP`, set up by
   `e2e/sharing-suite.mjs`), never the public network. Run just the file for the area you
   touched, e.g. `npx vitest run --config vitest.config.e2e.mjs e2e/sharing-programs.e2e.mjs`.
@@ -124,6 +124,11 @@ display was already off when the run started.
   A channel (SLJ-31) is stored and shared as a program marked `kind: "channel"`: one
   per profile (My channel), listing the courses its teacher shows on it
   (`electron/channels.ts`); a listed course's `source.json` names the channel.
+  A course can have a board (SLJ-149): short messages on its page between students and
+  the teacher, off until the teacher turns it on, carried between devices on a Protomux
+  channel of its own (`workers/board-sync.cjs`) and moderated with a list signed by the
+  course's key (`electron/course-boards.ts`, `window.boards`). Not yet for courses with
+  several maintainers.
   Agents on the same computer (Claude Code, Claude Desktop, …) can make courses and
   programs over MCP (SLJ-68, `electron/mcp-server.ts` + `electron/mcp-tools.ts`): off until
   turned on in Settings → Agents, localhost with a token, authoring only (no publishing,

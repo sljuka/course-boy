@@ -26,6 +26,7 @@ import { getPublishedCoursePackagePath } from './course-paths'
 import { isValidCourseId } from '../src/lib/course-id'
 import type { RemoteCourseVersion } from './course-sharing'
 import type { TransferInfo } from '../src/lib/sharing'
+import type { BoardCursor, BoardModeration, BoardModerationChanges, BoardWorkerMessage, BoardWorkerPage } from '../src/lib/course-board'
 
 // Must match workers/main.cjs.
 const CMD_GET_CREATOR_KEY = 1
@@ -53,10 +54,14 @@ const CMD_PEEK_COURSE = 23
 const CMD_FIND_PROGRAM = 24
 // Courses shared by several maintainers (SLJ-11): one command, `op` names the operation.
 const CMD_SHARED_COURSE = 25
+// Course boards (SLJ-149): one command, `op` names the operation.
+const CMD_BOARD = 26
 // Sent by the worker to main (the only worker → main message).
 const EVENT_DRIVE_CHANGED = 100
 // Worker → main: someone joined as a maintainer with one of our invites.
 const EVENT_MAINTAINER_JOINED = 101
+// Worker → main: a course board's messages or moderation list changed.
+const EVENT_BOARD_CHANGED = 102
 
 declare global {
   // 'spawning' until the worker answers, then 'ready', or 'error: …'
@@ -451,6 +456,28 @@ export async function sharedCourseOp<K extends keyof SharedCourseOps>(
   return sendCommand<SharedCourseOps[K][1]>(CMD_SHARED_COURSE, { ...args, op })
 }
 
+// A course board's operations (workers/main.cjs, boardOp). Boards are named
+// by their course's code.
+type BoardOps = {
+  close: [{ driveKey: string; remove?: boolean }, Record<string, never>]
+  moderate: [{ changes: BoardModerationChanges; driveKey: string }, BoardModeration]
+  open: [{ driveKey: string; ownLimitBytes?: number; publicId?: string }, Record<string, never>]
+  post: [{ driveKey: string; name: string; text: string }, BoardWorkerMessage]
+  read: [{ before?: BoardCursor | null; driveKey: string; limit?: number }, BoardWorkerPage]
+  readOlder: [{ before: BoardCursor; driveKey: string; limit?: number }, { messages: BoardWorkerMessage[] }]
+}
+
+export async function boardOp<K extends keyof BoardOps>(op: K, args: BoardOps[K][0]): Promise<BoardOps[K][1]> {
+  return sendCommand<BoardOps[K][1]>(CMD_BOARD, { ...args, op })
+}
+
+const boardChangedListeners = new Set<(driveKey: string) => void>()
+
+// Called when a course board's messages or moderation list changed.
+export function onBoardChanged(listener: (driveKey: string) => void): void {
+  boardChangedListeners.add(listener)
+}
+
 const maintainerJoinedListeners = new Set<(joined: MaintainerJoined) => void>()
 
 export function onMaintainerJoined(listener: (joined: MaintainerJoined) => void): void {
@@ -653,6 +680,14 @@ export function spawnBareWorker(): void {
           for (const listener of maintainerJoinedListeners) listener(joined)
         } catch (error) {
           console.error('[bare-worker] bad maintainer-joined event:', error)
+        }
+      }
+      if (req.command === EVENT_BOARD_CHANGED) {
+        try {
+          const { driveKey } = JSON.parse(req.data?.toString() ?? '{}') as { driveKey?: string }
+          if (driveKey) for (const listener of boardChangedListeners) listener(driveKey)
+        } catch (error) {
+          console.error('[bare-worker] bad board-changed event:', error)
         }
       }
       if (req.command === EVENT_DRIVE_CHANGED) {

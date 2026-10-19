@@ -592,7 +592,8 @@
     "myPrograms": "Moji programi",
     "approvals": "Odobrenja",
     "publishers": "Izdavači",
-    "myChannel": "Moj kanal"
+    "myChannel": "Moj kanal",
+    "activity": "Aktivnost"
   },
   "testEditor": {
     "allowShowAnswer": "Učenik može da vidi tačan odgovor",
@@ -1472,5 +1473,63 @@
     "lessonTest": "Test",
     "settingLabel": "Učenici mogu da otvore sadržaj kursa",
     "settingDescription": "Spisak sekcija, lekcija i testova kursa pored svake lekcije, sa napretkom, za prelazak na drugu. Isključeno: učenici prelaze kroz kurs redom, dugmetom „Nastavi“, bez spiska lekcija pored lekcije."
+  },
+  "activity": {
+    "title": "Aktivnost",
+    "description": "Šta je novo na tvojim kursevima. Za sada, poruke na tablama koje nisi pročitao.",
+    "empty": "Ništa novo na tablama tvojih kurseva.",
+    "unreadMessages_one": "{{count}} nova poruka",
+    "unreadMessages_other": "Novih poruka: {{count}}"
+  },
+  "board": {
+    "tabs": {
+      "course": "Kurs",
+      "board": "Tabla"
+    },
+    "empty": "Još nema poruka. Napiši prvu.",
+    "teacherBadge": "Nastavnik",
+    "showOlder": "Prikaži starije poruke",
+    "showThisBoard": "Prikaži tablu ovog kursa",
+    "moderation": {
+      "menu": "Opcije poruke",
+      "hide": "Sakrij poruku",
+      "block": "Blokiraj pošiljaoca",
+      "hidden": "Poruka je sakrivena za sve.",
+      "blocked": "Pošiljalac je blokiran: njegove poruke su sakrivene i ne može da piše.",
+      "undo": "Poništi"
+    },
+    "composer": {
+      "label": "Poruka",
+      "placeholder": "Napiši odeljenju…",
+      "postingAs": "Pišeš kao {{name}} · {{tag}}",
+      "count": "{{length}} / {{max}}",
+      "post": "Pošalji"
+    },
+    "errors": {
+      "rateLimited": "Poslao si 10 poruka u poslednja 2 dana. Pokušaj kasnije.",
+      "blocked": "Nastavnik te je blokirao na ovoj tabli.",
+      "tooLong": "Poruka je predugačka.",
+      "off": "Nastavnik je isključio tablu.",
+      "generic": "Poruka nije poslata."
+    },
+    "settings": {
+      "title": "Table kurseva",
+      "description": "Kratke poruke na stranici kursa, između učenika i nastavnika. Putuju između računara koji imaju kurs, bez servera.",
+      "enabled": "Tabla kursa",
+      "enabledHint": "Učenici i ti možete da pišete kratke poruke na stranici kursa. Možeš da sakriješ poruke i blokiraš pošiljaoce.",
+      "studentLimit": "Svaki učenik čuva",
+      "studentLimitHint": "Najnovije poruke, najviše ovoliko na računaru svakog učenika.",
+      "name": "Ime na tabli",
+      "nameHint": "Drugi ga vide pored tvojih poruka na tabli svakog kursa. Prazno, svaki kurs ti daje svoje ime. Nikad ime tvog profila.",
+      "namePlaceholder": "Ime po kursu",
+      "nameTooLong": "Najviše {{max}} znakova.",
+      "showBoards": "Prikaži table kurseva",
+      "showBoardsHint": "Isključeno, ovaj računar ne preuzima tablu nijednog kursa.",
+      "ownLimit": "Prostor za table tvojih kurseva",
+      "ownLimitHint": "Ovaj računar čuva najnovije poruke svakog kursa koji predaješ, najviše ovoliko.",
+      "open": "Otvori tablu",
+      "turnOn": "Učenici mogu da pišu na tabli ovog kursa",
+      "onBadge": "Uključena"
+    }
   }
 }

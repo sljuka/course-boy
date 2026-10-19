@@ -19,6 +19,7 @@ const { createMaintainers, requestHash } = require('./maintainers.cjs')
 const { clearOldVersions } = require('./drive-storage.cjs')
 const { NoSymlinkLocaldrive, assertNoSymlinksOnDisk } = require('./drive-safety.cjs')
 const { limitConnections } = require('./connection-limit.cjs')
+const { createBoards } = require('./board-sync.cjs')
 const { DOWNLOAD_LIMITS, assertFreeSpace, blobSize, planDownload } = require('./download-limits.cjs')
 const {
   commitProposal,
@@ -62,6 +63,9 @@ const CMD_FIND_PROGRAM = 24 // must match electron/bare-worker.ts
 // Courses shared by several maintainers (SLJ-11): one command, the operation
 // named by `op` (see sharedCourseOp below).
 const CMD_SHARED_COURSE = 25 // must match electron/bare-worker.ts
+// Course boards (SLJ-149): one command, the operation named by `op` (see
+// boardOp below).
+const CMD_BOARD = 26 // must match electron/bare-worker.ts
 
 // Programs (SLJ-32) share `publishedDrives` with courses under this prefix, so
 // a program's id can never collide with a course's.
@@ -73,6 +77,8 @@ const PEEK_TIMEOUT_MS = 20_000
 const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
 // Worker → main: someone joined as a maintainer with one of our invites.
 const EVENT_MAINTAINER_JOINED = 101 // must match electron/bare-worker.ts
+// Worker → main: a course board's messages or moderation list changed.
+const EVENT_BOARD_CHANGED = 102 // must match electron/bare-worker.ts
 
 // How often followed drives are checked for a new version even without an
 // 'append' event (e.g. after being offline). Main ignores repeats.
@@ -160,6 +166,13 @@ async function start() {
   const limit = limitConnections({ isVetted: (publicKey) => allowlist.has(publicKey.toString('hex')) })
   const swarm = limit.attach(new Hyperswarm({ bootstrap, firewall: limit.firewall, keyPair: swarmKeyPair }))
   const pairing = new BlindPairing(swarm)
+  // Course boards (SLJ-149, board-sync.cjs): a channel of their own on every
+  // connection, their messages in files next to the store.
+  const boards = createBoards({
+    folder: `${storagePath}-boards`,
+    fs: fsp,
+    onChange: (hex) => notifyMain(EVENT_BOARD_CHANGED, { driveKey: IdEncoding.normalize(Buffer.from(hex, 'hex')) }),
+  })
 
   const connectionsByPeerKey = new Map() // hex peer key -> live conn, for upgrading an already-open one
   const invites = new Map() // hex invite id -> { driveKey, expiresAt, invitePublicKey, maxUses, usedCount }
@@ -246,6 +259,8 @@ async function start() {
     } else {
       store.replicate(conn)
     }
+    // After replicate(), so the boards share Hypercore's Protomux.
+    boards.attach(conn)
   })
 
   function onGatedRequest(request) {
@@ -1514,6 +1529,78 @@ async function start() {
     }
   }
 
+  // A course board's operations (SLJ-149). Main decides which boards are open
+  // (electron/course-boards.ts); boards are named by their course's code.
+  //
+  // - open: { driveKey, publicId?, ownLimitBytes? }. With `publicId`, this is
+  //   the teacher's device: the course's key pair, derived from the identity,
+  //   signs the moderation list and the teacher's messages. Without it, the
+  //   device's own key for the course (from the store, one per course).
+  // - close: { driveKey, remove? }
+  // - read: { driveKey, before?, limit? } → the page, or { closed: true }
+  // - post: { driveKey, name, text } → the message
+  // - moderate: { driveKey, changes } → the new list (the teacher only)
+  // - readOlder: { driveKey, before, limit? } → { messages } from peers
+  // Messages go to main with the sender's key also as the app shows keys
+  // (z32), for the short tag next to a name.
+  const withAuthorId = (message) => ({ ...message, authorId: IdEncoding.normalize(Buffer.from(message.author, 'hex')) })
+
+  // The key that signs a course's drive: its moderation list must be signed
+  // by it. The code is a hash of the drive's manifest, which names it; a
+  // drive signed by several maintainers (SLJ-11) has no one key, so no board.
+  async function courseSignerKey(driveKey) {
+    for (const candidateStore of [store, gatedStore]) {
+      const core = candidateStore.get({ key: driveKey })
+      try {
+        await core.ready()
+        const signers = core.manifest?.signers
+        if (!signers) continue
+        if (signers.length !== 1 || core.manifest.quorum !== 1) {
+          throw Object.assign(new Error('A course shared by several maintainers has no board yet'), { code: 'UNSUPPORTED' })
+        }
+        return signers[0].publicKey
+      } finally {
+        await core.close().catch(() => {})
+      }
+    }
+    throw Object.assign(new Error("The course's drive isn't on this device"), { code: 'NOT_FOUND' })
+  }
+
+  async function boardOp(args) {
+    const key = IdEncoding.decode(args.driveKey)
+    if (args.op === 'open') {
+      const hex = key.toString('hex')
+      const authorKeyPair = await store.createKeyPair(`board-${hex}`)
+      let keyPair = null
+      let teacherKey
+      if (args.publicId) {
+        keyPair = courseKeyPair(requireIdentity(), args.publicId)
+        const cores = await openCourseCores(keyPair.publicKey)
+        const matches = cores.key.equals(key)
+        await cores.close()
+        if (!matches) throw new Error("The course's key doesn't match its code")
+        teacherKey = keyPair.publicKey
+      } else {
+        teacherKey = await courseSignerKey(key)
+      }
+      await boards.open(key, { authorKeyPair, courseKeyPair: keyPair, ownLimitBytes: args.ownLimitBytes ?? null, teacherKey })
+      return {}
+    }
+    if (args.op === 'close') return boards.close(key, { remove: Boolean(args.remove) }).then(() => ({}))
+    if (args.op === 'read') {
+      const page = boards.read(key, { before: args.before ?? null, limit: args.limit ?? 50 })
+      if (!page) return { closed: true }
+      const selfId = IdEncoding.normalize(Buffer.from(page.self, 'hex'))
+      return { ...page, messages: page.messages.map(withAuthorId), selfId }
+    }
+    if (args.op === 'post') return withAuthorId(boards.post(key, { name: args.name ?? '', text: args.text }))
+    if (args.op === 'moderate') return boards.moderate(key, args.changes ?? {})
+    if (args.op === 'readOlder') {
+      return { messages: (await boards.readOlder(key, { before: args.before, limit: args.limit ?? 50 })).map(withAuthorId) }
+    }
+    throw new Error(`Unknown board operation: ${args.op}`)
+  }
+
   rpc = new RPC(new Pipe(3), async (req) => {
     // The publisher id while the identity is unlocked here, else ''. Main asks
     // it once at start to know the worker answers (scripts/check-packaged.mjs).
@@ -1799,6 +1886,18 @@ async function start() {
         req.reply(JSON.stringify((await sharedCourseOp(args)) ?? {}))
       } catch (error) {
         if (error.code !== 'LOCKED') console.error(`[worker] shared course "${args.op}" failed:`, error)
+        req.reply(JSON.stringify({ code: error.code, error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_BOARD) {
+      let args = {}
+      try {
+        args = JSON.parse(req.data.toString())
+        req.reply(JSON.stringify((await boardOp(args)) ?? {}))
+      } catch (error) {
+        if (!error.code) console.error(`[worker] board "${args.op}" failed:`, error)
         req.reply(JSON.stringify({ code: error.code, error: error.message }))
       }
       return
