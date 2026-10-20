@@ -15,6 +15,8 @@ export type BoardWorkerMessage = {
 };
 
 export type BoardModeration = {
+  // The course collects activity (SLJ-168); missing in lists from before it.
+  activity?: boolean;
   blocked: string[];
   hidden: string[];
   on: boolean;
@@ -77,6 +79,7 @@ export type CourseBoard =
     };
 
 export type BoardModerationChanges = {
+  activity?: boolean;
   block?: string[];
   hide?: string[];
   on?: boolean;

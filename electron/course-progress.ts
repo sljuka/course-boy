@@ -76,6 +76,14 @@ export function createCourseProgress({ now = () => new Date(), store }: { now?: 
       })
     },
 
+    // The student moved past the course's last step (SLJ-168), with `done`
+    // of its `total` steps done. Only the first time in an attempt counts.
+    recordReachedEnd(courseId: string, done: number, total: number) {
+      const at = now().toISOString()
+
+      update(courseId, (course) => (course.reachedEnd ? course : { ...course, reachedEnd: { at, done, total } }))
+    },
+
     // A first try at a question in interactive mode (SLJ-134): the course's
     // spree grows by one if it was right, and is over if not.
     recordFirstTry(courseId: string, isCorrect: boolean): CourseSpree {

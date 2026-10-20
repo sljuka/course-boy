@@ -82,6 +82,7 @@ describe('launch', () => {
   // This is the only automated check that they do.
   it('exposes the full preload bridge surface', async () => {
     const surface = await harness.page.evaluate(() => ({
+      activity: Object.keys(window.activity ?? {}).sort(),
       background: Object.keys(window.background ?? {}).sort(),
       boards: Object.keys(window.boards ?? {}).sort(),
       channels: Object.keys(window.channels ?? {}).sort(),
@@ -96,6 +97,7 @@ describe('launch', () => {
       sharing: Object.keys(window.sharing ?? {}).sort(),
     }))
 
+    expect(surface.activity).toEqual(['get', 'getSettings', 'list', 'onChanged', 'setSettings'])
     expect(surface.background).toEqual(['isSupported', 'onAskKeepSharing'])
     expect(surface.boards).toEqual([
       'get',
@@ -164,7 +166,7 @@ describe('launch', () => {
     expect(surface.preferences).toEqual(['get', 'resetOnboarding', 'set'])
     expect(surface.publishers).toEqual(['list', 'remove', 'save'])
     expect(surface.programs).toEqual(['create', 'get', 'getSharing', 'list', 'markSeen', 'peekCourse', 'publish', 'remove', 'update', 'uploadImage'])
-    expect(surface.progress).toEqual(['clearCourse', 'get', 'recordFirstTry', 'recordOpened', 'recordStepDone', 'recordTestResult', 'setFavorite', 'setProgramFavorite'])
+    expect(surface.progress).toEqual(['clearCourse', 'get', 'recordFirstTry', 'recordOpened', 'recordReachedEnd', 'recordStepDone', 'recordTestResult', 'setFavorite', 'setProgramFavorite'])
     expect(surface.profiles).toEqual(['create', 'getRemovalSummary', 'getState', 'open', 'openCoursesFolder', 'removeCurrent', 'switchProfile'])
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',

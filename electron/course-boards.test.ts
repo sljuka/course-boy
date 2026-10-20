@@ -8,6 +8,7 @@ import type { BoardWorkerPage } from '../src/lib/course-board'
 const teacherKey = 'aa'.repeat(32)
 
 function setup({
+  activity = false,
   locked = false,
   page = { closed: true } as BoardWorkerPage,
   shared = [] as string[],
@@ -25,6 +26,7 @@ function setup({
     return {}
   })
   const boards = createCourseBoards({
+    activityEnabled: () => activity,
     isShared: (courseId) => shared.includes(courseId),
     teacherName: async () => 'Ana',
     op: op as never,
@@ -57,7 +59,7 @@ describe('course boards', () => {
     expect(boards.courseForDriveKey('drive-t')).toBeNull()
     unlock()
     await boards.sync()
-    expect(opened()).toContainEqual({ driveKey: 'drive-t', ownLimitBytes: 1, publicId: 'pub' })
+    expect(opened()).toContainEqual({ courseId: 'mine', driveKey: 'drive-t', messages: true, ownLimitBytes: 1, publicId: 'pub' })
     expect(boards.courseForDriveKey('drive-t')).toBe('mine')
     expect(await boards.get('shared')).toEqual({ status: 'unavailable' })
     expect(await boards.get('draft')).toEqual({ status: 'unavailable' })
@@ -72,6 +74,16 @@ describe('course boards', () => {
     await boards.setShown('imported', true)
     expect(await boards.setSettings({ enabled: false })).toMatchObject({ enabled: false })
     expect(await boards.get('imported')).toEqual({ status: 'hidden' })
+  })
+
+  it('keeps a hidden board open without its messages while the student shares activity', async () => {
+    const { boards, op, opened } = setup({ activity: true, sharing: { followed: { imported: followed('drive-i') }, published: {} } })
+    await boards.start()
+    await boards.setShown('imported', false)
+    expect(op).not.toHaveBeenCalledWith('close', expect.anything())
+    expect(opened().at(-1)).toEqual({ driveKey: 'drive-i', messages: false })
+    expect(await boards.get('imported')).toEqual({ status: 'hidden' })
+    expect(boards.boardFor('imported')).toEqual({ driveKey: 'drive-i', isTeacher: false })
   })
 
   it('shows messages with the teacher badge, own messages and unread counts', async () => {

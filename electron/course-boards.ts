@@ -10,7 +10,11 @@
 // - each imported course, as a student.
 // Not for courses shared by several maintainers (SLJ-11): their code isn't a
 // key one person signs with, so nobody could moderate the board (phase 1).
-// And not while the student switched boards off, for one course or all.
+//
+// A board the student switched off (for one course or all) still opens
+// without its messages while they share activity (SLJ-168), which travels
+// on the board's channel; else it stays closed. The teacher's own boards
+// always open: that's where their courses' activity is counted.
 //
 // Opening a board doesn't turn it on: the teacher does, in the moderation
 // list, and until then only that list travels (workers/board-sync.cjs).
@@ -48,6 +52,10 @@ export const DEFAULT_BOARD_SETTINGS: BoardSettings = {
 }
 
 export type CourseBoardsDeps = {
+  // The student shares activity (Settings): hidden boards still open for it.
+  activityEnabled(): boolean
+  // Boards were opened or closed (activity waiting for one can go out).
+  onSynced?(): void
   // The teacher's name on their own courses' boards: their channel's.
   teacherName(): Promise<string>
   isShared(courseId: string): boolean
@@ -61,7 +69,7 @@ type Target = { driveKey: string; publicId?: string }
 // The first page of a board, and at most this many when counting unread.
 const PAGE_SIZE = 50
 const UNREAD_LIMIT = 100
-const ALLOWED_CHANGES = new Set(['block', 'hide', 'on', 'studentLimitBytes', 'unblock', 'unhide'])
+const ALLOWED_CHANGES = new Set(['activity', 'block', 'hide', 'on', 'studentLimitBytes', 'unblock', 'unhide'])
 
 const segmenter = new Intl.Segmenter()
 
@@ -81,9 +89,9 @@ function cleanChanges(changes: unknown): BoardModerationChanges {
   const clean: BoardModerationChanges = {}
   for (const [key, value] of entries) {
     if (!ALLOWED_CHANGES.has(key)) throw new Error(`Unknown moderation change: ${key}`)
-    if (key === 'on') {
-      if (typeof value !== 'boolean') throw new Error('Invalid moderation change: on')
-      clean.on = value
+    if (key === 'on' || key === 'activity') {
+      if (typeof value !== 'boolean') throw new Error(`Invalid moderation change: ${key}`)
+      clean[key] = value
     } else if (key === 'studentLimitBytes') {
       if (!Number.isSafeInteger(value) || (value as number) < MIN_STUDENT_LIMIT_BYTES || (value as number) > MAX_STUDENT_LIMIT_BYTES) {
         throw new Error('Invalid moderation change: studentLimitBytes')
@@ -137,13 +145,16 @@ export function createCourseBoards(deps: CourseBoardsDeps) {
     return !settings.enabled || settings.hiddenCourses.includes(courseId)
   }
 
-  // What should be open now: what isn't switched off. (A teacher's board
-  // opens only while the identity is unlocked; the worker refuses it before.)
-  function wanted(): Map<string, Target> {
+  // What should be open now, and whether with its messages. (A teacher's
+  // board opens only while the identity is unlocked; the worker refuses it
+  // before.)
+  function wanted(): Map<string, Target & { messages: boolean }> {
     const { settings } = state()
-    const targets = new Map<string, Target>()
+    const activity = deps.activityEnabled()
+    const targets = new Map<string, Target & { messages: boolean }>()
     for (const [courseId, target] of candidates()) {
-      if (!isHiddenHere(courseId, settings)) targets.set(courseId, target)
+      const messages = !isHiddenHere(courseId, settings)
+      if (messages || activity || target.publicId) targets.set(courseId, { ...target, messages })
     }
     return targets
   }
@@ -158,10 +169,11 @@ export function createCourseBoards(deps: CourseBoardsDeps) {
       opened.delete(courseId)
       await deps.op('close', { driveKey: target.driveKey }).catch((error) => console.error('[course-boards] close failed:', error))
     }
-    for (const [courseId, target] of targets) {
+    for (const [courseId, { messages, ...target }] of targets) {
       try {
-        // Again for those already open: the teacher's own limit may have changed.
-        await deps.op('open', { ...target, ...(target.publicId ? { ownLimitBytes } : {}) })
+        // Again for those already open: the teacher's own limit, or whether
+        // the board is shown, may have changed.
+        await deps.op('open', { ...target, messages, ...(target.publicId ? { courseId, ownLimitBytes } : {}) })
         opened.set(courseId, target)
       } catch (error) {
         // Locked: opened again once the identity is unlocked (main syncs then).
@@ -170,6 +182,7 @@ export function createCourseBoards(deps: CourseBoardsDeps) {
         }
       }
     }
+    deps.onSynced?.()
   }
 
   // One sync at a time, in order.
@@ -211,6 +224,12 @@ export function createCourseBoards(deps: CourseBoardsDeps) {
     stop() {
       stopped = true
       opened.clear()
+    },
+
+    // A course's open board: its code, and whether it's the teacher's own.
+    boardFor(courseId: string): { driveKey: string; isTeacher: boolean } | null {
+      const target = opened.get(courseId)
+      return target ? { driveKey: target.driveKey, isTeacher: Boolean(target.publicId) } : null
     },
 
     // The course a board change belongs to (the worker names boards by code).
@@ -285,9 +304,10 @@ export function createCourseBoards(deps: CourseBoardsDeps) {
     // Unread messages per course (at most UNREAD_LIMIT each), on boards that
     // are on; courses with none are left out.
     async listUnread(): Promise<Record<string, number>> {
-      const { lastRead } = state()
+      const { lastRead, settings } = state()
       const counts: Record<string, number> = {}
       for (const courseId of opened.keys()) {
+        if (isHiddenHere(courseId, settings)) continue
         const page = await readPage(courseId, { limit: UNREAD_LIMIT }).catch(() => null)
         if (!page?.moderation?.on) continue
         const count = page.messages.filter(

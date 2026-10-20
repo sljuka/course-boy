@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -6,7 +6,7 @@ import { RetakeCourseDialog } from "@/components/course-progress/retake-course-d
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { firstStepNotDone } from "@/lib/course-entry";
-import { useCourseProgressQuery } from "@/lib/course-progress-queries";
+import { recordReachedEnd, useCourseProgressQuery } from "@/lib/course-progress-queries";
 import { summarizeCourseProgress } from "@/lib/course-progress";
 import { useCourseDetailsQuery } from "@/lib/course-queries";
 import { buildLessonPath, buildLessonTestPath, getEntryStep } from "@/lib/course-utils";
@@ -25,6 +25,9 @@ export const CourseCompleted = ({ courseId, onExitPlayer }: { courseId: string; 
   const { data: course } = useCourseDetailsQuery(courseId, locale);
   const { data: progress } = useCourseProgressQuery();
   const [isRetakeOpen, setIsRetakeOpen] = useState(false);
+  // Reaching the end, for the teacher's activity (the first time per attempt
+  // counts; main keeps that).
+  useEffect(() => recordReachedEnd(courseId), [courseId]);
   const courseProgress = progress?.courses[courseId];
   const summary = course ? summarizeCourseProgress(course.stepIds, courseProgress) : null;
   const isComplete = !course || course.preview || Boolean(summary?.completedAt);

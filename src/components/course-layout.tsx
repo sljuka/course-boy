@@ -39,6 +39,7 @@ import { LayoutBreadcrumbsContext } from "@/lib/use-layout-breadcrumbs";
 import { LayoutActionBarStartContext } from "@/lib/use-layout-action-bar-start";
 import { CourseViewTabs } from "@/components/course-board/course-view-tabs";
 import { useCourseBoardQuery } from "@/lib/board-queries";
+import { useCourseActivityQuery } from "@/lib/activity-queries";
 import { CourseViewContext, courseViewFromState, type CourseView } from "@/lib/course-view";
 import { boardIfOn } from "@/lib/course-board";
 import { PageSidePanelsContext, type PageSidePanels } from "@/lib/use-page-side-panel";
@@ -131,13 +132,17 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
   // pages it opens. A pick in it closes it ("show me the page"); selecting
   // what was just added doesn't, so the teacher sees it and can keep adding.
   const [isExplorerDrawerOpen, setIsExplorerDrawerOpen] = useState(false);
-  // "Course | Board" (SLJ-149), while the course's board is on. Arriving with
+  // "Course | Board | Activity": Board while the course's board is on
+  // (SLJ-149), Activity once it's published (SLJ-168). Arriving with
   // `{ courseView: "board" }` (Activity's link) opens the board; picking
   // something in the explorer goes back to the course.
   const [view, setView] = useState<CourseView>(() => courseViewFromState(location.state));
   const { data: board } = useCourseBoardQuery(courseId);
   const boardOn = boardIfOn(board);
-  const courseView: CourseView = boardOn ? view : "course";
+  const { data: activity } = useCourseActivityQuery(courseId);
+  const hasActivity = activity?.status === "ready";
+  const courseView: CourseView =
+    (view === "board" && boardOn) || (view === "activity" && hasActivity) ? view : "course";
   const courseViewContext = useMemo(() => ({ setView, view: courseView }), [courseView]);
   const handleExplorerSelection = useCallback((selection: StructureSelection) => {
     setView("course");
@@ -307,7 +312,7 @@ const CourseLayoutForCourse = ({ courseId }: { courseId: string | undefined }) =
         <PageSidePanelsContext.Provider value={sidePanels}>
         <LayoutBreadcrumbsContext.Provider value={breadcrumbs}>
         <LayoutActionBarStartContext.Provider
-          value={boardOn && <CourseViewTabs board={boardOn} onViewChange={setView} view={courseView} />}
+          value={<CourseViewTabs activity={hasActivity} board={boardOn} onViewChange={setView} view={courseView} />}
         >
         <CourseViewContext.Provider value={courseViewContext}>
         <PagePanel immersive={isImmersive}>

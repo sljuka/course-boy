@@ -1,6 +1,7 @@
 import { ipcRenderer, contextBridge } from 'electron'
 import type { ChannelForCourse } from '../src/lib/channels'
 import type { BoardCursor, BoardMessage, BoardModerationChanges, BoardSettings, CourseBoard } from '../src/lib/course-board'
+import type { ActivitySettings, ActivitySummary, CourseActivity } from '../src/lib/course-activity'
 import type { CourseProgressState, CourseSpree, RecordTestResultInput } from '../src/lib/course-progress'
 import type { ApprovalsList, MaintainersInfo, ProposalReview } from '../src/lib/maintainers'
 import type { McpStatus } from '../src/lib/mcp'
@@ -335,6 +336,30 @@ contextBridge.exposeInMainWorld('boards', {
   },
 })
 
+// Course activity (SLJ-168): the teacher's counts for their courses, and
+// whether this profile shares its own.
+contextBridge.exposeInMainWorld('activity', {
+  get(courseId: string) {
+    return ipcRenderer.invoke('activity:get', courseId) as Promise<CourseActivity>
+  },
+  getSettings() {
+    return ipcRenderer.invoke('activity:get-settings') as Promise<ActivitySettings>
+  },
+  list() {
+    return ipcRenderer.invoke('activity:list') as Promise<Record<string, ActivitySummary>>
+  },
+  onChanged(callback: (courseId: string) => void) {
+    const listener = (_event: unknown, courseId: string) => callback(courseId)
+    ipcRenderer.on('activity:changed', listener)
+    return () => {
+      ipcRenderer.removeListener('activity:changed', listener)
+    }
+  },
+  setSettings(changes: ActivitySettings) {
+    return ipcRenderer.invoke('activity:set-settings', changes) as Promise<ActivitySettings>
+  },
+})
+
 // The student's own progress through their courses (SLJ-50).
 contextBridge.exposeInMainWorld('progress', {
   get() {
@@ -345,6 +370,9 @@ contextBridge.exposeInMainWorld('progress', {
   },
   recordStepDone(input: { courseId: string; stepId: string }) {
     return ipcRenderer.invoke('progress:record-step-done', input) as Promise<void>
+  },
+  recordReachedEnd(courseId: string) {
+    return ipcRenderer.invoke('progress:record-reached-end', courseId) as Promise<void>
   },
   recordTestResult(input: RecordTestResultInput) {
     return ipcRenderer.invoke('progress:record-test-result', input) as Promise<void>

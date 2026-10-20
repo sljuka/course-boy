@@ -186,6 +186,16 @@ interface Window {
     ) => Promise<import('../src/lib/course-board').BoardSettings>
     setShown: (courseId: string, shown: boolean) => Promise<void>
   }
+  // Course activity (SLJ-168).
+  activity: {
+    get: (courseId: string) => Promise<import('../src/lib/course-activity').CourseActivity>
+    getSettings: () => Promise<import('../src/lib/course-activity').ActivitySettings>
+    list: () => Promise<Record<string, import('../src/lib/course-activity').ActivitySummary>>
+    onChanged: (callback: (courseId: string) => void) => () => void
+    setSettings: (
+      changes: import('../src/lib/course-activity').ActivitySettings,
+    ) => Promise<import('../src/lib/course-activity').ActivitySettings>
+  }
   mcp: {
     getStatus: () => Promise<import('../src/lib/mcp').McpStatus>
     onChanged: (callback: () => void) => () => void
@@ -202,6 +212,8 @@ interface Window {
     get: () => Promise<import('../src/lib/course-progress').CourseProgressState>
     recordOpened: (courseId: string) => Promise<void>
     recordStepDone: (input: { courseId: string; stepId: string }) => Promise<void>
+    // The student moved past the course's last step (SLJ-168).
+    recordReachedEnd: (courseId: string) => Promise<void>
     recordTestResult: (input: import('../src/lib/course-progress').RecordTestResultInput) => Promise<void>
     // The course's spree after it, or null in a teacher's preview (not kept).
     recordFirstTry: (input: {

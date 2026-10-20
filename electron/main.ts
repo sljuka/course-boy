@@ -18,6 +18,7 @@ import {
   getTransfer,
   importCourse,
   boardOp,
+  onActivityChanged,
   onBoardChanged,
   onDriveChanged,
   onMaintainerJoined,
@@ -38,6 +39,8 @@ import {
 import type { BoardCursor } from '../src/lib/course-board'
 import { createCourseBoards, DEFAULT_BOARD_SETTINGS, type CourseBoards, type CourseBoardsState } from './course-boards'
 import { createCourseProgress } from './course-progress'
+import { createCourseActivity, DEFAULT_ACTIVITY_SETTINGS, type ActivityState, type CourseActivityService } from './course-activity'
+import { summarizeCourseProgress } from '../src/lib/course-progress'
 import {
   applyProgramUpdate,
   createProgram,
@@ -339,6 +342,7 @@ function openProfileServices(dataDir: string) {
   // lazily by the ones that need its name or code.
   let channels: ChannelsService | null = null
   let courseBoards: CourseBoards | null = null
+  let courseActivity: CourseActivityService | null = null
   // The name this teacher's courses carry: their channel's, else (no channel
   // yet) the Publisher name they gave at the identity setup.
   const ownPublisherName = async () => {
@@ -704,7 +708,15 @@ function openProfileServices(dataDir: string) {
     defaults: { lastRead: {}, settings: DEFAULT_BOARD_SETTINGS },
     name: 'course-boards',
   })
+  // Course activity (SLJ-168): the student's switch, and what waits to be sent.
+  const courseActivityStore = new Store<ActivityState>({
+    cwd: dataDir,
+    defaults: { courses: {}, settings: DEFAULT_ACTIVITY_SETTINGS },
+    name: 'course-activity',
+  })
   courseBoards = createCourseBoards({
+    activityEnabled: () => courseActivityStore.get('settings')?.enabled !== false,
+    onSynced: () => void courseActivity?.flush(),
     isShared: (courseId) => maintainers.isShared(courseId),
     op: whileOpen(boardOp) as typeof boardOp,
     teacherName: ownPublisherName,
@@ -712,8 +724,35 @@ function openProfileServices(dataDir: string) {
     store: { read: () => courseBoardsStore.store, write: (state) => (courseBoardsStore.store = state) },
   })
   const boardsOpened = courseBoards
+  const activityDelay = Number(process.env.MATKO_ACTIVITY_DELAY_MS)
+  courseActivity = createCourseActivity({
+    board: (courseId) => boardsOpened.boardFor(courseId),
+    course: async (courseId) => {
+      const details = await getCourseDetails(await ensureLocalCoursesRoot(), courseId)
+      if (!details) return null
+      return {
+        sections: details.sections.map((section) => ({
+          id: section.id,
+          stepIds: [
+            ...section.lessons.flatMap((lesson) => [lesson.id, ...(lesson.test ? [lesson.test.id] : [])]),
+            ...section.tests.map((test) => test.id),
+          ],
+        })),
+        version: details.version,
+      }
+    },
+    imported: () => courseSharingStore.get('followed'),
+    ...(Number.isFinite(activityDelay) && activityDelay >= 0 ? { maxDelayMs: activityDelay } : {}),
+    op: whileOpen(boardOp) as typeof boardOp,
+    progress: () => courseProgress.read(),
+    store: { read: () => courseActivityStore.store, write: (state) => (courseActivityStore.store = state) },
+  })
+  const activity = courseActivity
   const stopWatchingSharing = [
-    courseSharingStore.onDidAnyChange(() => void boardsOpened.sync()),
+    courseSharingStore.onDidAnyChange(() => {
+      void boardsOpened.sync()
+      void activity.sync()
+    }),
     maintainersStore.onDidAnyChange(() => void boardsOpened.sync()),
   ]
 
@@ -736,12 +775,14 @@ function openProfileServices(dataDir: string) {
 
   return {
     channels,
+    courseActivity: activity,
     courseBoards: boardsOpened,
     close() {
       closed = true
       void mcp.stop()
       for (const stop of stopWatchingSharing) stop()
       boardsOpened.stop()
+      activity.stop()
       courseSharing.stop()
       identityRestore.stop()
       maintainers.stop()
@@ -792,6 +833,12 @@ onDriveChanged((driveKey) => {
 onBoardChanged((driveKey) => {
   const courseId = profile.courseBoards.courseForDriveKey(driveKey)
   if (courseId) win?.webContents.send('boards:changed', courseId)
+})
+
+// The teacher's device counted new activity on one of their courses.
+onActivityChanged((driveKey) => {
+  const courseId = profile.courseBoards.courseForDriveKey(driveKey)
+  if (courseId) win?.webContents.send('activity:changed', courseId)
 })
 
 onMaintainerJoined((joined) => {
@@ -1132,6 +1179,7 @@ ipcMain.handle('courses:remove', async (_event, courseId: string) => {
   await removeLocalCourse(courseId)
   await profile.courseSharing.forgetCourse(courseId)
   await profile.courseBoards.forget(courseId).catch((error) => console.error('[course-boards] forgetting failed:', error))
+  profile.courseActivity.forget(courseId)
   profile.courseProgress.forgetCourse(courseId)
 })
 
@@ -1160,6 +1208,23 @@ ipcMain.handle('boards:set-settings', (_event, changes: unknown) => profile.cour
 ipcMain.handle('boards:set-shown', (_event, courseId: unknown, shown: unknown) =>
   profile.courseBoards.setShown(boardCourseId(courseId), shown as boolean),
 )
+
+// ─── Course activity (SLJ-168) ──────────────────────────────────────────────
+// The teacher's counts for their courses, and the student's switch. A
+// course's own switch ("Collect activity") is in its board's moderation list
+// (boards:moderate).
+
+ipcMain.handle('activity:get', (_event, courseId: unknown) => profile.courseActivity.get(boardCourseId(courseId)))
+ipcMain.handle('activity:list', () =>
+  profile.courseActivity.list(Object.keys(profile.courseSharingStore.get('published') ?? {})),
+)
+ipcMain.handle('activity:get-settings', () => profile.courseActivity.getSettings())
+ipcMain.handle('activity:set-settings', async (_event, changes: unknown) => {
+  const settings = await profile.courseActivity.setSettings(changes)
+  // Hidden boards open (or close) with it.
+  await profile.courseBoards.sync()
+  return settings
+})
 
 // ─── Agents (SLJ-68) ────────────────────────────────────────────────────────
 // The MCP server's switch and token, in Settings → Agents.
@@ -1274,12 +1339,28 @@ ipcMain.handle('progress:record-opened', (_event, courseId: unknown) => {
   if (!isId(courseId)) throw new Error('Invalid course id')
   if (profile.previews.has(courseId)) return
   profile.courseProgress.recordOpened(courseId)
+  void profile.courseActivity.sync([courseId])
 })
 
 ipcMain.handle('progress:record-step-done', (_event, input: { courseId?: unknown; stepId?: unknown }) => {
   if (!isId(input?.courseId) || !isId(input.stepId)) throw new Error('Invalid step')
   if (profile.previews.has(input.courseId)) return
   profile.courseProgress.recordStepDone(input.courseId, input.stepId)
+  void profile.courseActivity.sync([input.courseId])
+})
+
+// The student moved past the course's last step (the end screen, SLJ-168):
+// how much was done then is worked out here, after the last step's own
+// record (the window sends that first).
+ipcMain.handle('progress:record-reached-end', async (_event, courseId: unknown) => {
+  if (!isId(courseId)) throw new Error('Invalid course id')
+  if (profile.previews.has(courseId)) return
+  const opened = profile
+  const details = await getCourseDetails(await ensureLocalCoursesRoot(), courseId)
+  if (!details || opened !== profile) return
+  const { done, total } = summarizeCourseProgress(details.stepIds, opened.courseProgress.read().courses[courseId])
+  opened.courseProgress.recordReachedEnd(courseId, done, total)
+  void opened.courseActivity.sync([courseId])
 })
 
 ipcMain.handle('progress:record-test-result', (_event, input: RecordTestResultInput) => {
@@ -1308,6 +1389,7 @@ ipcMain.handle('progress:record-test-result', (_event, input: RecordTestResultIn
     ...(isGraded ? { maxPoints: result.maxPoints, points: result.points } : {}),
     total: result.total,
   })
+  void profile.courseActivity.sync([input.courseId])
 })
 
 ipcMain.handle('progress:record-first-try', (_event, input: { courseId?: unknown; isCorrect?: unknown }) => {
@@ -1325,6 +1407,9 @@ ipcMain.handle('progress:set-favorite', (_event, input: { courseId?: unknown; fa
 
 ipcMain.handle('progress:clear-course', (_event, courseId: unknown) => {
   if (!isId(courseId)) throw new Error('Invalid course id')
+  // Cleared after anything was done: the next attempt (SLJ-168).
+  const course = profile.courseProgress.read().courses[courseId]
+  if (course?.startedAt || Object.keys(course?.steps ?? {}).length > 0) profile.courseActivity.newAttempt(courseId)
   profile.courseProgress.clearCourse(courseId)
 })
 
@@ -2080,7 +2165,7 @@ function startProfile(): void {
             opened.courseSharing.start(),
             opened.programSharing.start(),
             opened.maintainers.start(),
-            opened.courseBoards.start(),
+            opened.courseBoards.start().then(() => opened.courseActivity.sync()),
           ])
         : undefined,
     )

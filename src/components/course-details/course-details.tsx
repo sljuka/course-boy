@@ -66,7 +66,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
     course?.distribution === "imported" && !isPreview ? courseId : undefined,
   );
   const boardOn = boardIfOn(board);
-  const shownView: CourseView = boardOn ? view : "course";
+  const shownView: CourseView = boardOn && view === "board" ? "board" : "course";
 
   if (isLoading) {
     return (
@@ -309,7 +309,7 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
   return (
     <CourseInfoSidePanel course={resolvedCourse}>
       <PageContent
-        actionBarStart={boardOn && <CourseViewTabs board={boardOn} onViewChange={setView} view={shownView} />}
+        actionBarStart={<CourseViewTabs board={boardOn} onViewChange={setView} view={shownView} />}
         actions={actions}
         breadcrumbs={breadcrumbs}
         crumbActions={crumbActions}

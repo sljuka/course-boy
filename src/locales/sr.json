@@ -1476,15 +1476,53 @@
   },
   "activity": {
     "title": "Aktivnost",
-    "description": "Šta je novo na tvojim kursevima. Za sada, poruke na tablama koje nisi pročitao.",
+    "description": "Šta je novo na tvojim kursevima: tvoji učenici i poruke na tablama koje nisi pročitao.",
     "empty": "Ništa novo na tablama tvojih kurseva.",
     "unreadMessages_one": "{{count}} nova poruka",
-    "unreadMessages_other": "Novih poruka: {{count}}"
+    "unreadMessages_other": "Novih poruka: {{count}}",
+    "studentsTitle": "Učenici tvojih kurseva",
+    "messagesTitle": "Poruke na tablama"
+  },
+  "courseActivity": {
+    "approx": "≈ {{value}}",
+    "imported": "Uvezli",
+    "started": "Započeli",
+    "finished": "Završili",
+    "reachedEnd": "Stigli do kraja",
+    "finishedAgain": "Ponovo završili: ≈ {{value}}",
+    "estimates": "Procene: svaki uređaj se broji jednom, pa se učenik na dva računara broji dvaput. Završili znači da su uradili svaku lekciju i test, bez obzira na rezultate. Samo prvi pokušaji.",
+    "off": "Ovaj kurs ne prikuplja aktivnost: uređaji učenika ne šalju ništa novo, a ono što je već prebrojano ostaje. Uključi je u formi kursa.",
+    "sectionsTitle": "Završene sekcije",
+    "endTitle": "Urađeno kad su stigli do kraja",
+    "endDescription": "Učenici koji su prošli poslednji korak, prema tome koliko su kursa tada uradili. Ovde se vidi i preskakanje.",
+    "bands": {
+      "all": "Sve",
+      "75-99": "75–99%",
+      "50-74": "50–74%",
+      "25-49": "25–49%",
+      "under-25": "Manje od 25%"
+    },
+    "attemptsTitle": "Završili, po pokušaju",
+    "attemptsDescription": "Novi pokušaj počinje kad učenik počne kurs ispočetka.",
+    "attempt": "Pokušaj {{number}}",
+    "attemptMore": "Pokušaj 5 ili kasniji",
+    "settings": {
+      "title": "Aktivnost kursa",
+      "hint": "Otprilike koliko je učenika uvezlo, započelo i završilo kurs, bez njihovih imena.",
+      "collect": "Prikupljaj aktivnost",
+      "collectHint": "Uređaji učenika ti javljaju kad uvezu, započnu i završe kurs i njegove sekcije, bez imena. Svaki učenik to može da isključi za sebe.",
+      "open": "Otvori aktivnost",
+      "sectionTitle": "Aktivnost",
+      "sectionDescription": "Šta nastavnici kurseva koje pohađaš saznaju o tvom napretku.",
+      "share": "Deli moj napredak sa nastavnicima",
+      "shareHint": "Bez tvog imena: da si uvezao, započeo i završio kurs ili njegove sekcije, i koliko si uradio kad si stigao do kraja. Nikad tvoje odgovore ni rezultate."
+    }
   },
   "board": {
     "tabs": {
       "course": "Kurs",
-      "board": "Tabla"
+      "board": "Tabla",
+      "activity": "Aktivnost"
     },
     "empty": "Još nema poruka. Napiši prvu.",
     "teacherBadge": "Nastavnik",

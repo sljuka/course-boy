@@ -23,6 +23,13 @@
 // 4. "Older than X, up to N": what scrolling past the end asks connected
 //    devices for (in practice the teacher's). Read, not kept.
 //
+// Course activity (SLJ-168) travels on the same channel, whether or not the
+// board is on or shown here: the hello also lists the activity events a
+// device has (the teacher's: those it counted), each side sends the other
+// those it's missing, and a new one is passed on like a message. Students'
+// devices keep them sealed (activity-store.cjs); the teacher's opens and
+// counts them.
+//
 // Everything received is checked as if from a stranger: messages and lists
 // by board-messages.cjs, blocked senders and the rate limit by
 // board-store.cjs.
@@ -38,6 +45,8 @@ const {
   verifiedModeration,
 } = require('./board-messages.cjs')
 const { openBoardStore } = require('./board-store.cjs')
+const { activityEventProblem, createActivityEvent, openActivityEvent } = require('./activity-events.cjs')
+const { openActivityRelay, openActivityTotals } = require('./activity-store.cjs')
 
 const PROTOCOL = 'matko-board/1'
 // How many of its newest message ids a device lists in its hello.
@@ -48,6 +57,11 @@ const MAX_CATCH_UP_MESSAGES = 5000
 // A frame larger than this is refused (a moderation list at its largest is
 // about 300 KB).
 const MAX_FRAME_BYTES = 512 * 1024
+// How many of its newest activity events a device lists in its hello, and
+// at most how many it sends in one catch-up.
+const HELLO_EVENT_IDS = 2000
+const EVENTS_PER_FRAME = 200
+const MAX_CATCH_UP_EVENTS = 5000
 // "Older" pages: at most this many messages, and this long to wait.
 const MAX_OLDER_PAGE = 200
 const OLDER_TIMEOUT_MS = 5000
@@ -84,9 +98,13 @@ function isBefore(value) {
   return value && Number.isSafeInteger(value.date) && typeof value.id === 'string'
 }
 
+// An activity event's id in hellos: the start of its key.
+const eventId = (key) => key.slice(0, 32)
+
 // `folder`: where the boards' files go. `onChange(boardKeyHex)`: a board's
 // messages or moderation list changed (main tells the window).
-function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} }) {
+// `onActivity(boardKeyHex)`: the teacher's device counted new activity.
+function createBoards({ folder, fs, now = () => Date.now(), onActivity = () => {}, onChange = () => {} }) {
   const boards = new Map() // hex board key -> board
   const boardsByChannel = new Map() // hex channel id -> board
   const muxes = new Set()
@@ -98,8 +116,44 @@ function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} 
     return Math.min(studentLimit, board.ownLimitBytes ?? Infinity)
   }
 
+  // On, and shown on this device (a student can hide a board and still
+  // pass activity on).
   function isOn(board) {
-    return board.store.moderation?.on === true
+    return board.messages && board.store.moderation?.on === true
+  }
+
+  function sendEvents(peer, events) {
+    for (let start = 0; start < events.length; start += EVENTS_PER_FRAME) {
+      peer.send.events.send({ events: events.slice(start, start + EVENTS_PER_FRAME) })
+    }
+  }
+
+  function eventIdsHere(board) {
+    if (board.totals) return board.totals.recentIds(HELLO_EVENT_IDS)
+    return board.relay.newest(HELLO_EVENT_IDS).map((event) => eventId(event.key))
+  }
+
+  // Events the teacher's device opens and counts; others keep and pass on.
+  // True when it's new here.
+  function takeEvent(board, event) {
+    if (board.totals) {
+      if (board.totals.hasCounted(event.key)) return false
+      const payload = openActivityEvent(event, board.courseKeyPair)
+      return Boolean(payload) && board.totals.count(event.key, event.day, payload)
+    }
+    return board.relay.add(event) === 'added'
+  }
+
+  function receiveEvents(board, from, events) {
+    if (!Array.isArray(events)) return
+    const added = []
+    for (const event of events.slice(0, EVENTS_PER_FRAME)) {
+      if (activityEventProblem(board.key, event, { now: now() })) continue
+      if (takeEvent(board, event)) added.push(event)
+    }
+    if (added.length === 0) return
+    if (board.totals) onActivity(board.hex)
+    else forward(board, from, (peer) => sendEvents(peer, added))
   }
 
   function sendMessages(peer, messages) {
@@ -110,6 +164,7 @@ function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} 
 
   function sayHello(board, peer) {
     peer.send.hello.send({
+      events: eventIdsHere(board),
       have: isOn(board) ? board.store.newestIds(HELLO_IDS) : [],
       limitBytes: limitOf(board),
       moderationSeq: board.store.moderation?.seq ?? -1,
@@ -130,6 +185,17 @@ function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} 
       missing.push(message)
     }
     sendMessages(peer, missing)
+  }
+
+  // The activity events a peer doesn't list among its newest (a student's
+  // device only: the teacher's keeps none to send).
+  function catchUpEvents(board, peer, hello) {
+    if (!board.relay) return
+    const have = new Set(Array.isArray(hello.events) ? hello.events.slice(0, HELLO_EVENT_IDS) : [])
+    sendEvents(
+      peer,
+      board.relay.newest(MAX_CATCH_UP_EVENTS).filter((event) => !have.has(eventId(event.key))),
+    )
   }
 
   function forward(board, from, send) {
@@ -180,13 +246,14 @@ function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} 
       protocol: PROTOCOL,
     })
     if (!channel) return // already open on this connection
-    const [hello, messages, moderation, older, olderReply] = [
+    const [hello, messages, moderation, older, olderReply, events] = [
       (value) => {
         if (!value) return
         peer.moderationSeq = Number.isSafeInteger(value.moderationSeq) ? value.moderationSeq : -1
         const ours = board.store.moderation
         if (ours && ours.seq > peer.moderationSeq) peer.send.moderation.send({ list: ours })
         if (isOn(board)) catchUp(board, peer, value)
+        catchUpEvents(board, peer, value)
       },
       (value) => receiveMessages(board, peer, value?.messages),
       (value) => receiveModeration(board, peer, value?.list),
@@ -199,9 +266,10 @@ function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} 
         })
       },
       (value) => board.olderReplies.get(value?.request)?.(peer, value?.messages),
+      (value) => receiveEvents(board, peer, value?.events),
     ].map((onmessage) => channel.addMessage({ encoding: json, onmessage }))
     peer.channel = channel
-    peer.send = { hello, messages, moderation, older, olderReply }
+    peer.send = { events, hello, messages, moderation, older, olderReply }
     board.peers.add(peer)
     channel.open()
   }
@@ -228,31 +296,45 @@ function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} 
     // device's key for the course. `courseKeyPair`: the course's own key pair
     // (teacherKey's), on the teacher's device only: it signs the moderation
     // list and the teacher's messages. `ownLimitBytes`: what this device
-    // keeps at most.
-    async open(boardKey, { authorKeyPair, courseKeyPair = null, ownLimitBytes = null, teacherKey }) {
+    // keeps at most. `messages`: the board is shown here (false: only its
+    // moderation list and activity travel). `courseId`: on the teacher's
+    // device, what its activity totals are kept under.
+    async open(boardKey, { authorKeyPair, courseId = null, courseKeyPair = null, messages = true, ownLimitBytes = null, teacherKey }) {
       const hex = boardKey.toString('hex')
       const existing = boards.get(hex)
       if (existing) {
         if (courseKeyPair) existing.courseKeyPair = courseKeyPair
         if (ownLimitBytes) existing.ownLimitBytes = ownLimitBytes
+        const wasShown = existing.messages
+        existing.messages = messages
         existing.store.setLimit(limitOf(existing))
+        if (!wasShown && messages) {
+          for (const peer of existing.peers) if (peer.isOpen) sayHello(existing, peer)
+        }
         return
       }
       if (courseKeyPair && !courseKeyPair.publicKey.equals(teacherKey)) {
         throw new Error("The course key pair doesn't match the board")
       }
+      if (courseKeyPair && !courseId) throw new Error("The teacher's board needs its course's id")
       const board = {
         authorKeyPair,
         channelId: channelId(boardKey),
         courseKeyPair,
         hex,
         key: boardKey,
+        messages,
         olderReplies: new Map(),
         ownLimitBytes,
         peers: new Set(),
+        // Activity: the teacher's totals, or the events a student's device passes on.
+        relay: null,
         store: null,
         teacherKey,
+        totals: null,
       }
+      if (courseKeyPair) board.totals = await openActivityTotals({ courseId, folder, fs })
+      else board.relay = await openActivityRelay({ boardKey, folder, fs, now })
       board.store = await openBoardStore({ boardKey, folder, fs, limitBytes: Infinity, teacherKey })
       board.store.setLimit(limitOf(board))
       boards.set(hex, board)
@@ -267,8 +349,14 @@ function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} 
       boards.delete(board.hex)
       boardsByChannel.delete(board.channelId.toString('hex'))
       for (const peer of [...board.peers]) peer.channel.close()
-      if (remove) await board.store.destroy()
-      else await board.store.flush()
+      if (remove) {
+        await board.store.destroy()
+        await board.relay?.destroy()
+      } else {
+        await board.store.flush()
+      }
+      await board.relay?.flush()
+      await board.totals?.flush()
     },
 
     has(boardKey) {
@@ -326,6 +414,7 @@ function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} 
         list: {
           blocked: [...blocked],
           hidden: [...hidden],
+          activity: changes.activity ?? current?.activity ?? true,
           on: changes.on ?? current?.on ?? false,
           // Ordered by time, and always after the list it replaces.
           seq: Math.max(now(), (current?.seq ?? 0) + 1),
@@ -372,6 +461,29 @@ function createBoards({ folder, fs, now = () => Date.now(), onChange = () => {} 
       return [...found.values()]
         .sort((a, b) => (a.date !== b.date ? b.date - a.date : a.id < b.id ? 1 : -1))
         .slice(0, limit)
+    },
+
+    // An activity event from this device (a student's), sealed for the
+    // teacher and passed on. `keyPair`: the event's own key. 'added', or
+    // 'duplicate' when it was sent before. Refused while the course doesn't
+    // collect activity.
+    addActivity(boardKey, { day, keyPair, payload }) {
+      const board = boards.get(boardKey.toString('hex'))
+      if (!board) throw Object.assign(new Error('This course has no board here'), { code: 'NO_BOARD' })
+      if (!board.relay) throw Object.assign(new Error("The teacher's own device sends no activity"), { code: 'NOT_STUDENT' })
+      if (board.store.moderation?.activity === false) {
+        throw Object.assign(new Error("The course doesn't collect activity"), { code: 'ACTIVITY_OFF' })
+      }
+      const event = createActivityEvent({ boardKey: board.key, day, keyPair, payload, teacherKey: board.teacherKey })
+      if (board.relay.add(event) !== 'added') return 'duplicate'
+      forward(board, null, (peer) => sendEvents(peer, [event]))
+      return 'added'
+    },
+
+    // The teacher's activity totals for a course, or null.
+    readActivity(boardKey) {
+      const board = boards.get(boardKey.toString('hex'))
+      return board?.totals ? board.totals.read() : null
     },
 
     async closeAll() {

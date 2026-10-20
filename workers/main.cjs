@@ -79,6 +79,8 @@ const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
 const EVENT_MAINTAINER_JOINED = 101 // must match electron/bare-worker.ts
 // Worker → main: a course board's messages or moderation list changed.
 const EVENT_BOARD_CHANGED = 102 // must match electron/bare-worker.ts
+// Worker → main: the teacher's device counted new activity on a course (SLJ-168).
+const EVENT_ACTIVITY_CHANGED = 103 // must match electron/bare-worker.ts
 
 // How often followed drives are checked for a new version even without an
 // 'append' event (e.g. after being offline). Main ignores repeats.
@@ -171,6 +173,7 @@ async function start() {
   const boards = createBoards({
     folder: `${storagePath}-boards`,
     fs: fsp,
+    onActivity: (hex) => notifyMain(EVENT_ACTIVITY_CHANGED, { driveKey: IdEncoding.normalize(Buffer.from(hex, 'hex')) }),
     onChange: (hex) => notifyMain(EVENT_BOARD_CHANGED, { driveKey: IdEncoding.normalize(Buffer.from(hex, 'hex')) }),
   })
 
@@ -1532,15 +1535,21 @@ async function start() {
   // A course board's operations (SLJ-149). Main decides which boards are open
   // (electron/course-boards.ts); boards are named by their course's code.
   //
-  // - open: { driveKey, publicId?, ownLimitBytes? }. With `publicId`, this is
-  //   the teacher's device: the course's key pair, derived from the identity,
-  //   signs the moderation list and the teacher's messages. Without it, the
-  //   device's own key for the course (from the store, one per course).
+  // - open: { driveKey, courseId?, publicId?, messages?, ownLimitBytes? }.
+  //   With `publicId` (and `courseId`), this is the teacher's device: the
+  //   course's key pair, derived from the identity, signs the moderation list
+  //   and the teacher's messages, and opens the course's activity. Without
+  //   it, the device's own key for the course (from the store, one per
+  //   course). `messages: false`: the board is hidden here, only its list and
+  //   activity travel.
   // - close: { driveKey, remove? }
   // - read: { driveKey, before?, limit? } → the page, or { closed: true }
   // - post: { driveKey, name, text } → the message
   // - moderate: { driveKey, changes } → the new list (the teacher only)
   // - readOlder: { driveKey, before, limit? } → { messages } from peers
+  // - activity: { driveKey, courseId, eventId, day, payload } → { status }
+  //   (a student's event, SLJ-168: 'added' or 'duplicate')
+  // - activityTotals: { driveKey } → the teacher's totals, or { closed: true }
   // Messages go to main with the sender's key also as the app shows keys
   // (z32), for the short tag next to a name.
   const withAuthorId = (message) => ({ ...message, authorId: IdEncoding.normalize(Buffer.from(message.author, 'hex')) })
@@ -1574,6 +1583,7 @@ async function start() {
       let keyPair = null
       let teacherKey
       if (args.publicId) {
+        if (!isValidCourseId(args.courseId)) throw new Error('Invalid course id')
         keyPair = courseKeyPair(requireIdentity(), args.publicId)
         const cores = await openCourseCores(keyPair.publicKey)
         const matches = cores.key.equals(key)
@@ -1583,7 +1593,14 @@ async function start() {
       } else {
         teacherKey = await courseSignerKey(key)
       }
-      await boards.open(key, { authorKeyPair, courseKeyPair: keyPair, ownLimitBytes: args.ownLimitBytes ?? null, teacherKey })
+      await boards.open(key, {
+        authorKeyPair,
+        courseId: args.publicId ? args.courseId : null,
+        courseKeyPair: keyPair,
+        messages: args.messages !== false,
+        ownLimitBytes: args.ownLimitBytes ?? null,
+        teacherKey,
+      })
       return {}
     }
     if (args.op === 'close') return boards.close(key, { remove: Boolean(args.remove) }).then(() => ({}))
@@ -1595,6 +1612,17 @@ async function start() {
     }
     if (args.op === 'post') return withAuthorId(boards.post(key, { name: args.name ?? '', text: args.text }))
     if (args.op === 'moderate') return boards.moderate(key, args.changes ?? {})
+    // A student's activity event (SLJ-168), signed by a key of its own for
+    // this course and event (the same key every time, so a resend counts once).
+    if (args.op === 'activity') {
+      if (!isValidCourseId(args.courseId)) throw new Error('Invalid course id')
+      if (typeof args.eventId !== 'string' || args.eventId.length === 0 || args.eventId.length > 300) {
+        throw new Error('Invalid activity event')
+      }
+      const keyPair = await store.createKeyPair(`activity/${args.courseId}/${args.eventId}`)
+      return { status: boards.addActivity(key, { day: args.day, keyPair, payload: args.payload }) }
+    }
+    if (args.op === 'activityTotals') return boards.readActivity(key) ?? { closed: true }
     if (args.op === 'readOlder') {
       return { messages: (await boards.readOlder(key, { before: args.before, limit: args.limit ?? 50 })).map(withAuthorId) }
     }

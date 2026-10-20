@@ -12,8 +12,9 @@
 // - **The moderation list:** signed by the course's key only (the
 //   `teacherKey`: the key that signs the course's drive; the code is a hash
 //   of the drive's manifest, which names that key). It turns the
-//   board on, sets the students' storage limit, and lists hidden messages and
-//   blocked senders. A newer list (higher `seq`) replaces an older one; a list
+//   board on, sets the students' storage limit, lists hidden messages and
+//   blocked senders, and says whether the course collects activity
+//   (SLJ-168). A newer list (higher `seq`) replaces an older one; a list
 //   signed by anyone else is ignored.
 //
 // Records travel as JSON with keys and signatures in hex. What's signed is a
@@ -159,19 +160,31 @@ function cleanMessage({ author, date, name, sig, text }) {
 }
 
 // The moderation list in its canonical form: sorted and without duplicates.
-function normalizeModeration({ blocked = [], hidden = [], on = false, seq, studentLimitBytes = DEFAULT_STUDENT_LIMIT_BYTES }) {
+// Version 2 adds `activity` (SLJ-168: the course collects activity, on
+// unless the teacher turned it off); a version 1 list has it on.
+function normalizeModeration({
+  activity = true,
+  blocked = [],
+  hidden = [],
+  on = false,
+  seq,
+  studentLimitBytes = DEFAULT_STUDENT_LIMIT_BYTES,
+  v = 2,
+}) {
   return {
+    activity: v === 1 ? true : activity,
     blocked: [...new Set(blocked)].sort(),
     hidden: [...new Set(hidden)].sort(),
     on: Boolean(on),
     seq,
     studentLimitBytes,
-    v: 1,
+    v,
   }
 }
 
 function moderationPayload(boardKey, list) {
-  const body = JSON.stringify([list.seq, list.on, list.studentLimitBytes, list.hidden, list.blocked])
+  const fields = [list.seq, list.on, list.studentLimitBytes, list.hidden, list.blocked]
+  const body = JSON.stringify(list.v === 1 ? fields : [...fields, list.activity])
   return Buffer.concat([MODERATION_CONTEXT, boardKey, Buffer.from(body)])
 }
 
@@ -179,7 +192,7 @@ function moderationPayload(boardKey, list) {
 // `seq` orders lists: a device keeps the highest it has seen.
 function createModeration({ boardKey, keyPair, list, teacherKey }) {
   if (!keyPair.publicKey.equals(teacherKey)) throw new Error("Only the course's own key signs its moderation list")
-  const normalized = normalizeModeration(list)
+  const normalized = normalizeModeration({ ...list, v: 2 })
   const problem = moderationShapeProblem(normalized)
   if (problem) throw Object.assign(new Error(`The moderation list isn't valid: ${problem}`), { code: problem })
   return { ...normalized, sig: sign(moderationPayload(boardKey, normalized), keyPair.secretKey).toString('hex') }
@@ -187,7 +200,7 @@ function createModeration({ boardKey, keyPair, list, teacherKey }) {
 
 function moderationShapeProblem(list) {
   if (!Number.isSafeInteger(list.seq) || list.seq < 0) return 'invalid'
-  if (typeof list.on !== 'boolean') return 'invalid'
+  if (typeof list.on !== 'boolean' || typeof list.activity !== 'boolean') return 'invalid'
   if (
     !Number.isSafeInteger(list.studentLimitBytes) ||
     list.studentLimitBytes < MIN_STUDENT_LIMIT_BYTES ||
@@ -205,7 +218,7 @@ function moderationShapeProblem(list) {
 // A moderation list from another device, cleaned and checked, or null when
 // it isn't one signed by the course's key.
 function verifiedModeration(boardKey, teacherKey, list) {
-  if (!list || typeof list !== 'object' || list.v !== 1) return null
+  if (!list || typeof list !== 'object' || (list.v !== 1 && list.v !== 2)) return null
   if (typeof list.sig !== 'string' || !HEX_SIGNATURE.test(list.sig)) return null
   if (!Array.isArray(list.hidden) || !Array.isArray(list.blocked)) return null
   const normalized = normalizeModeration(list)

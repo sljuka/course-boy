@@ -31,6 +31,12 @@ export function recordStepDone(courseId: string, stepId: string) {
   void window.progress.recordStepDone({ courseId, stepId }).then(refresh, logFailure);
 }
 
+// The end screen showed (SLJ-168); main notes it with how much was done, and
+// skips a preview.
+export function recordReachedEnd(courseId: string) {
+  void window.progress.recordReachedEnd(courseId).then(refresh, logFailure);
+}
+
 export function recordTestResult(input: RecordTestResultInput) {
   void window.progress.recordTestResult(input).then(refresh, logFailure);
 }

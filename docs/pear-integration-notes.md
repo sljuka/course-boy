@@ -1507,7 +1507,8 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   it gives the code); a student's reads it from the drive's manifest. A drive signed by
   several maintainers (SLJ-11) has no one key: no board for those courses yet.
 - **Moderation:** one list per board, signed by the course's key: on/off, the students'
-  storage limit, hidden messages, blocked senders. The highest `seq` wins; every device
+  storage limit, hidden messages, blocked senders, and (version 2 of the list, SLJ-168)
+  whether the course collects activity; a version 1 list still verifies, with activity on. The highest `seq` wins; every device
   applies it and passes it on. Hidden and blocked messages stay in the files but are
   never shown or passed on; a blocked sender's own device refuses their posts.
 - **Storage (`workers/board-store.cjs`):** per course, in `<profile>/p2p-boards/`:
@@ -1518,14 +1519,50 @@ students who followed it can seed the new drive from their old copy (`copyProlog
 - **Main (`electron/course-boards.ts`):** opens a board for each published course of this
   profile (as the teacher, once the identity is unlocked) and each imported one, unless
   switched off (Settings → "Show course boards", or a course's ⋯ → "Show this course's
-  board"). It re-syncs whenever the sharing or maintainers state changes, and on unlock.
+  board"). A switched-off board still opens, without its messages, while the student
+  shares activity (it travels on the board's channel); the teacher's own boards always
+  open. It re-syncs whenever the sharing or maintainers state changes, and on unlock.
   Its state (settings, what was read) is the profile's `course-boards.json`. Worker
   command `CMD_BOARD` (26, `op` names the operation), event `EVENT_BOARD_CHANGED` (102).
 - **Names:** the board name from Settings, never the profile name; without one, a name
   made from the sender's key for that course ("Blue Otter", `src/lib/board-names.ts`).
   Every name shows a 4-character tag from the key. The teacher's messages carry their
   channel's name and a "Teacher" badge.
-- **Activity:** a Teaching sidebar item below My channel; for now the boards' unread
-  messages per course (SLJ-168 adds imported/started/finished).
+- **Activity:** a Teaching sidebar item below My channel: the teacher's courses' students
+  (below) and the boards' unread messages per course.
 - **Tests:** `workers/board-*.test.mjs`, `electron/course-boards.test.ts`, and
   `e2e/sharing-board.e2e.mjs` (a teacher and two students on a local testnet).
+
+### Course activity (SLJ-168 core, 2026-10-19)
+
+- **What:** about how many students imported, started and finished a course, for its
+  teacher, with no server and no names. On unless the teacher turns it off ("Course
+  activity" in the course form, in the board's moderation list) or the student does
+  (Settings → Activity). Shown in the editor's Activity tab (Course | Board | Activity,
+  once the course is published) and on the sidebar's Activity page. Decisions are on
+  SLJ-168 in Linear; charts, milestones and public totals are SLJ-172.
+- **Events (`src/lib/course-activity.ts`):** worked out from the student's progress,
+  not sent from the player: imported, started, each section finished, reached the end
+  (with a band of how much was done then: the end screen calls
+  `progress.recordReachedEnd`), and course finished (every step done, whatever the
+  scores). The last three are per attempt; "Start over" and "Clear course progress"
+  start the next one, counted in `course-activity.json` apart from progress, for the
+  first 5 attempts.
+- **Sending (`electron/course-activity.ts`):** each event is queued once, at a random
+  moment within 2 hours (`MATKO_ACTIVITY_DELAY_MS` in tests), kept through restarts,
+  and sent through the course's board in the worker.
+- **Records (`workers/activity-events.cjs`):** one key per event, derived from the
+  worker's store and the course's id (`activity/<course id>/<event id>`), so events of
+  one student can't be linked and a resend counts once. The content is sealed
+  (`crypto_box_seal`) for the course's key; visible are the key, the day and the
+  signature, which covers the board's code.
+- **Transport and storage:** on the board's channel: the hello lists the events a device
+  has (2,000 newest), each side sends the other what it's missing, and new ones are
+  passed on. Students' devices keep them sealed in `<code hex>.activity.jsonl` (180
+  days, at most 5,000); the teacher's opens and counts them in
+  `activity-<course id>.json` (counters and which keys were counted, never what each
+  said), named by the course's id so a move keeps the totals. Worker ops `activity` and
+  `activityTotals`, event `EVENT_ACTIVITY_CHANGED` (103).
+- **Tests:** `workers/activity-events.test.mjs`, the activity case in
+  `workers/board-sync.test.mjs`, `src/lib/course-activity.test.ts`,
+  `electron/course-activity.test.ts`, and `e2e/sharing-activity.e2e.mjs`.

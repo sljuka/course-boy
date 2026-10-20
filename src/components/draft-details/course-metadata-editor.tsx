@@ -1,5 +1,6 @@
 import { ChannelListingToggle } from "@/components/channels/channel-listing-toggle";
 import { CourseBoardSettings } from "@/components/course-board/course-board-settings";
+import { CourseActivitySettings } from "@/components/course-activity/course-activity-settings";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Eye, History, Info, Undo2 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -630,6 +631,9 @@ export function CourseMetadataEditor({
             {/* The course's board (SLJ-149): only once the course is published
                 (it hides itself before that). */}
             <CourseBoardSettings courseId={courseId} />
+
+            {/* Collecting activity (SLJ-168): likewise once published. */}
+            <CourseActivitySettings courseId={courseId} />
 
             <Accordion>
               <AccordionItem value="grade-bands">

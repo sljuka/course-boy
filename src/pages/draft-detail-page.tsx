@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, useOutletContext, useParams } from "react-router-dom";
 
+import { CourseActivityPanel } from "@/components/course-activity/course-activity-panel";
 import { CourseBoardPanel } from "@/components/course-board/course-board-panel";
 import { CourseMetadataEditor } from "@/components/draft-details/course-metadata-editor";
 import { DraftDocumentEditor } from "@/components/draft-details/draft-document-editor";
@@ -9,6 +10,7 @@ import { DraftTestEditor } from "@/components/draft-details/draft-test-editor";
 import { courseRootId } from "@/components/course-structure-prototype/course-structure-prototype-types";
 import type { CourseLayoutOutletContext } from "@/components/course-layout";
 import { PageContent } from "@/components/page-content";
+import { useCourseActivityQuery } from "@/lib/activity-queries";
 import { useCourseBoardQuery } from "@/lib/board-queries";
 import { useAppState } from "@/lib/use-app-state";
 
@@ -37,6 +39,7 @@ export function DraftDetailPage() {
     setEditorStatusAction(null);
   }, [setEditorStatusAction]);
   const { data: board } = useCourseBoardQuery(courseView === "board" ? courseId : undefined);
+  const { data: activity } = useCourseActivityQuery(courseView === "activity" ? courseId : undefined);
 
   if (!courseId) {
     return <Navigate replace to="/my-courses" />;
@@ -51,6 +54,15 @@ export function DraftDetailPage() {
     return (
       <PageContent>
         <CourseBoardPanel board={board} courseId={courseId} />
+      </PageContent>
+    );
+  }
+
+  // The course's activity (SLJ-168), from "Activity" in the action bar.
+  if (courseView === "activity" && activity?.status === "ready") {
+    return (
+      <PageContent>
+        <CourseActivityPanel collect={activity.collect} sections={courseSections} summary={activity.summary} />
       </PageContent>
     );
   }

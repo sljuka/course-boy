@@ -47,6 +47,7 @@ import { useAppState } from "@/lib/use-app-state";
 import { useProfilesStateQuery } from "@/lib/profiles-queries";
 import { useRefreshOnAgentChanges } from "@/lib/mcp-queries";
 import { useRefreshOnBoardChanges } from "@/lib/board-queries";
+import { useRefreshOnActivityChanges } from "@/lib/activity-queries";
 
 const AppRoutes = () => {
   const { isLoaded } = useAppState();
@@ -176,6 +177,7 @@ const AppLinkOpener = () => {
 const AgentChangesRefresher = () => {
   useRefreshOnAgentChanges();
   useRefreshOnBoardChanges();
+  useRefreshOnActivityChanges();
 
   return null;
 };

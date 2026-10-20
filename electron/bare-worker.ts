@@ -26,6 +26,7 @@ import { getPublishedCoursePackagePath } from './course-paths'
 import { isValidCourseId } from '../src/lib/course-id'
 import type { RemoteCourseVersion } from './course-sharing'
 import type { TransferInfo } from '../src/lib/sharing'
+import type { ActivityPayload, ActivityWorkerTotals } from '../src/lib/course-activity'
 import type { BoardCursor, BoardModeration, BoardModerationChanges, BoardWorkerMessage, BoardWorkerPage } from '../src/lib/course-board'
 
 // Must match workers/main.cjs.
@@ -62,6 +63,8 @@ const EVENT_DRIVE_CHANGED = 100
 const EVENT_MAINTAINER_JOINED = 101
 // Worker → main: a course board's messages or moderation list changed.
 const EVENT_BOARD_CHANGED = 102
+// Worker → main: the teacher's device counted new activity on a course (SLJ-168).
+const EVENT_ACTIVITY_CHANGED = 103
 
 declare global {
   // 'spawning' until the worker answers, then 'ready', or 'error: …'
@@ -459,9 +462,19 @@ export async function sharedCourseOp<K extends keyof SharedCourseOps>(
 // A course board's operations (workers/main.cjs, boardOp). Boards are named
 // by their course's code.
 type BoardOps = {
+  // A student's activity event (SLJ-168).
+  activity: [
+    { courseId: string; day: number; driveKey: string; eventId: string; payload: ActivityPayload },
+    { status: 'added' | 'duplicate' },
+  ]
+  // The teacher's activity totals for a course.
+  activityTotals: [{ driveKey: string }, ActivityWorkerTotals | { closed: true }]
   close: [{ driveKey: string; remove?: boolean }, Record<string, never>]
   moderate: [{ changes: BoardModerationChanges; driveKey: string }, BoardModeration]
-  open: [{ driveKey: string; ownLimitBytes?: number; publicId?: string }, Record<string, never>]
+  open: [
+    { courseId?: string; driveKey: string; messages?: boolean; ownLimitBytes?: number; publicId?: string },
+    Record<string, never>,
+  ]
   post: [{ driveKey: string; name: string; text: string }, BoardWorkerMessage]
   read: [{ before?: BoardCursor | null; driveKey: string; limit?: number }, BoardWorkerPage]
   readOlder: [{ before: BoardCursor; driveKey: string; limit?: number }, { messages: BoardWorkerMessage[] }]
@@ -472,6 +485,12 @@ export async function boardOp<K extends keyof BoardOps>(op: K, args: BoardOps[K]
 }
 
 const boardChangedListeners = new Set<(driveKey: string) => void>()
+const activityChangedListeners = new Set<(driveKey: string) => void>()
+
+// Called when the teacher's device counted new activity on a course.
+export function onActivityChanged(listener: (driveKey: string) => void): void {
+  activityChangedListeners.add(listener)
+}
 
 // Called when a course board's messages or moderation list changed.
 export function onBoardChanged(listener: (driveKey: string) => void): void {
@@ -688,6 +707,14 @@ export function spawnBareWorker(): void {
           if (driveKey) for (const listener of boardChangedListeners) listener(driveKey)
         } catch (error) {
           console.error('[bare-worker] bad board-changed event:', error)
+        }
+      }
+      if (req.command === EVENT_ACTIVITY_CHANGED) {
+        try {
+          const { driveKey } = JSON.parse(req.data?.toString() ?? '{}') as { driveKey?: string }
+          if (driveKey) for (const listener of activityChangedListeners) listener(driveKey)
+        } catch (error) {
+          console.error('[bare-worker] bad activity-changed event:', error)
         }
       }
       if (req.command === EVENT_DRIVE_CHANGED) {

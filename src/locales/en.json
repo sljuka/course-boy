@@ -1476,15 +1476,53 @@
   },
   "activity": {
     "title": "Activity",
-    "description": "What's new on your courses. For now, board messages you haven't read.",
+    "description": "What's new on your courses: your students, and board messages you haven't read.",
     "empty": "Nothing new on your courses’ boards.",
     "unreadMessages_one": "{{count}} new message",
-    "unreadMessages_other": "{{count}} new messages"
+    "unreadMessages_other": "{{count}} new messages",
+    "studentsTitle": "Your courses' students",
+    "messagesTitle": "Board messages"
+  },
+  "courseActivity": {
+    "approx": "≈ {{value}}",
+    "imported": "Imported",
+    "started": "Started",
+    "finished": "Finished",
+    "reachedEnd": "Reached the end",
+    "finishedAgain": "Finished again: ≈ {{value}}",
+    "estimates": "Estimates: each device counts once, so a student on two computers counts twice. Finished means every lesson and test done, whatever the scores. First attempts only.",
+    "off": "This course doesn't collect activity: students' devices send nothing new, and what was counted before stays. Turn it on in the course form.",
+    "sectionsTitle": "Sections finished",
+    "endTitle": "Done on reaching the end",
+    "endDescription": "Students who moved past the last step, by how much of the course they had done then. Skipping ahead shows here.",
+    "bands": {
+      "all": "Everything",
+      "75-99": "75–99%",
+      "50-74": "50–74%",
+      "25-49": "25–49%",
+      "under-25": "Under 25%"
+    },
+    "attemptsTitle": "Finished, by attempt",
+    "attemptsDescription": "A new attempt starts when a student starts the course over.",
+    "attempt": "Attempt {{number}}",
+    "attemptMore": "Attempt 5 or later",
+    "settings": {
+      "title": "Course activity",
+      "hint": "About how many students imported, started and finished the course, without their names.",
+      "collect": "Collect activity",
+      "collectHint": "Students' devices tell you when they import, start and finish the course and its sections, without a name. Each student can turn it off for themselves.",
+      "open": "Open activity",
+      "sectionTitle": "Activity",
+      "sectionDescription": "What the teachers of the courses you take learn about your progress.",
+      "share": "Share my progress with teachers",
+      "shareHint": "Without your name: that you imported, started and finished a course or its sections, and how much you had done on reaching its end. Never your answers or scores."
+    }
   },
   "board": {
     "tabs": {
       "course": "Course",
-      "board": "Board"
+      "board": "Board",
+      "activity": "Activity"
     },
     "empty": "No messages yet. Write the first one.",
     "teacherBadge": "Teacher",

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { AgentsSettings } from "@/components/agents/agents-settings";
 import { BackgroundSettings } from "@/components/background/background-settings";
 import { BoardNameSetting, BoardOwnLimitSetting, BoardsEnabledSetting } from "@/components/course-board/board-settings";
+import { ShareActivitySetting } from "@/components/course-activity/share-activity-setting";
 import { PublisherIdentitySettings } from "@/components/identity/publisher-identity-settings";
 import { PageContent } from "@/components/page-content";
 import { ProfileNameSetting } from "@/components/profile/profile-name-setting";
@@ -204,6 +205,14 @@ export const SettingsPage = () => {
         <BoardNameSetting />
         <BoardsEnabledSetting />
         {role === "teacher" && <BoardOwnLimitSetting />}
+      </SettingsSection>
+      {/* Course activity (SLJ-168): sharing your own progress with teachers. */}
+      <SettingsSection
+        data-testid="activity-settings"
+        description={t("courseActivity.settings.sectionDescription")}
+        title={t("courseActivity.settings.sectionTitle")}
+      >
+        <ShareActivitySetting />
       </SettingsSection>
       {/* Agents on this computer making courses over MCP (SLJ-68). */}
       <SettingsSection

@@ -53,6 +53,10 @@ export type CourseProgress = {
   // When it was starred, so the sidebar's Favorites list them in that order.
   favoritedAt?: string;
   lastOpenedAt?: string;
+  // When the student first moved past the course's last step in this
+  // attempt (the end screen), and how many of its steps were done then
+  // (SLJ-168). Cleared with the rest when the course is started over.
+  reachedEnd?: { at: string; done: number; total: number };
   // Missing until the first answer in interactive mode.
   spree?: CourseSpree;
   startedAt?: string;

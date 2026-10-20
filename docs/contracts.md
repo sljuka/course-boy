@@ -433,6 +433,13 @@ the original owner as `publisher.id`. How it fits together:
   `EVENT_BOARD_CHANGED` (102). What's signed (messages, the moderation list) is a fixed
   byte layout in `workers/board-messages.cjs`: changing it makes every device refuse the
   others' messages, so it needs a new protocol name (`matko-board/2`).
+- **Course activity (SLJ-168):** events travel on the board's channel; what's signed and
+  sealed is in `workers/activity-events.cjs`. `electron/course-activity.ts` works them out
+  from progress and sends them, and reads the teacher's totals, through `window.activity`
+  (`activity:*` IPC, `activity:changed` to the window) and `progress.recordReachedEnd`.
+  The worker ops are `activity` and `activityTotals` under `CMD_BOARD`, the event
+  `EVENT_ACTIVITY_CHANGED` (103). A course's "Collect activity" is a field of the
+  moderation list (version 2).
 - **Publishers (SLJ-108):** the profile's address book, `electron/publishers.ts`, through
   `window.publishers` (`publishers:*` IPC). It derives entries from the followed courses
   and programs and the maintainers state; renaming fields there changes what it lists.
