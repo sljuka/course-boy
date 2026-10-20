@@ -108,5 +108,21 @@ describe('import links from outside the app', () => {
     const input = page.locator('[data-testid="import-course-code"]')
     await expect.poll(() => input.inputValue().catch(() => ''), { timeout: 20_000 }).toBe(SECOND_CODE)
     expect(await page.evaluate(() => window.profiles.getState().then((state) => state.active?.id))).toEqual(profileBefore)
+    await page.keyboard.press('Escape')
+    await input.waitFor({ state: 'hidden' })
+  })
+
+  // SLJ-151: a crafted link carrying a quote and a switch (the shape behind
+  // CVE-2018-1000006 on Windows) is dropped whole: no Import opens.
+  it('drops a crafted link carrying a switch', async () => {
+    const { page } = harness
+    const second = spawn(
+      electronBinary(),
+      [`--user-data-dir=${USER_DATA}`, `--profile=${E2E_PROFILE_ID}`, APP_DIR, `matko://import/${SECOND_CODE}" --inspect=9229`],
+      { cwd: APP_DIR, stdio: 'ignore' },
+    )
+    expect(await new Promise((resolve) => second.on('exit', resolve))).toBe(0)
+    await page.waitForTimeout(1_500)
+    expect(await page.locator('[data-testid="import-course-code"]').isVisible()).toBe(false)
   })
 })
