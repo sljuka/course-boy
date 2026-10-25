@@ -11,7 +11,8 @@ import { useAppState } from "@/lib/use-app-state";
 // An import or update download in progress (SLJ-43): "Looking for the
 // course…" until someone sharing it is reachable (and, after a while, that
 // nobody is online right now), then "Downloading 12 MB of 48 MB · 2.1 MB/s"
-// with a progress bar. Cancel is always available; nothing gives up by itself.
+// with a progress bar; "Connection lost, trying again…" while it waits to
+// try again (SLJ-173). Cancel is always available.
 export function TransferProgress({ onCancel, transferId }: { onCancel: () => void; transferId: string }) {
   const { t } = useTranslation();
   const { locale } = useAppState();
@@ -21,7 +22,12 @@ export function TransferProgress({ onCancel, transferId }: { onCancel: () => voi
 
   return (
     <div className="flex flex-col gap-2" data-testid="transfer-progress">
-      {isDownloading ? (
+      {transfer?.retrying ? (
+        <div className="flex items-center gap-2">
+          <Spinner aria-hidden="true" />
+          <CardDescription data-testid="transfer-progress-text">{t("transfer.retrying")}</CardDescription>
+        </div>
+      ) : isDownloading ? (
         <>
           <Progress value={percent} />
           <CardDescription data-testid="transfer-progress-text">

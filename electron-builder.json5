@@ -76,8 +76,14 @@
   // The AppImage runs anywhere without installing; the deb (Ubuntu, Debian)
   // and rpm (Fedora) install normally and register `matko://` links on
   // install. Building the rpm needs `rpmbuild` (the `rpm` package on the
-  // Linux runner, see .github/workflows/release.yml).
+  // Linux runner, see .github/workflows/release.yml). `%u` in their desktop
+  // entry: the system hands the app at most one link, never a list (SLJ-151;
+  // electron-builder's default is `%U`). The AppImage's own entry does the
+  // same (electron/app-link-intake.ts).
   "linux": {
+    "executableArgs": [
+      "%u"
+    ],
     "target": [
       "AppImage",
       "deb",

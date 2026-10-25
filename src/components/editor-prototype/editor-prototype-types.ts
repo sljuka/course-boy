@@ -1,5 +1,6 @@
 import type { TestExercise } from "@/components/test-editor-prototype-types";
 import type { Locale } from "@/lib/i18n";
+import type { TimelineMarker } from "@/lib/lesson-timeline";
 
 export type HeadingBlock = {
   id: string;
@@ -47,6 +48,15 @@ export type ExerciseBlock = {
   type: "exercise";
 };
 
+// A point on the lesson's timeline (SLJ-35): marks where in the text the
+// lesson reaches a moment in time. Students see nothing here; the bar at the
+// top of the lesson moves to it (see `src/lib/lesson-timeline.ts`).
+export type TimelineBlock = {
+  id: string;
+  marker: TimelineMarker;
+  type: "timeline";
+};
+
 // A block this app version can't read: a block type added by a newer
 // version, or an exercise of a kind it doesn't have. Kept exactly as it was
 // read (`blockType` is the marker's type name, `source` its body), so saving
@@ -67,6 +77,7 @@ export type EditorPrototypeBlock =
   | VideoBlock
   | AudioBlock
   | ExerciseBlock
+  | TimelineBlock
   | UnknownBlock;
 
 export type EditorPrototypeBlockType = EditorPrototypeBlock["type"];

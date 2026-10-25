@@ -1444,6 +1444,14 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   before any file data is downloaded. The worker's error message starts with the code,
   which `src/lib/transfer-errors.ts` turns into a sentence (IPC keeps only messages).
   `MATKO_DOWNLOAD_LIMITS` (JSON, test-only) lowers the limits for e2e.
+- **Downloads try again (SLJ-173):** once files are coming, a dropped peer or a timed-out
+  read used to end an import or update. Now the download step (`mirrorWithProgress`) is
+  tried up to three times, pausing 2 s then 5 s (`workers/import-retry.cjs`), each import
+  attempt in a fresh staging folder; blocks that already arrived stay in the store, so a
+  retry fetches only what's missing. Answers aren't retried: over the limits, no space,
+  symlinks, a newer format, Cancel. While it waits, the transfer reports `retrying: true`
+  and the window says "Connection lost, trying again…". Waiting for someone to be online
+  is unchanged: that still waits as long as it takes.
 - **Imports that wait survive a restart (SLJ-128):** main keeps every import it's running
   (`course-sharing` store `imports`: `{ code, transferId, startedAt }`) until it lands, is
   cancelled, or the worker reports a real failure (not a course, say); a worker that stops

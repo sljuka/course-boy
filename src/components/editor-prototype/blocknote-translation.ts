@@ -7,6 +7,7 @@ import type {
   ImageBlock,
 } from "@/components/editor-prototype/editor-prototype-types";
 import { matkoAssetUrl } from "@/lib/course-assets";
+import { parseTimelineMarker, serializeTimelineMarker } from "@/lib/lesson-timeline";
 import { blockNoteLinkOptions, repairAppLinks } from "@/components/editor-prototype/blocknote-links";
 
 type DocumentEditorSchema = typeof documentEditorSchema;
@@ -111,6 +112,9 @@ export function editorPrototypeBlocksToBlockNote(
       case "exercise":
         result.push({ type: "exercise", props: { data: JSON.stringify(block.exercise) } });
         break;
+      case "timeline":
+        result.push({ type: "timeline", props: { data: serializeTimelineMarker(block.marker) } });
+        break;
       case "markdown":
         result.push(...markdownRunToBlockNoteBlocks(block.source));
         break;
@@ -148,7 +152,7 @@ function extractPlainText(block: DocumentEditorBlock): string {
  * BlockNote's current document back into our own `EditorPrototypeBlock[]`
  * for persistence — the inverse of `editorPrototypeBlocksToBlockNote`.
  * Anything that isn't one of our own structurally-recognized types (the
- * document's first heading, image/video/audio, exercise, unsupported) is coalesced into
+ * document's first heading, image/video/audio, exercise, timeline, unsupported) is coalesced into
  * contiguous runs and stored as a catch-all `MarkdownBlock`, matching that
  * type's existing role for arbitrary content.
  */
@@ -206,6 +210,16 @@ export function blockNoteBlocksToEditorPrototype(
 
       if (data) {
         result.push({ exercise: JSON.parse(data), id: crypto.randomUUID(), type: "exercise" });
+      }
+      continue;
+    }
+
+    if (block.type === "timeline") {
+      flushMarkdownRun();
+      const marker = parseTimelineMarker(block.props.data as string);
+
+      if (marker) {
+        result.push({ id: crypto.randomUUID(), marker, type: "timeline" });
       }
       continue;
     }

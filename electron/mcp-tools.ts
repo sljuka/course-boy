@@ -998,7 +998,8 @@ export function registerMcpTools(server: McpServer, deps: McpToolDeps): void {
   server.registerTool(
     "write_lesson",
     {
-      description: "Replaces a lesson's text (Markdown) in one of the course's languages, and optionally renames it.",
+      description:
+        "Replaces a lesson's text (Markdown) in one of the course's languages, and optionally renames it. A history lesson can have a timeline: a bar at the top that moves through time as the student reads. Each point goes where the text reaches that moment, as a block of its own between Markdown blocks: \"[matko-block]: <> (timeline)\" and on the next line JSON with label, year (negative before the common era), and optionally endYear, dateText (e.g. \"14. vek\"), caption, image (a filename from add_image) and imageAlt, or instead of an image an icon: emperor, king, prince (knez, župan, despot), person, battle, fortress, church, document, state or migration. With any block marker, every text part needs its own \"[matko-block]: <> (markdown)\" before it.",
       inputSchema: { content: z.string(), courseId, language, lessonId, sectionId, title: z.string().min(1).optional() },
     },
     write(async (args: { content: string; courseId: string; language?: string; lessonId: string; sectionId: string; title?: string }) => {

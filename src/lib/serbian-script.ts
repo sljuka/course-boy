@@ -154,7 +154,9 @@ const CODE_FENCE_PATTERN = /^\s*(```|~~~)/;
 /**
  * A lesson body (`locales/<lang>/lesson-….md`). Like `transliterateSerbianText`
  * per line, but also keeps block markers and fenced code as they are, and
- * fills an embedded exercise block's JSON with its generated locale. A block
+ * fills an embedded exercise block's JSON with its generated locale. A
+ * timeline block's text (label, date, caption, alt text) is transliterated,
+ * its picture's filename isn't. A block
  * type this version doesn't know is copied unchanged: its body may not be
  * prose, so transliterating it could break it.
  */
@@ -166,6 +168,7 @@ export function transliterateSerbianMarkdown(
   const output: string[] = [];
   let inFence = false;
   let inExerciseBlock = false;
+  let inTimelineBlock = false;
   let inUnknownBlock = false;
 
   for (const line of lines) {
@@ -173,6 +176,7 @@ export function transliterateSerbianMarkdown(
 
     if (marker) {
       inExerciseBlock = marker[1] === "exercise";
+      inTimelineBlock = marker[1] === "timeline";
       inUnknownBlock = !isKnownBlockType(marker[1]);
       inFence = false;
       output.push(line);
@@ -186,6 +190,11 @@ export function transliterateSerbianMarkdown(
 
     if (inExerciseBlock && line.trim().startsWith("{")) {
       output.push(transliterateExerciseJsonLine(line, setting));
+      continue;
+    }
+
+    if (inTimelineBlock && line.trim().startsWith("{")) {
+      output.push(transliterateTimelineJsonLine(line, setting));
       continue;
     }
 
@@ -208,6 +217,28 @@ function transliterateExerciseJsonLine(line: string, setting: SerbianScriptSetti
     return JSON.stringify(syncSerbianLocales(JSON.parse(line) as unknown, setting));
   } catch {
     // Not valid JSON: leave it exactly as it is rather than guess.
+    return line;
+  }
+}
+
+// A timeline marker's text fields (src/lib/lesson-timeline.ts); `image` is a
+// filename and the years are numbers.
+const TIMELINE_TEXT_KEYS = new Set(["caption", "dateText", "imageAlt", "label"]);
+
+function transliterateTimelineJsonLine(line: string, setting: SerbianScriptSetting): string {
+  try {
+    const marker = JSON.parse(line) as Record<string, unknown>;
+    return JSON.stringify(
+      Object.fromEntries(
+        Object.entries(marker).map(([key, value]) => [
+          key,
+          TIMELINE_TEXT_KEYS.has(key) && typeof value === "string"
+            ? transliterateSerbianText(value, setting.source, { keepAsIs: setting.keepAsIs })
+            : value,
+        ]),
+      ),
+    );
+  } catch {
     return line;
   }
 }

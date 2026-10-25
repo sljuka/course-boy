@@ -96,7 +96,14 @@ version's content the first time an older app saves the lesson. Along the way:
   copies an unknown block's body unchanged rather than treating it as prose.
 
 Only versions that already have this handling degrade gracefully, which is why it shipped
-before any new block type. Earlier versions collapse the whole lesson into one markdown
+before any new block type. The first new one is `timeline` (SLJ-35): a point on the lesson's
+timeline bar, one line of JSON (`src/lib/lesson-timeline.ts`: `label`, `year` negative before
+the common era, optional `endYear`, `dateText`, `caption`, `image`, `imageAlt`, and `icon`
+for a point without a picture: `emperor`, `king`, `prince` (knez, župan, despot), `person`, `battle`, `fortress`,
+`church`, `document`, `state` or `migration`; an icon
+this version doesn't know is dropped). Versions
+before it show the lesson without the bar and with the "needs a newer app" notice;
+`transliterateSerbianMarkdown` converts its text fields but not `image`. Earlier versions collapse the whole lesson into one markdown
 block when they meet an unknown marker.
 
 `blockNoteBlocksToEditorPrototype`'s if-chain in

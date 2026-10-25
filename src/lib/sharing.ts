@@ -53,6 +53,7 @@ export type CourseSharingInfo = {
 //   someone is, or the student cancels.
 // - downloading: `bytesDone` of `bytesTotal` (exact, known up front; for an
 //   update only what changed), at `speed` bytes per second.
+// `retrying`: the connection failed and it's about to try again (SLJ-173).
 export type TransferPhase = 'finding' | 'downloading' | 'done' | 'cancelled' | 'error'
 
 export type TransferInfo = {
@@ -63,6 +64,7 @@ export type TransferInfo = {
   course: { defaultLocale: string | null; titles: Record<string, string> } | null
   elapsedMs: number
   phase: TransferPhase
+  retrying: boolean
   speed: number
 }
 

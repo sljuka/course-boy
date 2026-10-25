@@ -22,7 +22,9 @@ export function usePendingImportView(pendingImport: PendingImport) {
 
   const status = pendingImport.error
     ? transferErrorText(pendingImport.error, t)
-    : isDownloading
+    : transfer?.retrying
+      ? t("transfer.retrying")
+      : isDownloading
       ? t("transfer.downloading", {
           done: formatBytes(transfer.bytesDone, locale),
           total: formatBytes(transfer.bytesTotal ?? 0, locale),

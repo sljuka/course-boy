@@ -1,0 +1,31 @@
+{
+  "name": "matko-mobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "b4a": "^1.9.0",
+    "bare-rpc": "^1.3.8",
+    "expo": "~58.0.16",
+    "expo-dev-client": "~58.0.14",
+    "expo-file-system": "~58.0.10",
+    "expo-status-bar": "~58.0.3",
+    "react": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-bare-kit": "^0.16.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.3.0",
+    "bare-link": "^4.0.1",
+    "bare-pack": "^3.0.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "npm run bundle:worker && expo run:android",
+    "bundle:worker": "bare-pack --preset android --linked --base .. --out worker/worker.bundle.mjs ../workers/main.cjs",
+    "link:android": "bare-link --preset android --out node_modules/react-native-bare-kit/android/src/main/addons ../workers/main.cjs",
+    "postinstall": "npm run link:android",
+    "typecheck": "tsc --noEmit"
+  },
+  "private": true
+}

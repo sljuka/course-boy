@@ -70,6 +70,21 @@ describe("transliterateSerbianMarkdown", () => {
     );
   });
 
+  // SLJ-35: a timeline point's text is converted, its picture's filename isn't.
+  it("converts a timeline point's text and keeps its picture and years", () => {
+    const markdown = [
+      "[matko-block]: <> (timeline)",
+      '{"label":"Kosovska bitka","year":1389,"dateText":"14. vek","image":"lazar-0123456789abcdef.png","imageAlt":"Knez Lazar"}',
+    ].join("\n");
+
+    expect(transliterateSerbianMarkdown(markdown, { source: "sr" })).toBe(
+      [
+        "[matko-block]: <> (timeline)",
+        '{"label":"Косовска битка","year":1389,"dateText":"14. век","image":"lazar-0123456789abcdef.png","imageAlt":"Кнез Лазар"}',
+      ].join("\n"),
+    );
+  });
+
   it("keeps block markers and fenced code, and converts the prose", () => {
     const markdown = [
       "[matko-block]: <> (heading)",

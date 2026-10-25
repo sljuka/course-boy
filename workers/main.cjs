@@ -2,7 +2,10 @@
 // Phase 0's disposable workers/ping-pong.cjs spike. Talks to electron/bare-worker.ts
 // over bare-rpc on the fd-3 pipe (Bare.argv[0] is the Bare binary itself, [1] this
 // script's own path — spawn arguments start at [2]).
-const Pipe = require('bare-pipe')
+//
+// On a phone (the mobile spike, SLJ-20) the same worker runs inside the app
+// through Bare Kit: it talks over `BareKit.IPC` instead of the fd-3 pipe, and
+// its arguments follow a `--matko-worker` marker in `Bare.argv`.
 const RPC = require('bare-rpc')
 const Corestore = require('corestore')
 const Hyperdrive = require('hyperdrive')
@@ -21,6 +24,7 @@ const { NoSymlinkLocaldrive, assertNoSymlinksOnDisk } = require('./drive-safety.
 const { limitConnections } = require('./connection-limit.cjs')
 const { createBoards } = require('./board-sync.cjs')
 const { DOWNLOAD_LIMITS, assertFreeSpace, blobSize, planDownload } = require('./download-limits.cjs')
+const { withDownloadRetries } = require('./import-retry.cjs')
 const {
   commitProposal,
   createProposal,
@@ -104,11 +108,18 @@ const MAX_MOVED_HOPS = 3
 // Hyperdrive's own options for its file list (its "db" core, a Hyperbee).
 const DRIVE_DB_OPTIONS = { keyEncoding: 'utf-8', valueEncoding: 'json', metadata: { contentFeed: null } }
 
-const storagePath = Bare.argv[2]
+// The worker's own arguments, wherever it runs: [2] onward, as on desktop.
+const argv = (() => {
+  if (typeof BareKit === 'undefined') return Bare.argv
+  const marker = Bare.argv.indexOf('--matko-worker')
+  return ['bare', 'worker', ...Bare.argv.slice(marker + 1)]
+})()
+
+const storagePath = argv[2]
 // Test-only: a comma-separated list of `host:port` DHT bootstrap nodes (a local
 // `hyperdht/testnet`), so e2e tests never touch the public DHT. Empty in the app.
-const bootstrap = Bare.argv[3]
-  ? Bare.argv[3].split(',').map((address) => {
+const bootstrap = argv[3]
+  ? argv[3].split(',').map((address) => {
       const [host, port] = address.split(':')
       return { host, port: Number(port) }
     })
@@ -123,7 +134,7 @@ const bootstrap = Bare.argv[3]
 const downloadLimits = (() => {
   const given = (() => {
     try {
-      return Bare.argv[4] ? JSON.parse(Bare.argv[4]) : {}
+      return argv[4] ? JSON.parse(argv[4]) : {}
     } catch {
       return {}
     }
@@ -621,7 +632,10 @@ async function start() {
       const localMeta = await fsp.readFile(path.join(targetPath, 'version-meta.json'), 'utf8').catch(() => null)
       const unchanged = unchangedFileKeys(remoteMeta ? remoteMeta.toString() : null, localMeta)
       const filter = unchanged.size > 0 ? (key) => !unchanged.has(key) : null
-      const changedFiles = await mirrorWithProgress(drive, targetPath, transfer, { atomic: true, filter })
+      // Mirroring again into the same folder only writes what's still missing.
+      const changedFiles = await withRetries(transfer, () =>
+        mirrorWithProgress(drive, targetPath, transfer, { atomic: true, filter }),
+      )
       finishTransfer(transferId, transfer, 'done')
       clearOldVersionsSoon(drive)
       return { changedFiles }
@@ -734,6 +748,8 @@ async function start() {
       mirror: null,
       onCancel: new Set(),
       phase: 'finding',
+      // Waiting to try the download again after the connection failed (SLJ-173).
+      retrying: false,
       startedAt: Date.now(),
       written: 0,
     }
@@ -775,8 +791,30 @@ async function start() {
       course: transfer.course,
       elapsedMs: (transfer.finishedAt || Date.now()) - transfer.startedAt,
       phase,
+      retrying: transfer.retrying,
       speed,
     }
+  }
+
+  // Runs a download (`attempt`), trying again when the connection fails
+  // (SLJ-173, import-retry.cjs). The pause can be cancelled like the rest.
+  function withRetries(transfer, attempt) {
+    return withDownloadRetries(
+      async (number) => {
+        transfer.retrying = false
+        return attempt(number)
+      },
+      {
+        isCancelled: () => transfer.isCancelled,
+        onRetry: (number, error) => {
+          console.warn(`[worker] download failed, trying again (attempt ${number}):`, error.message)
+          transfer.retrying = true
+          transfer.written = 0
+          transfer.mirror = null
+        },
+        sleep: (ms) => untilCancelled(transfer, new Promise((resolve) => setTimeout(resolve, ms))),
+      },
+    )
   }
 
   // An import: wait until a peer that has the course is connected and the
@@ -955,6 +993,13 @@ async function start() {
     return path.join(coursesRoot, `.import-staging-${Date.now()}-${Math.random().toString(36).slice(2)}`)
   }
 
+  // A new staging folder for each attempt, the last one's removed: what
+  // already arrived is in the store, so nothing is downloaded twice.
+  async function freshStaging(root, previous) {
+    if (previous) await fsp.rm(previous, { recursive: true, force: true }).catch(() => {})
+    return stagingPathFor(root)
+  }
+
   // The course's titles from the drive's course.json, for the download's
   // label. Remote data: only strings, capped. Null if it can't be read; the
   // import itself validates the manifest later.
@@ -1042,8 +1087,10 @@ async function start() {
 
       if (isProgram) {
         await fsp.mkdir(programsRoot, { recursive: true })
-        stagingPath = stagingPathFor(programsRoot)
-        await mirrorWithProgress(drive, stagingPath, transfer)
+        await withRetries(transfer, async () => {
+          stagingPath = await freshStaging(programsRoot, stagingPath)
+          await mirrorWithProgress(drive, stagingPath, transfer)
+        })
         const { programId, publisherId } = await finalizeImportedProgram(stagingPath, programsRoot, drive.key)
         followedDrives.set(keyHex, { discovery, drive })
         watchFollowedDrive(drive)
@@ -1051,8 +1098,10 @@ async function start() {
         return { driveKey: drive.key, kind: 'program', programId, publisherId }
       }
 
-      stagingPath = stagingPathFor(coursesRoot)
-      await mirrorWithProgress(drive, stagingPath, transfer)
+      await withRetries(transfer, async () => {
+        stagingPath = await freshStaging(coursesRoot, stagingPath)
+        await mirrorWithProgress(drive, stagingPath, transfer)
+      })
 
       const { courseId, publisherId } = await finalizeImportedCourse(stagingPath, coursesRoot, drive.key)
       followedDrives.set(keyHex, { discovery, drive })
@@ -1629,7 +1678,10 @@ async function start() {
     throw new Error(`Unknown board operation: ${args.op}`)
   }
 
-  rpc = new RPC(new Pipe(3), async (req) => {
+  // The stream to the app: Electron's main over the fd-3 pipe, or the phone
+  // app over Bare Kit's IPC.
+  const stream = typeof BareKit === 'undefined' ? new (require('bare-pipe'))(3) : BareKit.IPC
+  rpc = new RPC(stream, async (req) => {
     // The publisher id while the identity is unlocked here, else ''. Main asks
     // it once at start to know the worker answers (scripts/check-packaged.mjs).
     if (req.command === CMD_GET_CREATOR_KEY) {

@@ -7,6 +7,7 @@ import { DocumentEditorContextProvider } from "@/components/editor-prototype/doc
 import { editorPrototypeBlocksToBlockNote } from "@/components/editor-prototype/blocknote-translation";
 import { decorateBlocksWithMnemonics } from "@/components/course-player/lesson-mnemonics";
 import { lessonPlayerSchema } from "@/components/course-player/mnemonic-inline-content";
+import { LessonTimeline } from "@/components/course-player/lesson-timeline";
 import { UnsupportedContentNotice } from "@/components/course-player/unsupported-content-notice";
 import { useVideoPrintFrames } from "@/components/course-player/use-video-print-frames";
 import { hasUnknownBlocks, markdownToBlocks } from "@/lib/lesson-content-markdown";
@@ -22,6 +23,7 @@ import { blockNoteLinkOptions } from "@/components/editor-prototype/blocknote-li
  * stays fully interactive even here: it renders its own live "answer it and
  * check" UI when `editor.isEditable` is false (see `exercise-block.tsx`).
  * The course's mnemonics (SLJ-37) are added to this rendered copy only.
+ * A lesson with timeline points (SLJ-35) gets the timeline bar above it.
  */
 export function LessonBlocks({ courseId, source }: { courseId: string; source: string }) {
   const { theme } = useAppState();
@@ -31,6 +33,10 @@ export function LessonBlocks({ courseId, source }: { courseId: string; source: s
   // lesson without needing a remount.
   const [dismissedForSource, setDismissedForSource] = useState<string | null>(null);
   const showUnsupportedNotice = hasUnknownBlocks(blocks) && dismissedForSource !== source;
+  const timelineMarkers = useMemo(
+    () => blocks.flatMap((block) => (block.type === "timeline" ? [block.marker] : [])),
+    [blocks],
+  );
   // Recreated whenever the lesson's own content changes (source or the
   // course it belongs to) — this component isn't necessarily remounted when
   // the student navigates to a different lesson, so `initialContent` (only
@@ -49,6 +55,9 @@ export function LessonBlocks({ courseId, source }: { courseId: string; source: s
 
   return (
     <div className="flex flex-col gap-4">
+      {timelineMarkers.length > 0 && (
+        <LessonTimeline contentRef={contentRef} courseId={courseId} markers={timelineMarkers} />
+      )}
       {showUnsupportedNotice && (
         <UnsupportedContentNotice onDismiss={() => setDismissedForSource(source)} />
       )}

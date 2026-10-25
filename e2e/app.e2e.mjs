@@ -3828,3 +3828,51 @@ describe('start, resume and retake', () => {
       .toBe(0)
   })
 })
+
+// SLJ-35: a lesson's timeline. Its points sit in the text; the bar at the top
+// moves to each as the student scrolls past it, and a point opens its place.
+describe('lesson timeline', () => {
+  it('follows the reading and jumps to a point', async () => {
+    const { page } = harness
+    const paragraphs = Array.from({ length: 12 }, (_, index) => `Paragraph ${index + 1} of the story.`).join('\n\n')
+    const point = (marker) => `[matko-block]: <> (timeline)\n${JSON.stringify(marker)}`
+    const text = (body) => `[matko-block]: <> (markdown)\n${body}`
+    const ids = await page.evaluate(async (body) => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Timeline Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Ages' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Two battles' })
+      await window.courses.updateLessonContent({ courseId, lessonId, locales: { en: { body } }, sectionId })
+      return { courseId, lessonId }
+    }, [
+      text(paragraphs),
+      point({ label: 'Marathon', year: -490 }),
+      text(paragraphs),
+      point({ endYear: 1918, label: 'The Great War', year: 1914 }),
+      text(paragraphs),
+    ].join('\n\n'))
+    await page.evaluate(({ courseId, lessonId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${lessonId}`
+    }, ids)
+
+    // The current point's year and name, under it; none before the first.
+    const current = page.locator('[data-testid="lesson-timeline-current"]')
+    await page.locator('[data-testid="lesson-timeline"]').waitFor({ timeout: 15_000 })
+    expect(await page.locator('[data-testid="lesson-timeline-point"]').count()).toBe(2)
+    expect(await current.count()).toBe(0)
+
+    // Reading down to the end reaches both.
+    const box = await page.locator('[data-testid="lesson-timeline"]').boundingBox()
+    await page.mouse.move(box.x + box.width / 2, box.y + 400)
+    await page.mouse.wheel(0, 20_000)
+    await expect.poll(() => current.innerText().catch(() => '')).toMatch(/1914\s*The Great War/)
+
+    // A point opens its place: back to Marathon (490 BC in the app's
+    // language, which earlier tests may have changed).
+    await page.locator('[data-testid="lesson-timeline-point"]').first().click()
+    await expect.poll(() => current.innerText().catch(() => '')).toMatch(/490\D*Marathon/)
+  })
+})

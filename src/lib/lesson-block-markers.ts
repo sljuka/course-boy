@@ -22,6 +22,7 @@ const KNOWN_BLOCK_TYPES: Record<KnownBlockType, true> = {
   heading: true,
   image: true,
   markdown: true,
+  timeline: true,
   video: true,
 };
 

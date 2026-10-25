@@ -13,6 +13,7 @@ import {
   blockMarker,
   isKnownBlockType,
 } from "@/lib/lesson-block-markers";
+import { parseTimelineMarker, serializeTimelineMarker } from "@/lib/lesson-timeline";
 
 const imageBlockContentPattern = /^!\[([^\]]*)\]\(([^\s)]+)(?:\s+"([^"]*)")?\)$/;
 const linkBlockContentPattern = /^\[([^\]]*)\]\(([^\s)]+)\)$/;
@@ -39,6 +40,8 @@ function serializeBlock(block: EditorPrototypeBlock): string {
       return `${marker}\n[${block.caption}](${block.path})`;
     case "exercise":
       return `${marker}\n${JSON.stringify(toSharedTestExerciseDefinition(block.exercise))}`;
+    case "timeline":
+      return `${marker}\n${serializeTimelineMarker(block.marker)}`;
   }
 }
 
@@ -91,6 +94,11 @@ function parseKnownBlockContent(type: KnownBlockType, content: string): EditorPr
     }
     case "exercise":
       return parseExerciseBlock(id, trimmedContent) ?? unknownBlock(type, content);
+    case "timeline": {
+      // One it can't read is kept as it was, like an exercise.
+      const timelineMarker = parseTimelineMarker(trimmedContent);
+      return timelineMarker ? { id, marker: timelineMarker, type } : unknownBlock(type, content);
+    }
   }
 }
 

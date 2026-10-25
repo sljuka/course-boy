@@ -59,7 +59,7 @@ export function decorateBlocksWithMnemonics<T>(blocks: T[], mnemonics: CourseMne
   });
 
   const decorateBlock = (block: Block): Block => {
-    if (block.type === "codeBlock" || block.type === "exercise" || block.type === "unsupported") {
+    if (block.type === "codeBlock" || block.type === "exercise" || block.type === "timeline" || block.type === "unsupported") {
       return block;
     }
 

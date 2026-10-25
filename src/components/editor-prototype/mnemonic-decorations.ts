@@ -14,7 +14,7 @@ import { createMnemonicMatcher, type CourseMnemonic } from "@/lib/mnemonics";
 type ProseMirrorNode = EditorState["doc"];
 
 const pluginKey = new PluginKey<DecorationSet>("matko-mnemonics");
-const SKIPPED_BLOCKS = new Set(["codeBlock", "exercise", "unsupported"]);
+const SKIPPED_BLOCKS = new Set(["codeBlock", "exercise", "timeline", "unsupported"]);
 
 function buildDecorations(doc: ProseMirrorNode, mnemonics: CourseMnemonic[]): DecorationSet {
   if (mnemonics.length === 0) {

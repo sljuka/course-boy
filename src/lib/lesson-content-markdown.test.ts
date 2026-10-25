@@ -154,6 +154,38 @@ describe("blocksToMarkdown / markdownToBlocks", () => {
   })
 })
 
+// SLJ-35: a point on the lesson's timeline.
+describe("timeline blocks", () => {
+  const lesson = [
+    "[matko-block]: <> (markdown)",
+    "Pre bitke.",
+    "",
+    "[matko-block]: <> (timeline)",
+    '{"label":"Kosovska bitka","year":1389,"image":"lazar-0123456789abcdef.png","imageAlt":"Knez Lazar"}',
+    "",
+    "[matko-block]: <> (markdown)",
+    "Posle bitke.",
+  ].join("\n")
+
+  it("reads a timeline point between the text, and writes it back the same", () => {
+    expect(markdownToBlocks(lesson)).toMatchObject([
+      { type: "markdown" },
+      {
+        marker: { image: "lazar-0123456789abcdef.png", imageAlt: "Knez Lazar", label: "Kosovska bitka", year: 1389 },
+        type: "timeline",
+      },
+      { type: "markdown" },
+    ])
+    expect(blocksToMarkdown(markdownToBlocks(lesson))).toBe(lesson)
+  })
+
+  it("keeps a timeline point it can't read as it was", () => {
+    const unreadable = ["[matko-block]: <> (timeline)", "{not json"].join("\n")
+    expect(markdownToBlocks(unreadable)).toMatchObject([{ blockType: "timeline", source: "{not json", type: "unknown" }])
+    expect(blocksToMarkdown(markdownToBlocks(unreadable))).toBe(unreadable)
+  })
+})
+
 describe("blocks this version can't read", () => {
   // What a newer app version might write: a block type this one doesn't know,
   // between two it does.

@@ -21,6 +21,7 @@ import {
 import { DocumentEditorContextProvider } from "@/components/editor-prototype/document-editor-context";
 import type { EditorPrototypeBlock } from "@/components/editor-prototype/editor-prototype-types";
 import { createExerciseSlashMenuItem } from "@/components/editor-prototype/exercise-block";
+import { createTimelineSlashMenuItem } from "@/components/editor-prototype/timeline-block";
 import { LessonLinkButton } from "@/components/editor-prototype/lesson-link-button";
 import { LessonLinkDialog, type PickedLessonLink } from "@/components/editor-prototype/lesson-link-dialog";
 import { createLessonLinkSlashMenuItem } from "@/components/editor-prototype/lesson-link-slash-item";
@@ -169,6 +170,10 @@ function DocumentBlockNoteEditor({
               [
                 ...getDefaultReactSlashMenuItems(editor),
                 createExerciseSlashMenuItem(editor),
+                createTimelineSlashMenuItem(editor, {
+                  subtext: t("lessonTimeline.slashSubtext"),
+                  title: t("lessonTimeline.slashTitle"),
+                }),
                 createLessonLinkSlashMenuItem({
                   onClick: () => setLessonLinkMode("insert"),
                   subtext: t("lessonLink.slashSubtext"),
