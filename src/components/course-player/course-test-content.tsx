@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { exerciseSpeechLanguage } from "@/lib/exercise-speech";
 
 import { ExerciseMediaView } from "@/components/course-player/exercise-media-view";
 import { getExerciseMedia } from "@/lib/exercise-media";
@@ -171,6 +172,7 @@ export const CourseTestContent = ({
                 index={index}
                 printPoints={printPoints ? exercisePoints(exercise) : undefined}
                 promptSource={promptSource}
+                speechLanguage={exerciseSpeechLanguage(exercise)}
               />
               {(() => {
                 const { AnswerComponent } = getExerciseKindEditor(exercise.kind);

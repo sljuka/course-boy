@@ -117,6 +117,19 @@ describe("questions", () => {
     expect(() => testFromQuestions([{ prompt: "?", type: "number" }], "en")).toThrow("needs answer or answers");
   });
 
+  // SLJ-174: read aloud in the language the question is in.
+  it("can be read aloud in a language", () => {
+    const [spoken, silent] = testFromQuestions(
+      [
+        { correct: [0], options: ["ispod", "na"], prompt: "Šta znači „under“?", readAloud: "en", type: "multiple_choice" as const },
+        { correct: [0], options: ["da", "ne"], prompt: "Pitanje", type: "multiple_choice" as const },
+      ],
+      "sr",
+    ).exercises;
+    expect(spoken).toMatchObject({ speech: { lang: "en" } });
+    expect("speech" in silent).toBe(false);
+  });
+
   it("become fill-in exercises, with the blanks in the order the text names them", () => {
     expect(
       testFromQuestions(

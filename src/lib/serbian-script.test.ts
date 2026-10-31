@@ -49,6 +49,22 @@ describe("transliterateSerbianText", () => {
   });
 });
 
+// Roman numerals stay Latin in Cyrillic text: "Константин VII", not "ВИИ".
+describe("Roman numerals", () => {
+  it("keeps numerals after names and on their own", () => {
+    expect(transliterateSerbianText("Konstantin VII Porfirogenit", "sr")).toBe("Константин VII Порфирогенит");
+    expect(transliterateSerbianText("Uroš I i Uroš II", "sr")).toBe("Урош I и Урош II");
+    expect(transliterateSerbianText("u XIV i XV veku, papa Grgur VII", "sr")).toBe("у XIV и XV веку, папа Гргур VII");
+    expect(transliterateSerbianText("Stefan Uroš IV Dušan", "sr")).toBe("Стефан Урош IV Душан");
+  });
+
+  it("still converts the word „i“, also capitalized", () => {
+    expect(transliterateSerbianText("I tada je Lazar krenuo.", "sr")).toBe("И тада је Лазар кренуо.");
+    expect(transliterateSerbianText("Pobedio je. I onda", "sr")).toBe("Победио је. И онда");
+    expect(transliterateSerbianText("Vi ste", "sr")).toBe("Ви сте");
+  });
+});
+
 describe("transliterateSerbianMarkdown", () => {
   it("copies a block type it doesn't know unchanged", () => {
     const markdown = [

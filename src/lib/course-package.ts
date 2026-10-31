@@ -1,4 +1,5 @@
 import type { CourseExerciseMedia, SharedExerciseMedia } from "@/lib/exercise-media";
+import type { ExerciseSpeechField } from "@/lib/exercise-speech";
 import type { GradeBand } from "@/lib/grade-bands";
 import type { Locale } from "@/lib/i18n";
 import type { CourseMnemonic } from "@/lib/mnemonics";
@@ -341,7 +342,8 @@ export type CourseExercise = (
   | PunctuationCourseExercise
   | RewriteCourseExercise
 ) &
-  ExercisePointsField;
+  ExercisePointsField &
+  ExerciseSpeechField;
 
 export type CourseTestStructureRule = {
   count: number;
@@ -520,7 +522,8 @@ export type SharedTestExerciseDefinition = (
   | SharedPunctuationTestExerciseDefinition
   | SharedRewriteTestExerciseDefinition
 ) &
-  ExercisePointsField;
+  ExercisePointsField &
+  ExerciseSpeechField;
 
 export type SharedTestDefinition = {
   exercises: SharedTestExerciseDefinition[];

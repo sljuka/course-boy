@@ -121,8 +121,22 @@ function transliterateWord(word: string, from: SerbianLocale, keep: Set<string>)
   return transliterateSerbianLatinToCyrillic(word);
 }
 
+// Roman numerals stay in Latin letters in Cyrillic text too ("Константин VII",
+// "XIV век"): an all-capitals word that is a valid numeral. A lone "I" or "V"
+// only right after a name ("Uroš I"); elsewhere it's a word ("I tada…").
+const ROMAN_NUMERAL = /^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/;
+const AFTER_A_NAME = /\p{Lu}\p{Ll}+\s+$/u;
+
+function isRomanNumeral(word: string, before: string): boolean {
+  if (!ROMAN_NUMERAL.test(word)) return false;
+  if (word.length > 1) return true;
+  return (word === "I" || word === "V") && AFTER_A_NAME.test(before);
+}
+
 function transliterateProse(text: string, from: SerbianLocale, keep: Set<string>): string {
-  return text.replace(WORD_PATTERN, (word) => transliterateWord(word, from, keep));
+  return text.replace(WORD_PATTERN, (word, offset: number) =>
+    from === "sr" && isRomanNumeral(word, text.slice(0, offset)) ? word : transliterateWord(word, from, keep),
+  );
 }
 
 function toKeepSet(options: TransliterateOptions): Set<string> {

@@ -3,6 +3,7 @@ import type { CourseListView } from '@/lib/course-list-view'
 import type { ExplorerPanelPreference } from '@/lib/explorer-panel'
 import type { RecentlyViewedEntry } from '@/lib/recently-viewed'
 import type { SoundVolume } from '@/lib/sound-effects'
+import type { SpeechLanguage } from '@/lib/exercise-speech'
 import type { TabsState } from '@/lib/tabs'
 
 export type Category =
@@ -55,6 +56,10 @@ export type UserPreferences = {
   // teachers. Their volume; medium when unset.
   soundEffects?: boolean
   soundVolume?: SoundVolume
+  // Read aloud (SLJ-174): the voice reading each language (a system voice's
+  // URI; unset, the best one on this device) and the speed (1 normal).
+  speechVoices?: Partial<Record<SpeechLanguage, string>>
+  speechRate?: number
   // A test opens in interactive mode, one question at a time (SLJ-132); on
   // when unset. Off: it opens in paper mode.
   startTestsInteractive?: boolean

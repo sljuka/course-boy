@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ExerciseMediaField } from "@/components/exercise-media-field";
+import { ExerciseSpeechField } from "@/components/exercise-speech-field";
 import { ExercisePromptCard } from "@/components/test-editor-prototype-exercise-card";
 import { TestMoreOptions } from "@/components/test-more-options";
 import { TestTypeField } from "@/components/test-type-field";
@@ -440,16 +441,26 @@ export function TestEditorPrototype({
                             exercise={draftExercise}
                             locale={locale}
                             moreOptions={
-                              <ExerciseMediaField
-                                courseId={courseId}
-                                exercise={draftExercise}
-                                locale={locale}
-                                onChange={(updater) =>
-                                  setDraftExercise((currentDraft) =>
-                                    currentDraft ? updater(currentDraft) : currentDraft,
-                                  )
-                                }
-                              />
+                              <>
+                                <ExerciseMediaField
+                                  courseId={courseId}
+                                  exercise={draftExercise}
+                                  locale={locale}
+                                  onChange={(updater) =>
+                                    setDraftExercise((currentDraft) =>
+                                      currentDraft ? updater(currentDraft) : currentDraft,
+                                    )
+                                  }
+                                />
+                                <ExerciseSpeechField
+                                  exercise={draftExercise}
+                                  onChange={(updater) =>
+                                    setDraftExercise((currentDraft) =>
+                                      currentDraft ? updater(currentDraft) : currentDraft,
+                                    )
+                                  }
+                                />
+                              </>
                             }
                             onChange={(updater) =>
                               setDraftExercise((currentDraft) =>

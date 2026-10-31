@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { CardDescription } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { ReadAloudButton } from "@/components/read-aloud-button";
+import { exerciseSpeechLanguage } from "@/lib/exercise-speech";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useTestPlayerState } from "@/components/test-player/use-test-player-state";
 import type { MultipleChoiceTestExercise } from "@/components/test-editor-prototype-types";
@@ -89,6 +91,7 @@ function AnswerComponent({
               <Label htmlFor={`course-exercise-answer-${index}-${optionIndex}`}>
                 {exercise.options[optionIndex]}
               </Label>
+              <ReadAloudButton language={exerciseSpeechLanguage(exercise)} text={exercise.options[optionIndex]} />
             </div>
           ))}
         </RadioGroup>
@@ -118,6 +121,7 @@ function AnswerComponent({
             <Label htmlFor={`course-exercise-answer-${index}-${optionIndex}`}>
               {exercise.options[optionIndex]}
             </Label>
+            <ReadAloudButton language={exerciseSpeechLanguage(exercise)} text={exercise.options[optionIndex]} />
           </div>
         ))}
       </div>

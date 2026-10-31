@@ -774,6 +774,23 @@ free; the region kinds opt out (`supportsExerciseMedia`), since their diagram is
 exercise. Being referenced by bare filename, the asset is counted by
 `getCourseAssetUsage` and the missing-files check like any other.
 
+**Read aloud is not per kind either** (SLJ-174): an optional `speech: { lang }` on the
+exercise definition, `lang` one of `SPEECH_LANGUAGES` (the language the exercise's text
+is in, not a voice: the voice and speed are the student's, in the profile's preferences,
+`speechVoices` / `speechRate`). It travels the same way as media: `toShared` /
+`fromSharedTestExerciseDefinition`, `resolveSharedExerciseForPlayer`, and
+`hasValidExerciseSpeech` beside `hasValidExerciseMedia` in `electron/course-registry.ts`;
+the pieces are in [src/lib/exercise-speech.ts](../src/lib/exercise-speech.ts:1), the
+voices in `src/lib/speech.ts`. The player's 🔊 (`ReadAloudButton`) touches the system's
+speech service only for an exercise that is read aloud: asking it for voices on every
+exercise disturbed the app's menus in e2e.
+
+**An editor that doesn't know a field drops it on save.** `fromSharedTestExerciseDefinition`
+rebuilds an exercise from the fields its version knows, so an app version from before
+`speech` (or any later field) that edits and saves a test writes it back without that
+field. Students' apps only read, so it matters only for teachers or maintainers on mixed
+versions. Keeping unknown fields through a save would close this; not done yet.
+
 ## 9. The app frame: title bar, sidebar, status bar, and the page card
 
 The native title bar is hidden (`titleBarStyle: 'hidden'` in

@@ -21,6 +21,7 @@ import {
 import { regionPickerSvgPresets } from "../src/lib/region-picker-svg-presets";
 import { type CourseTagDefinition, createCourseTagDefinition, courseTagColorOptions } from "../src/lib/course-tags";
 import { isExerciseCount } from "../src/lib/course-exercise-pool";
+import { SPEECH_LANGUAGES } from "../src/lib/exercise-speech";
 import { DEFAULT_EXERCISE_POINTS, MAX_EXERCISE_POINTS, MIN_EXERCISE_POINTS } from "../src/lib/grade-bands";
 import { isLocale, type Locale } from "../src/lib/i18n";
 import { BLOCK_MARKER_PATTERN, blockMarker } from "../src/lib/lesson-block-markers";
@@ -110,6 +111,15 @@ const points = z
   .optional()
   .describe(`Points for solving it in a graded test (default ${DEFAULT_EXERCISE_POINTS})`);
 
+// Read aloud (SLJ-174): the language the question's text is in; the
+// student's voice for it reads the question and its options.
+const readAloud = z
+  .enum(SPEECH_LANGUAGES)
+  .optional()
+  .describe(
+    'Give the question a 🔊 button that reads it (and its options) aloud, in this language: the one its text is in, e.g. "en" for English words in a course for Serbian students',
+  );
+
 // A question's tags, by label: the course's own (update_course sets them).
 // Randomization picks by them (SLJ-135 follow-up).
 const tags = z
@@ -136,6 +146,7 @@ const questionSchema = z.discriminatedUnion("type", [
     correct: z.array(z.number().int().min(0)).min(1).describe("0-based indexes of the correct options"),
     hint: z.string().optional(),
     points,
+    readAloud,
     tags,
   }),
   z.object({
@@ -174,6 +185,7 @@ const questionSchema = z.discriminatedUnion("type", [
       .describe("Whole-number variables used in the prompt and formula"),
     hint: z.string().optional(),
     points,
+    readAloud,
     tags,
   }),
   z.object({
@@ -195,6 +207,7 @@ const questionSchema = z.discriminatedUnion("type", [
       .describe("Each blank named in the text, with its accepted answers"),
     hint: z.string().optional(),
     points,
+    readAloud,
     tags,
   }),
   z.object({
@@ -211,6 +224,7 @@ const questionSchema = z.discriminatedUnion("type", [
       .describe(`The marks taken out and offered to the student (default ${DEFAULT_PUNCTUATION_MARKS.join(" ")}); others stay in the text`),
     hint: z.string().optional(),
     points,
+    readAloud,
     tags,
   }),
   z.object({
@@ -227,6 +241,7 @@ const questionSchema = z.discriminatedUnion("type", [
     acceptWithoutDiacritics: z.boolean().optional().describe("Letters without diacritics count, c for č (default false)"),
     hint: z.string().optional(),
     points,
+    readAloud,
     tags,
   }),
   z.object({
@@ -239,6 +254,7 @@ const questionSchema = z.discriminatedUnion("type", [
       .describe('The shapes to pick: on the maps, country names as in the map ("Hungary", "GreatBritain", "CzechRepublic")'),
     hint: z.string().optional(),
     points,
+    readAloud,
     tags,
   }),
 ]);
@@ -277,7 +293,11 @@ export function testFromQuestions(
       ...withImage(exerciseFromQuestion(question, locale, mapFiles), question, locale),
       tags: tagIds(question.tags ?? [], courseTags),
     };
-    return question.points === undefined ? exercise : { ...exercise, points: question.points };
+    return {
+      ...exercise,
+      ...(question.points === undefined ? {} : { points: question.points }),
+      ...(question.readAloud ? { speech: { lang: question.readAloud } } : {}),
+    };
   });
 
   return {

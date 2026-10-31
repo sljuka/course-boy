@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next";
 
 import { InlineMarkdown } from "@/components/course-player/inline-markdown";
+import { ReadAloudButton } from "@/components/read-aloud-button";
+import type { SpeechLanguage } from "@/lib/exercise-speech";
 import { Badge } from "@/components/ui/badge";
 
 /**
@@ -15,12 +17,15 @@ export function ExercisePromptHeader({
   printPoints,
   promptSource,
   showIndex = true,
+  speechLanguage,
 }: {
   index: number;
   // A graded test's points for it, printed after the prompt (paper only).
   printPoints?: number;
   promptSource: string;
   showIndex?: boolean;
+  // Read aloud (SLJ-174): the prompt gets a 🔊 when the exercise is.
+  speechLanguage?: SpeechLanguage;
 }) {
   const { t } = useTranslation();
 
@@ -39,6 +44,7 @@ export function ExercisePromptHeader({
         </Badge>
       )}
       <InlineMarkdown source={promptSource} />
+      <ReadAloudButton language={speechLanguage} text={promptSource} />
       {printPoints !== undefined && (
         <span className="ml-auto hidden shrink-0 pl-2 whitespace-nowrap text-muted-foreground print:inline">
           ({t("courseDetails.printPoints", { count: printPoints })})

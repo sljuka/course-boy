@@ -53,6 +53,7 @@ import {
   resolveSharedTestForPlayer,
 } from "../src/lib/exercise-kinds/registry";
 import { hasValidExerciseMedia } from "../src/lib/exercise-media";
+import { hasValidExerciseSpeech } from "../src/lib/exercise-speech";
 import { isExercisePoints, isGradeBands } from "../src/lib/grade-bands";
 import { isExerciseCount } from "../src/lib/course-exercise-pool";
 import { promptGaps, titleGaps, writtenLocales } from "../src/lib/course-gaps";
@@ -356,6 +357,7 @@ function isSharedTestDefinitionShape(
     return (
       getExerciseKindRuntime(kind).isValid(typedExercise) &&
       hasValidExerciseMedia(typedExercise) &&
+      hasValidExerciseSpeech(typedExercise) &&
       (typeof typedExercise.points === "undefined" || isExercisePoints(typedExercise.points))
     );
   });

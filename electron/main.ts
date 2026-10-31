@@ -7,6 +7,7 @@ import path from 'node:path'
 import Store from 'electron-store'
 import { createMcpService, type McpSettings } from './mcp-server'
 import type { McpStatus } from '../src/lib/mcp'
+import { isSpeechLanguage, type SpeechLanguage } from '../src/lib/exercise-speech'
 import {
   cancelTransfer,
   checkUpdate,
@@ -253,6 +254,9 @@ type UserPreferences = {
   // SLJ-147: sound effects in tests, and their volume.
   soundEffects?: boolean
   soundVolume?: 'quiet' | 'medium' | 'loud'
+  // SLJ-174: read aloud, the voice per language and the speed.
+  speechVoices?: Partial<Record<SpeechLanguage, string>>
+  speechRate?: number
   // SLJ-129: keep sharing when the window is closed (unset: not asked yet),
   // and start at login (in the menu bar, no window).
   keepSharingInBackground?: boolean
@@ -955,6 +959,19 @@ ipcMain.handle(
     }
     if (typeof preferences.showBundledCourses === 'boolean') {
       profile.preferencesStore.set('showBundledCourses', preferences.showBundledCourses)
+    }
+    // Read aloud (SLJ-174): known languages, each a voice's URI (or "" for
+    // the device's best), and a speed in the range Settings offers.
+    if (preferences.speechVoices && typeof preferences.speechVoices === 'object') {
+      const voices = Object.fromEntries(
+        Object.entries(preferences.speechVoices).filter(
+          ([language, voice]) => isSpeechLanguage(language) && typeof voice === 'string' && voice.length <= 500,
+        ),
+      )
+      profile.preferencesStore.set('speechVoices', voices)
+    }
+    if (typeof preferences.speechRate === 'number' && preferences.speechRate >= 0.5 && preferences.speechRate <= 1.5) {
+      profile.preferencesStore.set('speechRate', preferences.speechRate)
     }
 
     // Validated rather than trusted: it's a list the renderer builds, and only

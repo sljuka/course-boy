@@ -1618,5 +1618,43 @@
     "reachedEndTitle": "You reached the end",
     "reachedEndDescription": "{{done}} of {{total}} steps done. Go back to what you skipped to finish the course.",
     "goToMissing": "Go to what’s missing"
+  },
+  "readAloud": {
+    "button": "Read aloud",
+    "off": "Off",
+    "field": "Read aloud",
+    "fieldDescription": "The question and its answers get a 🔊 button. Choose the language they're written in, so the right voice reads them.",
+    "languages": {
+      "en": "English",
+      "sr": "Serbian",
+      "de": "German",
+      "fr": "French",
+      "es": "Spanish",
+      "it": "Italian",
+      "ru": "Russian"
+    },
+    "settingsTitle": "Read aloud",
+    "settingsDescription": "The voices that read exercises with a 🔊 button. They come from this computer's system, so they differ between computers.",
+    "noVoices": "This computer has no voices for reading aloud. On Linux, install speech-dispatcher; on Windows, add a language in Settings → Time & language → Speech.",
+    "moreLanguages": "More languages",
+    "speed": "Speed",
+    "speeds": {
+      "0_6": "Very slow",
+      "0_75": "Slow",
+      "0_9": "A little slow",
+      "1": "Normal",
+      "1_15": "Fast"
+    },
+    "voiceFor": {
+      "en": "English voice",
+      "sr": "Serbian voice",
+      "de": "German voice",
+      "fr": "French voice",
+      "es": "Spanish voice",
+      "it": "Italian voice",
+      "ru": "Russian voice"
+    },
+    "noVoiceForLanguage": "No voice for this language on this computer.",
+    "test": "Test the voice"
   }
 }

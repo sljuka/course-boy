@@ -20,9 +20,9 @@ import { RetakeCourseDialog } from "@/components/course-progress/retake-course-d
 import { CourseProgressBadge } from "@/components/course-progress/course-progress-badge";
 import { PageContent } from "@/components/page-content";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCourseBoardQuery } from "@/lib/board-queries";
 import { useCourseProgressQuery } from "@/lib/course-progress-queries";
@@ -171,7 +171,17 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       <CourseActionsMenu
         afterRemovePath={resolvedCourse.distribution === "local" ? "/my-courses" : "/"}
         course={resolvedCourse}
-        items={resolvedCourse.distribution === "imported" ? <BoardShownMenuItem courseId={courseId} /> : undefined}
+        items={
+          resolvedCourse.distribution === "imported" ? (
+            <BoardShownMenuItem courseId={courseId} />
+          ) : resolvedCourse.distribution === "local" ? (
+            // Your own course's versions, in the ⋯ menu rather than by its title.
+            <DropdownMenuItem data-testid="course-version-history" onClick={() => setIsVersionHistoryOpen(true)}>
+              <History aria-hidden="true" />
+              {t("courseVersions.openButton")}
+            </DropdownMenuItem>
+          ) : undefined
+        }
       />
     </>
   );
@@ -197,29 +207,10 @@ export const CourseDetails = ({ courseId }: { courseId: string }) => {
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <CardTitle size="lg">{resolvedCourse.title}</CardTitle>
-          {resolvedCourse.distribution === "imported" ? (
+          {/* An imported course's versions can be switched here (SLJ-40); your
+              own course's version is in the Details panel and Version history. */}
+          {resolvedCourse.distribution === "imported" && (
             <CourseVersionMenu courseId={courseId} version={resolvedCourse.version} />
-          ) : (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Badge className="font-normal" variant="secondary">
-                    {t("courseSearch.version", { version: resolvedCourse.version })}
-                  </Badge>
-                }
-              />
-              <TooltipContent>{t("courseSearch.versionTooltip")}</TooltipContent>
-            </Tooltip>
-          )}
-          {resolvedCourse.distribution === "local" && (
-            <Button
-              onClick={() => setIsVersionHistoryOpen(true)}
-              size="sm"
-              variant="ghost"
-            >
-              <History aria-hidden="true" className="h-4 w-4" />
-              {t("courseVersions.openButton")}
-            </Button>
           )}
         </div>
         <CardDescription className="max-w-3xl">

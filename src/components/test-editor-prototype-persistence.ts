@@ -10,6 +10,7 @@ import type {
   SharedTestExerciseDefinition,
 } from "@/lib/course-package";
 import { supportsExerciseMedia } from "@/lib/exercise-media";
+import { exerciseSpeechField, isValidExerciseSpeech } from "@/lib/exercise-speech";
 import type { Locale } from "@/lib/i18n";
 
 function createId(prefix: string) {
@@ -19,11 +20,14 @@ function createId(prefix: string) {
 export function toSharedTestExerciseDefinition(
   exercise: TestExercise,
 ): SharedTestExerciseDefinition {
-  // Points are the same for every kind, and only written when set (SLJ-135).
+  // Points and read aloud are the same for every kind, and only written when
+  // set (SLJ-135, SLJ-174).
   const kindShared = getExerciseKindEditor(exercise.kind).toShared(exercise);
-  const shared = (
-    exercise.points !== undefined ? { ...kindShared, points: exercise.points } : kindShared
-  ) as SharedTestExerciseDefinition;
+  const shared = {
+    ...kindShared,
+    ...(exercise.points !== undefined ? { points: exercise.points } : {}),
+    ...exerciseSpeechField(exercise.speech),
+  } as SharedTestExerciseDefinition;
   const media = "media" in exercise ? exercise.media : undefined;
 
   if (!media || !supportsExerciseMedia(exercise.kind)) {
@@ -59,9 +63,11 @@ export function fromSharedTestExerciseDefinition(
   // read-time normalization in electron/course-registry.ts.
   const kind = definition.kind ?? "numeric";
   const kindExercise = getExerciseKindEditor(kind).fromShared(definition);
-  const exercise = (
-    definition.points !== undefined ? { ...kindExercise, points: definition.points } : kindExercise
-  ) as TestExercise;
+  const exercise = {
+    ...kindExercise,
+    ...(definition.points !== undefined ? { points: definition.points } : {}),
+    ...(isValidExerciseSpeech(definition.speech) ? { speech: { lang: definition.speech.lang } } : {}),
+  } as TestExercise;
   const media = "media" in definition ? definition.media : undefined;
 
   if (!media || !supportsExerciseMedia(kind)) {

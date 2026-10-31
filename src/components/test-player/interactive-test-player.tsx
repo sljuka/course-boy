@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { exerciseSpeechLanguage } from "@/lib/exercise-speech";
 
 import { ExerciseMediaView } from "@/components/course-player/exercise-media-view";
 import { getExerciseMedia } from "@/lib/exercise-media";
@@ -223,6 +224,7 @@ export function InteractiveTestPlayer({
           index={currentIndex}
           promptSource={promptSource}
           showIndex={false}
+          speechLanguage={exerciseSpeechLanguage(exercise)}
         />
         <AnswerComponent
           exercise={exercise}

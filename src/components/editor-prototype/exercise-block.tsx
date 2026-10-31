@@ -8,6 +8,7 @@ import { ExerciseMediaView } from "@/components/course-player/exercise-media-vie
 import { getExerciseMedia } from "@/lib/exercise-media";
 import { ExercisePromptHeader } from "@/components/course-player/exercise-prompt-header";
 import { ExerciseMediaField } from "@/components/exercise-media-field";
+import { ExerciseSpeechField } from "@/components/exercise-speech-field";
 import { useDocumentEditorContext } from "@/components/editor-prototype/document-editor-context";
 import {
   getExerciseKindEditor,
@@ -34,6 +35,7 @@ import {
 } from "@/lib/course-player-utils";
 import { resolveSharedExerciseForPlayer } from "@/lib/exercise-kinds/registry";
 import type { Locale } from "@/lib/i18n";
+import { exerciseSpeechLanguage } from "@/lib/exercise-speech";
 import { useAppState } from "@/lib/use-app-state";
 
 function parseExercise(data: string): TestExercise | null {
@@ -120,12 +122,15 @@ function ExerciseAuthoringCard({
             exercise={exercise}
             locale={locale}
             moreOptions={
-              <ExerciseMediaField
-                courseId={courseId}
-                exercise={exercise}
-                locale={locale}
-                onChange={(updater) => onChange(updater(exercise))}
-              />
+              <>
+                <ExerciseMediaField
+                  courseId={courseId}
+                  exercise={exercise}
+                  locale={locale}
+                  onChange={(updater) => onChange(updater(exercise))}
+                />
+                <ExerciseSpeechField exercise={exercise} onChange={(updater) => onChange(updater(exercise))} />
+              </>
             }
             onChange={(updater) => onChange(updater(exercise))}
           />
@@ -183,6 +188,7 @@ function ExercisePlayerCard({
         index={0}
         promptSource={promptSource}
         showIndex={false}
+        speechLanguage={exerciseSpeechLanguage(courseExercise)}
       />
       <AnswerComponent
         exercise={courseExercise}

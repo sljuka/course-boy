@@ -3876,3 +3876,93 @@ describe('lesson timeline', () => {
     await expect.poll(() => current.innerText().catch(() => '')).toMatch(/490\D*Marathon/)
   })
 })
+
+// SLJ-174: an exercise read aloud with the system's voices, the voice and
+// speed being the student's. The system voice is replaced by a recorder, so
+// the test sees what would be said and by whom.
+describe('read aloud', () => {
+  const fakeVoices = () => {
+    const voices = [
+      { default: true, lang: 'en-US', localService: true, name: 'Samantha', voiceURI: 'samantha' },
+      { default: false, lang: 'en-GB', localService: true, name: 'Daniel', voiceURI: 'daniel' },
+      { default: false, lang: 'hr-HR', localService: true, name: 'Lana', voiceURI: 'lana' },
+    ]
+    window.__spoken = []
+    const synthesis = {
+      addEventListener() {},
+      cancel() {},
+      getVoices: () => voices,
+      removeEventListener() {},
+      speak: (utterance) => window.__spoken.push({ rate: utterance.rate, text: utterance.text, voice: utterance.voice?.name }),
+    }
+    Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: synthesis })
+    // A real utterance only takes real system voices.
+    window.SpeechSynthesisUtterance = class {
+      constructor(text) {
+        this.text = text
+      }
+    }
+  }
+
+  it('reads an exercise in English with the chosen voice, and the voice is chosen in Settings', async () => {
+    const { page } = harness
+    await page.addInitScript(fakeVoices)
+    await page.evaluate(() => location.reload())
+    await page.waitForFunction(() => Array.isArray(window.__spoken))
+
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Read Aloud Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Words' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Listen' })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [
+            {
+              correctOptionIndexes: [0],
+              kind: 'multiple-choice',
+              locales: { en: { options: ['under', 'on'], prompt: 'Where is the **blue kid**?' } },
+              selectionMode: 'single',
+              speech: { lang: 'en' },
+              tags: [],
+            },
+          ],
+          template: '',
+        },
+        testId,
+      })
+      return { courseId, testId }
+    }, null)
+
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    // The question and both options can be read.
+    await expect.poll(() => page.locator('[data-testid="read-aloud"]').count()).toBe(3)
+    await page.locator('[data-testid="read-aloud"]').first().click()
+    // Unset, the best English voice (British first), a little slower than normal.
+    await expect.poll(() => page.evaluate(() => window.__spoken.at(-1))).toEqual({
+      rate: 0.9,
+      text: 'Where is the blue kid?',
+      voice: 'Daniel',
+    })
+
+    // The student picks another English voice in Settings.
+    await page.evaluate(() => {
+      location.hash = '#/settings'
+    })
+    await page.locator('[data-testid="read-aloud-settings"]').waitFor()
+    await page.locator('[data-testid="settings-voice-en"]').click()
+    await page.getByRole('option', { name: /Samantha/ }).click()
+    await page.locator('[data-testid="settings-voice-en-test"]').click()
+    await expect.poll(() => page.evaluate(() => window.__spoken.at(-1)?.voice)).toBe('Samantha')
+    // Serbian is read by the Croatian voice, the closest this device has.
+    await expect.poll(() => page.locator('[data-testid="settings-voice-sr"]').innerText()).toContain('Lana')
+  })
+})

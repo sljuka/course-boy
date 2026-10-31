@@ -5,6 +5,7 @@ import type {
   SharedTestExerciseDefinition,
 } from "../course-package";
 import { resolveExerciseMediaForPlayer, type SharedExerciseMedia, supportsExerciseMedia } from "../exercise-media";
+import { isValidExerciseSpeech } from "../exercise-speech";
 import type { Locale } from "../i18n";
 
 import { missingWordExerciseRuntime } from "./missing-word";
@@ -116,9 +117,14 @@ export function resolveSharedExerciseForPlayer(
       )
     : undefined;
 
-  // Points too (SLJ-135): kept only when set, like the file.
+  // Points and read aloud too (SLJ-135, SLJ-174): kept only when set, like the file.
   const points = (exercise as { points?: number }).points;
-  const withPoints = typeof points === "number" ? { ...resolved, points } : resolved;
+  const speech = (exercise as { speech?: unknown }).speech;
+  const withPoints = {
+    ...resolved,
+    ...(typeof points === "number" ? { points } : {}),
+    ...(isValidExerciseSpeech(speech) ? { speech: { lang: speech.lang } } : {}),
+  };
 
   return media ? { ...withPoints, media } : withPoints;
 }

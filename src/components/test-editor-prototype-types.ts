@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/i18n";
 import type { ExerciseMediaKind } from "@/lib/exercise-media";
+import type { ExerciseSpeech } from "@/lib/exercise-speech";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import type { GradeBand } from "@/lib/grade-bands";
 
@@ -225,7 +226,8 @@ type RegionLabelTestExercise = {
   viewBox?: string;
 };
 
-// Points (SLJ-135) are the same for every kind: undefined is the default.
+// Points (SLJ-135) and read aloud (SLJ-174) are the same for every kind:
+// undefined is the default.
 type TestExercise = (
   | NumericTestExercise
   | MultipleChoiceTestExercise
@@ -236,7 +238,7 @@ type TestExercise = (
   | RegionPickerTestExercise
   | RegionMarkerTestExercise
   | RegionLabelTestExercise
-) & { points?: number };
+) & { points?: number; speech?: ExerciseSpeech };
 
 type TestEditorState = {
   activeExerciseId: string;
