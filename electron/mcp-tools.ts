@@ -465,6 +465,7 @@ export function questionsFromTest(test: CourseTest | null, courseTags: CourseTag
   return (test?.exercises ?? []).map((exercise: CourseExercise) => ({
     ...questionFromExercise(exercise),
     ...(exercise.points !== undefined ? { points: exercise.points } : {}),
+    ...(exercise.speech ? { readAloud: exercise.speech.lang } : {}),
     ...(exercise.tags.length > 0 ? { tags: tagLabels(exercise.tags, courseTags) } : {}),
   }));
 }

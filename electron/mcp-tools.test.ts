@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ensureLocalCoursesRoot } from "./course-paths";
 import { getCourseDetails } from "./course-registry";
-import { lessonBodyFromMarkdown, lessonBodyToMarkdown, registerMcpTools, testFromQuestions } from "./mcp-tools";
+import { lessonBodyFromMarkdown, lessonBodyToMarkdown, questionsFromTest, registerMcpTools, testFromQuestions } from "./mcp-tools";
 import { readProgram } from "./program-paths";
 
 let userDataDir = "";
@@ -128,6 +128,9 @@ describe("questions", () => {
     ).exercises;
     expect(spoken).toMatchObject({ speech: { lang: "en" } });
     expect("speech" in silent).toBe(false);
+    // And read back, so an agent that rewrites the test keeps it.
+    const [readBack] = questionsFromTest({ exercises: [{ ...spoken, id: "q1" }] } as never);
+    expect(readBack).toMatchObject({ readAloud: "en" });
   });
 
   it("become fill-in exercises, with the blanks in the order the text names them", () => {

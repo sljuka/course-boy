@@ -28,7 +28,7 @@ export function ReadAloudButton({ language, text }: { language: SpeechLanguage |
       size="icon-sm"
       title={t("readAloud.button")}
       type="button"
-      variant="ghost"
+      variant="secondary"
     >
       <Volume2 aria-hidden="true" />
     </Button>
