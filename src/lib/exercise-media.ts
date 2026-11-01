@@ -35,9 +35,9 @@ export type CourseExerciseMedia = {
   url: string;
 };
 
-// The region kinds' diagram is the exercise itself; a second picture would
-// compete with it, so they have no media.
-const KINDS_WITHOUT_MEDIA = new Set<ExerciseKind>(["region-label", "region-marker", "region-picker"]);
+// The region kinds' diagram (and Find in the picture's picture) is the
+// exercise itself; a second picture would compete with it, so they have no media.
+const KINDS_WITHOUT_MEDIA = new Set<ExerciseKind>(["find-in-picture", "region-label", "region-marker", "region-picker"]);
 
 export function supportsExerciseMedia(kind: ExerciseKind): boolean {
   return !KINDS_WITHOUT_MEDIA.has(kind);

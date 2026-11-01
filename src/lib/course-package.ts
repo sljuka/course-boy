@@ -111,7 +111,8 @@ export type ExerciseKind =
   | "listen-choose"
   | "match-pairs"
   | "put-in-order"
-  | "sort-groups";
+  | "sort-groups"
+  | "find-in-picture";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -219,6 +220,32 @@ export type SortGroupsCourseExercise = {
   cardImageUrls: (string | null)[];
   listen: boolean;
   noRightAnswer: boolean;
+};
+
+// Find in the picture (SLJ-179): areas drawn on an ordinary picture, as
+// fractions of its width and height (0–1), so they stay put at any size.
+// The student taps the right one(s).
+export type PictureArea = {
+  correct: boolean;
+  height: number;
+  id: string;
+  shape: "ellipse" | "rect";
+  width: number;
+  x: number;
+  y: number;
+};
+
+export type FindInPictureCourseExercise = {
+  kind: "find-in-picture";
+  hint?: string;
+  id: string;
+  prompt: string;
+  tags: string[];
+  imageUrl: string;
+  imageAlt: string;
+  areas: PictureArea[];
+  // Each area's name, for the summary (empty when not named).
+  areaLabels: string[];
 };
 
 export type WordTypeDefinition = {
@@ -420,6 +447,7 @@ export type CourseExercise = (
   | MatchPairsCourseExercise
   | PutInOrderCourseExercise
   | SortGroupsCourseExercise
+  | FindInPictureCourseExercise
 ) &
   ExercisePointsField &
   ExerciseSpeechField;
@@ -553,6 +581,16 @@ export type SharedSortGroupsTestExerciseDefinition = {
   tags: string[];
 };
 
+// On disk (SLJ-179): the picture (a course asset's filename) and its areas
+// outside `locales`; the alt text and the areas' names per language.
+export type SharedFindInPictureTestExerciseDefinition = {
+  kind: "find-in-picture";
+  locales: Partial<Record<Locale, { hint?: string; prompt: string; imageAlt: string; areaLabels?: string[] }>>;
+  imageAssetFilename: string;
+  areas: PictureArea[];
+  tags: string[];
+};
+
 export type SharedMultipleChoiceTestExerciseDefinition = {
   kind: "multiple-choice";
   locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; options: string[] }>>;
@@ -659,6 +697,7 @@ export type SharedTestExerciseDefinition = (
   | SharedMatchPairsTestExerciseDefinition
   | SharedPutInOrderTestExerciseDefinition
   | SharedSortGroupsTestExerciseDefinition
+  | SharedFindInPictureTestExerciseDefinition
 ) &
   ExercisePointsField &
   ExerciseSpeechField;

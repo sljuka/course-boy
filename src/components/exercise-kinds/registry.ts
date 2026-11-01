@@ -1,5 +1,6 @@
 import type { ExerciseKind } from "@/lib/course-package";
 
+import { findInPictureExerciseEditor } from "@/components/exercise-kinds/find-in-picture";
 import { listenChooseExerciseEditor } from "@/components/exercise-kinds/listen-choose";
 import { matchPairsExerciseEditor } from "@/components/exercise-kinds/match-pairs";
 import { missingWordExerciseEditor } from "@/components/exercise-kinds/missing-word";
@@ -23,6 +24,7 @@ import { wordTypesExerciseEditor } from "@/components/exercise-kinds/word-types"
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- registry necessarily erases each kind's concrete exercise/shared type
 const EXERCISE_KIND_EDITORS: Record<ExerciseKind, ExerciseKindEditor<any, any, any>> = {
+  "find-in-picture": findInPictureExerciseEditor,
   "listen-choose": listenChooseExerciseEditor,
   "match-pairs": matchPairsExerciseEditor,
   "missing-word": missingWordExerciseEditor,

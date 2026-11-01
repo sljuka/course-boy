@@ -11,6 +11,7 @@ export type ExerciseInstance =
   | { kind: "match-pairs"; leftOrder: number[]; rightOrder: number[] }
   | { kind: "put-in-order"; order: number[] }
   | { kind: "sort-groups"; cardOrder: number[] }
+  | { kind: "find-in-picture" }
   | { kind: "word-types" }
   | { kind: "missing-word" }
   | { kind: "region-picker" }

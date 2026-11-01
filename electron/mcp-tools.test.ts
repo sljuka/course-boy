@@ -133,6 +133,52 @@ describe("questions", () => {
     expect(readBack).toMatchObject({ readAloud: "en" });
   });
 
+  // SLJ-179: areas as fractions of a course picture, and back.
+  it("become find-in-the-picture exercises, and back", () => {
+    const [exercise] = testFromQuestions(
+      [
+        {
+          areas: [
+            { height: 0.1, label: "the clock", shape: "ellipse" as const, width: 0.1, x: 0.8, y: 0.1 },
+            { correct: false, height: 0.6, width: 0.3, x: 0.1, y: 0.5 },
+          ],
+          picture: "classroom-0123456789abcdef.png",
+          pictureAlt: "A classroom",
+          prompt: "Find the clock.",
+          type: "find_in_picture" as const,
+        },
+      ],
+      "en",
+    ).exercises;
+    expect(exercise).toMatchObject({
+      areas: [
+        { correct: true, id: "area-1", shape: "ellipse", x: 0.8 },
+        { correct: false, id: "area-2", shape: "rect" },
+      ],
+      imageAssetFilename: "classroom-0123456789abcdef.png",
+      kind: "find-in-picture",
+      locales: { en: { areaLabels: ["the clock", ""], imageAlt: "A classroom", prompt: "Find the clock." } },
+    });
+    // An area past the picture's edge is cut to fit.
+    expect((exercise as { areas: { height: number }[] }).areas[1].height).toBeCloseTo(0.5);
+    const [readBack] = questionsFromTest({
+      exercises: [
+        {
+          areaLabels: ["the clock"],
+          areas: [{ correct: true, height: 0.1, id: "a", shape: "rect", width: 0.1, x: 0.8, y: 0.1 }],
+          id: "q1",
+          imageAlt: "A classroom",
+          imageUrl: "matko-asset://course/classroom-0123456789abcdef.png",
+          kind: "find-in-picture",
+          prompt: "Find the clock.",
+          tags: [],
+        },
+      ],
+    } as never);
+    expect(readBack).toMatchObject({ picture: "classroom-0123456789abcdef.png", pictureAlt: "A classroom", type: "find_in_picture" });
+    expect((readBack as { areas: unknown[] }).areas[0]).toMatchObject({ label: "the clock", x: 0.8 });
+  });
+
   // SLJ-178: groups with their cards, stored as one list with each card's group, and back.
   it("become sort-into-groups exercises, and back", () => {
     const [exercise] = testFromQuestions(

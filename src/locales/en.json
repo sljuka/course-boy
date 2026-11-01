@@ -1741,5 +1741,27 @@
     "addCard": "Add card",
     "listen": "The cards are heard, not shown (read aloud in the language chosen under Read aloud)",
     "noRightAnswer": "No right answer: the student sorts as they like (e.g. I like / I don't like)"
+  },
+  "findInPicture": {
+    "noAnswer": "Tap the picture first.",
+    "fullScreen": "Full screen",
+    "promptPlaceholder": "Find the clock.",
+    "pictureLabel": "Picture",
+    "drawHelp": "Drag across the picture to draw an area around what the student should find. The first area is marked right; you can add decoys.",
+    "addPicture": "Add a picture",
+    "replacePicture": "Choose another picture",
+    "altLabel": "What the picture shows",
+    "altPlaceholder": "A classroom with children and a teacher",
+    "areasLabel": "Areas",
+    "areaName": "Name of area {{number}}",
+    "areaNamePlaceholder": "What it is (shown in the summary)",
+    "shape": "Shape",
+    "shapes": {
+      "rect": "Rectangle",
+      "ellipse": "Ellipse"
+    },
+    "right": "Right",
+    "small": "May be hard to tap on small screens",
+    "removeArea": "Remove area {{number}}"
   }
 }

@@ -813,6 +813,14 @@ card is a part. `noRightAnswer` makes it an activity: sorting every card is righ
 Dragging is the component's own pointer handling (no library); tapping a card, then a
 group, does the same.
 
+**Find in the picture** (`find-in-picture`, SLJ-179): an ordinary picture
+(`imageAssetFilename`) and `areas` (rectangles or ellipses, `x`/`y`/`width`/`height` as
+fractions of the picture, `correct` or a decoy), outside `locales`; per language
+`imageAlt` and optional `areaLabels`. It has no exercise media (the picture is the
+exercise). The answer is `{ areas: id[], misses: [x, y][], points? }`: a tap on no area (more than
+about 20 px from every one) is a miss and counts as wrong; `points` (where each area was
+tapped) only places the ring, so hits and misses look the same until the check.
+
 **An editor that doesn't know a field drops it on save.** `fromSharedTestExerciseDefinition`
 rebuilds an exercise from the fields its version knows, so an app version from before
 `speech` (or any later field) that edits and saves a test writes it back without that

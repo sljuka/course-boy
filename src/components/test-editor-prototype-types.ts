@@ -3,6 +3,7 @@ import type { ExerciseMediaKind } from "@/lib/exercise-media";
 import type { ExerciseSpeech } from "@/lib/exercise-speech";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import type { GradeBand } from "@/lib/grade-bands";
+import type { PictureArea } from "@/lib/course-package";
 
 type BlueprintRule = {
   count: number;
@@ -66,6 +67,19 @@ type NumericTestExercise = {
   solutionSpace: NumericSolutionSpace;
   tagIds: string[];
   variables: PromptVariable[];
+};
+
+// Find in the picture (SLJ-179): see `SharedFindInPictureTestExerciseDefinition`.
+type FindInPictureLocaleContent = { areaLabels: string[]; hint: string; imageAlt: string; prompt: string };
+
+type FindInPictureTestExercise = {
+  kind: "find-in-picture";
+  id: string;
+  locales: Record<string, FindInPictureLocaleContent>;
+  imageAssetFilename: string | null;
+  areas: PictureArea[];
+  speech?: ExerciseSpeech;
+  tagIds: string[];
 };
 
 // Sort into groups (SLJ-178): see `SharedSortGroupsTestExerciseDefinition`.
@@ -296,6 +310,7 @@ type TestExercise = (
   | MatchPairsTestExercise
   | PutInOrderTestExercise
   | SortGroupsTestExercise
+  | FindInPictureTestExercise
   | WordTypeTestExercise
   | MissingWordTestExercise
   | PunctuationTestExercise
@@ -356,6 +371,8 @@ export type {
   PutInOrderTestExercise,
   SortGroupsLocaleContent,
   SortGroupsTestExercise,
+  FindInPictureLocaleContent,
+  FindInPictureTestExercise,
   MultipleChoiceTestExercise,
   NumericSolutionSpace,
   NumericTestExercise,

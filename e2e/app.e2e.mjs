@@ -4118,6 +4118,59 @@ describe('read aloud', () => {
     await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
   })
 
+  // SLJ-179: a tap near a small area counts for it; a tap on nothing is a miss, taken back by tapping it again.
+  it('finds an area in a picture by tapping near it', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Find Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Classroom' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Find in the picture' })
+      const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#ddd"/><circle cx="340" cy="45" r="15" fill="#333"/></svg>'
+      const { path } = await window.courses.uploadAssetBytes({ courseId, data: new TextEncoder().encode(svg).buffer, filename: 'room.svg', kind: 'image' })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [
+            {
+              areas: [{ correct: true, height: 0.1, id: 'clock', shape: 'ellipse', width: 0.075, x: 0.8125, y: 0.1 }],
+              imageAssetFilename: path,
+              kind: 'find-in-picture',
+              locales: { en: { imageAlt: 'A room with a clock', prompt: 'Find the clock.' } },
+              tags: [],
+            },
+          ],
+          template: '',
+        },
+        testId,
+      })
+      return { courseId, testId }
+    })
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const stage = page.locator('[data-testid="find-in-picture-stage"]')
+    await expect.poll(async () => (await stage.boundingBox())?.height ?? 0).toBeGreaterThan(100)
+    const box = await stage.boundingBox()
+    const at = (x, y) => page.mouse.click(box.x + box.width * x, box.y + box.height * y)
+
+    // A miss in the middle, taken back.
+    await at(0.5, 0.5)
+    await expect.poll(() => page.locator('[data-testid="find-in-picture-miss"]').count()).toBe(1)
+    await at(0.5, 0.5)
+    await expect.poll(() => page.locator('[data-testid="find-in-picture-miss"]').count()).toBe(0)
+    // Just outside the clock's edge, within a fingertip: it counts.
+    await at(0.85, 0.1 - 10 / box.height)
+    await expect.poll(() => page.locator('[data-testid="find-in-picture-picked"]').count()).toBe(1)
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
+  })
+
   // SLJ-178: tap a card then a group, or drag it there; a wrong card is marked after a check.
   it('sorts cards into groups by tapping and by dragging', async () => {
     const { page } = harness

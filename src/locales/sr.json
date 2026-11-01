@@ -1741,5 +1741,27 @@
     "addCard": "Dodaj karticu",
     "listen": "Kartice se čuju, ne vide se (čita ih glas na jeziku izabranom pod Čitanje naglas)",
     "noRightAnswer": "Nema tačnog odgovora: učenik razvrstava po svom (npr. volim / ne volim)"
+  },
+  "findInPicture": {
+    "noAnswer": "Prvo dodirni sliku.",
+    "fullScreen": "Ceo ekran",
+    "promptPlaceholder": "Pronađi sat.",
+    "pictureLabel": "Slika",
+    "drawHelp": "Prevuci preko slike da nacrtaš oblast oko onoga što učenik treba da pronađe. Prva oblast je označena kao tačna; možeš dodati i mamce.",
+    "addPicture": "Dodaj sliku",
+    "replacePicture": "Izaberi drugu sliku",
+    "altLabel": "Šta je na slici",
+    "altPlaceholder": "Učionica sa decom i učiteljicom",
+    "areasLabel": "Oblasti",
+    "areaName": "Naziv oblasti {{number}}",
+    "areaNamePlaceholder": "Šta je to (vidi se u pregledu)",
+    "shape": "Oblik",
+    "shapes": {
+      "rect": "Pravougaonik",
+      "ellipse": "Elipsa"
+    },
+    "right": "Tačno",
+    "small": "Možda teško za dodir na malim ekranima",
+    "removeArea": "Ukloni oblast {{number}}"
   }
 }

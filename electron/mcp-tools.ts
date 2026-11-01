@@ -247,6 +247,32 @@ const questionSchema = z.discriminatedUnion("type", [
     readAloud,
     tags,
   }),
+  // Find in the picture (SLJ-179): areas on a course picture, as fractions of
+  // its width and height; the student taps the right one(s).
+  z.object({
+    type: z.literal("find_in_picture"),
+    prompt: z.string().min(1).describe('The question, e.g. "Find the clock."'),
+    picture: z.string().min(1).describe("The picture's filename in the course, as add_image returned it"),
+    pictureAlt: z.string().min(1).describe("What the picture shows, for students who can't see it"),
+    areas: z
+      .array(
+        z.object({
+          label: z.string().optional().describe('What the area is, e.g. "the clock" (shown in the summary)'),
+          x: z.number().min(0).max(1).describe("Left edge, as a fraction of the picture's width (0 = left, 1 = right)"),
+          y: z.number().min(0).max(1).describe("Top edge, as a fraction of the picture's height"),
+          width: z.number().gt(0).max(1).describe("Width, as a fraction of the picture's width"),
+          height: z.number().gt(0).max(1).describe("Height, as a fraction of the picture's height"),
+          shape: z.enum(["rect", "ellipse"]).optional().describe("Default rect"),
+          correct: z.boolean().optional().describe("A right answer (default true); false for a decoy that counts as a wrong tap"),
+        }),
+      )
+      .min(1)
+      .max(20),
+    hint: z.string().optional(),
+    points,
+    readAloud,
+    tags,
+  }),
   z.object({
     type: z.literal("multiple_choice"),
     image,
@@ -446,7 +472,7 @@ function withImage(
   question: Question,
   locale: Locale,
 ): SharedTestExerciseDefinition {
-  if (question.type === "region_picker" || !question.image) return exercise;
+  if (question.type === "region_picker" || question.type === "find_in_picture" || !question.image) return exercise;
   const file = resolveAssetFilename(question.image.file.trim());
   if (!file) throw new Error(`"${question.prompt}": "${question.image.file}" isn't a filename in the course`);
   const texts = (exercise.locales as Record<string, Record<string, unknown>>)[locale];
@@ -562,6 +588,36 @@ function exerciseFromQuestion(
       ...(question.listen ? { listen: true } : {}),
       locales: { [locale]: { ...hint, cards, groups: question.groups.map((group) => group.name), prompt: question.prompt } },
       ...(question.noRightAnswer ? { noRightAnswer: true } : {}),
+      tags: [],
+    };
+  }
+
+  if (question.type === "find_in_picture") {
+    const file = resolveAssetFilename(question.picture.trim());
+    if (!file) throw new Error(`"${question.prompt}": "${question.picture}" isn't a filename in the course`);
+    const areas = question.areas.map((area, index) => ({
+      correct: area.correct ?? true,
+      height: Math.min(area.height, 1 - area.y),
+      id: `area-${index + 1}`,
+      shape: area.shape ?? ("rect" as const),
+      width: Math.min(area.width, 1 - area.x),
+      x: area.x,
+      y: area.y,
+    }));
+    if (!areas.some((area) => area.correct)) throw new Error(`"${question.prompt}": mark at least one area correct`);
+    const labels = question.areas.map((area) => area.label?.trim() ?? "");
+    return {
+      areas,
+      imageAssetFilename: file,
+      kind: "find-in-picture",
+      locales: {
+        [locale]: {
+          ...hint,
+          ...(labels.some(Boolean) ? { areaLabels: labels } : {}),
+          imageAlt: question.pictureAlt,
+          prompt: question.prompt,
+        },
+      },
       tags: [],
     };
   }
@@ -757,6 +813,24 @@ function questionFromExercise(exercise: CourseExercise): Record<string, unknown>
       type: "sort_groups",
       ...(exercise.listen ? { listen: true } : {}),
       ...(exercise.noRightAnswer ? { noRightAnswer: true } : {}),
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  if (exercise.kind === "find-in-picture") {
+    return {
+      areas: exercise.areas.map((area, index) => ({
+        ...(exercise.areaLabels[index] ? { label: exercise.areaLabels[index] } : {}),
+        correct: area.correct,
+        height: area.height,
+        shape: area.shape,
+        width: area.width,
+        x: area.x,
+        y: area.y,
+      })),
+      picture: decodeURIComponent(exercise.imageUrl.split("/").pop() ?? ""),
+      pictureAlt: exercise.imageAlt,
+      prompt: exercise.prompt,
+      type: "find_in_picture",
       ...(exercise.hint ? { hint: exercise.hint } : {}),
     };
   }
