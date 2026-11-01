@@ -68,6 +68,21 @@ type NumericTestExercise = {
   variables: PromptVariable[];
 };
 
+// Match the pairs (SLJ-176): see `SharedMatchPairsTestExerciseDefinition`.
+type MatchPairsLocaleContent = { hint: string; left: string[]; prompt: string; right: string[] };
+
+type MatchPairsTestExercise = {
+  kind: "match-pairs";
+  id: string;
+  media?: ExerciseMediaDraft;
+  locales: Record<string, MatchPairsLocaleContent>;
+  leftImages: (string | null)[];
+  rightImages: (string | null)[];
+  listenLeft: boolean;
+  speech?: ExerciseSpeech;
+  tagIds: string[];
+};
+
 // Listen and choose (SLJ-175): see `SharedListenChooseTestExerciseDefinition`.
 type ListenChooseTestExercise = {
   kind: "listen-choose";
@@ -248,6 +263,7 @@ type TestExercise = (
   | NumericTestExercise
   | MultipleChoiceTestExercise
   | ListenChooseTestExercise
+  | MatchPairsTestExercise
   | WordTypeTestExercise
   | MissingWordTestExercise
   | PunctuationTestExercise
@@ -301,6 +317,8 @@ export type {
   MissingWordTestExercise,
   MissingWordVariableDraft,
   ListenChooseTestExercise,
+  MatchPairsLocaleContent,
+  MatchPairsTestExercise,
   MultipleChoiceExerciseLocaleContent,
   MultipleChoiceTestExercise,
   NumericSolutionSpace,

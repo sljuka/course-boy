@@ -1680,5 +1680,25 @@
     "severalRight": "Više odgovora može biti tačno",
     "valid": "Ispravno",
     "invalid": "Nije ispravno"
+  },
+  "matchPairs": {
+    "answerLabel": "Parovi",
+    "heardItem": "Zvuk {{number}}",
+    "pairedLabel": "{{label}}, par {{number}}",
+    "reset": "Ispočetka",
+    "noAnswer": "Prvo spoji parove.",
+    "printNote": "U kućicu upiši slovo onoga što ide uz to.",
+    "printNoteHeard": "Slušaj učitelja, pa u kućicu upiši slovo onoga što ide uz to.",
+    "promptPlaceholder": "Spoji reči i slike.",
+    "pairsLabel": "Parovi",
+    "pairsHelp": "Svaki red je jedan par; učenik vidi obe kolone izmešane. Strana je tekst ili slika; uz sliku, tekst kaže šta je na njoj (za čitače ekrana).",
+    "leftItem": "Levo {{number}}",
+    "rightItem": "Desno {{number}}",
+    "addPicture": "Dodaj sliku: {{item}}",
+    "textPlaceholder": "Reč ili tekst",
+    "heardPlaceholder": "Šta učenik čuje",
+    "removePair": "Ukloni par {{number}}",
+    "addPair": "Dodaj par",
+    "listenLeft": "Leve stavke se čuju, ne vide se (čita ih glas na jeziku izabranom pod Čitanje naglas)"
   }
 }

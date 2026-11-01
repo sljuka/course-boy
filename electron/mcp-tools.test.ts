@@ -133,6 +133,61 @@ describe("questions", () => {
     expect(readBack).toMatchObject({ readAloud: "en" });
   });
 
+  // SLJ-176: pairs in order; heard items need a language.
+  it("become match-the-pairs exercises, and back", () => {
+    const [exercise] = testFromQuestions(
+      [
+        {
+          left: ["happy", "sad"],
+          listen: true,
+          prompt: "Listen and match.",
+          readAloud: "en",
+          right: ["smiling face", "crying face"],
+          rightImages: ["happy-0123456789abcdef.svg", "sad-0123456789abcdef.svg"],
+          type: "match_pairs" as const,
+        },
+      ],
+      "en",
+    ).exercises;
+    expect(exercise).toEqual({
+      kind: "match-pairs",
+      listenLeft: true,
+      locales: { en: { left: ["happy", "sad"], prompt: "Listen and match.", right: ["smiling face", "crying face"] } },
+      rightImages: ["happy-0123456789abcdef.svg", "sad-0123456789abcdef.svg"],
+      speech: { lang: "en" },
+      tags: [],
+    });
+    const question = (changes: Record<string, unknown>) =>
+      [{ left: ["a", "b"], prompt: "?", right: ["1", "2"], type: "match_pairs" as const, ...changes }] as never;
+    expect(() => testFromQuestions(question({ right: ["1", "2", "3"] }), "en")).toThrow("same number");
+    expect(() => testFromQuestions(question({ listen: true }), "en")).toThrow("readAloud");
+    expect(() => testFromQuestions(question({ leftImages: ["a.png"] }), "en")).toThrow("one entry per item");
+
+    const [readBack] = questionsFromTest({
+      exercises: [
+        {
+          hint: undefined,
+          id: "q1",
+          kind: "match-pairs",
+          left: ["happy", "sad"],
+          leftImageUrls: [null, null],
+          listenLeft: true,
+          prompt: "Listen and match.",
+          right: ["smiling face", "crying face"],
+          rightImageUrls: ["matko-asset://course/happy-0123456789abcdef.svg", null],
+          speech: { lang: "en" },
+          tags: [],
+        },
+      ],
+    } as never);
+    expect(readBack).toMatchObject({
+      listen: true,
+      readAloud: "en",
+      rightImages: ["happy-0123456789abcdef.svg", null],
+      type: "match_pairs",
+    });
+  });
+
   // SLJ-175: hear a hidden word, pick a picture.
   it("become listen-and-choose exercises, and back", () => {
     const [exercise] = testFromQuestions(

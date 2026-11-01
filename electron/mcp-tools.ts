@@ -159,6 +159,35 @@ const questionSchema = z.discriminatedUnion("type", [
     points,
     tags,
   }),
+  // Match the pairs (SLJ-176): `left[i]` goes with `right[i]`; the student
+  // sees both columns shuffled and pairs them by tapping.
+  z.object({
+    type: z.literal("match_pairs"),
+    image,
+    prompt: z.string().min(1).describe('The instruction, e.g. "Match the words and the pictures."'),
+    left: z
+      .array(z.string().min(1))
+      .min(2)
+      .max(8)
+      .describe("The left column, 2 to 8 items; with a picture, what it shows (its alt text); with listen, what's heard"),
+    right: z.array(z.string().min(1)).min(2).max(8).describe("The right column: right[i] is left[i]'s partner"),
+    leftImages: z
+      .array(z.string().min(1).nullable())
+      .optional()
+      .describe("A picture per left item (filenames as add_image returned them), null for a text item; same length as left"),
+    rightImages: z
+      .array(z.string().min(1).nullable())
+      .optional()
+      .describe("A picture per right item, null for a text item; same length as right"),
+    listen: z
+      .boolean()
+      .optional()
+      .describe("The left items are heard (read aloud in `readAloud`'s language), never shown: e.g. hear a word, pair it with its picture"),
+    hint: z.string().optional(),
+    points,
+    readAloud,
+    tags,
+  }),
   z.object({
     type: z.literal("multiple_choice"),
     image,
@@ -411,6 +440,31 @@ function exerciseFromQuestion(
     };
   }
 
+  if (question.type === "match_pairs") {
+    if (question.left.length !== question.right.length) {
+      throw new Error(`"${question.prompt}": left and right need the same number of items`);
+    }
+    const images = (list: (string | null)[] | undefined, name: string) => {
+      if (!list?.length) return undefined;
+      if (list.length !== question.left.length) throw new Error(`"${question.prompt}": ${name} needs one entry per item (null for none)`);
+      if (list.some((file) => file !== null && resolveAssetFilename(file) === null)) {
+        throw new Error(`"${question.prompt}": an image in ${name} isn't a file name in the course`);
+      }
+      return list.some((file) => file !== null) ? list : undefined;
+    };
+    if (question.listen && !question.readAloud) throw new Error(`"${question.prompt}": listen needs readAloud, the language the items are heard in`);
+    const leftImages = images(question.leftImages, "leftImages");
+    const rightImages = images(question.rightImages, "rightImages");
+    return {
+      kind: "match-pairs",
+      ...(leftImages ? { leftImages } : {}),
+      ...(question.listen ? { listenLeft: true } : {}),
+      locales: { [locale]: { ...hint, left: question.left, prompt: question.prompt, right: question.right } },
+      ...(rightImages ? { rightImages } : {}),
+      tags: [],
+    };
+  }
+
   if (question.type === "multiple_choice") {
     const correct = [...new Set(question.correct)].sort((left, right) => left - right);
     if (correct.some((index) => index >= question.options.length)) {
@@ -557,6 +611,21 @@ function questionFromExercise(exercise: CourseExercise): Record<string, unknown>
       spoken: exercise.spoken,
       type: "listen_choose",
       ...(images.some((file) => file !== null) ? { images } : {}),
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  if (exercise.kind === "match-pairs") {
+    const files = (urls: (string | null)[]) => urls.map((url) => (url ? decodeURIComponent(url.split("/").pop() ?? "") : null));
+    const leftImages = files(exercise.leftImageUrls);
+    const rightImages = files(exercise.rightImageUrls);
+    return {
+      left: exercise.left,
+      prompt: exercise.prompt,
+      right: exercise.right,
+      type: "match_pairs",
+      ...(leftImages.some((file) => file !== null) ? { leftImages } : {}),
+      ...(rightImages.some((file) => file !== null) ? { rightImages } : {}),
+      ...(exercise.listenLeft ? { listen: true } : {}),
       ...(exercise.hint ? { hint: exercise.hint } : {}),
     };
   }

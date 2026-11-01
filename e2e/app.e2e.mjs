@@ -4013,4 +4013,67 @@ describe('read aloud', () => {
     await expect.poll(() => page.locator('[data-testid="listen-choose-option"][aria-checked="true"]').count()).toBe(1)
     await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
   })
+
+  // SLJ-176: tap a heard item, then its partner; a wrong pair is marked after a check.
+  it('pairs heard words with their partners by tapping', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Match Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Feelings' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Match the pairs' })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [
+            {
+              kind: 'match-pairs',
+              listenLeft: true,
+              locales: { en: { left: ['hot', 'cold'], prompt: 'Listen and match.', right: ['beach', 'snow'] } },
+              speech: { lang: 'en' },
+              tags: [],
+            },
+          ],
+          template: '',
+        },
+        testId,
+      })
+      return { courseId, testId }
+    })
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const left = page.locator('[data-testid="match-pairs-left"]')
+    const right = (name) => page.locator('[data-testid="match-pairs-right"]', { hasText: name })
+    await expect.poll(() => left.count()).toBe(2)
+    // Heard, not shown.
+    expect(await page.locator('body').innerText()).not.toMatch(/\bhot\b|\bcold\b/)
+
+    // Pair both wrong: each tap on a heard item plays it.
+    const heard = async (index) => {
+      await left.nth(index).click()
+      await expect.poll(() => page.evaluate(() => window.__spoken.at(-1)?.text)).toMatch(/^(hot|cold)$/)
+      return page.evaluate(() => window.__spoken.at(-1)?.text)
+    }
+    const first = await heard(0)
+    await right(first === 'hot' ? 'snow' : 'beach').click()
+    const second = await heard(1)
+    await right(second === 'hot' ? 'snow' : 'beach').click()
+    await expect.poll(() => page.locator('[data-testid="match-pairs-right"][data-pair]').count()).toBe(2)
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => page.locator('[data-testid="match-pairs-left"][aria-invalid="true"]').count()).toBe(2)
+
+    // Re-pair the first one right: the second loses its partner.
+    await heard(0)
+    await right(first === 'hot' ? 'beach' : 'snow').click()
+    await heard(1)
+    await right(second === 'hot' ? 'beach' : 'snow').click()
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
+  })
 })

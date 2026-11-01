@@ -8,6 +8,7 @@ export type ExerciseInstance =
   | { kind: "numeric"; expectedAnswer: number; expectedAnswers: number[]; variables: Record<string, number> }
   | { kind: "multiple-choice"; optionOrder: number[] }
   | { kind: "listen-choose"; optionOrder: number[] }
+  | { kind: "match-pairs"; leftOrder: number[]; rightOrder: number[] }
   | { kind: "word-types" }
   | { kind: "missing-word" }
   | { kind: "region-picker" }

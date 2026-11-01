@@ -108,7 +108,8 @@ export type ExerciseKind =
   | "region-label"
   | "punctuation"
   | "rewrite"
-  | "listen-choose";
+  | "listen-choose"
+  | "match-pairs";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -165,6 +166,23 @@ export type ListenChooseCourseExercise = {
   optionImageUrls: (string | null)[];
   correctOptionIndexes: number[];
   selectionMode: "single" | "multiple";
+};
+
+// Match the pairs (SLJ-176): items on the left, each paired with one on the
+// right; `left[i]` goes with `right[i]` (shuffled for the student). An item is
+// text or a picture; with `listenLeft`, the left items are heard, not shown.
+export type MatchPairsCourseExercise = {
+  kind: "match-pairs";
+  hint?: string;
+  id: string;
+  media?: CourseExerciseMedia;
+  prompt: string;
+  tags: string[];
+  left: string[];
+  right: string[];
+  leftImageUrls: (string | null)[];
+  rightImageUrls: (string | null)[];
+  listenLeft: boolean;
 };
 
 export type WordTypeDefinition = {
@@ -363,6 +381,7 @@ export type CourseExercise = (
   | PunctuationCourseExercise
   | RewriteCourseExercise
   | ListenChooseCourseExercise
+  | MatchPairsCourseExercise
 ) &
   ExercisePointsField &
   ExerciseSpeechField;
@@ -454,6 +473,19 @@ export type SharedListenChooseTestExerciseDefinition = {
   optionImages?: (string | null)[];
   correctOptionIndexes: number[];
   selectionMode: "single" | "multiple";
+  tags: string[];
+};
+
+// On disk (SLJ-176): the pairs in order, each language's texts in `locales`,
+// pictures (a course asset's filename or null) outside it. `listenLeft`: the
+// left items are heard (their text, never shown, in `speech.lang`).
+export type SharedMatchPairsTestExerciseDefinition = {
+  kind: "match-pairs";
+  locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; left: string[]; right: string[] }>>;
+  media?: SharedExerciseMedia;
+  leftImages?: (string | null)[];
+  rightImages?: (string | null)[];
+  listenLeft?: boolean;
   tags: string[];
 };
 
@@ -560,6 +592,7 @@ export type SharedTestExerciseDefinition = (
   | SharedPunctuationTestExerciseDefinition
   | SharedRewriteTestExerciseDefinition
   | SharedListenChooseTestExerciseDefinition
+  | SharedMatchPairsTestExerciseDefinition
 ) &
   ExercisePointsField &
   ExerciseSpeechField;

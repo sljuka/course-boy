@@ -1680,5 +1680,25 @@
     "severalRight": "Several options can be right",
     "valid": "Valid",
     "invalid": "Invalid"
+  },
+  "matchPairs": {
+    "answerLabel": "Pairs",
+    "heardItem": "Sound {{number}}",
+    "pairedLabel": "{{label}}, pair {{number}}",
+    "reset": "Start over",
+    "noAnswer": "Pair the items first.",
+    "printNote": "Write the letter of each one's partner in its box.",
+    "printNoteHeard": "Listen to your teacher, then write the letter of each one's partner in its box.",
+    "promptPlaceholder": "Match the words and the pictures.",
+    "pairsLabel": "Pairs",
+    "pairsHelp": "Each row is a pair; the student sees both columns shuffled. A side is text or a picture; with a picture, the text says what it shows (for screen readers).",
+    "leftItem": "Left item {{number}}",
+    "rightItem": "Right item {{number}}",
+    "addPicture": "Add a picture to {{item}}",
+    "textPlaceholder": "Word or text",
+    "heardPlaceholder": "What the student hears",
+    "removePair": "Remove pair {{number}}",
+    "addPair": "Add pair",
+    "listenLeft": "The left items are heard, not shown (read aloud in the language chosen under Read aloud)"
   }
 }

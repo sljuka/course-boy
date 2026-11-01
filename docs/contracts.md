@@ -792,6 +792,15 @@ generic 🔊 (`exerciseSpeechLanguage` skips it; its own Listen button plays `sp
 script must not transliterate the English word, and a picture is the same in every
 language. Grading and the summary are multiple choice's.
 
+**Match the pairs** (`match-pairs`, SLJ-176): `left[i]` goes with `right[i]` in every
+language, the pictures (`leftImages` / `rightImages`) outside `locales`. The answer is a
+JSON array, for each left item (by its index in the file) the right index it's paired
+with or `null`; each pair is a part for partial credit. With `listenLeft`, the left items
+are heard in `speech.lang` (required then) and never shown. They are in `locales` like
+multiple choice's options, so generating the other Serbian script transliterates them
+too: fine for a course in Serbian, wrong for foreign words heard in an `sr` course (the
+same holds for options today).
+
 **An editor that doesn't know a field drops it on save.** `fromSharedTestExerciseDefinition`
 rebuilds an exercise from the fields its version knows, so an app version from before
 `speech` (or any later field) that edits and saves a test writes it back without that
