@@ -19,6 +19,7 @@ import { regionLabelExerciseRuntime } from "./region-label";
 import { regionMarkerExerciseRuntime } from "./region-marker";
 import { regionPickerExerciseRuntime } from "./region-picker";
 import { rewriteExerciseRuntime } from "./rewrite";
+import { sortGroupsExerciseRuntime } from "./sort-groups";
 import type { ExerciseKindRuntime } from "./types";
 import { wordTypesExerciseRuntime } from "./word-types";
 
@@ -41,6 +42,7 @@ const EXERCISE_KIND_RUNTIMES: Record<ExerciseKind, ExerciseKindRuntime<any, any>
   "region-marker": regionMarkerExerciseRuntime,
   "region-picker": regionPickerExerciseRuntime,
   rewrite: rewriteExerciseRuntime,
+  "sort-groups": sortGroupsExerciseRuntime,
   "word-types": wordTypesExerciseRuntime,
 };
 

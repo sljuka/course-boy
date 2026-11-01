@@ -133,6 +133,57 @@ describe("questions", () => {
     expect(readBack).toMatchObject({ readAloud: "en" });
   });
 
+  // SLJ-178: groups with their cards, stored as one list with each card's group, and back.
+  it("become sort-into-groups exercises, and back", () => {
+    const [exercise] = testFromQuestions(
+      [
+        {
+          groups: [
+            { cards: ["dog", "door"], images: ["dog-0123456789abcdef.svg", null], name: "D" },
+            { cards: ["ten"], name: "T" },
+          ],
+          prompt: "D or T?",
+          type: "sort_groups" as const,
+        },
+      ],
+      "en",
+    ).exercises;
+    expect(exercise).toEqual({
+      cardGroups: [0, 0, 1],
+      cardImages: ["dog-0123456789abcdef.svg", null, null],
+      kind: "sort-groups",
+      locales: { en: { cards: ["dog", "door", "ten"], groups: ["D", "T"], prompt: "D or T?" } },
+      tags: [],
+    });
+    expect(() =>
+      testFromQuestions([{ groups: [{ cards: ["a"], name: "A" }, { cards: [], name: "B" }], prompt: "?", type: "sort_groups" as const }], "en"),
+    ).toThrow("2 to 16 cards");
+    const [readBack] = questionsFromTest({
+      exercises: [
+        {
+          cardGroups: [1, 0],
+          cardImageUrls: [null, null],
+          cards: ["ten", "dog"],
+          groups: ["D", "T"],
+          id: "q1",
+          kind: "sort-groups",
+          listen: false,
+          noRightAnswer: false,
+          prompt: "D or T?",
+          tags: [],
+        },
+      ],
+    } as never);
+    expect(readBack).toEqual({
+      groups: [
+        { cards: ["dog"], name: "D" },
+        { cards: ["ten"], name: "T" },
+      ],
+      prompt: "D or T?",
+      type: "sort_groups",
+    });
+  });
+
   // SLJ-177: items in the right order, and back.
   it("become put-in-order exercises, and back", () => {
     const [exercise] = testFromQuestions(

@@ -110,7 +110,8 @@ export type ExerciseKind =
   | "rewrite"
   | "listen-choose"
   | "match-pairs"
-  | "put-in-order";
+  | "put-in-order"
+  | "sort-groups";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -199,6 +200,25 @@ export type PutInOrderCourseExercise = {
   items: string[];
   imageUrls: (string | null)[];
   listen: boolean;
+};
+
+// Sort into groups (SLJ-178): 2–4 named groups and cards, each card in one
+// group (`cardGroups[i]`), shown in one shuffled pile. A card is text or a
+// picture; with `listen`, cards are heard, not shown. `noRightAnswer`: an
+// activity ("I like / I don't like"), any sorting is right.
+export type SortGroupsCourseExercise = {
+  kind: "sort-groups";
+  hint?: string;
+  id: string;
+  media?: CourseExerciseMedia;
+  prompt: string;
+  tags: string[];
+  groups: string[];
+  cards: string[];
+  cardGroups: number[];
+  cardImageUrls: (string | null)[];
+  listen: boolean;
+  noRightAnswer: boolean;
 };
 
 export type WordTypeDefinition = {
@@ -399,6 +419,7 @@ export type CourseExercise = (
   | ListenChooseCourseExercise
   | MatchPairsCourseExercise
   | PutInOrderCourseExercise
+  | SortGroupsCourseExercise
 ) &
   ExercisePointsField &
   ExerciseSpeechField;
@@ -518,6 +539,20 @@ export type SharedPutInOrderTestExerciseDefinition = {
   tags: string[];
 };
 
+// On disk (SLJ-178): group names and card texts per language in `locales`;
+// which group each card belongs in and its picture (a course asset's filename
+// or null) outside it.
+export type SharedSortGroupsTestExerciseDefinition = {
+  kind: "sort-groups";
+  locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; groups: string[]; cards: string[] }>>;
+  media?: SharedExerciseMedia;
+  cardGroups: number[];
+  cardImages?: (string | null)[];
+  listen?: boolean;
+  noRightAnswer?: boolean;
+  tags: string[];
+};
+
 export type SharedMultipleChoiceTestExerciseDefinition = {
   kind: "multiple-choice";
   locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; options: string[] }>>;
@@ -623,6 +658,7 @@ export type SharedTestExerciseDefinition = (
   | SharedListenChooseTestExerciseDefinition
   | SharedMatchPairsTestExerciseDefinition
   | SharedPutInOrderTestExerciseDefinition
+  | SharedSortGroupsTestExerciseDefinition
 ) &
   ExercisePointsField &
   ExerciseSpeechField;

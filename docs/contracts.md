@@ -806,6 +806,13 @@ same holds for options today).
 answer is a JSON array of item indexes in the order the student tapped them; each item in
 its place is a part for partial credit. `listen` works like Match the pairs' `listenLeft`.
 
+**Sort into groups** (`sort-groups`, SLJ-178): `groups` and `cards` per language,
+`cardGroups[i]` (outside `locales`) the group card `i` belongs in, `cardImages` beside it.
+The answer is a JSON array, for each card its group or `null` (still in the pile); each
+card is a part. `noRightAnswer` makes it an activity: sorting every card is right.
+Dragging is the component's own pointer handling (no library); tapping a card, then a
+group, does the same.
+
 **An editor that doesn't know a field drops it on save.** `fromSharedTestExerciseDefinition`
 rebuilds an exercise from the fields its version knows, so an app version from before
 `speech` (or any later field) that edits and saves a test writes it back without that

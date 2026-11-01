@@ -68,6 +68,22 @@ type NumericTestExercise = {
   variables: PromptVariable[];
 };
 
+// Sort into groups (SLJ-178): see `SharedSortGroupsTestExerciseDefinition`.
+type SortGroupsLocaleContent = { cards: string[]; groups: string[]; hint: string; prompt: string };
+
+type SortGroupsTestExercise = {
+  kind: "sort-groups";
+  id: string;
+  media?: ExerciseMediaDraft;
+  locales: Record<string, SortGroupsLocaleContent>;
+  cardGroups: number[];
+  cardImages: (string | null)[];
+  listen: boolean;
+  noRightAnswer: boolean;
+  speech?: ExerciseSpeech;
+  tagIds: string[];
+};
+
 // Put in order (SLJ-177): see `SharedPutInOrderTestExerciseDefinition`.
 type PutInOrderLocaleContent = { hint: string; items: string[]; prompt: string };
 
@@ -279,6 +295,7 @@ type TestExercise = (
   | ListenChooseTestExercise
   | MatchPairsTestExercise
   | PutInOrderTestExercise
+  | SortGroupsTestExercise
   | WordTypeTestExercise
   | MissingWordTestExercise
   | PunctuationTestExercise
@@ -337,6 +354,8 @@ export type {
   MultipleChoiceExerciseLocaleContent,
   PutInOrderLocaleContent,
   PutInOrderTestExercise,
+  SortGroupsLocaleContent,
+  SortGroupsTestExercise,
   MultipleChoiceTestExercise,
   NumericSolutionSpace,
   NumericTestExercise,

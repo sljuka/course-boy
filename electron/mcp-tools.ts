@@ -212,6 +212,41 @@ const questionSchema = z.discriminatedUnion("type", [
     readAloud,
     tags,
   }),
+  // Sort into groups (SLJ-178): each group with the cards that belong in it;
+  // the student sees one shuffled pile and sorts it.
+  z.object({
+    type: z.literal("sort_groups"),
+    image,
+    prompt: z.string().min(1).describe('The instruction, e.g. "Is it D or T? Listen and sort."'),
+    groups: z
+      .array(
+        z.object({
+          name: z.string().min(1).describe('The group\'s name, e.g. "D" or "Animals"'),
+          cards: z
+            .array(z.string().min(1))
+            .describe("The cards that belong in it; with a picture, what it shows (its alt text); with listen, what's heard"),
+          images: z
+            .array(z.string().min(1).nullable())
+            .optional()
+            .describe("A picture per card (filenames as add_image returned them), null for a text card; same length as cards"),
+        }),
+      )
+      .min(2)
+      .max(4)
+      .describe("2 to 4 groups, 2 to 16 cards in all"),
+    listen: z
+      .boolean()
+      .optional()
+      .describe("The cards are heard (read aloud in `readAloud`'s language), never shown: e.g. hear a word, sort it by its first sound"),
+    noRightAnswer: z
+      .boolean()
+      .optional()
+      .describe('An activity, nothing checked: e.g. "I like / I don\'t like"; put each card in any group'),
+    hint: z.string().optional(),
+    points,
+    readAloud,
+    tags,
+  }),
   z.object({
     type: z.literal("multiple_choice"),
     image,
@@ -507,6 +542,30 @@ function exerciseFromQuestion(
     };
   }
 
+  if (question.type === "sort_groups") {
+    const cards = question.groups.flatMap((group) => group.cards);
+    if (cards.length < 2 || cards.length > 16) throw new Error(`"${question.prompt}": give 2 to 16 cards in all`);
+    const images = question.groups.flatMap((group) => {
+      if (group.images && group.images.length !== group.cards.length) {
+        throw new Error(`"${question.prompt}": images in "${group.name}" need one entry per card (null for none)`);
+      }
+      return group.images ?? group.cards.map(() => null);
+    });
+    if (images.some((file) => file !== null && resolveAssetFilename(file) === null)) {
+      throw new Error(`"${question.prompt}": an image isn't a file name in the course`);
+    }
+    if (question.listen && !question.readAloud) throw new Error(`"${question.prompt}": listen needs readAloud, the language the cards are heard in`);
+    return {
+      cardGroups: question.groups.flatMap((group, groupIndex) => group.cards.map(() => groupIndex)),
+      ...(images.some((file) => file !== null) ? { cardImages: images } : {}),
+      kind: "sort-groups",
+      ...(question.listen ? { listen: true } : {}),
+      locales: { [locale]: { ...hint, cards, groups: question.groups.map((group) => group.name), prompt: question.prompt } },
+      ...(question.noRightAnswer ? { noRightAnswer: true } : {}),
+      tags: [],
+    };
+  }
+
   if (question.type === "multiple_choice") {
     const correct = [...new Set(question.correct)].sort((left, right) => left - right);
     if (correct.some((index) => index >= question.options.length)) {
@@ -679,6 +738,25 @@ function questionFromExercise(exercise: CourseExercise): Record<string, unknown>
       type: "put_in_order",
       ...(images.some((file) => file !== null) ? { images } : {}),
       ...(exercise.listen ? { listen: true } : {}),
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  if (exercise.kind === "sort-groups") {
+    const files = exercise.cardImageUrls.map((url) => (url ? decodeURIComponent(url.split("/").pop() ?? "") : null));
+    const hasImages = files.some((file) => file !== null);
+    return {
+      groups: exercise.groups.map((name, group) => {
+        const cards = exercise.cards.map((_card, index) => index).filter((index) => exercise.cardGroups[index] === group);
+        return {
+          cards: cards.map((index) => exercise.cards[index]),
+          name,
+          ...(hasImages ? { images: cards.map((index) => files[index]) } : {}),
+        };
+      }),
+      prompt: exercise.prompt,
+      type: "sort_groups",
+      ...(exercise.listen ? { listen: true } : {}),
+      ...(exercise.noRightAnswer ? { noRightAnswer: true } : {}),
       ...(exercise.hint ? { hint: exercise.hint } : {}),
     };
   }

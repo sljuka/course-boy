@@ -1718,5 +1718,28 @@
     "removeItem": "Ukloni stavku {{number}}",
     "addItem": "Dodaj stavku",
     "listen": "Stavke se čuju, ne vide se (čita ih glas na jeziku izabranom pod Čitanje naglas)"
+  },
+  "sortGroups": {
+    "pile": "Kartice za razvrstavanje",
+    "heardCard": "Zvuk {{number}}",
+    "placedLabel": "{{label}}, u grupi {{group}}",
+    "putIn": "Stavi izabranu karticu u {{number}}. {{group}}",
+    "noAnswer": "Prvo razvrstaj kartice.",
+    "printNote": "U kućicu upiši slovo grupe kojoj pripada.",
+    "printNoteHeard": "Slušaj učitelja, pa uz svaki broj upiši slovo grupe.",
+    "promptPlaceholder": "Razvrstaj reči.",
+    "groupsLabel": "Grupe",
+    "group": "Grupa {{number}}",
+    "groupPlaceholder": "Naziv grupe",
+    "removeGroup": "Ukloni grupu {{number}}",
+    "addGroup": "Dodaj grupu",
+    "cardsLabel": "Kartice",
+    "cardsHelp": "Svaka kartica i grupa kojoj pripada; učenik ih dobija u jednoj izmešanoj gomili. Kartica je tekst ili slika; uz sliku, tekst kaže šta je na njoj (za čitače ekrana).",
+    "card": "Kartica {{number}}",
+    "cardGroup": "Grupa za: {{card}}",
+    "removeCard": "Ukloni karticu {{number}}",
+    "addCard": "Dodaj karticu",
+    "listen": "Kartice se čuju, ne vide se (čita ih glas na jeziku izabranom pod Čitanje naglas)",
+    "noRightAnswer": "Nema tačnog odgovora: učenik razvrstava po svom (npr. volim / ne volim)"
   }
 }

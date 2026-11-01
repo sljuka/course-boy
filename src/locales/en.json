@@ -1718,5 +1718,28 @@
     "removeItem": "Remove item {{number}}",
     "addItem": "Add item",
     "listen": "The items are heard, not shown (read aloud in the language chosen under Read aloud)"
+  },
+  "sortGroups": {
+    "pile": "Cards to sort",
+    "heardCard": "Sound {{number}}",
+    "placedLabel": "{{label}}, in {{group}}",
+    "putIn": "Put the picked card in {{number}}. {{group}}",
+    "noAnswer": "Sort the cards first.",
+    "printNote": "Write the letter of each one's group in its box.",
+    "printNoteHeard": "Listen to your teacher, then write the letter of each number's group in its box.",
+    "promptPlaceholder": "Sort the words.",
+    "groupsLabel": "Groups",
+    "group": "Group {{number}}",
+    "groupPlaceholder": "Group name",
+    "removeGroup": "Remove group {{number}}",
+    "addGroup": "Add group",
+    "cardsLabel": "Cards",
+    "cardsHelp": "Each card and the group it belongs in; the student gets them in one shuffled pile. A card is text or a picture; with a picture, the text says what it shows (for screen readers).",
+    "card": "Card {{number}}",
+    "cardGroup": "Group of {{card}}",
+    "removeCard": "Remove card {{number}}",
+    "addCard": "Add card",
+    "listen": "The cards are heard, not shown (read aloud in the language chosen under Read aloud)",
+    "noRightAnswer": "No right answer: the student sorts as they like (e.g. I like / I don't like)"
   }
 }

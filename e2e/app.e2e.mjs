@@ -4117,4 +4117,70 @@ describe('read aloud', () => {
     await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
     await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
   })
+
+  // SLJ-178: tap a card then a group, or drag it there; a wrong card is marked after a check.
+  it('sorts cards into groups by tapping and by dragging', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Sort Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Sounds' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Sort into groups' })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [
+            {
+              cardGroups: [0, 1, 1],
+              kind: 'sort-groups',
+              locales: { en: { cards: ['dog', 'ten', 'toy'], groups: ['D', 'T'], prompt: 'D or T?' } },
+              tags: [],
+            },
+          ],
+          template: '',
+        },
+        testId,
+      })
+      return { courseId, testId }
+    })
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const card = (name) => page.locator('[data-testid="sort-groups-card"]', { hasText: name })
+    const group = (index) => page.locator('[data-testid="sort-groups-group"]').nth(index)
+    const inGroup = (index) => group(index).locator('[data-testid="sort-groups-card"]').allInnerTexts()
+
+    // Tap, then tap a group: "ten" in D (wrong) and "toy" in T.
+    await card('ten').click()
+    await group(0).locator('[data-slot="choice-box-title"]').click()
+    await card('toy').click()
+    await group(1).click()
+    await expect.poll(() => inGroup(0)).toEqual(['ten'])
+    await expect.poll(() => inGroup(1)).toEqual(['toy'])
+
+    // Drag "dog" onto D.
+    const from = await card('dog').boundingBox()
+    const to = await group(0).boundingBox()
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height - 10, { steps: 8 })
+    await page.mouse.up()
+    await expect.poll(async () => (await inGroup(0)).sort()).toEqual(['dog', 'ten'])
+    expect(await page.locator('[data-testid="sort-groups-pile"]').count()).toBe(0)
+
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => page.locator('[data-testid="sort-groups-card"][aria-invalid="true"]').allInnerTexts()).toEqual(['ten'])
+    // Tapping a card in a group sends it back to the pile; then into T.
+    await card('ten').click()
+    await expect.poll(() => page.locator('[data-testid="sort-groups-pile"]').innerText()).toBe('ten')
+    await card('ten').click()
+    await group(1).locator('[data-slot="choice-box-title"]').click()
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
+  })
 })

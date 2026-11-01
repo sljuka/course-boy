@@ -10,6 +10,7 @@ export type ExerciseInstance =
   | { kind: "listen-choose"; optionOrder: number[] }
   | { kind: "match-pairs"; leftOrder: number[]; rightOrder: number[] }
   | { kind: "put-in-order"; order: number[] }
+  | { kind: "sort-groups"; cardOrder: number[] }
   | { kind: "word-types" }
   | { kind: "missing-word" }
   | { kind: "region-picker" }

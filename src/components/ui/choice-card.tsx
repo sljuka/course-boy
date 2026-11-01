@@ -25,8 +25,19 @@ const choiceCardVariants = cva(
         false: "",
         true: "border-destructive bg-destructive/5",
       },
+      // Can be dragged (SLJ-178): touch moves the card, not the page.
+      movable: {
+        false: "",
+        true: "cursor-grab touch-none",
+      },
+      // Following the pointer: drawn above the rest, and not in the way of
+      // finding what it's dropped on.
+      dragging: {
+        false: "",
+        true: "pointer-events-none z-10 cursor-grabbing shadow-lg",
+      },
     },
-    defaultVariants: { kind: "text", picked: false, wrong: false },
+    defaultVariants: { kind: "text", picked: false, wrong: false, movable: false, dragging: false },
   }
 )
 
@@ -59,6 +70,8 @@ const pairTone = (tones: string[], pair: number) => tones[pair % tones.length]
 
 function ChoiceCard({
   className,
+  movable,
+  dragging,
   kind,
   pair,
   picked,
@@ -73,7 +86,7 @@ function ChoiceCard({
       data-picked={picked ? "" : undefined}
       data-pair={isPaired ? pair : undefined}
       className={cn(
-        choiceCardVariants({ kind, picked, wrong }),
+        choiceCardVariants({ movable, dragging, kind, picked, wrong }),
         isPaired && !picked && !wrong && pairTone(PAIR_TONES, pair),
         className
       )}
@@ -167,6 +180,50 @@ function ChoiceCardAnswerBox({ className, ...props }: React.ComponentProps<"span
   )
 }
 
+// A group cards are sorted into (SLJ-178): its name on top, its cards below.
+// `ready`: a card is picked, so tapping the group puts it there.
+const choiceBoxVariants = cva(
+  "flex min-h-40 flex-col gap-3 rounded-xl border-2 border-dashed p-3 transition-colors motion-reduce:transition-none",
+  {
+    variants: {
+      ready: {
+        false: "border-border bg-muted/20",
+        true: "cursor-pointer border-primary/70 bg-primary/5",
+      },
+    },
+    defaultVariants: { ready: false },
+  }
+)
+
+function ChoiceBox({ className, ready, ...props }: React.ComponentProps<"div"> & VariantProps<typeof choiceBoxVariants>) {
+  return <div data-slot="choice-box" className={cn(choiceBoxVariants({ ready }), className)} {...props} />
+}
+
+function ChoiceBoxTitle({ className, ...props }: React.ComponentProps<"button">) {
+  return (
+    <button
+      type="button"
+      data-slot="choice-box-title"
+      className={cn(
+        "flex items-center justify-center gap-2 rounded-lg px-2 py-1 text-center text-base font-semibold text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+// Groups side by side, stacked on small screens.
+function ChoiceBoxes({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="choice-boxes"
+      className={cn("grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]", className)}
+      {...props}
+    />
+  )
+}
+
 // Two columns side by side, for items to pair (SLJ-176).
 function ChoiceCardColumns({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -179,6 +236,9 @@ function ChoiceCardColumns({ className, ...props }: React.ComponentProps<"div">)
 }
 
 export {
+  ChoiceBox,
+  ChoiceBoxes,
+  ChoiceBoxTitle,
   ChoiceCard,
   ChoiceCardAnswerBox,
   ChoiceCardBadge,
