@@ -21,6 +21,7 @@ import {
 import { regionPickerSvgPresets } from "../src/lib/region-picker-svg-presets";
 import { type CourseTagDefinition, createCourseTagDefinition, courseTagColorOptions } from "../src/lib/course-tags";
 import { isExerciseCount } from "../src/lib/course-exercise-pool";
+import type { CourseExerciseMedia } from "../src/lib/exercise-media";
 import { SPEECH_LANGUAGES } from "../src/lib/exercise-speech";
 import { DEFAULT_EXERCISE_POINTS, MAX_EXERCISE_POINTS, MIN_EXERCISE_POINTS } from "../src/lib/grade-bands";
 import { isLocale, type Locale } from "../src/lib/i18n";
@@ -716,19 +717,23 @@ function exerciseFromQuestion(
 
 // A saved test as questions, for the kinds the tools can write; other kinds
 // (made in the app) are named so the agent knows they're there.
+// The picture above a question, so an agent that rewrites the test keeps it
+// (a video isn't something `image` can write back). Not every kind has media.
+function questionImage(exercise: CourseExercise): { image: { alt: string; file: string } } | Record<string, never> {
+  const media = (exercise as { media?: CourseExerciseMedia }).media;
+  if (media?.kind !== "image") return {};
+  return {
+    image: {
+      alt: media.alt?.trim() || "Decorative image",
+      file: decodeURIComponent(media.url.split("/").pop() ?? ""),
+    },
+  };
+}
+
 export function questionsFromTest(test: CourseTest | null, courseTags: CourseTagDefinition[] = []): unknown[] {
   return (test?.exercises ?? []).map((exercise: CourseExercise) => ({
     ...questionFromExercise(exercise),
-    // The picture above the question, so an agent that rewrites the test
-    // keeps it (a video isn't something `image` can write back).
-    ...(exercise.media?.kind === "image"
-      ? {
-          image: {
-            alt: exercise.media.alt?.trim() || "Decorative image",
-            file: decodeURIComponent(exercise.media.url.split("/").pop() ?? ""),
-          },
-        }
-      : {}),
+    ...questionImage(exercise),
     ...(exercise.points !== undefined ? { points: exercise.points } : {}),
     ...(exercise.speech ? { readAloud: exercise.speech.lang } : {}),
     ...(exercise.tags.length > 0 ? { tags: tagLabels(exercise.tags, courseTags) } : {}),
