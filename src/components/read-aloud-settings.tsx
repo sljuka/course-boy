@@ -12,7 +12,7 @@ import { useSpeechPreference, useSystemVoices } from "@/lib/speech-preference";
 // The languages always offered; the others under "More languages".
 const MAIN_LANGUAGES: SpeechLanguage[] = ["en", "sr"];
 
-// Settings → Sound (SLJ-174): which of this device's voices reads exercises
+// Settings → Interface → Read aloud (SLJ-174): which of this device's voices reads exercises
 // in each language, how fast, and a Test button. The voices are the operating
 // system's, so they differ between devices; unset, the best fit is used.
 export function ReadAloudSettings() {

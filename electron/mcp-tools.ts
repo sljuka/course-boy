@@ -138,6 +138,27 @@ const image = z
   .describe("An image shown above the question, e.g. a diagram the question is about");
 
 const questionSchema = z.discriminatedUnion("type", [
+  // Listen and choose (SLJ-175): the student hears `spoken` (never shown) and
+  // picks the matching option, a picture or text.
+  z.object({
+    type: z.literal("listen_choose"),
+    image,
+    prompt: z.string().min(1).describe('The visible instruction, e.g. "Listen and choose the picture."'),
+    spoken: z.string().min(1).describe('What the student hears and never sees, e.g. "under" or "Where is the blue kid?"'),
+    readAloud: z.enum(SPEECH_LANGUAGES).describe('The language of `spoken`, e.g. "en"'),
+    options: z
+      .array(z.string().min(1))
+      .min(2)
+      .describe("Each option's text; with a picture, what it shows (its alt text)"),
+    images: z
+      .array(z.string().min(1).nullable())
+      .optional()
+      .describe("A picture per option (filenames as add_image returned them), null for a text option; same length as options"),
+    correct: z.array(z.number().int().min(0)).min(1).describe("0-based indexes of the correct options"),
+    hint: z.string().optional(),
+    points,
+    tags,
+  }),
   z.object({
     type: z.literal("multiple_choice"),
     image,
@@ -367,6 +388,29 @@ function exerciseFromQuestion(
     };
   }
 
+  if (question.type === "listen_choose") {
+    const correct = [...new Set(question.correct)].sort((left, right) => left - right);
+    if (correct.some((index) => index >= question.options.length)) {
+      throw new Error(`"${question.prompt}": a correct option index is past the last option`);
+    }
+    const images = question.images ?? [];
+    if (images.length > 0 && images.length !== question.options.length) {
+      throw new Error(`"${question.prompt}": images needs one entry per option (null for none)`);
+    }
+    if (images.some((file) => file !== null && resolveAssetFilename(file) === null)) {
+      throw new Error(`"${question.prompt}": an image isn't a file name in the course`);
+    }
+    return {
+      correctOptionIndexes: correct,
+      kind: "listen-choose",
+      locales: { [locale]: { ...hint, options: question.options, prompt: question.prompt } },
+      ...(images.some((file) => file !== null) ? { optionImages: images } : {}),
+      selectionMode: correct.length > 1 ? "multiple" : "single",
+      spoken: question.spoken,
+      tags: [],
+    };
+  }
+
   if (question.type === "multiple_choice") {
     const correct = [...new Set(question.correct)].sort((left, right) => left - right);
     if (correct.some((index) => index >= question.options.length)) {
@@ -503,6 +547,18 @@ function questionFromExercise(exercise: CourseExercise): Record<string, unknown>
         ...(exercise.hint ? { hint: exercise.hint } : {}),
       };
     }
+  }
+  if (exercise.kind === "listen-choose") {
+    const images = exercise.optionImageUrls.map((url) => (url ? decodeURIComponent(url.split("/").pop() ?? "") : null));
+    return {
+      correct: exercise.correctOptionIndexes,
+      options: exercise.options,
+      prompt: exercise.prompt,
+      spoken: exercise.spoken,
+      type: "listen_choose",
+      ...(images.some((file) => file !== null) ? { images } : {}),
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
   }
   if (exercise.kind === "multiple-choice") {
     return {

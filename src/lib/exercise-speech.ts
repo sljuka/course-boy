@@ -6,7 +6,7 @@
 //
 // `lang` is the language the exercise's text is in, so the student's voice for
 // that language reads it ("under" by an English voice, not a Serbian one). It
-// isn't a voice: the voice and the speed are the student's (Settings → Sound,
+// isn't a voice: the voice and the speed are the student's (Settings → Interface → Read aloud,
 // lib/speech.ts). Missing `speech` means the exercise isn't read aloud. Pure:
 // used by the renderer and the main process.
 
@@ -41,8 +41,16 @@ export function exerciseSpeechField(speech: ExerciseSpeech | undefined): Exercis
 }
 
 // The language an exercise (in any of its forms: on disk, in the editor, in
-// the player) is read aloud in, if it is.
+// the player) is read aloud in, if it is: its question and options get a 🔊.
+// Not for Listen and choose (SLJ-175): its speech is the hidden text, played by
+// its own button; its instruction and options aren't read aloud.
 export function exerciseSpeechLanguage(exercise: object): SpeechLanguage | undefined {
+  if ((exercise as { kind?: unknown }).kind === "listen-choose") return undefined;
+  return spokenLanguage(exercise);
+}
+
+// The language of an exercise's `speech`, whatever its kind.
+export function spokenLanguage(exercise: object): SpeechLanguage | undefined {
   const speech = (exercise as ExerciseSpeechField).speech;
   return isValidExerciseSpeech(speech) ? speech.lang : undefined;
 }

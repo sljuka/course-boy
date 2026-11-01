@@ -785,6 +785,13 @@ voices in `src/lib/speech.ts`. The player's 🔊 (`ReadAloudButton`) touches the
 speech service only for an exercise that is read aloud: asking it for voices on every
 exercise disturbed the app's menus in e2e.
 
+**Listen and choose** (`listen-choose`, SLJ-175) uses `speech` as the language of its
+hidden `spoken` text, so for it the field is required, and its prompt and options get no
+generic 🔊 (`exerciseSpeechLanguage` skips it; its own Listen button plays `spoken`).
+`spoken` and `optionImages` sit outside `locales` on purpose: generating the other Serbian
+script must not transliterate the English word, and a picture is the same in every
+language. Grading and the summary are multiple choice's.
+
 **An editor that doesn't know a field drops it on save.** `fromSharedTestExerciseDefinition`
 rebuilds an exercise from the fields its version knows, so an app version from before
 `speech` (or any later field) that edits and saves a test writes it back without that

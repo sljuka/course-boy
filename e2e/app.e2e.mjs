@@ -3965,4 +3965,52 @@ describe('read aloud', () => {
     // Serbian is read by the Croatian voice, the closest this device has.
     await expect.poll(() => page.locator('[data-testid="settings-voice-sr"]').innerText()).toContain('Lana')
   })
+
+  // SLJ-175: Listen and choose. The word is heard, never shown.
+  it('plays a hidden word, and the student picks the matching option', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Listen Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Where?' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Listen and choose' })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [
+            {
+              correctOptionIndexes: [1],
+              kind: 'listen-choose',
+              locales: { en: { options: ['on', 'under', 'behind'], prompt: 'Listen and choose.' } },
+              selectionMode: 'single',
+              speech: { lang: 'en' },
+              spoken: 'It is underneath',
+              tags: [],
+            },
+          ],
+          template: '',
+        },
+        testId,
+      })
+      return { courseId, testId }
+    })
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    await page.locator('[data-testid="listen-choose-play"]').click()
+    await expect.poll(() => page.evaluate(() => window.__spoken.at(-1)?.text)).toBe('It is underneath')
+    // Heard, not shown; and the instruction has no 🔊 of its own.
+    expect(await page.locator('body').innerText()).not.toContain('It is underneath')
+    expect(await page.locator('[data-testid="read-aloud"]').count()).toBe(0)
+
+    await page.locator('[data-testid="listen-choose-option"]', { hasText: 'under' }).click()
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => page.locator('[data-testid="listen-choose-option"][aria-checked="true"]').count()).toBe(1)
+    await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
+  })
 })

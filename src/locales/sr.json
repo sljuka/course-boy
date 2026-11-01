@@ -1656,5 +1656,29 @@
     },
     "noVoiceForLanguage": "Na ovom računaru nema glasa za ovaj jezik.",
     "test": "Isprobaj glas"
+  },
+  "listenChoose": {
+    "play": "Poslušaj",
+    "noVoice": "Ovaj računar nema glas za jezik ovog zadatka. Izaberi ili dodaj glas u Podešavanja → Izgled → Čitanje naglas.",
+    "optionsLabel": "Odgovori",
+    "printNote": "Poslušaj učitelja i označi tačan odgovor.",
+    "promptLabel": "Uputstvo",
+    "promptPlaceholder": "Poslušaj i izaberi sliku.",
+    "spokenLabel": "Šta učenik čuje",
+    "spokenPlaceholder": "under",
+    "languageLabel": "Jezik",
+    "spokenHelp": "Nikad se ne prikazuje: učenik ga čuje, glasom koji je izabrao za ovaj jezik.",
+    "optionsHelp": "Slika za svaki odgovor, ili tekst. Uz sliku, tekst kaže šta je na njoj (za čitače ekrana).",
+    "markCorrect": "Označi odgovor {{number}} kao tačan",
+    "addPicture": "Dodaj sliku",
+    "optionText": "Odgovor {{number}}",
+    "optionAltPlaceholder": "Šta je na slici",
+    "optionTextPlaceholder": "Tekst odgovora",
+    "removePicture": "Ukloni sliku",
+    "removeOption": "Ukloni odgovor {{number}}",
+    "addOption": "Dodaj odgovor",
+    "severalRight": "Više odgovora može biti tačno",
+    "valid": "Ispravno",
+    "invalid": "Nije ispravno"
   }
 }

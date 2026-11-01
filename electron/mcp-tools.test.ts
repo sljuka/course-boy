@@ -133,6 +133,37 @@ describe("questions", () => {
     expect(readBack).toMatchObject({ readAloud: "en" });
   });
 
+  // SLJ-175: hear a hidden word, pick a picture.
+  it("become listen-and-choose exercises, and back", () => {
+    const [exercise] = testFromQuestions(
+      [
+        {
+          correct: [0],
+          images: ["under-0123456789abcdef.png", null],
+          options: ["under the desk", "on the lamp"],
+          prompt: "Listen and choose.",
+          readAloud: "en",
+          spoken: "Where is the blue kid? It's under the desk.",
+          type: "listen_choose" as const,
+        },
+      ],
+      "en",
+    ).exercises;
+    expect(exercise).toMatchObject({
+      kind: "listen-choose",
+      optionImages: ["under-0123456789abcdef.png", null],
+      selectionMode: "single",
+      speech: { lang: "en" },
+      spoken: "Where is the blue kid? It's under the desk.",
+    });
+    expect(() =>
+      testFromQuestions(
+        [{ correct: [0], images: ["a.png"], options: ["a", "b"], prompt: "?", readAloud: "en", spoken: "a", type: "listen_choose" as const }],
+        "en",
+      ),
+    ).toThrow("one entry per option");
+  });
+
   it("become fill-in exercises, with the blanks in the order the text names them", () => {
     expect(
       testFromQuestions(

@@ -16,7 +16,7 @@ export function useSystemVoices(enabled = true): SpeechVoice[] | undefined {
   return data;
 }
 
-// Settings → Sound: the voice chosen for each language and the speed.
+// Settings → Interface → Read aloud: the voice chosen for each language and the speed.
 export function useSpeechPreference(enabled = true): {
   chosenVoices: Partial<Record<SpeechLanguage, string>>;
   rate: number;

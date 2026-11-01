@@ -107,7 +107,8 @@ export type ExerciseKind =
   | "region-marker"
   | "region-label"
   | "punctuation"
-  | "rewrite";
+  | "rewrite"
+  | "listen-choose";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -142,6 +143,26 @@ export type MultipleChoiceCourseExercise = {
   prompt: string;
   tags: string[];
   options: string[];
+  correctOptionIndexes: number[];
+  selectionMode: "single" | "multiple";
+};
+
+// Listen and choose (SLJ-175): the student hears `spoken` (never shown) and
+// picks the matching option, a picture or text. Checked like multiple choice.
+export type ListenChooseCourseExercise = {
+  kind: "listen-choose";
+  hint?: string;
+  id: string;
+  media?: CourseExerciseMedia;
+  // The visible instruction ("Poslušaj i izaberi sliku"); may be empty.
+  prompt: string;
+  // What's said, in the exercise's speech language (`speech.lang`).
+  spoken: string;
+  tags: string[];
+  // Each option's text: shown when it has no picture, else its alt text.
+  options: string[];
+  // Each option's picture as a `matko-asset://` URL, or null for a text option.
+  optionImageUrls: (string | null)[];
   correctOptionIndexes: number[];
   selectionMode: "single" | "multiple";
 };
@@ -341,6 +362,7 @@ export type CourseExercise = (
   | RegionLabelCourseExercise
   | PunctuationCourseExercise
   | RewriteCourseExercise
+  | ListenChooseCourseExercise
 ) &
   ExercisePointsField &
   ExerciseSpeechField;
@@ -417,6 +439,22 @@ export type SharedNumericTestExerciseDefinition = {
   moreSolutions?: NumericSolution[];
   tags: string[];
   variables: Record<string, CourseExerciseVariable>;
+};
+
+// On disk (SLJ-175). `spoken` and `optionImages` are outside `locales`: the
+// spoken text is in the language learned (generating the other Serbian script
+// must not touch it) and a picture is the same in every language. Its speech
+// language is the exercise's `speech.lang`, required for this kind.
+export type SharedListenChooseTestExerciseDefinition = {
+  kind: "listen-choose";
+  locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; options: string[] }>>;
+  media?: SharedExerciseMedia;
+  spoken: string;
+  // A course asset's filename per option, or null for a text option.
+  optionImages?: (string | null)[];
+  correctOptionIndexes: number[];
+  selectionMode: "single" | "multiple";
+  tags: string[];
 };
 
 export type SharedMultipleChoiceTestExerciseDefinition = {
@@ -521,6 +559,7 @@ export type SharedTestExerciseDefinition = (
   | SharedRegionLabelTestExerciseDefinition
   | SharedPunctuationTestExerciseDefinition
   | SharedRewriteTestExerciseDefinition
+  | SharedListenChooseTestExerciseDefinition
 ) &
   ExercisePointsField &
   ExerciseSpeechField;

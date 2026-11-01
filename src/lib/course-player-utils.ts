@@ -7,6 +7,7 @@ export type ExerciseInstance =
   // `expectedAnswers`: every solution's, the first being `expectedAnswer`.
   | { kind: "numeric"; expectedAnswer: number; expectedAnswers: number[]; variables: Record<string, number> }
   | { kind: "multiple-choice"; optionOrder: number[] }
+  | { kind: "listen-choose"; optionOrder: number[] }
   | { kind: "word-types" }
   | { kind: "missing-word" }
   | { kind: "region-picker" }

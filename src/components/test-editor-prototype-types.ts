@@ -68,6 +68,22 @@ type NumericTestExercise = {
   variables: PromptVariable[];
 };
 
+// Listen and choose (SLJ-175): see `SharedListenChooseTestExerciseDefinition`.
+type ListenChooseTestExercise = {
+  kind: "listen-choose";
+  correctOptionIndexes: number[];
+  id: string;
+  media?: ExerciseMediaDraft;
+  locales: Record<string, MultipleChoiceExerciseLocaleContent>;
+  // A course asset's filename per option, or null.
+  optionImages: (string | null)[];
+  selectionMode: "single" | "multiple";
+  spoken: string;
+  // Required for this kind: the language `spoken` is in.
+  speech?: ExerciseSpeech;
+  tagIds: string[];
+};
+
 type MultipleChoiceTestExercise = {
   kind: "multiple-choice";
   correctOptionIndexes: number[];
@@ -231,6 +247,7 @@ type RegionLabelTestExercise = {
 type TestExercise = (
   | NumericTestExercise
   | MultipleChoiceTestExercise
+  | ListenChooseTestExercise
   | WordTypeTestExercise
   | MissingWordTestExercise
   | PunctuationTestExercise
@@ -283,6 +300,7 @@ export type {
   MissingWordExerciseLocaleContent,
   MissingWordTestExercise,
   MissingWordVariableDraft,
+  ListenChooseTestExercise,
   MultipleChoiceExerciseLocaleContent,
   MultipleChoiceTestExercise,
   NumericSolutionSpace,

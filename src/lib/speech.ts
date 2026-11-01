@@ -3,7 +3,7 @@ import type { SpeechLanguage } from "@/lib/exercise-speech";
 // Read aloud (SLJ-174) with the system's voices: the Web Speech API in the
 // app's window, offline, whatever voices the operating system has (macOS many,
 // Windows a few, Linux often none). Which voice reads a language is the
-// student's choice (Settings → Sound); unset, the best one on this device.
+// student's choice (Settings → Interface → Read aloud); unset, the best one on this device.
 
 export type SpeechVoice = { lang: string; localService: boolean; name: string; voiceURI: string };
 
@@ -104,7 +104,7 @@ export function loadVoices(): Promise<SpeechVoice[]> {
   });
 }
 
-// What the Test button in Settings → Sound says in each language: spoken
+// What the Test button in Settings → Interface → Read aloud says in each language: spoken
 // content in that language, not interface text, so it isn't translated.
 export const SPEECH_SAMPLES: Record<SpeechLanguage, string> = {
   de: "Hallo! Das ist meine Stimme.",

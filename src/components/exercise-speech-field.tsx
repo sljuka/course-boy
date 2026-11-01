@@ -9,7 +9,7 @@ const OFF = "off";
 
 // Read aloud (SLJ-174) in an exercise's "more options": off, or the language
 // its text is in, so the student's voice for that language reads it. The
-// voice itself is the student's (Settings → Sound).
+// voice itself is the student's (Settings → Interface → Read aloud).
 export function ExerciseSpeechField({
   exercise,
   onChange,
@@ -19,6 +19,8 @@ export function ExerciseSpeechField({
 }) {
   const { t } = useTranslation();
   const id = `exercise-speech-${exercise.id}`;
+  // Listen and choose has its language next to what's heard (SLJ-175).
+  if (exercise.kind === "listen-choose") return null;
   const label = (value: string) => (value === OFF ? t("readAloud.off") : t(`readAloud.languages.${value}`));
 
   return (

@@ -1656,5 +1656,29 @@
     },
     "noVoiceForLanguage": "No voice for this language on this computer.",
     "test": "Test the voice"
+  },
+  "listenChoose": {
+    "play": "Listen",
+    "noVoice": "This computer has no voice for this exercise's language. Choose or add one in Settings → Interface → Read aloud.",
+    "optionsLabel": "Options",
+    "printNote": "Listen to your teacher and tick the right one.",
+    "promptLabel": "Instruction",
+    "promptPlaceholder": "Listen and choose the picture.",
+    "spokenLabel": "What the student hears",
+    "spokenPlaceholder": "under",
+    "languageLabel": "Language",
+    "spokenHelp": "Never shown: the student hears it, in the voice they chose for this language.",
+    "optionsHelp": "A picture each, or text. With a picture, the text says what it shows (for screen readers).",
+    "markCorrect": "Mark option {{number}} as correct",
+    "addPicture": "Add a picture",
+    "optionText": "Option {{number}}",
+    "optionAltPlaceholder": "What the picture shows",
+    "optionTextPlaceholder": "Option text",
+    "removePicture": "Remove the picture",
+    "removeOption": "Remove option {{number}}",
+    "addOption": "Add option",
+    "severalRight": "Several options can be right",
+    "valid": "Valid",
+    "invalid": "Invalid"
   }
 }
