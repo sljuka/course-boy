@@ -172,7 +172,12 @@ export function InteractiveTestPlayer({
         // let a textarea keep inserting a newline.
         const targetTagName = (event.target as HTMLElement).tagName;
 
-        if (targetTagName === "BUTTON" || targetTagName === "A" || targetTagName === "TEXTAREA") {
+        // An answer picked by tapping a card (`data-enter-submits`, e.g.
+        // Listen and choose) is checked with Enter, like a picked radio
+        // button; Space still picks the focused card.
+        const isAnswerCard = (event.target as HTMLElement).closest("[data-enter-submits]") !== null;
+
+        if (!isAnswerCard && (targetTagName === "BUTTON" || targetTagName === "A" || targetTagName === "TEXTAREA")) {
           return;
         }
 
@@ -227,6 +232,7 @@ export function InteractiveTestPlayer({
           speechLanguage={exerciseSpeechLanguage(exercise)}
         />
         <AnswerComponent
+          autoPlay
           exercise={exercise}
           index={currentIndex}
           instance={instance}

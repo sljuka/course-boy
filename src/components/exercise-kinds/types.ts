@@ -40,6 +40,11 @@ export type AnswerComponentProps<TCourse extends CourseExercise> = {
   // After a check in a practice test, which of several answer boxes are
   // right (SLJ-139); the kind marks the others. Never in a graded test.
   parts?: boolean[] | null;
+  // The exercise is shown on its own (the one-at-a-time test player), so a
+  // kind may start by itself, e.g. Listen and choose playing what's heard.
+  // Never in a lesson or the all-at-once view, where several would start at
+  // once.
+  autoPlay?: boolean;
   // Only consumed by kinds that render `Input` (numeric, missing-word,
   // region-label). Both real student-facing player surfaces
   // (`CourseTestContent` and `InteractiveTestPlayer`) pass `"lg"`; absent

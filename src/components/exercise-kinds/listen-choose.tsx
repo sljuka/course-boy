@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Volume2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -20,9 +21,24 @@ import { useReadAloud } from "@/lib/speech-preference";
 // Listen and choose (SLJ-175): a big button plays the hidden word or sentence
 // (as often as wanted), and the options are pictures or text, picked by
 // tapping. The spoken text is never on screen: hearing it is the exercise.
-function AnswerComponent({ exercise, index, instance, onAnswerChange, value }: AnswerComponentProps<ListenChooseCourseExercise>) {
+function AnswerComponent({
+  autoPlay = false,
+  exercise,
+  index,
+  instance,
+  onAnswerChange,
+  value,
+}: AnswerComponentProps<ListenChooseCourseExercise>) {
   const { t } = useTranslation();
   const read = useReadAloud(spokenLanguage(exercise));
+  // Shown on its own, it plays once by itself as soon as a voice is ready
+  // (the voices can arrive a moment after the exercise); Listen plays it again.
+  const playedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoPlay || !read || playedFor.current === exercise.id) return;
+    playedFor.current = exercise.id;
+    read(exercise.spoken);
+  }, [autoPlay, exercise.id, exercise.spoken, read]);
   if (instance.kind !== "listen-choose") return null;
 
   const picked = decodeMultipleChoiceSelection(value);
@@ -61,6 +77,7 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, value }: A
             <ChoiceCard
               aria-checked={isPicked}
               aria-label={text}
+              data-enter-submits=""
               data-testid="listen-choose-option"
               id={`course-exercise-answer-${index}-${optionIndex}`}
               key={optionIndex}

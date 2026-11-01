@@ -4001,15 +4001,20 @@ describe('read aloud', () => {
     await page.evaluate(({ courseId, testId }) => {
       location.hash = `#/courses/${courseId}/lessons/${testId}/test`
     }, ids)
+    const spoken = () => page.evaluate(() => window.__spoken.filter((entry) => entry.text === 'It is underneath').length)
+    const before = await spoken()
     await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    // Plays by itself once it's shown, and again with Listen.
+    await expect.poll(spoken).toBe(before + 1)
     await page.locator('[data-testid="listen-choose-play"]').click()
-    await expect.poll(() => page.evaluate(() => window.__spoken.at(-1)?.text)).toBe('It is underneath')
+    await expect.poll(spoken).toBe(before + 2)
     // Heard, not shown; and the instruction has no 🔊 of its own.
     expect(await page.locator('body').innerText()).not.toContain('It is underneath')
     expect(await page.locator('[data-testid="read-aloud"]').count()).toBe(0)
 
+    // Enter on the picked card checks the answer (it doesn't pick it again).
     await page.locator('[data-testid="listen-choose-option"]', { hasText: 'under' }).click()
-    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await page.keyboard.press('Enter')
     await expect.poll(() => page.locator('[data-testid="listen-choose-option"][aria-checked="true"]').count()).toBe(1)
     await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
   })

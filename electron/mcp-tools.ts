@@ -719,6 +719,16 @@ function exerciseFromQuestion(
 export function questionsFromTest(test: CourseTest | null, courseTags: CourseTagDefinition[] = []): unknown[] {
   return (test?.exercises ?? []).map((exercise: CourseExercise) => ({
     ...questionFromExercise(exercise),
+    // The picture above the question, so an agent that rewrites the test
+    // keeps it (a video isn't something `image` can write back).
+    ...(exercise.media?.kind === "image"
+      ? {
+          image: {
+            alt: exercise.media.alt?.trim() || "Decorative image",
+            file: decodeURIComponent(exercise.media.url.split("/").pop() ?? ""),
+          },
+        }
+      : {}),
     ...(exercise.points !== undefined ? { points: exercise.points } : {}),
     ...(exercise.speech ? { readAloud: exercise.speech.lang } : {}),
     ...(exercise.tags.length > 0 ? { tags: tagLabels(exercise.tags, courseTags) } : {}),

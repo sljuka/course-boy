@@ -19,6 +19,8 @@ export function useSystemVoices(enabled = true): SpeechVoice[] | undefined {
 // Settings → Interface → Read aloud: the voice chosen for each language and the speed.
 export function useSpeechPreference(enabled = true): {
   chosenVoices: Partial<Record<SpeechLanguage, string>>;
+  // False until the saved choice is read: reading before would use the default voice.
+  isLoaded: boolean;
   rate: number;
   setRate: (rate: number) => void;
   setVoice: (language: SpeechLanguage, voiceURI: string) => void;
@@ -50,7 +52,7 @@ export function useSpeechPreference(enabled = true): {
     [queryClient],
   );
 
-  return { chosenVoices, rate: data?.rate ?? DEFAULT_SPEECH_RATE, setRate, setVoice };
+  return { chosenVoices, isLoaded: data !== undefined, rate: data?.rate ?? DEFAULT_SPEECH_RATE, setRate, setVoice };
 }
 
 // What the players use: reads Markdown text in a language with the student's
@@ -58,7 +60,7 @@ export function useSpeechPreference(enabled = true): {
 // 🔊 is then left out).
 export function useReadAloud(language: SpeechLanguage | undefined): ((markdown: string) => void) | null {
   const voices = useSystemVoices(Boolean(language));
-  const { chosenVoices, rate } = useSpeechPreference(Boolean(language));
+  const { chosenVoices, isLoaded, rate } = useSpeechPreference(Boolean(language));
   const voice = language && voices ? pickVoice(voices, language, chosenVoices[language]) : null;
 
   const read = useCallback(
@@ -68,5 +70,5 @@ export function useReadAloud(language: SpeechLanguage | undefined): ((markdown: 
     [rate, voice],
   );
 
-  return voice ? read : null;
+  return voice && isLoaded ? read : null;
 }

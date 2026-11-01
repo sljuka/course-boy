@@ -133,6 +133,27 @@ describe("questions", () => {
     expect(readBack).toMatchObject({ readAloud: "en" });
   });
 
+  // A test read and written back keeps each question's picture.
+  it("give back the picture above a question", () => {
+    const [readBack] = questionsFromTest({
+      exercises: [
+        {
+          correctOptionIndexes: [0],
+          id: "q1",
+          kind: "multiple-choice",
+          media: { alt: "A cat and a box", decorative: false, kind: "image", url: "matko-asset://course/cat-behind-0123456789abcdef.png" },
+          options: ["behind", "on"],
+          prompt: "Where is the cat?",
+          selectionMode: "single",
+          tags: [],
+        },
+      ],
+    } as never);
+    expect(readBack).toMatchObject({ image: { alt: "A cat and a box", file: "cat-behind-0123456789abcdef.png" } });
+    const [written] = testFromQuestions([readBack as never], "en").exercises;
+    expect(written).toMatchObject({ media: { assetFilename: "cat-behind-0123456789abcdef.png", kind: "image" } });
+  });
+
   // SLJ-179: areas as fractions of a course picture, and back.
   it("become find-in-the-picture exercises, and back", () => {
     const [exercise] = testFromQuestions(
