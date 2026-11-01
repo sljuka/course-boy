@@ -9,6 +9,7 @@ export type ExerciseInstance =
   | { kind: "multiple-choice"; optionOrder: number[] }
   | { kind: "listen-choose"; optionOrder: number[] }
   | { kind: "match-pairs"; leftOrder: number[]; rightOrder: number[] }
+  | { kind: "put-in-order"; order: number[] }
   | { kind: "word-types" }
   | { kind: "missing-word" }
   | { kind: "region-picker" }

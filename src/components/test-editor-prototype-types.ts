@@ -68,6 +68,20 @@ type NumericTestExercise = {
   variables: PromptVariable[];
 };
 
+// Put in order (SLJ-177): see `SharedPutInOrderTestExerciseDefinition`.
+type PutInOrderLocaleContent = { hint: string; items: string[]; prompt: string };
+
+type PutInOrderTestExercise = {
+  kind: "put-in-order";
+  id: string;
+  media?: ExerciseMediaDraft;
+  locales: Record<string, PutInOrderLocaleContent>;
+  images: (string | null)[];
+  listen: boolean;
+  speech?: ExerciseSpeech;
+  tagIds: string[];
+};
+
 // Match the pairs (SLJ-176): see `SharedMatchPairsTestExerciseDefinition`.
 type MatchPairsLocaleContent = { hint: string; left: string[]; prompt: string; right: string[] };
 
@@ -264,6 +278,7 @@ type TestExercise = (
   | MultipleChoiceTestExercise
   | ListenChooseTestExercise
   | MatchPairsTestExercise
+  | PutInOrderTestExercise
   | WordTypeTestExercise
   | MissingWordTestExercise
   | PunctuationTestExercise
@@ -320,6 +335,8 @@ export type {
   MatchPairsLocaleContent,
   MatchPairsTestExercise,
   MultipleChoiceExerciseLocaleContent,
+  PutInOrderLocaleContent,
+  PutInOrderTestExercise,
   MultipleChoiceTestExercise,
   NumericSolutionSpace,
   NumericTestExercise,

@@ -5,6 +5,7 @@ import type { ExerciseInstance } from "../course-player-utils";
 import { isValidExerciseSpeech } from "../exercise-speech";
 import { isLocale } from "../i18n";
 
+import { shuffleIndexes, shuffleIndexesUnlike } from "./shuffle";
 import { hasValidTags, partShare, type ExerciseKindRuntime, type GradeResult, type ResolveForPlayerContext, type ReviewPart } from "./types";
 
 // Match the pairs (SLJ-176): `left[i]` goes with `right[i]`. Both columns are
@@ -69,26 +70,12 @@ function resolveForPlayer(shared: SharedMatchPairsTestExerciseDefinition, contex
   };
 }
 
-function shuffleIndexes(length: number): number[] {
-  const order = Array.from({ length }, (_unused, index) => index);
-  for (let currentIndex = order.length - 1; currentIndex > 0; currentIndex -= 1) {
-    const randomIndex = Math.floor(Math.random() * (currentIndex + 1));
-    [order[currentIndex], order[randomIndex]] = [order[randomIndex], order[currentIndex]];
-  }
-  return order;
-}
-
 // The right column never lines up with the left one, or every pair would sit
-// side by side: reshuffled until at least one item moved (always possible
-// with two or more pairs).
+// side by side.
 function buildInstance(exercise: MatchPairsCourseExercise): ExerciseInstance {
   const count = exercise.left.length;
   const leftOrder = shuffleIndexes(count);
-  let rightOrder = shuffleIndexes(count);
-  while (count > 1 && rightOrder.every((rightIndex, row) => rightIndex === leftOrder[row])) {
-    rightOrder = shuffleIndexes(count);
-  }
-  return { kind: "match-pairs", leftOrder, rightOrder };
+  return { kind: "match-pairs", leftOrder, rightOrder: shuffleIndexesUnlike(count, leftOrder) };
 }
 
 // The answer: for each left item (by its index in the file), the right item

@@ -1700,5 +1700,23 @@
     "removePair": "Remove pair {{number}}",
     "addPair": "Add pair",
     "listenLeft": "The left items are heard, not shown (read aloud in the language chosen under Read aloud)"
+  },
+  "putInOrder": {
+    "answerLabel": "Cards to put in order",
+    "heardItem": "Sound {{letter}}",
+    "listenTo": "Listen to {{letter}}",
+    "placedLabel": "{{label}}, number {{number}}",
+    "noAnswer": "Tap the cards in order first.",
+    "printNote": "Write each one's number in its box.",
+    "printNoteHeard": "Listen to your teacher, then write each letter's number in its box.",
+    "promptPlaceholder": "Put the story in order.",
+    "itemsLabel": "Items, in the right order",
+    "itemsHelp": "The order here is the answer; the student sees the items shuffled. An item is text or a picture; with a picture, the text says what it shows (for screen readers).",
+    "item": "Item {{number}}",
+    "moveUp": "Move item {{number}} up",
+    "moveDown": "Move item {{number}} down",
+    "removeItem": "Remove item {{number}}",
+    "addItem": "Add item",
+    "listen": "The items are heard, not shown (read aloud in the language chosen under Read aloud)"
   }
 }

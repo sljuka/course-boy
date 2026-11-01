@@ -133,6 +133,37 @@ describe("questions", () => {
     expect(readBack).toMatchObject({ readAloud: "en" });
   });
 
+  // SLJ-177: items in the right order, and back.
+  it("become put-in-order exercises, and back", () => {
+    const [exercise] = testFromQuestions(
+      [{ items: ["dig", "seed", "water"], prompt: "Put in order.", type: "put_in_order" as const, images: ["dig-0123456789abcdef.svg", null, null] }],
+      "en",
+    ).exercises;
+    expect(exercise).toEqual({
+      images: ["dig-0123456789abcdef.svg", null, null],
+      kind: "put-in-order",
+      locales: { en: { items: ["dig", "seed", "water"], prompt: "Put in order." } },
+      tags: [],
+    });
+    expect(() =>
+      testFromQuestions([{ items: ["a", "b"], listen: true, prompt: "?", type: "put_in_order" as const }], "en"),
+    ).toThrow("readAloud");
+    const [readBack] = questionsFromTest({
+      exercises: [
+        {
+          id: "q1",
+          imageUrls: ["matko-asset://course/dig-0123456789abcdef.svg", null],
+          items: ["dig", "seed"],
+          kind: "put-in-order",
+          listen: false,
+          prompt: "Put in order.",
+          tags: [],
+        },
+      ],
+    } as never);
+    expect(readBack).toEqual({ images: ["dig-0123456789abcdef.svg", null], items: ["dig", "seed"], prompt: "Put in order.", type: "put_in_order" });
+  });
+
   // SLJ-176: pairs in order; heard items need a language.
   it("become match-the-pairs exercises, and back", () => {
     const [exercise] = testFromQuestions(

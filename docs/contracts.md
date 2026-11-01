@@ -801,6 +801,11 @@ multiple choice's options, so generating the other Serbian script transliterates
 too: fine for a course in Serbian, wrong for foreign words heard in an `sr` course (the
 same holds for options today).
 
+**Put in order** (`put-in-order`, SLJ-177): `items` in the file are in the right order
+(pictures in `images`, outside `locales`), shown shuffled, never already in order. The
+answer is a JSON array of item indexes in the order the student tapped them; each item in
+its place is a part for partial credit. `listen` works like Match the pairs' `listenLeft`.
+
 **An editor that doesn't know a field drops it on save.** `fromSharedTestExerciseDefinition`
 rebuilds an exercise from the fields its version knows, so an app version from before
 `speech` (or any later field) that edits and saves a test writes it back without that

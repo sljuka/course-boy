@@ -82,19 +82,40 @@ function ChoiceCard({
   )
 }
 
-// The pair's number in the card's corner: neutral until it's paired.
+const choiceCardBadgeVariants = cva(
+  "absolute top-1 left-1 flex items-center justify-center rounded-full font-semibold tabular-nums",
+  {
+    variants: {
+      size: {
+        sm: "size-6 text-xs",
+        // A place in an order (SLJ-177): big enough to read from a distance.
+        lg: "size-9 text-lg",
+      },
+      tone: {
+        muted: "bg-muted text-muted-foreground",
+        primary: "bg-primary text-primary-foreground",
+      },
+    },
+    defaultVariants: { size: "sm", tone: "muted" },
+  }
+)
+
+// A number in the card's corner: a pair's, in the pair's colour, or a place
+// in an order.
 function ChoiceCardBadge({
   className,
   pair,
+  size,
+  tone,
   ...props
-}: React.ComponentProps<"span"> & { pair?: number | null }) {
+}: React.ComponentProps<"span"> & VariantProps<typeof choiceCardBadgeVariants> & { pair?: number | null }) {
   const isPaired = pair !== undefined && pair !== null
   return (
     <span
       data-slot="choice-card-badge"
       className={cn(
-        "absolute top-1 left-1 flex size-6 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-        isPaired ? cn("text-white", pairTone(PAIR_BADGE_TONES, pair)) : "bg-muted text-muted-foreground",
+        choiceCardBadgeVariants({ size, tone }),
+        isPaired && cn("text-white", pairTone(PAIR_BADGE_TONES, pair)),
         className
       )}
       {...props}

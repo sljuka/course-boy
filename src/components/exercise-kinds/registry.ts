@@ -6,6 +6,7 @@ import { missingWordExerciseEditor } from "@/components/exercise-kinds/missing-w
 import { multipleChoiceExerciseEditor } from "@/components/exercise-kinds/multiple-choice";
 import { numericExerciseEditor } from "@/components/exercise-kinds/numeric";
 import { punctuationExerciseEditor } from "@/components/exercise-kinds/punctuation";
+import { putInOrderExerciseEditor } from "@/components/exercise-kinds/put-in-order";
 import { regionLabelExerciseEditor } from "@/components/exercise-kinds/region-label";
 import { regionMarkerExerciseEditor } from "@/components/exercise-kinds/region-marker";
 import { regionPickerExerciseEditor } from "@/components/exercise-kinds/region-picker";
@@ -27,6 +28,7 @@ const EXERCISE_KIND_EDITORS: Record<ExerciseKind, ExerciseKindEditor<any, any, a
   "multiple-choice": multipleChoiceExerciseEditor,
   numeric: numericExerciseEditor,
   punctuation: punctuationExerciseEditor,
+  "put-in-order": putInOrderExerciseEditor,
   "region-label": regionLabelExerciseEditor,
   "region-marker": regionMarkerExerciseEditor,
   "region-picker": regionPickerExerciseEditor,

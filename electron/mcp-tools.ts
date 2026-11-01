@@ -188,6 +188,30 @@ const questionSchema = z.discriminatedUnion("type", [
     readAloud,
     tags,
   }),
+  // Put in order (SLJ-177): `items` in the right order; the student sees them
+  // shuffled and numbers them by tapping in turn.
+  z.object({
+    type: z.literal("put_in_order"),
+    image,
+    prompt: z.string().min(1).describe('The instruction, e.g. "Put the story in order."'),
+    items: z
+      .array(z.string().min(1))
+      .min(2)
+      .max(10)
+      .describe("2 to 10 items in the RIGHT order; with a picture, what it shows (its alt text); with listen, what's heard"),
+    images: z
+      .array(z.string().min(1).nullable())
+      .optional()
+      .describe("A picture per item (filenames as add_image returned them), null for a text item; same length as items"),
+    listen: z
+      .boolean()
+      .optional()
+      .describe("The items are heard (read aloud in `readAloud`'s language), never shown: e.g. hear the steps, put them in order"),
+    hint: z.string().optional(),
+    points,
+    readAloud,
+    tags,
+  }),
   z.object({
     type: z.literal("multiple_choice"),
     image,
@@ -465,6 +489,24 @@ function exerciseFromQuestion(
     };
   }
 
+  if (question.type === "put_in_order") {
+    const images = question.images ?? [];
+    if (images.length > 0 && images.length !== question.items.length) {
+      throw new Error(`"${question.prompt}": images needs one entry per item (null for none)`);
+    }
+    if (images.some((file) => file !== null && resolveAssetFilename(file) === null)) {
+      throw new Error(`"${question.prompt}": an image isn't a file name in the course`);
+    }
+    if (question.listen && !question.readAloud) throw new Error(`"${question.prompt}": listen needs readAloud, the language the items are heard in`);
+    return {
+      ...(images.some((file) => file !== null) ? { images } : {}),
+      kind: "put-in-order",
+      ...(question.listen ? { listen: true } : {}),
+      locales: { [locale]: { ...hint, items: question.items, prompt: question.prompt } },
+      tags: [],
+    };
+  }
+
   if (question.type === "multiple_choice") {
     const correct = [...new Set(question.correct)].sort((left, right) => left - right);
     if (correct.some((index) => index >= question.options.length)) {
@@ -626,6 +668,17 @@ function questionFromExercise(exercise: CourseExercise): Record<string, unknown>
       ...(leftImages.some((file) => file !== null) ? { leftImages } : {}),
       ...(rightImages.some((file) => file !== null) ? { rightImages } : {}),
       ...(exercise.listenLeft ? { listen: true } : {}),
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  if (exercise.kind === "put-in-order") {
+    const images = exercise.imageUrls.map((url) => (url ? decodeURIComponent(url.split("/").pop() ?? "") : null));
+    return {
+      items: exercise.items,
+      prompt: exercise.prompt,
+      type: "put_in_order",
+      ...(images.some((file) => file !== null) ? { images } : {}),
+      ...(exercise.listen ? { listen: true } : {}),
       ...(exercise.hint ? { hint: exercise.hint } : {}),
     };
   }

@@ -1700,5 +1700,23 @@
     "removePair": "Ukloni par {{number}}",
     "addPair": "Dodaj par",
     "listenLeft": "Leve stavke se čuju, ne vide se (čita ih glas na jeziku izabranom pod Čitanje naglas)"
+  },
+  "putInOrder": {
+    "answerLabel": "Kartice za ređanje",
+    "heardItem": "Zvuk {{letter}}",
+    "listenTo": "Poslušaj {{letter}}",
+    "placedLabel": "{{label}}, broj {{number}}",
+    "noAnswer": "Prvo dodirni kartice redom.",
+    "printNote": "U kućicu upiši redni broj.",
+    "printNoteHeard": "Slušaj učitelja, pa uz svako slovo upiši redni broj.",
+    "promptPlaceholder": "Poređaj priču.",
+    "itemsLabel": "Stavke, pravim redom",
+    "itemsHelp": "Ovaj redosled je tačan odgovor; učenik vidi stavke izmešane. Stavka je tekst ili slika; uz sliku, tekst kaže šta je na njoj (za čitače ekrana).",
+    "item": "Stavka {{number}}",
+    "moveUp": "Pomeri stavku {{number}} gore",
+    "moveDown": "Pomeri stavku {{number}} dole",
+    "removeItem": "Ukloni stavku {{number}}",
+    "addItem": "Dodaj stavku",
+    "listen": "Stavke se čuju, ne vide se (čita ih glas na jeziku izabranom pod Čitanje naglas)"
   }
 }

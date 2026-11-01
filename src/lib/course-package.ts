@@ -109,7 +109,8 @@ export type ExerciseKind =
   | "punctuation"
   | "rewrite"
   | "listen-choose"
-  | "match-pairs";
+  | "match-pairs"
+  | "put-in-order";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -183,6 +184,21 @@ export type MatchPairsCourseExercise = {
   leftImageUrls: (string | null)[];
   rightImageUrls: (string | null)[];
   listenLeft: boolean;
+};
+
+// Put in order (SLJ-177): `items` in the right order, shown shuffled; the
+// student numbers them by tapping in turn. An item is text or a picture; with
+// `listen`, the items are heard, not shown.
+export type PutInOrderCourseExercise = {
+  kind: "put-in-order";
+  hint?: string;
+  id: string;
+  media?: CourseExerciseMedia;
+  prompt: string;
+  tags: string[];
+  items: string[];
+  imageUrls: (string | null)[];
+  listen: boolean;
 };
 
 export type WordTypeDefinition = {
@@ -382,6 +398,7 @@ export type CourseExercise = (
   | RewriteCourseExercise
   | ListenChooseCourseExercise
   | MatchPairsCourseExercise
+  | PutInOrderCourseExercise
 ) &
   ExercisePointsField &
   ExerciseSpeechField;
@@ -489,6 +506,18 @@ export type SharedMatchPairsTestExerciseDefinition = {
   tags: string[];
 };
 
+// On disk (SLJ-177): the items in the right order, each language's texts in
+// `locales`, pictures (a course asset's filename or null) outside it.
+// `listen`: the items are heard (their text, never shown, in `speech.lang`).
+export type SharedPutInOrderTestExerciseDefinition = {
+  kind: "put-in-order";
+  locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; items: string[] }>>;
+  media?: SharedExerciseMedia;
+  images?: (string | null)[];
+  listen?: boolean;
+  tags: string[];
+};
+
 export type SharedMultipleChoiceTestExerciseDefinition = {
   kind: "multiple-choice";
   locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; options: string[] }>>;
@@ -593,6 +622,7 @@ export type SharedTestExerciseDefinition = (
   | SharedRewriteTestExerciseDefinition
   | SharedListenChooseTestExerciseDefinition
   | SharedMatchPairsTestExerciseDefinition
+  | SharedPutInOrderTestExerciseDefinition
 ) &
   ExercisePointsField &
   ExerciseSpeechField;

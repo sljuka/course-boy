@@ -14,6 +14,7 @@ import { missingWordExerciseRuntime } from "./missing-word";
 import { multipleChoiceExerciseRuntime } from "./multiple-choice";
 import { numericExerciseRuntime } from "./numeric";
 import { punctuationExerciseRuntime } from "./punctuation";
+import { putInOrderExerciseRuntime } from "./put-in-order";
 import { regionLabelExerciseRuntime } from "./region-label";
 import { regionMarkerExerciseRuntime } from "./region-marker";
 import { regionPickerExerciseRuntime } from "./region-picker";
@@ -35,6 +36,7 @@ const EXERCISE_KIND_RUNTIMES: Record<ExerciseKind, ExerciseKindRuntime<any, any>
   "multiple-choice": multipleChoiceExerciseRuntime,
   numeric: numericExerciseRuntime,
   punctuation: punctuationExerciseRuntime,
+  "put-in-order": putInOrderExerciseRuntime,
   "region-label": regionLabelExerciseRuntime,
   "region-marker": regionMarkerExerciseRuntime,
   "region-picker": regionPickerExerciseRuntime,

@@ -4076,4 +4076,45 @@ describe('read aloud', () => {
     await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
     await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
   })
+  // SLJ-177: tap the cards in turn; a numbered card tapped again gives its number back.
+  it('puts cards in order by tapping them in turn', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Order Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Plants' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Put in order' })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [{ kind: 'put-in-order', locales: { en: { items: ['dig', 'seed', 'water'], prompt: 'Put in order.' } }, tags: [] }],
+          template: '',
+        },
+        testId,
+      })
+      return { courseId, testId }
+    })
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const card = (name) => page.locator('[data-testid="put-in-order-item"]', { hasText: new RegExp(`^\\d?\\s*${name}$`) })
+    const order = () => page.locator('[data-testid="put-in-order-item"]').allInnerTexts()
+
+    await card('seed').click()
+    await card('dig').click()
+    await expect.poll(order).toEqual(['1\nseed', '2\ndig', 'water'])
+    // Taking "seed"'s number off moves "dig" up to 1.
+    await card('seed').click()
+    await expect.poll(async () => (await order())[0]).toBe('1\ndig')
+    await card('seed').click()
+    await card('water').click()
+    await expect.poll(order).toEqual(['1\ndig', '2\nseed', '3\nwater'])
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
+  })
 })
