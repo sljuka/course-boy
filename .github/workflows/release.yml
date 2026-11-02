@@ -1,6 +1,13 @@
-# Builds the desktop app on each OS and, for a version tag, attaches the
-# installers to a *draft* GitHub Release. Publishing that release is a manual
-# step on GitHub; nothing here publishes.
+# Checks every push to main, releases when it holds a `feat` or `fix`, and
+# builds the desktop app on each OS for that release, attaching the
+# installers to its *draft* GitHub Release. Publishing that release is a
+# manual step on GitHub; nothing here publishes.
+#
+# Versions come from the commit messages (Conventional Commits, checked by
+# commitlint): semantic-release (.releaserc.json) picks the next version, sets
+# it in package.json, writes CHANGELOG.md, commits that as
+# `chore(release): x.y.z`, tags `vx.y.z` and creates the draft release. Nobody
+# sets versions or pushes tags by hand.
 #
 # Why one runner per OS and not cross-building from one machine: the Bare
 # worker's runtime (`bare-runtime-<platform>-<arch>`) is an optional dependency
@@ -10,43 +17,98 @@
 # Builds are unsigned for now (SLJ-34): macOS Gatekeeper and Windows SmartScreen
 # will warn on first launch.
 #
+# Branches: day-to-day work goes to `develop`; merging it into `main` is what
+# releases (everything merged since the last release becomes one version).
+#
 # Triggers:
-#   - push a tag `v<version>` matching package.json's version → build + draft release
-#   - "Run workflow" on the Actions tab → build only; installers are kept as
-#     workflow artifacts for a week
+#   - push to main → check; for a `feat`/`fix`, release + build + attach
+#   - push to develop, or a pull request → check only
+#   - "Run workflow" on the Actions tab → check + build only; installers are
+#     kept as workflow artifacts for a week
 
 name: Release
 
 on:
   push:
-    tags: ['v*']
+    branches: [main, develop]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# One release at a time: two pushes in a row must not pick the same version.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The pushed commits' messages are checked below.
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-      - name: Tag matches package.json version
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          version="v$(node -p "require('./package.json').version")"
-          if [ "$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
-            exit 1
-          fi
       - run: npm ci
+      # Every commit this push added (a new branch has no `before`: only its
+      # last commit), or a pull request's commits. The local commit-msg hook
+      # can be skipped; this can't.
+      - name: Commit messages
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          BEFORE: ${{ github.event.before }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ -n "$PR_BASE" ]; then
+            npx commitlint --from "$PR_BASE" --to "$PR_HEAD" --verbose
+          elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            npx commitlint --last --verbose
+          else
+            npx commitlint --from "$BEFORE" --to "$GITHUB_SHA" --verbose
+          fi
       - run: npm run check
 
-  build:
+  release:
     needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      # Pushes the release commit and tag, and creates the draft release.
+      contents: write
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The release commit is pushed with this workflow's token, which never
+      # starts another workflow run, so it doesn't release again.
+      - id: release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          npx semantic-release
+          tag="$(git tag --points-at HEAD --list 'v*')"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if [ -n "$tag" ]; then echo "Released $tag"; else echo "No release: nothing to release in this push"; fi
+
+  build:
+    needs: [check, release]
+    # "Run workflow" (release skipped), or a push that released a version.
+    if: >-
+      always() && needs.check.result == 'success' &&
+      (github.event_name == 'workflow_dispatch' || needs.release.outputs.tag != '')
     strategy:
       fail-fast: false
       matrix:
@@ -69,7 +131,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: build (${{ matrix.name }})
     steps:
+      # The release's tag, so package.json carries its version (the installers'
+      # names and the app's About come from it); else the pushed commit.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release.outputs.tag || github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -119,9 +185,10 @@ jobs:
             release/*/*.deb
             release/*/*.rpm
 
-  draft-release:
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+  # The installers go on the draft release semantic-release created.
+  attach-installers:
+    needs: [release, build]
+    if: needs.release.outputs.tag != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -130,13 +197,10 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
-      - name: Create draft release
+      - name: Attach installers to the draft release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.release.outputs.tag }}
         run: |
           find artifacts -type f -print0 \
-            | xargs -0 gh release create "$GITHUB_REF_NAME" \
-                --repo "$GITHUB_REPOSITORY" \
-                --draft \
-                --title "Matko $GITHUB_REF_NAME" \
-                --generate-notes
+            | xargs -0 gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber

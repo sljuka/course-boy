@@ -46,9 +46,23 @@ with a `page` but no `app`. Since Electron 43 its program isn't downloaded at
 Release builds come from `.github/workflows/release.yml`, never from a laptop: it builds on
 one runner per OS (macOS arm64 and x64, Windows x64, Linux x64), because the Bare worker's
 runtime binary is installed per platform by npm and a cross-built package ships the wrong
-one. A `v<version>` tag matching `package.json` produces a *draft* GitHub Release; "Run
-workflow" only builds (its files are downloads on the run for 7 days). Linux ships as an
-AppImage, a deb and an rpm (Fedora). Builds are unsigned for now (SLJ-34).
+one. Day-to-day work goes to `develop` (checked in CI, never released); merging `develop`
+into `main` is what releases, so commit to `develop`, not `main`, and after a release bring
+the release commit back with `git merge main` on `develop`.
+
+Versions are automatic: every push to `main` is checked, and one that holds a `feat`
+or `fix` is released by semantic-release (`.releaserc.json`), which sets the version in
+`package.json`, writes `CHANGELOG.md`, commits `chore(release): x.y.z`, tags `vx.y.z` and
+creates a *draft* GitHub Release, to which the builds attach the installers. Don't set
+versions or push tags by hand. "Run workflow" only builds (its files are downloads on the
+run for 7 days). Linux ships as an AppImage, a deb and an rpm (Fedora). Builds are
+unsigned for now (SLJ-34).
+
+Commit messages follow Conventional Commits (`feat(scope): …`, `fix: …`, `docs: …`), since
+the version comes from them: `feat` → minor, `fix`/`perf` → patch, `BREAKING CHANGE` →
+major; `docs`, `test`, `build`, `ci`, `refactor`, `chore` release nothing. commitlint
+(`commitlint.config.mjs`) checks them in a commit-msg hook, installed by `npm install`
+(simple-git-hooks), and again in CI for every pushed commit.
 
 `dependencies` holds only what loads from `node_modules` at runtime — the Bare worker's
 imports and `bare-runtime` — because electron-builder ships every one of them. Anything Vite
