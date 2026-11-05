@@ -83,7 +83,7 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, val
         data-testid={`match-pairs-${side}`}
         id={`course-exercise-answer-${index}-${side}-${itemIndex}`}
         key={itemIndex}
-        kind="pair"
+        kind={image || isHeard ? "pair" : "pairText"}
         onClick={() => tap(side, itemIndex)}
         pair={row}
         picked={selected?.side === side && selected.index === itemIndex}
@@ -146,7 +146,7 @@ function PrintAnswerComponent({ exercise }: PrintAnswerComponentProps<MatchPairs
             return (
               <div className="flex items-center gap-2" key={row}>
                 <ChoiceCardMarker>{row + 1}.</ChoiceCardMarker>
-                <ChoiceCard aria-hidden="true" className="flex-1" kind="pair" tabIndex={-1}>
+                <ChoiceCard aria-hidden="true" className="flex-1" kind={image || exercise.listenLeft ? "pair" : "pairText"} tabIndex={-1}>
                   {exercise.listenLeft ? <Volume2 aria-hidden="true" className="size-6" /> : image ? <ChoiceCardImage alt={text} src={image} /> : text}
                 </ChoiceCard>
                 <ChoiceCardAnswerBox />
@@ -161,7 +161,7 @@ function PrintAnswerComponent({ exercise }: PrintAnswerComponentProps<MatchPairs
             return (
               <div className="flex items-center gap-2" key={rightIndex}>
                 <ChoiceCardMarker>{LETTERS[row]}.</ChoiceCardMarker>
-                <ChoiceCard aria-hidden="true" className="flex-1" kind="pair" tabIndex={-1}>
+                <ChoiceCard aria-hidden="true" className="flex-1" kind={image ? "pair" : "pairText"} tabIndex={-1}>
                   {image ? <ChoiceCardImage alt={text} src={image} /> : text}
                 </ChoiceCard>
               </div>

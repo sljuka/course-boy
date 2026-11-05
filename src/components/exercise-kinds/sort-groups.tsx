@@ -115,7 +115,7 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, val
         dragging={isDragging}
         id={`course-exercise-answer-${index}-${cardIndex}`}
         key={cardIndex}
-        kind="pair"
+        kind={image || exercise.listen ? "pair" : "pairText"}
         movable
         onClick={(event) => {
           // A card in a group is tapped for itself, not for its group.
@@ -220,7 +220,7 @@ function PrintAnswerComponent({ exercise }: PrintAnswerComponentProps<SortGroups
           const image = exercise.cardImageUrls[cardIndex];
           return (
             <div className="flex flex-col items-center gap-2" key={cardIndex}>
-              <ChoiceCard aria-hidden="true" className="w-full" kind="pair" tabIndex={-1}>
+              <ChoiceCard aria-hidden="true" className="w-full" kind={image && !exercise.listen ? "pair" : "pairText"} tabIndex={-1}>
                 {exercise.listen ? cardIndex + 1 : image ? <ChoiceCardImage alt={text} src={image} /> : text}
               </ChoiceCard>
               <ChoiceCardAnswerBox />

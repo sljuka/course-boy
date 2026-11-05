@@ -18,8 +18,12 @@ const choiceCardVariants = cva(
       kind: {
         picture: "aspect-square",
         text: "min-h-16 px-4",
-        // A row in a column of items to pair (SLJ-176): short, picture or text.
+        // A row in a column of items to pair or sort (SLJ-176): a picture,
+        // the same height in every card so a column lines up.
         pair: "h-20 flex-row px-3 sm:h-24",
+        // Its text twin: at least as tall, growing with a long phrase instead
+        // of cutting it off.
+        pairText: "min-h-20 px-3 py-2 text-sm/snug sm:min-h-24",
       },
       wrong: {
         false: "",
