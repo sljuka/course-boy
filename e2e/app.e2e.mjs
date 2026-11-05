@@ -18,6 +18,7 @@ import {
   clickText,
   bodyText,
   findIndex,
+  sleep,
   waitFor,
   waitForText,
   waitForUrl,
@@ -4119,6 +4120,74 @@ describe('read aloud', () => {
     await card('seed').click()
     await card('water').click()
     await expect.poll(order).toEqual(['1\ndig', '2\nseed', '3\nwater'])
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
+  })
+
+  // SLJ-180: drag the cards into place with the mouse, or with the keyboard on a card's grip.
+  it('puts cards in order by dragging them', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Drag Order Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Plants' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Drag in order' })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [{ kind: 'put-in-order', locales: { en: { items: ['dig', 'seed', 'water'], prompt: 'Put in order.' } }, tags: [] }],
+          template: '',
+        },
+        testId,
+      })
+      return { courseId, testId }
+    })
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const slots = page.locator('[data-testid="put-in-order-slot"]')
+    const words = async () => (await slots.allInnerTexts()).map((text) => text.replace(/\d/g, '').trim())
+    await expect.poll(() => slots.count()).toBe(3)
+
+    // Drag each card onto the slot where it belongs, left to right.
+    for (const [target, word] of ['dig', 'seed', 'water'].entries()) {
+      const from = await slots.nth((await words()).indexOf(word)).boundingBox()
+      const to = await slots.nth(target).boundingBox()
+      if (from.x === to.x && from.y === to.y) continue
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
+      await page.mouse.up()
+      await expect.poll(async () => (await words())[target]).toBe(word)
+    }
+    // A drop numbers every card, in the order shown.
+    await expect.poll(() => slots.allInnerTexts()).toEqual(['1\ndig', '2\nseed', '3\nwater'])
+
+    // From the keyboard: "dig" one place on, then back.
+    const grip = (word) => page.locator('[data-testid="put-in-order-slot"]', { hasText: word }).locator('[data-testid="put-in-order-handle"]')
+    // A key at a time: the drag is set up a frame after it's picked up.
+    const keys = async (...names) => {
+      for (const name of names) {
+        await page.keyboard.press(name)
+        await sleep(150)
+      }
+    }
+    await grip('dig').focus()
+    await keys('Space', 'ArrowRight', 'Space')
+    await expect.poll(words).toEqual(['seed', 'dig', 'water'])
+    await grip('dig').focus()
+    await keys('Space', 'ArrowLeft', 'Space')
+    await expect.poll(words).toEqual(['dig', 'seed', 'water'])
+
+    // A tap still takes a card's number off.
+    await page.locator('[data-testid="put-in-order-item"]', { hasText: 'water' }).click()
+    await expect.poll(() => slots.allInnerTexts()).toEqual(['1\ndig', '2\nseed', 'water'])
+    await page.locator('[data-testid="put-in-order-item"]', { hasText: 'water' }).click()
     await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
     await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
   })

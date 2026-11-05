@@ -8,6 +8,7 @@ import type {
   PrintAnswerComponentProps,
 } from "@/components/exercise-kinds/types";
 import { PutInOrderExerciseFields } from "@/components/put-in-order-exercise-fields";
+import { SortableCards } from "@/components/put-in-order-sortable";
 import type { PutInOrderTestExercise } from "@/components/test-editor-prototype-types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,9 @@ const LETTERS = "ABCDEFGHIJ";
 // Put in order (SLJ-177): tap the card that comes first, then the next…;
 // each gets its number and moves to its place, so the student sees the order
 // they built. Tapping a numbered card takes its number off (the later ones
-// move up). Heard items (`listen`) are cards named A, B, … with a 🔊 above
-// each, so listening never numbers a card.
+// move up). Or drag a card to where it belongs (SLJ-180): that fixes the order
+// of all the cards as shown. Heard items (`listen`) are cards named A, B, …
+// with a 🔊 above each, so listening never numbers a card.
 function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, value }: AnswerComponentProps<PutInOrderCourseExercise>) {
   const { t } = useTranslation();
   const read = useReadAloud(exercise.listen ? exerciseSpeechLanguage(exercise) : undefined);
@@ -40,7 +42,7 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, val
   // A heard card's name stays the same wherever it moves.
   const letterOf = (itemIndex: number) => LETTERS[instance.order.indexOf(itemIndex)] ?? "";
 
-  function card(itemIndex: number) {
+  function card(itemIndex: number, wasDropped: () => boolean) {
     const place = sequence.indexOf(itemIndex);
     const text = exercise.items[itemIndex] ?? "";
     const image = exercise.imageUrls[itemIndex];
@@ -51,10 +53,16 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, val
         aria-invalid={isWrong || undefined}
         aria-label={place === -1 ? label : t("putInOrder.placedLabel", { label, number: place + 1 })}
         aria-pressed={place !== -1}
+        // Fills its place in the grid, as wide and as tall as the row (a
+        // button is only as big as its text otherwise), with room on both
+        // sides for the number and the grip.
+        className={image && !exercise.listen ? "w-full flex-1" : "w-full flex-1 px-10"}
         data-testid="put-in-order-item"
         id={`course-exercise-answer-${index}-${itemIndex}`}
         kind={image && !exercise.listen ? "picture" : "text"}
-        onClick={() => tap(itemIndex)}
+        onClick={() => {
+          if (!wasDropped()) tap(itemIndex);
+        }}
         picked={place !== -1 && !isWrong}
         wrong={isWrong}
       >
@@ -66,9 +74,9 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, val
         {exercise.listen ? letterOf(itemIndex) : image ? <ChoiceCardImage alt={text} src={image} /> : text}
       </ChoiceCard>
     );
-    if (!exercise.listen) return <div key={itemIndex}>{choiceCard}</div>;
+    if (!exercise.listen) return choiceCard;
     return (
-      <div className="flex flex-col gap-2" key={itemIndex}>
+      <div className="flex flex-1 flex-col gap-2">
         <Button
           aria-label={t("putInOrder.listenTo", { letter: letterOf(itemIndex) })}
           data-testid="put-in-order-play"
@@ -93,7 +101,13 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, val
         </Alert>
       )}
       <ChoiceCardGrid aria-label={t("putInOrder.answerLabel")} role="group">
-        {[...sequence, ...untapped].map(card)}
+        <SortableCards
+          labelOf={(itemIndex) => (exercise.listen ? t("putInOrder.heardItem", { letter: letterOf(itemIndex) }) : (exercise.items[itemIndex] ?? ""))}
+          onReorder={(order) => onAnswerChange(encodePutInOrderAnswer(order))}
+          order={[...sequence, ...untapped]}
+        >
+          {card}
+        </SortableCards>
       </ChoiceCardGrid>
       {sequence.length > 0 && (
         <div>

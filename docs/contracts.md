@@ -805,6 +805,9 @@ same holds for options today).
 (pictures in `images`, outside `locales`), shown shuffled, never already in order. The
 answer is a JSON array of item indexes in the order the student tapped them; each item in
 its place is a part for partial credit. `listen` works like Match the pairs' `listenLeft`.
+Cards can also be dragged into place (SLJ-180, `src/components/put-in-order-sortable.tsx`,
+with `@dnd-kit`): a drop writes the order of all the cards as shown, in the same answer
+format, so dragging and tapping need nothing new on disk.
 
 **Sort into groups** (`sort-groups`, SLJ-178): `groups` and `cards` per language,
 `cardGroups[i]` (outside `locales`) the group card `i` belongs in, `cardImages` beside it.

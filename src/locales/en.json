@@ -1717,7 +1717,15 @@
     "moveDown": "Move item {{number}} down",
     "removeItem": "Remove item {{number}}",
     "addItem": "Add item",
-    "listen": "The items are heard, not shown (read aloud in the language chosen under Read aloud)"
+    "listen": "The items are heard, not shown (read aloud in the language chosen under Read aloud)",
+    "drag": {
+      "handle": "Move {{label}}",
+      "instructions": "To move a card, press Space or Enter on its grip to pick it up, use the arrow keys to move it, then Space or Enter to drop it, or Escape to cancel.",
+      "pickedUp": "Picked up {{label}}, at place {{number}}.",
+      "over": "{{label}} is now at place {{number}}.",
+      "dropped": "{{label}} dropped at place {{number}}.",
+      "cancelled": "Stopped moving {{label}}."
+    }
   },
   "sortGroups": {
     "pile": "Cards to sort",

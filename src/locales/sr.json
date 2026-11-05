@@ -1717,7 +1717,15 @@
     "moveDown": "Pomeri stavku {{number}} dole",
     "removeItem": "Ukloni stavku {{number}}",
     "addItem": "Dodaj stavku",
-    "listen": "Stavke se čuju, ne vide se (čita ih glas na jeziku izabranom pod Čitanje naglas)"
+    "listen": "Stavke se čuju, ne vide se (čita ih glas na jeziku izabranom pod Čitanje naglas)",
+    "drag": {
+      "handle": "Pomeri: {{label}}",
+      "instructions": "Da pomeriš karticu, pritisni razmak ili Enter na njenoj ručici da je podigneš, pomeraj je strelicama, pa razmak ili Enter da je spustiš, ili Escape da odustaneš.",
+      "pickedUp": "Podignuto: {{label}}, na mestu {{number}}.",
+      "over": "{{label}} je sada na mestu {{number}}.",
+      "dropped": "{{label}} spušteno na mesto {{number}}.",
+      "cancelled": "Odustao si od pomeranja: {{label}}."
+    }
   },
   "sortGroups": {
     "pile": "Kartice za razvrstavanje",
