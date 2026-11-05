@@ -1,16 +1,16 @@
-# Course boy
+# Matko
 
-**Course boy is a local-first course making, sharing and taking app, built in a way so that learning can never be offline**
+**Matko is a local-first course making, sharing and taking app, built in a way so that learning can never be offline**
 
-Course boy is designed to work without a cloud account or a central course-hosting service: course files live on your device, and teachers can share them directly with students over a peer-to-peer network, pen drives or on paper.
+Matko is designed to work without a cloud account or a central course-hosting service: course files live on your device, and teachers can share them directly with students over a peer-to-peer network, pen drives or on paper.
 
-Course boy gives teachers a practical way to create and share learning materials while giving students a simple way to use them, online or offline. It aims to make knowledge easier to create, carry, print, and pass from person to person, with control kept in the hands of the people who teach and learn.
+Matko gives teachers a practical way to create and share learning materials while giving students a simple way to use them, online or offline. It aims to make knowledge easier to create, carry, print, and pass from person to person, with control kept in the hands of the people who teach and learn.
 
 ## Local first
 
 Course content is made from Markdown files for written material, JSON for structured course data, and assets like videos, images and files. These files define a course's sections, lessons, and tests. Keeping the content in readable, ordinary formats makes courses easier to inspect, preserve, and move between devices. Courses don't contain any code, to avoid XSS attacks.
 
-Course boy is a desktop app today; a mobile app is planned. It is not intended to run in a browser: Course boy's peer-to-peer networking uses the [Bare](https://github.com/holepunchto/bare) runtime, which needs UDP sockets that browsers don't expose.
+Matko is a desktop app today; a mobile app is planned. It is not intended to run in a browser: Matko's peer-to-peer networking uses the [Bare](https://github.com/holepunchto/bare) runtime, which needs UDP sockets that browsers don't expose.
 
 ## Open course standard
 
@@ -32,7 +32,7 @@ Exercise types — and potentially other parts of the app — are planned to be 
 
 ## Print-friendly
 
-The same lesson and test that render on screen also have a print layout, so paper is a first-class way to take a course — not an afterthought. No device and no network are required to use a printed course; a teacher can author on Course boy and hand out paper without either side needing the app again.
+The same lesson and test that render on screen also have a print layout, so paper is a first-class way to take a course — not an afterthought. No device and no network are required to use a printed course; a teacher can author on Matko and hand out paper without either side needing the app again.
 
 ## Ownership & control (Roadmap)
 
@@ -42,7 +42,7 @@ A course's publishing key doesn't have to belong to one person. The plan is m-of
 
 The plan is an agent that reads a lesson's content and suggests exercises to pair with it, and recommends how to structure a new course — how many sections, what exercise types fit the subject — instead of a teacher starting from a blank editor every time.
 
-Course authoring is planned to be exposed as MCP tools, so a teacher can build a course from Claude, or any other MCP client, not only Course boy's own editor. The course schema is already usable this way experimentally — this was tried locally with Claude, and an agent already creates new courses this way whenever the e2e suite runs.
+Course authoring is planned to be exposed as MCP tools, so a teacher can build a course from Claude, or any other MCP client, not only Matko's own editor. The course schema is already usable this way experimentally — this was tried locally with Claude, and an agent already creates new courses this way whenever the e2e suite runs.
 
 ## AI companion for students (Roadmap)
 
@@ -71,7 +71,7 @@ A course is edited as a draft, and a teacher explicitly cuts a version (using se
 
 ## Mobile & desktop
 
-Course boy runs today as a desktop app (Electron), with the full authoring and peer-to-peer experience available. A mobile app is planned. Browser isn't a good fit: the peer-to-peer layer uses UDP sockets, which browsers don't expose.
+Matko runs today as a desktop app (Electron), with the full authoring and peer-to-peer experience available. A mobile app is planned. Browser isn't a good fit: the peer-to-peer layer uses UDP sockets, which browsers don't expose.
 
 ## Easy onboarding for non-technical teachers
 
@@ -79,11 +79,11 @@ Getting started only takes a nickname. A teacher who just wants to write a cours
 
 Setting up a sharing identity is a separate, dedicated onboarding step of its own — it only shows up once a teacher is ready to publish a course over the peer-to-peer network, not before. Peer-to-peer work runs in a separate native worker, and sharing is always an explicit choice; the keypair behind it is a teacher's persistent sharing identity, so it should be protected — it can't simply be replaced without changing that identity.
 
-Course boy is an evolving project, so none of this should be read as a claim that every part of the app or network has undergone an independent security audit.
+Matko is an evolving project, so none of this should be read as a claim that every part of the app or network has undergone an independent security audit.
 
 ## Current implementation
 
-Course boy is built with Electron, Vite, React, and TypeScript. Course packages are stored as files on disk. The peer-to-peer layer uses Bare, Hyperswarm, Corestore, and Hyperdrive. The app currently supports course authoring, printing, publishing, and peer-to-peer course sharing and importing. See [CLAUDE.md](CLAUDE.md) and the [project docs](docs/) for architecture and implementation details.
+Matko is built with Electron, Vite, React, and TypeScript. Course packages are stored as files on disk. The peer-to-peer layer uses Bare, Hyperswarm, Corestore, and Hyperdrive. The app currently supports course authoring, printing, publishing, and peer-to-peer course sharing and importing. See [CLAUDE.md](CLAUDE.md) and the [project docs](docs/) for architecture and implementation details.
 
 ## Future plan
 
@@ -112,4 +112,4 @@ npm run build        # production build
 
 ## License
 
-Course boy is licensed under [AGPL-3.0-or-later](LICENSE).
+Matko is licensed under [AGPL-3.0-or-later](LICENSE).
