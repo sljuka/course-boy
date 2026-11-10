@@ -171,6 +171,7 @@ import {
 import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
+  CourseUpdateCheck,
   CourseUpdateInfo,
   FoundCode,
   ImportCourseInput,
@@ -1702,6 +1703,16 @@ ipcMain.handle('sharing:get-course-sharing', async (_event, courseId: string) =>
 
 ipcMain.handle('sharing:list-course-updates', () => {
   return profile.courseSharing.listUpdates() satisfies Record<string, CourseUpdateInfo>
+})
+
+// "Check for updates" on an imported course (SLJ-184): asks now and says what
+// it found, waiting a while for someone sharing the course.
+ipcMain.handle('sharing:check-course-update', async (_event, courseId: string) => {
+  if (!isValidCourseId(courseId)) {
+    throw new Error(`Invalid course id "${courseId}"`)
+  }
+
+  return (await profile.courseSharing.checkNow(courseId)) satisfies CourseUpdateCheck
 })
 
 ipcMain.handle('sharing:apply-course-update', async (_event, courseId: string, transferId?: string) => {

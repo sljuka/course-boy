@@ -521,3 +521,88 @@ describe('course sharing: updates', () => {
     expect(sharing.listUpdates()).toMatchObject({ 'course-b': { version: '0.2' } })
   })
 })
+
+describe('course sharing: "Check for updates" (SLJ-184)', () => {
+  const imported = {
+    followed: { 'course-b': { driveKey: 'drive-b', followedSince: '', publisherId: 'teacher' } },
+    published: {},
+  }
+
+  it('waits for someone sharing the course and offers a newer version, also after "Finish on this version"', async () => {
+    // A regular update (no version that fixes mistakes, which would still show prominently).
+    const checkUpdate = vi.fn(async () => remote('0.3', { changelog: [] }))
+    const { sharing } = setup({
+      initial: { ...imported, followed: { 'course-b': { ...imported.followed['course-b'], finishOnVersion: true } } },
+      worker: { checkUpdate },
+    })
+
+    await expect(sharing.checkNow('course-b')).resolves.toEqual({ installedVersion: '0.1', status: 'update', version: '0.3' })
+    expect(checkUpdate).toHaveBeenCalledWith('drive-b', { waitForPeers: true })
+    // Offered on the course page, as a quiet line there after "Finish on this version".
+    expect(sharing.getInfo('course-b').update).toMatchObject({ version: '0.3', visibility: 'quiet' })
+  })
+
+  it('says the installed version is the newest, and clears an offer that no longer holds', async () => {
+    const { sharing, state } = setup({
+      initial: {
+        ...imported,
+        followed: {
+          'course-b': {
+            ...imported.followed['course-b'],
+            pendingUpdate: { changelog: [], isMajor: false, recommended: false, version: '0.2' },
+          },
+        },
+      },
+      installedVersion: '0.2',
+      worker: { checkUpdate: vi.fn(async () => remote('0.2')) },
+    })
+
+    await expect(sharing.checkNow('course-b')).resolves.toEqual({ installedVersion: '0.2', status: 'up-to-date' })
+    expect(state().followed['course-b'].pendingUpdate).toBeNull()
+  })
+
+  it('says when nobody sharing the course is online, and changes nothing', async () => {
+    const { sharing, state } = setup({
+      initial: imported,
+      worker: { checkUpdate: vi.fn(async () => ({ ...remote('0.1'), nobodyOnline: true })) },
+    })
+    const before = state()
+
+    await expect(sharing.checkNow('course-b')).resolves.toEqual({ installedVersion: '0.1', status: 'nobody-online' })
+    expect(state()).toBe(before)
+  })
+
+  it('reports a refused version', async () => {
+    const { sharing } = setup({
+      initial: imported,
+      worker: {
+        checkUpdate: vi.fn(async () => remote('0.3', { source: { driveKey: 'drive-x', publisher: { id: 'x' } } })),
+      },
+    })
+
+    await expect(sharing.checkNow('course-b')).resolves.toEqual({ status: 'refused', version: '0.3' })
+  })
+
+  it('says why it could not check: not followed here, no installed version, or the worker failed', async () => {
+    expect(await setup().sharing.checkNow('course-b')).toEqual({ reason: 'not-followed', status: 'error' })
+    expect(await setup({ initial: imported, installedVersion: null as unknown as string }).sharing.checkNow('course-b')).toEqual({
+      reason: 'no-version',
+      status: 'error',
+    })
+    const failing = setup({
+      initial: imported,
+      worker: { checkUpdate: vi.fn(async () => Promise.reject(new Error('Timed out waiting for the course\'s peers'))) },
+    })
+    expect(await failing.sharing.checkNow('course-b')).toEqual({ reason: 'failed', status: 'error' })
+  })
+
+  it('follows a course that moved, then asks again at its new code', async () => {
+    const checkUpdate = vi.fn(async (driveKey: string) =>
+      driveKey === 'drive-b' ? remote('0.1', { movedTo: 'drive-c' }) : remote('0.4', { source: { driveKey: 'drive-c', publisher: { id: 'teacher' } } }),
+    )
+    const { sharing, worker } = setup({ initial: imported, worker: { checkUpdate } })
+
+    await expect(sharing.checkNow('course-b')).resolves.toMatchObject({ status: 'update', version: '0.4' })
+    expect(worker.followCourse).toHaveBeenCalledWith('drive-c')
+  })
+})

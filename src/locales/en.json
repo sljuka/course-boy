@@ -866,7 +866,26 @@
     "availableBadge": "Update {{version}}",
     "recommendedBadge": "Recommended update {{version}}",
     "versionsOnDevice": "Versions on this device",
-    "newestVersion": "{{version}} (newest)"
+    "newestVersion": "{{version}} (newest)",
+    "check": {
+      "menuItem": "Check for updates",
+      "title": "Check for updates",
+      "checking": "Looking for a newer version…",
+      "checkingHint": "It may take up to half a minute to reach someone sharing this course.",
+      "upToDateTitle": "You have the newest version",
+      "upToDateDescription": "Version {{version}} is the newest one shared for this course.",
+      "updateTitle": "Version {{version}} is available",
+      "updateDescription": "You have version {{installed}}. Update it on the course page.",
+      "showUpdate": "Show the update",
+      "nobodyOnlineTitle": "Nobody sharing this course is online",
+      "nobodyOnlineDescription": "Try again when your teacher or a classmate has Matko open. You have version {{version}}.",
+      "errorTitle": "Couldn’t check for updates",
+      "errorFailed": "Something went wrong while asking. Try again in a little while.",
+      "errorNotFollowed": "This device doesn’t follow this course for updates.",
+      "errorNoVersion": "The version of this course on this device can’t be read.",
+      "retry": "Try again",
+      "close": "Close"
+    }
   },
   "draftSection": {
     "titleLabel": "Section title",

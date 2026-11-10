@@ -578,6 +578,21 @@ async function start() {
     return buffer ? JSON.parse(buffer.toString()) : null
   }
 
+  // Whether someone sharing the drive is connected within `ms`.
+  function waitForAPeer(drive, ms) {
+    if (drive.core.peers.length > 0) return Promise.resolve(true)
+    return new Promise((resolve) => {
+      const done = (found) => {
+        clearTimeout(timer)
+        drive.core.off('peer-add', onPeer)
+        resolve(found)
+      }
+      const onPeer = () => done(true)
+      const timer = setTimeout(() => done(false), ms)
+      drive.core.on('peer-add', onPeer)
+    })
+  }
+
   function getFollowedDrive(driveKey) {
     const entry = followedDrives.get(IdEncoding.decode(driveKey).toString('hex'))
     if (!entry) {
@@ -588,9 +603,20 @@ async function start() {
 
   // What the drive offers now: just the small files that say which version it
   // is and what changed (no lessons or assets are downloaded here).
-  async function checkUpdate(driveKey) {
+  // `waitForPeers` (the student asked, SLJ-184): wait a while for someone
+  // sharing the course and for the newest version they have, instead of
+  // answering from what this device already has. Nobody online by then is an
+  // answer of its own (`nobodyOnline`).
+  async function checkUpdate(driveKey, { waitForPeers = false } = {}) {
     const drive = getFollowedDrive(driveKey)
-    await drive.update()
+    if (waitForPeers) {
+      if (!(await waitForAPeer(drive, PEEK_TIMEOUT_MS))) {
+        return { changelog: [], courseId: null, nobodyOnline: true, source: null, version: null }
+      }
+      await withTimeout(drive.update({ wait: true }), REMOTE_READ_TIMEOUT_MS, "Timed out waiting for the course's peers")
+    } else {
+      await drive.update()
+    }
 
     const manifest = await readRemoteJson(drive, '/course.json')
     const changelog = await readRemoteJson(drive, '/changelog.json')
@@ -1894,10 +1920,10 @@ async function start() {
     }
 
     if (req.command === CMD_CHECK_UPDATE) {
-      const { driveKey } = JSON.parse(req.data.toString())
+      const { driveKey, waitForPeers } = JSON.parse(req.data.toString())
 
       try {
-        req.reply(JSON.stringify(await checkUpdate(driveKey)))
+        req.reply(JSON.stringify(await checkUpdate(driveKey, { waitForPeers: waitForPeers === true })))
       } catch (error) {
         console.error('[worker] failed to check for an update:', error)
         req.reply(JSON.stringify({ error: error.message }))

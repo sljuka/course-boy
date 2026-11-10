@@ -246,6 +246,7 @@ interface Window {
     searchRestoredCourses: () => Promise<void>
     getCourseSharing: (courseId: string) => Promise<import('../src/lib/sharing').CourseSharingInfo>
     listCourseUpdates: () => Promise<Record<string, import('../src/lib/sharing').CourseUpdateInfo>>
+    checkCourseUpdate: (courseId: string) => Promise<import('../src/lib/sharing').CourseUpdateCheck>
     applyCourseUpdate: (
       courseId: string,
       transferId?: string,

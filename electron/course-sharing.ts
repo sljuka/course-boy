@@ -24,6 +24,7 @@ import type {
   Cancelled,
   CourseSharingInfo,
   CourseSharingStatus,
+  CourseUpdateCheck,
   CourseUpdateInfo,
 } from '../src/lib/sharing'
 
@@ -64,6 +65,8 @@ export type RemoteCourseVersion = {
   // Where the course continues, if its drive says it moved (the worker checks
   // the notice is the drive's own).
   movedTo?: string | null
+  // Asked with `waitForPeers` and nobody sharing it came online (SLJ-184).
+  nobodyOnline?: boolean
   source: { driveKey?: unknown; publisher?: { id?: unknown } } | null
   version: string | null
 }
@@ -161,7 +164,7 @@ export type CourseSharingStore = {
 }
 
 export type CourseSharingWorker = {
-  checkUpdate(driveKey: string): Promise<RemoteCourseVersion>
+  checkUpdate(driveKey: string, options?: { waitForPeers?: boolean }): Promise<RemoteCourseVersion>
   downloadUpdate(
     driveKey: string,
     targetPath: string,
@@ -407,7 +410,55 @@ export function createCourseSharing(deps: CourseSharingDeps) {
     }
   }
 
+  // The student asked (SLJ-184): look now, waiting a while for someone sharing
+  // the course, and say what was found; unlike the checks the app does on its
+  // own, nothing is left unsaid. A newer version is recorded like theirs, so
+  // the course page offers it (also after "Finish on this version", as a quiet
+  // line). A course that moved is followed there first, then asked again.
+  async function checkNow(courseId: string, movesLeft = 3): Promise<CourseUpdateCheck> {
+    const followed = deps.store.read().followed[courseId]
+    if (!followed) {
+      return { reason: 'not-followed', status: 'error' }
+    }
+    const installedVersion = await deps.readInstalledVersion(courseId)
+    if (!installedVersion) {
+      return { reason: 'no-version', status: 'error' }
+    }
+
+    let remote: RemoteCourseVersion
+    try {
+      remote = await deps.worker.checkUpdate(followed.driveKey, { waitForPeers: true })
+    } catch (error) {
+      console.error(`[course-sharing] checking ${courseId} for an update (asked) failed:`, error)
+      return { reason: 'failed', status: 'error' }
+    }
+    if (remote.nobodyOnline) {
+      return { installedVersion, status: 'nobody-online' }
+    }
+
+    const movedTo = remote.movedTo
+    if (movedTo && movedTo !== followed.driveKey && !(followed.previousDriveKeys ?? []).includes(movedTo)) {
+      if (movesLeft === 0) return { reason: 'failed', status: 'error' }
+      await checkForUpdate(courseId)
+      return checkNow(courseId, movesLeft - 1)
+    }
+
+    const verdict = evaluateRemoteVersion(courseId, followed, remote, installedVersion)
+    if (verdict.kind === 'update') {
+      updateFollowed(courseId, { pendingUpdate: verdict.update, refusedUpdate: null })
+      return { installedVersion, status: 'update', version: verdict.update.version }
+    }
+    if (verdict.kind === 'refused') {
+      updateFollowed(courseId, { refusedUpdate: { version: verdict.version } })
+      return { status: 'refused', version: verdict.version }
+    }
+    updateFollowed(courseId, { pendingUpdate: null })
+    return { installedVersion, status: 'up-to-date' }
+  }
+
   return {
+    checkNow,
+
     // At app start: reshare published courses (if consented), follow imported
     // ones and look for updates to them.
     async start(): Promise<void> {

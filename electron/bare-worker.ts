@@ -273,8 +273,13 @@ export async function followCourse(driveKey: string): Promise<void> {
 
 // Which version an imported course's drive holds now, from its small files
 // (course.json, changelog.json, source.json); nothing else is downloaded.
-export async function checkUpdate(driveKey: string): Promise<RemoteCourseVersion> {
-  return sendCommand<RemoteCourseVersion>(CMD_CHECK_UPDATE, { driveKey })
+// `waitForPeers`: asked by the student (SLJ-184), so wait for someone sharing
+// it; with nobody online the answer says so (`nobodyOnline`).
+export async function checkUpdate(
+  driveKey: string,
+  { waitForPeers = false }: { waitForPeers?: boolean } = {},
+): Promise<RemoteCourseVersion> {
+  return sendCommand<RemoteCourseVersion>(CMD_CHECK_UPDATE, { driveKey, waitForPeers })
 }
 
 export type DownloadedUpdate = {

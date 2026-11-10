@@ -429,6 +429,40 @@ describe('sharing across restarts', () => {
       .toBe(current)
   })
 
+  // SLJ-184: the student asks, from the course's menu, and always gets an answer.
+  it('"Check for updates" in the course menu says the version is the newest, then finds one published while the student was away', async () => {
+    let student = apps.student3.page
+    const checkFromMenu = async (page) => {
+      await page.getByRole('button', { name: 'Course actions for E2E Shared Course' }).click()
+      await page.click('[data-testid="check-course-update"]')
+      await waitFor(page, () => document.querySelector('[data-testid="check-course-update-result"]') !== null, {
+        timeout: 60_000,
+      })
+      return page.locator('[data-testid="check-course-update-result"]').getAttribute('data-status')
+    }
+
+    const { current } = (await student.evaluate((id) => window.sharing.getCourseSharing(id), courseId)).versions
+    expect(await checkFromMenu(student)).toBe('up-to-date')
+    expect(await bodyText(student, '[role="dialog"]')).toContain(`Version ${current} is the newest one shared`)
+    await student.click('[data-testid="check-course-update-close"]')
+
+    await close('student3')
+    const teacherPage = apps.teacher.page
+    await writeLesson(teacherPage, ids, 'Checked for by hand.')
+    const next = await cutAndPublish(teacherPage, courseId)
+    await waitForSharing(teacherPage, courseId, (info) => info.status === 'shared')
+
+    student = await launch('student3', { fresh: false })
+    await student.evaluate((id) => {
+      location.hash = `#/courses/${id}`
+    }, courseId)
+    expect(await checkFromMenu(student)).toBe('update')
+    expect(await bodyText(student, '[role="dialog"]')).toContain(`Version ${next} is available`)
+    await student.click('[data-testid="check-course-update-show"]')
+    await waitFor(student, () => document.querySelector('[data-testid="apply-course-update"]') !== null)
+    await expect(student.evaluate((id) => window.sharing.applyCourseUpdate(id), courseId)).resolves.toEqual({ version: next })
+  })
+
   it("an imported course's menu offers Open in file system", async () => {
     const student = apps.student3.page
     await student.getByRole('button', { name: 'Course actions for E2E Shared Course' }).click()

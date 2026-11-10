@@ -27,6 +27,20 @@ export type CourseUpdateInfo = {
   visibility: 'prominent' | 'quiet'
 }
 
+// What "Check for updates" found when the student asked (SLJ-184).
+// - up-to-date: the newest version anyone sharing it has is the installed one.
+// - update: a newer one, now offered on the course page as usual.
+// - refused: a newer one, but from a different source than the course's.
+// - nobody-online: nobody sharing the course is online right now.
+// - error: the course isn't followed on this device, its version can't be
+//   read, or asking failed.
+export type CourseUpdateCheck =
+  | { installedVersion: string; status: 'up-to-date' }
+  | { installedVersion: string; status: 'update'; version: string }
+  | { status: 'refused'; version: string }
+  | { installedVersion: string; status: 'nobody-online' }
+  | { reason: 'failed' | 'no-version' | 'not-followed'; status: 'error' }
+
 export type CourseSharingInfo = {
   // Your own course: known once it has been shared at least once; stays valid
   // afterwards. An imported course: the code it was imported with, to share

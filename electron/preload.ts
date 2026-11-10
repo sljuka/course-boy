@@ -62,6 +62,7 @@ import type { UserPreferences } from '../src/lib/preferences'
 import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
+  CourseUpdateCheck,
   CourseUpdateInfo,
   FoundCode,
   ImportCourseInput,
@@ -502,6 +503,10 @@ contextBridge.exposeInMainWorld('sharing', {
   },
   listCourseUpdates() {
     return ipcRenderer.invoke('sharing:list-course-updates') as Promise<Record<string, CourseUpdateInfo>>
+  },
+  // "Check for updates" (SLJ-184): asks now and says what it found.
+  checkCourseUpdate(courseId: string) {
+    return ipcRenderer.invoke('sharing:check-course-update', courseId) as Promise<CourseUpdateCheck>
   },
   applyCourseUpdate(courseId: string, transferId?: string) {
     return ipcRenderer.invoke('sharing:apply-course-update', courseId, transferId) as Promise<ApplyCourseUpdateResult>

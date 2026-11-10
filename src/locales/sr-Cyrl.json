@@ -866,7 +866,26 @@
     "availableBadge": "Ажурирање {{version}}",
     "recommendedBadge": "Препоручено ажурирање {{version}}",
     "versionsOnDevice": "Верзије на овом уређају",
-    "newestVersion": "{{version}} (најновија)"
+    "newestVersion": "{{version}} (најновија)",
+    "check": {
+      "menuItem": "Провери да ли постоји нова верзија",
+      "title": "Провера нове верзије",
+      "checking": "Тражим новију верзију…",
+      "checkingHint": "Може да потраје до пола минута док се не повежем са неким ко дели овај курс.",
+      "upToDateTitle": "Имате најновију верзију",
+      "upToDateDescription": "Верзија {{version}} је најновија која се дели за овај курс.",
+      "updateTitle": "Доступна је верзија {{version}}",
+      "updateDescription": "Имате верзију {{installed}}. Ажурирајте је на страници курса.",
+      "showUpdate": "Прикажи ажурирање",
+      "nobodyOnlineTitle": "Нико ко дели овај курс није на мрежи",
+      "nobodyOnlineDescription": "Покушајте поново кад наставник или неко из разреда има отворен Matko. Имате верзију {{version}}.",
+      "errorTitle": "Провера није успела",
+      "errorFailed": "Нешто није у реду при провери. Покушајте поново мало касније.",
+      "errorNotFollowed": "Овај уређај не прати овај курс ради ажурирања.",
+      "errorNoVersion": "Верзија овог курса на овом уређају не може да се прочита.",
+      "retry": "Покушај поново",
+      "close": "Затвори"
+    }
   },
   "draftSection": {
     "titleLabel": "Наслов секције",

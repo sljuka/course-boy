@@ -1,8 +1,9 @@
-import { EyeOff, FolderOpen, RotateCcw, Trash2, type LucideIcon } from "lucide-react";
+import { EyeOff, FolderOpen, RefreshCw, RotateCcw, Trash2, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
+import { CheckCourseUpdateDialog } from "@/components/course-details/check-course-update-dialog";
 import { ClearProgressDialog } from "@/components/course-progress/clear-progress-dialog";
 import { RemoveCourseDialog } from "@/components/course-search/remove-course-dialog";
 import type { CourseDistribution } from "@/lib/course-package";
@@ -23,8 +24,8 @@ export type CourseAction = {
 };
 
 // A course's own actions, shared by its ⋯ menu and its right-click menu (on
-// lists, SLJ-12), so both always offer the same: Open in file system for an
-// imported course, Clear course progress (off while there's none; it keeps
+// lists, SLJ-12), so both always offer the same: Check for updates (SLJ-184)
+// and Open in file system for an imported course, Clear course progress (off while there's none; it keeps
 // the star), then Hide for the bundled course or Remove course, which asks
 // first and then leaves for `afterRemovePath` (the course is gone).
 // `dialogs` must be rendered next to the menu.
@@ -33,6 +34,7 @@ export function useCourseActions(course: CourseActionsCourse, afterRemovePath: s
   const navigate = useNavigate();
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
   const [isClearProgressOpen, setIsClearProgressOpen] = useState(false);
+  const [isCheckUpdateOpen, setIsCheckUpdateOpen] = useState(false);
   const { data: progress } = useCourseProgressQuery();
   const courseProgress = progress?.courses[course.id];
   const hasProgress = Boolean(courseProgress?.startedAt) || Object.keys(courseProgress?.steps ?? {}).length > 0;
@@ -46,6 +48,13 @@ export function useCourseActions(course: CourseActionsCourse, afterRemovePath: s
     // system" on your own courses (same icon).
     ...(course.distribution === "imported"
       ? [
+          {
+            icon: RefreshCw,
+            id: "check-for-updates",
+            label: t("courseUpdates.check.menuItem"),
+            onSelect: () => setIsCheckUpdateOpen(true),
+            testId: "check-course-update",
+          },
           {
             icon: FolderOpen,
             id: "open-in-file-system",
@@ -83,6 +92,7 @@ export function useCourseActions(course: CourseActionsCourse, afterRemovePath: s
 
   const dialogs = (
     <>
+      <CheckCourseUpdateDialog course={isCheckUpdateOpen ? course : null} onOpenChange={setIsCheckUpdateOpen} />
       <ClearProgressDialog course={isClearProgressOpen ? course : null} onOpenChange={setIsClearProgressOpen} />
       <RemoveCourseDialog
         course={isRemoveOpen ? course : null}

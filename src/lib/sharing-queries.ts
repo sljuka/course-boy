@@ -5,6 +5,7 @@ import type {
   ApplyCourseUpdateResult,
   CourseSharingInfo,
   TransferInfo,
+  CourseUpdateCheck,
   CourseUpdateInfo,
   FoundCode,
   ImportCourseInput,
@@ -47,6 +48,15 @@ async function invalidateAfterUpdateChange(courseId: string) {
     queryClient.invalidateQueries({ queryKey: ["courses", "list"] }),
     queryClient.invalidateQueries({ queryKey: ["courses", "detail", courseId] }),
   ]);
+}
+
+// "Check for updates" (SLJ-184). A newer version found is then offered on the
+// course page and on Home, like one found on its own.
+export function useCheckCourseUpdateMutation() {
+  return useMutation<CourseUpdateCheck, Error, string>({
+    mutationFn: (courseId) => window.sharing.checkCourseUpdate(courseId),
+    onSuccess: (_result, courseId) => invalidateAfterUpdateChange(courseId),
+  });
 }
 
 export function useApplyCourseUpdateMutation() {
