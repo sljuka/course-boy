@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ChoiceCard, ChoiceCardAnswerBox, ChoiceCardBadge, ChoiceCardGrid, ChoiceCardImage } from "@/components/ui/choice-card";
 import type { PutInOrderCourseExercise, SharedPutInOrderTestExerciseDefinition } from "@/lib/course-package";
-import { decodePutInOrderAnswer, encodePutInOrderAnswer } from "@/lib/exercise-kinds/put-in-order";
+import { decodePutInOrderAnswer, encodePutInOrderAnswer, isArrangedPutInOrderAnswer } from "@/lib/exercise-kinds/put-in-order";
 import { exerciseSpeechLanguage } from "@/lib/exercise-speech";
 import { useReadAloud } from "@/lib/speech-preference";
 
@@ -24,26 +24,36 @@ const LETTERS = "ABCDEFGHIJ";
 // each gets its number and moves to its place, so the student sees the order
 // they built. Tapping a numbered card takes its number off (the later ones
 // move up). Or drag a card to where it belongs (SLJ-180): that fixes the order
-// of all the cards as shown. Heard items (`listen`) are cards named A, B, …
-// with a 🔊 above each, so listening never numbers a card.
+// of all the cards as shown, with no numbers on them (the places mean nothing
+// more than the order, and numbers would get in the way of "one", "two" on the
+// cards); only the card in hand is highlighted. Tapping after a drag starts
+// tapping over, that card first. Heard items (`listen`) are cards named A,
+// B, … with a 🔊 above each, so listening never numbers a card.
 function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, value }: AnswerComponentProps<PutInOrderCourseExercise>) {
   const { t } = useTranslation();
   const read = useReadAloud(exercise.listen ? exerciseSpeechLanguage(exercise) : undefined);
   if (instance.kind !== "put-in-order") return null;
 
   const sequence = decodePutInOrderAnswer(value, exercise.items.length);
+  const arranged = isArrangedPutInOrderAnswer(value);
   const untapped = instance.order.filter((itemIndex) => !sequence.includes(itemIndex));
   const tap = (itemIndex: number) =>
     onAnswerChange(
       encodePutInOrderAnswer(
-        sequence.includes(itemIndex) ? sequence.filter((tapped) => tapped !== itemIndex) : [...sequence, itemIndex],
+        arranged
+          ? [itemIndex]
+          : sequence.includes(itemIndex)
+            ? sequence.filter((tapped) => tapped !== itemIndex)
+            : [...sequence, itemIndex],
       ),
     );
   // A heard card's name stays the same wherever it moves.
   const letterOf = (itemIndex: number) => LETTERS[instance.order.indexOf(itemIndex)] ?? "";
 
-  function card(itemIndex: number, wasDropped: () => boolean) {
+  function card(itemIndex: number, { isDragging, wasDropped }: { isDragging: boolean; wasDropped: () => boolean }) {
     const place = sequence.indexOf(itemIndex);
+    // Tapped in turn: the card shows its number and is highlighted.
+    const isNumbered = !arranged && place !== -1;
     const text = exercise.items[itemIndex] ?? "";
     const image = exercise.imageUrls[itemIndex];
     const label = exercise.listen ? t("putInOrder.heardItem", { letter: letterOf(itemIndex) }) : text;
@@ -51,8 +61,8 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, val
     const choiceCard = (
       <ChoiceCard
         aria-invalid={isWrong || undefined}
-        aria-label={place === -1 ? label : t("putInOrder.placedLabel", { label, number: place + 1 })}
-        aria-pressed={place !== -1}
+        aria-label={isNumbered ? t("putInOrder.placedLabel", { label, number: place + 1 }) : label}
+        aria-pressed={isNumbered}
         // Fills its place in the grid, as wide and as tall as the row (a
         // button is only as big as its text otherwise), with room on both
         // sides for the number and the grip.
@@ -63,10 +73,10 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, val
         onClick={() => {
           if (!wasDropped()) tap(itemIndex);
         }}
-        picked={place !== -1 && !isWrong}
-        wrong={isWrong}
+        picked={(isNumbered && !isWrong) || isDragging}
+        wrong={isWrong && !isDragging}
       >
-        {place !== -1 && (
+        {isNumbered && (
           <ChoiceCardBadge size="lg" tone="primary">
             {place + 1}
           </ChoiceCardBadge>
@@ -103,7 +113,7 @@ function AnswerComponent({ exercise, index, instance, onAnswerChange, parts, val
       <ChoiceCardGrid aria-label={t("putInOrder.answerLabel")} role="group">
         <SortableCards
           labelOf={(itemIndex) => (exercise.listen ? t("putInOrder.heardItem", { letter: letterOf(itemIndex) }) : (exercise.items[itemIndex] ?? ""))}
-          onReorder={(order) => onAnswerChange(encodePutInOrderAnswer(order))}
+          onReorder={(order) => onAnswerChange(encodePutInOrderAnswer(order, { arranged: true }))}
           order={[...sequence, ...untapped]}
         >
           {card}

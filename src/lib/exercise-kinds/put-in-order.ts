@@ -68,26 +68,40 @@ function buildInstance(exercise: PutInOrderCourseExercise): ExerciseInstance {
 }
 
 // The answer: the items' indexes (in the file) in the order tapped; an item
-// not tapped yet isn't in it.
-export function encodePutInOrderAnswer(sequence: number[]): string {
-  return JSON.stringify(sequence);
+// not tapped yet isn't in it. Dragging (SLJ-180) arranges all of them at once,
+// with no numbers on the cards: that's kept as `{ arranged: true, order }`,
+// graded the same.
+export function encodePutInOrderAnswer(sequence: number[], { arranged = false } = {}): string {
+  return JSON.stringify(arranged ? { arranged: true, order: sequence } : sequence);
+}
+
+function isOrder(value: unknown, count: number): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.length <= count &&
+    value.every((item) => Number.isInteger(item) && item >= 0 && item < count) &&
+    new Set(value).size === value.length
+  );
+}
+
+function parse(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 export function decodePutInOrderAnswer(raw: string, count: number): number[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (
-      Array.isArray(parsed) &&
-      parsed.length <= count &&
-      parsed.every((value) => Number.isInteger(value) && value >= 0 && value < count) &&
-      new Set(parsed).size === parsed.length
-    ) {
-      return parsed as number[];
-    }
-  } catch {
-    // fall through to the empty default below
-  }
-  return [];
+  const parsed = parse(raw);
+  const order = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as { order?: unknown }).order : parsed;
+  return isOrder(order, count) ? order : [];
+}
+
+// Whether the cards were arranged by dragging rather than tapped in turn.
+export function isArrangedPutInOrderAnswer(raw: string): boolean {
+  const parsed = parse(raw);
+  return Boolean(parsed && typeof parsed === "object" && (parsed as { arranged?: unknown }).arranged === true);
 }
 
 function grade(exercise: PutInOrderCourseExercise, _instance: ExerciseInstance, rawAnswer: string): GradeResult {

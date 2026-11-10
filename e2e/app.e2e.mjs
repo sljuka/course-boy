@@ -4165,8 +4165,9 @@ describe('read aloud', () => {
       await page.mouse.up()
       await expect.poll(async () => (await words())[target]).toBe(word)
     }
-    // A drop numbers every card, in the order shown.
-    await expect.poll(() => slots.allInnerTexts()).toEqual(['1\ndig', '2\nseed', '3\nwater'])
+    // After a drop the order shown is the answer: no numbers, nothing highlighted.
+    await expect.poll(() => slots.allInnerTexts()).toEqual(['dig', 'seed', 'water'])
+    expect(await page.locator('[data-testid="put-in-order-item"][data-picked]').count()).toBe(0)
 
     // From the keyboard: "dig" one place on, then back.
     const grip = (word) => page.locator('[data-testid="put-in-order-slot"]', { hasText: word }).locator('[data-testid="put-in-order-handle"]')
@@ -4184,10 +4185,7 @@ describe('read aloud', () => {
     await keys('Space', 'ArrowLeft', 'Space')
     await expect.poll(words).toEqual(['dig', 'seed', 'water'])
 
-    // A tap still takes a card's number off.
-    await page.locator('[data-testid="put-in-order-item"]', { hasText: 'water' }).click()
-    await expect.poll(() => slots.allInnerTexts()).toEqual(['1\ndig', '2\nseed', 'water'])
-    await page.locator('[data-testid="put-in-order-item"]', { hasText: 'water' }).click()
+    // Arranged by dragging, it's checked as shown.
     await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
     await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
   })

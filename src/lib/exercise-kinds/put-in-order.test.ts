@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { PutInOrderCourseExercise, SharedPutInOrderTestExerciseDefinition } from "@/lib/course-package"
-import { decodePutInOrderAnswer, encodePutInOrderAnswer } from "@/lib/exercise-kinds/put-in-order"
+import { decodePutInOrderAnswer, encodePutInOrderAnswer, isArrangedPutInOrderAnswer } from "@/lib/exercise-kinds/put-in-order"
 import { getExerciseKindRuntime, resolveSharedExerciseForPlayer } from "@/lib/exercise-kinds/registry"
 
 // SLJ-177: the items are stored in the right order; the student taps them in turn.
@@ -60,6 +60,19 @@ describe("put-in-order", () => {
       { answer: "", isCorrect: false, label: "3", solution: "cover" },
       { answer: "", isCorrect: false, label: "4", solution: "water" },
     ])
+  })
+
+  // SLJ-180: dragging arranges every card at once; graded like tapping them in that order.
+  it("grades an order arranged by dragging like a tapped one", () => {
+    const instance = runtime.buildInstance(resolved())
+    const dragged = encodePutInOrderAnswer([0, 1, 2, 3], { arranged: true })
+    expect(isArrangedPutInOrderAnswer(dragged)).toBe(true)
+    expect(isArrangedPutInOrderAnswer(encodePutInOrderAnswer([0, 1]))).toBe(false)
+    expect(decodePutInOrderAnswer(dragged, 4)).toEqual([0, 1, 2, 3])
+    expect(runtime.grade(resolved(), instance, dragged)).toEqual({ isCorrect: true })
+    expect(runtime.grade(resolved(), instance, encodePutInOrderAnswer([1, 0, 2, 3], { arranged: true }))).toMatchObject({
+      parts: [false, false, true, true],
+    })
   })
 
   it("reads a broken answer as nothing tapped", () => {

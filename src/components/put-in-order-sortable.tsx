@@ -22,7 +22,8 @@ import { Button } from "@/components/ui/button";
 // touch drag after a short press, so a tap stays a tap and a swipe still
 // scrolls. From the keyboard, each card's grip picks it up (Space or Enter),
 // the arrow keys move it and Space or Enter drops it; screen readers hear
-// each step. Dropping a card fixes the order of all the cards as shown.
+// each step. Dropping a card fixes the order of all the cards as shown; only
+// the card in hand is highlighted while it moves.
 
 // The click that follows a drop isn't a tap.
 const AFTER_DROP_MS = 300;
@@ -36,8 +37,9 @@ export function SortableCards({
   onReorder,
   order,
 }: {
-  // Renders a card; `wasDropped()` is true just after a drop, so its click is ignored.
-  children: (itemIndex: number, wasDropped: () => boolean) => ReactNode;
+  // Renders a card. `isDragging`: it's the one in hand. `wasDropped()`: true
+  // just after a drop, so the click that follows is ignored.
+  children: (itemIndex: number, state: { isDragging: boolean; wasDropped: () => boolean }) => ReactNode;
   labelOf: (itemIndex: number) => string;
   onReorder: (order: number[]) => void;
   order: number[];
@@ -79,7 +81,7 @@ export function SortableCards({
       <SortableContext items={ids} strategy={rectSortingStrategy}>
         {order.map((itemIndex) => (
           <SortableCard id={idOf(itemIndex)} key={itemIndex} label={labelOf(itemIndex)}>
-            {children(itemIndex, () => Date.now() - droppedAt.current < AFTER_DROP_MS)}
+            {(isDragging) => children(itemIndex, { isDragging, wasDropped: () => Date.now() - droppedAt.current < AFTER_DROP_MS })}
           </SortableCard>
         ))}
       </SortableContext>
@@ -89,7 +91,15 @@ export function SortableCards({
 
 // One card in the grid: the whole card follows the mouse or a finger; its
 // grip is where the keyboard picks it up.
-function SortableCard({ children, id, label }: { children: ReactNode; id: UniqueIdentifier; label: string }) {
+function SortableCard({
+  children,
+  id,
+  label,
+}: {
+  children: (isDragging: boolean) => ReactNode;
+  id: UniqueIdentifier;
+  label: string;
+}) {
   const { t } = useTranslation();
   const { attributes, isDragging, listeners, setActivatorNodeRef, setNodeRef, transform, transition } = useSortable({ id });
   // The keyboard's way in is the grip; the mouse's and a finger's, the whole card.
@@ -105,7 +115,7 @@ function SortableCard({ children, id, label }: { children: ReactNode; id: Unique
       style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 10 : undefined }}
       {...pointerListeners}
     >
-      {children}
+      {children(isDragging)}
       <Button
         {...attributes}
         aria-label={t("putInOrder.drag.handle", { label })}
