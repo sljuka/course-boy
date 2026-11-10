@@ -1575,3 +1575,31 @@ students who followed it can seed the new drive from their old copy (`copyProlog
 - **Tests:** `workers/activity-events.test.mjs`, the activity case in
   `workers/board-sync.test.mjs`, `src/lib/course-activity.test.ts`,
   `electron/course-activity.test.ts`, and `e2e/sharing-activity.e2e.mjs`.
+
+### Keeping a drive in full: the headless seeder's core (SLJ-144, in progress, 2026-11-10)
+
+A seeder is a process without Electron that runs `workers/main.cjs`, the same worker as
+the app, and keeps courses, programs and channels online while their publisher's
+computer is off. It never holds the publishing identity: it only serves.
+
+- **Following isn't enough.** A followed drive (`followCourse`) holds only what this
+  computer downloaded for itself. For a student that's the files of their import; for a
+  seeder it's nothing. In the spike, a follow-only seeder left a new student's import
+  waiting forever once the teacher quit. A seeder holding a full copy served it at once,
+  and served each new version after it.
+- **`keepCurrentVersion`** (`workers/drive-keeping.cjs`) downloads every file of the newest
+  version any connected peer has into the store, with no folder to unpack into. It
+  works on that version, fixed when it starts, and throws if a file is still missing
+  afterwards.
+- **`CMD_KEEP_DRIVE`** (27) follows a drive by its code and keeps it. It answers at once;
+  the download runs in the background. Every change keeps it again: a new version
+  reaching us, a peer connecting, or the 15-minute poll (all through
+  `notifyDriveChanged`). A failure is retried after a minute. Old versions' data is
+  cleared after each keep, as on students' computers. `CMD_STOP_SHARING` with the
+  drive key stops it.
+- **`CMD_LIST_KEPT_DRIVES`** (28) reports each kept drive:
+  - its kind, id, title and version (from its manifest);
+  - its state: `fetching`, `kept` (with `driveVersion`, file count and time) or `error`;
+  - its peer count.
+- **Not yet:** the Electron-free host and client (split out of `electron/bare-worker.ts`),
+  the CLI (`seeder/`), its e2e test, and packaging. See SLJ-144.

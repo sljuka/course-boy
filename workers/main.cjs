@@ -20,6 +20,7 @@ const { isValidCourseId } = require('./course-id.cjs')
 const { movedToKey, unchangedFileKeys, verifySource } = require('./course-source.cjs')
 const { createMaintainers, requestHash } = require('./maintainers.cjs')
 const { clearOldVersions, publishedClearingIsSafe } = require('./drive-storage.cjs')
+const { keepCurrentVersion } = require('./drive-keeping.cjs')
 const { NoSymlinkLocaldrive, assertNoSymlinksOnDisk } = require('./drive-safety.cjs')
 const { limitConnections } = require('./connection-limit.cjs')
 const { createBoards } = require('./board-sync.cjs')
@@ -70,6 +71,10 @@ const CMD_SHARED_COURSE = 25 // must match electron/bare-worker.ts
 // Course boards (SLJ-149): one command, the operation named by `op` (see
 // boardOp below).
 const CMD_BOARD = 26 // must match electron/bare-worker.ts
+// The headless seeder (SLJ-144): keep a full copy of a drive and serve it, and
+// list what's kept. Not used by the app.
+const CMD_KEEP_DRIVE = 27
+const CMD_LIST_KEPT_DRIVES = 28
 
 // Programs (SLJ-32) share `publishedDrives` with courses under this prefix, so
 // a program's id can never collide with a course's.
@@ -264,6 +269,10 @@ async function start() {
     return entry
   }
   const followedDrives = new Map() // hex driveKey -> { drive, discovery }
+  // Drives kept in full (SLJ-144, the headless seeder; drive-keeping.cjs):
+  // followed like an imported course, and every version downloaded into the
+  // store, so this computer serves them alone. hex driveKey -> { state, ... }
+  const keptDrives = new Map()
 
   swarm.on('connection', (conn, peerInfo) => {
     const peerKeyHex = peerInfo.publicKey.toString('hex')
@@ -536,6 +545,8 @@ async function start() {
   }
 
   function notifyDriveChanged(drive) {
+    const keptHex = drive.key.toString('hex')
+    if (keptDrives.has(keptHex)) keepSoon(keptHex)
     if (!rpc) return
     const request = rpc.request(EVENT_DRIVE_CHANGED)
     request.send(JSON.stringify({ driveKey: IdEncoding.normalize(drive.key) }))
@@ -735,8 +746,112 @@ async function start() {
     }
 
     followedDrives.delete(key)
+    const kept = keptDrives.get(key)
+    keptDrives.delete(key)
+    if (kept?.retry) clearTimeout(kept.retry)
     await swarm.leave(entry.drive.discoveryKey)
     await entry.drive.close()
+  }
+
+  // ─── Kept drives (SLJ-144) ──────────────────────────────────────────────
+  // A seeder keeps a course, program or channel by its code: followed, and its
+  // current version downloaded in full, again after every change (a new
+  // version reaching us, a peer connecting, the 15-minute poll). It answers
+  // at once; the download runs in the background, which `listKeptDrives`
+  // reports: "fetching", "kept" (version, files, when) or "error" (tried
+  // again in a minute). Old versions' data is cleared after each one, as on
+  // students' computers. Never needs the publishing identity: it only serves.
+  const KEEP_RETRY_MS = 60_000
+
+  async function keepDrive(driveKey) {
+    await followCourse(driveKey)
+    const hex = IdEncoding.decode(driveKey).toString('hex')
+    if (!keptDrives.has(hex)) {
+      keptDrives.set(hex, { again: false, error: null, kept: null, retry: null, running: null, state: 'fetching' })
+    }
+    keepSoon(hex)
+    return describeKept(hex)
+  }
+
+  // Runs one keep at a time per drive; a change during one runs it again after.
+  function keepSoon(hex) {
+    const entry = keptDrives.get(hex)
+    const followed = followedDrives.get(hex)
+    if (!entry || !followed) return
+    if (entry.running) {
+      entry.again = true
+      return
+    }
+    if (entry.retry) {
+      clearTimeout(entry.retry)
+      entry.retry = null
+    }
+    entry.running = (async () => {
+      do {
+        entry.again = false
+        if (!entry.kept) entry.state = 'fetching'
+        try {
+          const { files, version } = await keepCurrentVersion(followed.drive)
+          // `driveVersion`: the drive's own version number (not the course's).
+          entry.kept = { driveVersion: version, files, keptAt: new Date().toISOString() }
+          entry.error = null
+          entry.state = 'kept'
+          clearOldVersionsSoon(followed.drive)
+        } catch (error) {
+          if (!keptDrives.has(hex)) return // removed meanwhile
+          entry.error = error?.message ?? String(error)
+          entry.state = 'error'
+          console.error('[worker] keeping a drive failed:', entry.error)
+          entry.retry = setTimeout(() => {
+            entry.retry = null
+            keepSoon(hex)
+          }, KEEP_RETRY_MS)
+          return
+        }
+      } while (entry.again && keptDrives.has(hex))
+    })().finally(() => {
+      entry.running = null
+    })
+  }
+
+  // What a kept drive is (from its course.json or program.json) and its state.
+  async function describeKept(hex) {
+    const entry = keptDrives.get(hex)
+    const followed = followedDrives.get(hex)
+    if (!entry || !followed) return null
+    const drive = followed.drive
+    const readManifest = async (key) => {
+      try {
+        const buffer = await withTimeout(drive.get(key, { wait: false }), 2_000, 'manifest')
+        return buffer ? JSON.parse(buffer.toString()) : null
+      } catch {
+        return null
+      }
+    }
+    const program = await readManifest('/program.json')
+    const course = program ? null : await readManifest('/course.json')
+    const manifest = program ?? course
+    return {
+      driveKey: IdEncoding.normalize(drive.key),
+      error: entry.error,
+      id: manifest?.id ?? null,
+      kept: entry.kept,
+      kind: program ? (program.kind === 'channel' ? 'channel' : 'program') : course ? 'course' : null,
+      peers: drive.core.peers.length,
+      state: entry.state,
+      title: manifest?.locales?.[manifest?.defaultLocale]?.title ?? manifest?.title ?? null,
+      // The course's or program's own version ("0.3"), from its manifest.
+      version: typeof manifest?.version === 'string' ? manifest.version : null,
+    }
+  }
+
+  async function listKeptDrives() {
+    const kept = []
+    for (const hex of keptDrives.keys()) {
+      const described = await describeKept(hex)
+      if (described) kept.push(described)
+    }
+    return kept
   }
 
   // ─── Transfers (SLJ-43) ─────────────────────────────────────────────────
@@ -2029,6 +2144,26 @@ async function start() {
       } catch (error) {
         if (error.code !== 'CANCELLED' && error.code !== 'NOT_FOUND') console.error('[worker] failed to find a program:', error)
         req.reply(JSON.stringify({ code: error.code, error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_KEEP_DRIVE) {
+      try {
+        const { driveKey } = JSON.parse(req.data.toString())
+        req.reply(JSON.stringify(await keepDrive(driveKey)))
+      } catch (error) {
+        console.error('[worker] failed to keep a drive:', error)
+        req.reply(JSON.stringify({ error: error.message }))
+      }
+      return
+    }
+
+    if (req.command === CMD_LIST_KEPT_DRIVES) {
+      try {
+        req.reply(JSON.stringify({ kept: await listKeptDrives() }))
+      } catch (error) {
+        req.reply(JSON.stringify({ error: error.message }))
       }
       return
     }
