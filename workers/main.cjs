@@ -19,7 +19,7 @@ const path = require('bare-path')
 const { isValidCourseId } = require('./course-id.cjs')
 const { movedToKey, unchangedFileKeys, verifySource } = require('./course-source.cjs')
 const { createMaintainers, requestHash } = require('./maintainers.cjs')
-const { clearOldVersions } = require('./drive-storage.cjs')
+const { clearOldVersions, publishedClearingIsSafe } = require('./drive-storage.cjs')
 const { NoSymlinkLocaldrive, assertNoSymlinksOnDisk } = require('./drive-safety.cjs')
 const { limitConnections } = require('./connection-limit.cjs')
 const { createBoards } = require('./board-sync.cjs')
@@ -220,17 +220,18 @@ async function start() {
     return { close: () => Promise.all([db.close(), blobs.close()]), key: db.key }
   }
 
-  // Old versions' file data, cleared (SLJ-113, drive-storage.cjs): on
-  // students' computers, after an applied update and once per run for every
-  // followed drive opened at startup. Not on the teacher's computer for now:
-  // clearing the drive a teacher publishes from broke students' next update
-  // in e2e (sharing-restarts, sharing-programs), through a Hypercore bug
-  // (SLJ-114, hypercore#891; see drive-storage.cjs). Never for shared
-  // courses' drives (`sharedDrives`): maintainers
-  // keep their whole history. In the background and bounded: it only frees
-  // space.
+  // Old versions' file data, cleared (SLJ-113, drive-storage.cjs):
+  // - students: after an applied update, and once per run for every followed
+  //   drive opened at startup;
+  // - the teacher (`published`): after a Publish of a course or program, and
+  //   once per run for a published course shared at startup. Only with a
+  //   Hypercore that fixed hypercore#891 (SLJ-114, `publishedClearingIsSafe`):
+  //   before it, clearing there broke students' next update.
+  // Never for shared courses' drives (`sharedDrives`): maintainers keep their
+  // whole history. In the background and bounded: it only frees space.
   const clearedThisRun = new Set()
-  function clearOldVersionsSoon(drive, { oncePerRun = false } = {}) {
+  function clearOldVersionsSoon(drive, { oncePerRun = false, published = false } = {}) {
+    if (published && !publishedClearingIsSafe()) return
     const hex = drive.key.toString('hex')
     if (oncePerRun && clearedThisRun.has(hex)) return
     clearedThisRun.add(hex)
@@ -259,6 +260,7 @@ async function start() {
     const discovery = swarm.join(drive.discoveryKey, { server: true, client: false })
     const entry = { discovery, drive, writable: false }
     publishedDrives.set(courseId, entry)
+    clearOldVersionsSoon(drive, { oncePerRun: true, published: true })
     return entry
   }
   const followedDrives = new Map() // hex driveKey -> { drive, discovery }
@@ -403,6 +405,7 @@ async function start() {
 
     await mirrorVersionIntoDrive(coursePath, drive)
     await writeSourceFile(drive, publicId, undefined, publisherName, channelCode)
+    clearOldVersionsSoon(drive, { published: true })
     await discovery.flushed()
 
     return { drive, publicId }
@@ -417,6 +420,7 @@ async function start() {
 
     await mirrorVersionIntoDrive(programPath, drive)
     await writeSourceFile(drive, publicId, 'program', publisherName)
+    clearOldVersionsSoon(drive, { published: true })
     // Announced in the background: offline, it only completes later, and the
     // curator gets the code at once.
     discovery.flushed().catch(() => {})

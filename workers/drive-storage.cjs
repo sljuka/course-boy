@@ -8,13 +8,15 @@
 //
 // Never for a shared course's drive on a maintainer's computer: a proposal
 // starts with a copy of all its blocks (shared-course.cjs), so maintainers
-// keep its whole history. The worker calls this for students' followed
-// drives only: on the drive a teacher publishes from, it broke students'
-// next update (SLJ-114). A Hypercore bug: a student connected while the
-// teacher clears forgets that the teacher still has the blocks after the
-// cleared range, so it never asks for the new version's files
-// (https://github.com/holepunchto/hypercore/issues/891). Turn it on there
-// once a Hypercore release fixes that.
+// keep its whole history.
+//
+// On the drive a teacher publishes from (a course or a program), only with
+// Hypercore 11.39.5 or later (`publishedClearingIsSafe`, SLJ-114). Before
+// it, a student connected while the teacher cleared forgot that the teacher
+// still had the blocks after the cleared range, so it never asked for the new
+// version's files and the update never came
+// (https://github.com/holepunchto/hypercore/issues/891, fixed by
+// holepunchto/hypercore#896).
 //
 // Only with a Hypercore whose `clear` keeps the tree nodes of blocks outside
 // the range (fixed in 11.37.2). Before that, clearing a range that starts
@@ -26,6 +28,9 @@
 
 // The first Hypercore whose `clear` is safe here (see above).
 const SAFE_HYPERCORE = [11, 37, 2]
+// The first whose connected peers still see the blocks after a cleared range,
+// so a teacher's computer can clear the drive it publishes from (SLJ-114).
+const SAFE_HYPERCORE_FOR_PUBLISHED = [11, 39, 5]
 
 function hypercoreVersion() {
   try {
@@ -35,13 +40,21 @@ function hypercoreVersion() {
   }
 }
 
-function clearingIsSafe(version = hypercoreVersion()) {
+function isAtLeast(version, minimum) {
   const parts = typeof version === 'string' ? version.split('.').map((part) => parseInt(part, 10)) : []
   if (parts.length < 3 || parts.some((part) => Number.isNaN(part))) return false
   for (let index = 0; index < 3; index++) {
-    if (parts[index] !== SAFE_HYPERCORE[index]) return parts[index] > SAFE_HYPERCORE[index]
+    if (parts[index] !== minimum[index]) return parts[index] > minimum[index]
   }
   return true
+}
+
+function clearingIsSafe(version = hypercoreVersion()) {
+  return isAtLeast(version, SAFE_HYPERCORE)
+}
+
+function publishedClearingIsSafe(version = hypercoreVersion()) {
+  return isAtLeast(version, SAFE_HYPERCORE_FOR_PUBLISHED)
 }
 
 // The block ranges [start, end) of the file-data core the current version's
@@ -101,4 +114,4 @@ async function clearOldVersions(drive, { safe = clearingIsSafe() } = {}) {
   return cleared
 }
 
-module.exports = { clearOldVersions, clearingIsSafe, rangesInUse }
+module.exports = { clearOldVersions, clearingIsSafe, publishedClearingIsSafe, rangesInUse }

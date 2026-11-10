@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import Corestore from 'corestore'
 import Hyperdrive from 'hyperdrive'
-import { clearOldVersions, clearingIsSafe } from './drive-storage.cjs'
+import { clearOldVersions, clearingIsSafe, publishedClearingIsSafe } from './drive-storage.cjs'
 
 // SLJ-113: old versions' file data cleared, the current version untouched.
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'matko-drive-storage-'))
@@ -134,6 +134,18 @@ describe('clearing old versions (SLJ-113)', () => {
     expect((await drive.get('/source.json', { wait: false })).toString()).toContain('meanwhile')
     expect((await drive.get('/video.bin', { wait: false })).equals(newVideo)).toBe(true)
     await drive.close()
+  })
+
+  // SLJ-114: a teacher's published drive only from the release that fixed
+  // hypercore#891; the installed one must be that new, or teachers never clear.
+  it("clears a teacher's published drive only with Hypercore 11.39.5 or later, which the app has", () => {
+    expect(publishedClearingIsSafe('11.37.2')).toBe(false)
+    expect(publishedClearingIsSafe('11.39.4')).toBe(false)
+    expect(publishedClearingIsSafe('11.39.5')).toBe(true)
+    expect(publishedClearingIsSafe('11.40.3')).toBe(true)
+    expect(publishedClearingIsSafe('12.0.0')).toBe(true)
+    expect(publishedClearingIsSafe(null)).toBe(false)
+    expect(publishedClearingIsSafe()).toBe(true)
   })
 
   it('clears only with a Hypercore whose clear is safe, and otherwise leaves the drive alone', async () => {

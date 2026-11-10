@@ -1272,22 +1272,23 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   no file of the current version points to. The file index stays whole.
 - **When** (`clearOldVersionsSoon` in `workers/main.cjs`, in the background, bounded to
   60 s): on **students'** computers, after an update is applied and once per run for
-  every followed drive opened at startup. It works on one version, fixed when it
-  starts (a checkout, and that version's file-data length), so blocks written meanwhile
-  are never touched.
-- **Not on the teacher's computer yet (SLJ-114).** Clearing the drive a course or
-  program is published from broke students' next update in e2e (sharing-restarts,
-  sharing-programs). The cause is a Hypercore bug
-  ([hypercore#891](https://github.com/holepunchto/hypercore/issues/891), still in
-  11.39.0). A student connected while the teacher clears receives "blocks a–b dropped",
-  and `Peer.onrange` lowers that peer's contiguous length to `a`. The blocks after `b`
-  were known only through that length, so the student forgets the teacher still has
-  them and never asks for the new version's files. It hangs because it already sent a
-  want for that segment earlier. Students who connect after the clear are fine. A local
-  patch to `onrange` made the restarts file pass. We wait for an upstream release
-  rather than carry a patch, so a teacher's own drives still keep their history. Never for
-  shared courses' drives on maintainers' computers (`sharedDrives`) either: they keep
-  their whole history by design.
+  every followed drive opened at startup; on the **teacher's** computer, after a
+  Publish of a course or program and once per run for a published course shared at
+  startup. It works on one version, fixed when it starts (a checkout, and that
+  version's file-data length), so blocks written meanwhile are never touched. Never for
+  shared courses' drives on maintainers' computers (`sharedDrives`): they keep their
+  whole history by design.
+- **On the teacher's computer only with Hypercore 11.39.5 or later (SLJ-114,
+  `publishedClearingIsSafe`; updated to 11.40.3 on 2026-11-10, lockfile only).**
+  Before it, clearing the drive a course or program is published from broke students'
+  next update in e2e (sharing-restarts, sharing-programs), through a Hypercore bug
+  ([hypercore#891](https://github.com/holepunchto/hypercore/issues/891), fixed by
+  [hypercore#896](https://github.com/holepunchto/hypercore/pull/896)). A student
+  connected while the teacher cleared received "blocks a–b dropped", and
+  `Peer.onrange` lowered that peer's contiguous length to `a`. The blocks after `b`
+  were known only through that length, so the student forgot the teacher still had
+  them and never asked for the new version's files; it hung because it had already
+  sent a want for that segment. Students who connected after the clear were fine.
 - **Needs Hypercore 11.37.2 or later** (updated 2026-10-12, lockfile only). In 11.35.2, `clear` also deletes the tree node of the block right
   before the cleared range (its sibling check reads `s <= start` instead of
   `s >= start`). The computer keeps the block's data but can no longer prove it, so a
