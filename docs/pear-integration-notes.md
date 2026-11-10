@@ -1611,4 +1611,11 @@ computer is off. It never holds the publishing identity: it only serves.
   A pid file keeps a second `run` off the same store. Checked by hand on a local testnet
   against real app instances: kept within 3 s, a new student imported from it alone,
   `remove` reached the running seeder.
-- **Not yet:** its e2e test, packaging and running it as a service. See SLJ-144.
+- **Its e2e test (step 5), `e2e/sharing-seeder.e2e.mjs`:** a real `seeder/cli.mjs run`
+  process next to real app instances on the file's testnet (`bootstrap()` from
+  `sharingSuite`). The teacher publishes and the code is added (as a `matko://import/`
+  link); the teacher quits and a new student imports from the seeder alone; the student
+  quits, the teacher publishes again and the seeder fetches it on its own; the teacher
+  quits and the student, started again, is offered the version and applies it, from the
+  seeder only. Then `remove` and SIGTERM. A failing test prints the seeder's log.
+- **Not yet:** packaging and running it as a service. See SLJ-144.

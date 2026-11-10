@@ -55,7 +55,10 @@ export function sharingSuite(area, names) {
 
   const identityFilePath = (name) => path.join(data[name], 'publisher-identity.matko-identity')
 
-  return { ROOT, apps, close, data, dirs, identityFilePath, launch }
+  // The testnet's address, for a process that isn't an app (the seeder, SLJ-144).
+  const bootstrap = () => env.MATKO_DHT_BOOTSTRAP
+
+  return { ROOT, apps, bootstrap, close, data, dirs, identityFilePath, launch }
 }
 
 export async function setUpIdentity(page) {
