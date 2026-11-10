@@ -1604,4 +1604,11 @@ computer is off. It never holds the publishing identity: it only serves.
 - **Shared with the app (step 3):** the worker's RPC numbers are `workers/protocol.json`,
   and starting and talking to the worker is `workers/worker-client.mjs` (Node), used by
   `electron/bare-worker.ts` and by the seeder alike (contract 12 in docs/contracts.md).
-- **Not yet:** the CLI (`seeder/`), its e2e test, and packaging. See SLJ-144.
+- **The CLI (step 4), `seeder/`:** `node seeder/cli.mjs run | add | remove | list | status
+  [--data <dir>]` (seeder/README.md). `run` starts the worker through the shared client
+  and every few seconds lines it up with `<data>/kept.json` (written by `add` and
+  `remove`, so they reach a running seeder) and writes `<data>/status.json` for `status`.
+  A pid file keeps a second `run` off the same store. Checked by hand on a local testnet
+  against real app instances: kept within 3 s, a new student imported from it alone,
+  `remove` reached the running seeder.
+- **Not yet:** its e2e test, packaging and running it as a service. See SLJ-144.
