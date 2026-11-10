@@ -1601,5 +1601,7 @@ computer is off. It never holds the publishing identity: it only serves.
   - its kind, id, title and version (from its manifest);
   - its state: `fetching`, `kept` (with `driveVersion`, file count and time) or `error`;
   - its peer count.
-- **Not yet:** the Electron-free host and client (split out of `electron/bare-worker.ts`),
-  the CLI (`seeder/`), its e2e test, and packaging. See SLJ-144.
+- **Shared with the app (step 3):** the worker's RPC numbers are `workers/protocol.json`,
+  and starting and talking to the worker is `workers/worker-client.mjs` (Node), used by
+  `electron/bare-worker.ts` and by the seeder alike (contract 12 in docs/contracts.md).
+- **Not yet:** the CLI (`seeder/`), its e2e test, and packaging. See SLJ-144.

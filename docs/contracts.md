@@ -429,23 +429,23 @@ the original owner as `publisher.id`. How it fits together:
 
 - **Code:** `workers/shared-course.cjs` (propose, review, sign, commit) and
   `workers/maintainers.cjs` (invites and mailboxes) carry it out. The worker command is
-  `CMD_SHARED_COURSE` (25), with `op` naming the operation.
+  `CMD.SHARED_COURSE` (25 in `workers/protocol.json`), with `op` naming the operation.
 - **Decisions:** `electron/maintainers.ts` decides when, with its state in the profile's
   `maintainers.json` electron-store file. The renderer reaches it through
   `window.maintainers` (`maintainers:*` IPC).
 - **Course boards (SLJ-149):** `workers/board-sync.cjs` carries messages and the
   moderation list between devices; `electron/course-boards.ts` decides which boards are
   open, through `window.boards` (`boards:*` IPC, and `boards:changed` to the window). The
-  worker command is `CMD_BOARD` (26, `op` names the operation) and the event
-  `EVENT_BOARD_CHANGED` (102). What's signed (messages, the moderation list) is a fixed
+  worker command is `CMD.BOARD` (26, `op` names the operation) and the event
+  `EVENT.BOARD_CHANGED` (102). What's signed (messages, the moderation list) is a fixed
   byte layout in `workers/board-messages.cjs`: changing it makes every device refuse the
   others' messages, so it needs a new protocol name (`matko-board/2`).
 - **Course activity (SLJ-168):** events travel on the board's channel; what's signed and
   sealed is in `workers/activity-events.cjs`. `electron/course-activity.ts` works them out
   from progress and sends them, and reads the teacher's totals, through `window.activity`
   (`activity:*` IPC, `activity:changed` to the window) and `progress.recordReachedEnd`.
-  The worker ops are `activity` and `activityTotals` under `CMD_BOARD`, the event
-  `EVENT_ACTIVITY_CHANGED` (103). A course's "Collect activity" is a field of the
+  The worker ops are `activity` and `activityTotals` under `CMD.BOARD`, the event
+  `EVENT.ACTIVITY_CHANGED` (103). A course's "Collect activity" is a field of the
   moderation list (version 2).
 - **Publishers (SLJ-108):** the profile's address book, `electron/publishers.ts`, through
   `window.publishers` (`publishers:*` IPC). It derives entries from the followed courses
@@ -1076,6 +1076,30 @@ besides IPC, and the same rules hold:
   the tool passes the other languages' titles on unchanged.
 - **After a write, main sends `mcp:changed`** and the window reads courses and programs
   again (`useRefreshOnAgentChanges`), so the open page shows the agent's work.
+
+## 12. The worker's RPC numbers are one file, shared by the worker and its hosts
+
+The Bare worker (`workers/main.cjs`) and whoever starts it talk over `bare-rpc`, where
+each request is a number. Those numbers are `workers/protocol.json`: `commands`
+(host → worker) and `events` (worker → host). Two hosts start the worker, through the
+same client, `workers/worker-client.mjs` (Node, never Bare: start, `request`,
+`requestRaw`, events, `stop`):
+
+- the app's main process, `electron/bare-worker.ts`;
+- the headless seeder (SLJ-144, in progress).
+
+Adding a worker command touches:
+
+1. `workers/protocol.json`: a new number. Never reuse or renumber one: an older worker
+   or host may still send it.
+2. `workers/main.cjs`: its handler (`req.command === CMD.X`).
+3. The host that sends it, for the app a wrapper in `electron/bare-worker.ts` (and
+   only then, if the window needs it, the four IPC files of contract 1).
+
+`workers/worker-client.test.mjs` checks that every `CMD.X` / `EVENT.X` in the worker and
+in `electron/bare-worker.ts` exists in `protocol.json`, and that no number is used twice.
+It also starts the real worker on a local testnet through the client. The mobile
+prototype (`mobile/App.tsx`) still writes its one command number by hand.
 
 ## Third-party extensions (not yet built)
 

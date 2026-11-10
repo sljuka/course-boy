@@ -18,8 +18,8 @@
 // framing and must sit directly on the raw duplex, not stacked under another framing
 // layer.
 import path from 'node:path'
-import spawnBare from 'bare-runtime/spawn'
-import RPC from 'bare-rpc'
+import protocol from '../workers/protocol.json'
+import { startWorker, type WorkerClient } from '../workers/worker-client.mjs'
 import { app } from 'electron'
 import { getProfileDataDir } from './profile-context'
 import { getPublishedCoursePackagePath } from './course-paths'
@@ -29,42 +29,9 @@ import type { TransferInfo } from '../src/lib/sharing'
 import type { ActivityPayload, ActivityWorkerTotals } from '../src/lib/course-activity'
 import type { BoardCursor, BoardModeration, BoardModerationChanges, BoardWorkerMessage, BoardWorkerPage } from '../src/lib/course-board'
 
-// Must match workers/main.cjs.
-const CMD_GET_CREATOR_KEY = 1
-const CMD_PUBLISH_COURSE = 2
-const CMD_IMPORT_COURSE = 3
-const CMD_PUBLISH_GATED_COURSE = 4
-const CMD_CREATE_INVITE = 5
-const CMD_REDEEM_INVITE = 6
-const CMD_FOLLOW_COURSE = 7
-const CMD_STOP_SHARING = 8
-const CMD_CHECK_UPDATE = 9
-const CMD_DOWNLOAD_UPDATE = 10
-const CMD_GET_TRANSFER = 11
-const CMD_CANCEL_TRANSFER = 12
-const CMD_GET_PEERS = 13
-const CMD_READ_IDENTITY_BACKUP = 15
-const CMD_OPEN_IDENTITY = 16
-const CMD_FIND_COURSE = 17
-const CMD_SET_IDENTITY = 18
-const CMD_SEAL_IDENTITY = 19
-const CMD_SEED_COURSE = 20
-const CMD_PUBLISH_PROGRAM = 21
-const CMD_SEED_PROGRAM = 22
-const CMD_PEEK_COURSE = 23
-const CMD_FIND_PROGRAM = 24
-// Courses shared by several maintainers (SLJ-11): one command, `op` names the operation.
-const CMD_SHARED_COURSE = 25
-// Course boards (SLJ-149): one command, `op` names the operation.
-const CMD_BOARD = 26
-// Sent by the worker to main (the only worker → main message).
-const EVENT_DRIVE_CHANGED = 100
-// Worker → main: someone joined as a maintainer with one of our invites.
-const EVENT_MAINTAINER_JOINED = 101
-// Worker → main: a course board's messages or moderation list changed.
-const EVENT_BOARD_CHANGED = 102
-// Worker → main: the teacher's device counted new activity on a course (SLJ-168).
-const EVENT_ACTIVITY_CHANGED = 103
+// The worker's RPC numbers, shared with it and with the headless seeder.
+const CMD = protocol.commands
+const EVENT = protocol.events
 
 declare global {
   // 'spawning' until the worker answers, then 'ready', or 'error: …'
@@ -91,16 +58,16 @@ declare global {
   }
 }
 
-let rpc: RPC | null = null
-// The running worker process, so a profile switch can stop it (stopBareWorker).
-let workerProcess: ReturnType<typeof spawnBare> | null = null
+// The running worker (workers/worker-client.mjs), so a profile switch can stop
+// it (stopBareWorker).
+let worker: WorkerClient | null = null
 
-function requireRpc(): RPC {
-  if (!rpc) {
+function requireWorker(): WorkerClient {
+  if (!worker) {
     throw new Error('Bare worker is not running')
   }
 
-  return rpc
+  return worker
 }
 
 // The publisher id while the identity is unlocked in the worker, else ''.
@@ -108,11 +75,7 @@ function requireRpc(): RPC {
 // knows it while locked too; this is the worker's answer, used at start to
 // know it runs.
 export async function getCreatorKey(): Promise<string> {
-  const request = requireRpc().request(CMD_GET_CREATOR_KEY)
-  request.send()
-
-  const reply = await request.reply('utf-8')
-  return reply ? reply.toString() : ''
+  return requireWorker().requestRaw(CMD.GET_CREATOR_KEY)
 }
 
 async function resolveSharedCoursePackagePath(
@@ -136,21 +99,11 @@ async function resolveSharedCoursePackagePath(
 
 // Every reply is JSON with an optional `error`; turn that into a thrown Error.
 // `code` (e.g. LOCKED, WRONG_PASSWORD, CANCELLED) is kept on it.
+// `code` carries e.g. CANCELLED (a transfer the user stopped) to the caller;
+// `fromWorker`: the worker answered with it, unlike a worker that stopped (the
+// app quitting) and never answered (see workers/worker-client.mjs).
 async function sendCommand<T>(command: number, payload: unknown): Promise<T> {
-  const request = requireRpc().request(command)
-  request.send(JSON.stringify(payload))
-
-  const reply = await request.reply('utf-8')
-  const result = JSON.parse(reply ? reply.toString() : '{}') as T & { code?: string; error?: string }
-
-  if (result.error) {
-    // `code` carries e.g. CANCELLED (a transfer the user stopped) to the caller.
-    // `fromWorker`: the worker answered with it, unlike a worker that stopped
-    // (the app quitting) and never answered.
-    throw Object.assign(new Error(result.error), { code: result.code, fromWorker: true })
-  }
-
-  return result
+  return requireWorker().request<T>(command, payload)
 }
 
 export function isCancelledError(error: unknown): boolean {
@@ -173,7 +126,7 @@ export async function publishCourse(
   channelCode: string,
 ): Promise<{ driveKey: string; publicId: string }> {
   const coursePath = await resolveSharedCoursePackagePath(courseId)
-  return sendCommand<{ driveKey: string; publicId: string }>(CMD_PUBLISH_COURSE, {
+  return sendCommand<{ driveKey: string; publicId: string }>(CMD.PUBLISH_COURSE, {
     channelCode,
     courseId,
     coursePath,
@@ -199,7 +152,7 @@ export type ImportedCourseSource = {
 export async function importCourse(driveKey: string, transferId?: string): Promise<ImportedCourseSource> {
   const coursesRoot = path.join(getProfileDataDir(), 'courses')
   const programsRoot = path.join(getProfileDataDir(), 'programs')
-  const result = await sendCommand<Partial<ImportedCourseSource>>(CMD_IMPORT_COURSE, {
+  const result = await sendCommand<Partial<ImportedCourseSource>>(CMD.IMPORT_COURSE, {
     coursesRoot,
     driveKey,
     programsRoot,
@@ -228,12 +181,12 @@ export async function publishProgram(
   publicIndex: number,
   publisherName: string,
 ): Promise<{ driveKey: string; publicId: string }> {
-  return sendCommand(CMD_PUBLISH_PROGRAM, { programId, programPath, publicIndex, publisherName })
+  return sendCommand(CMD.PUBLISH_PROGRAM, { programId, programPath, publicIndex, publisherName })
 }
 
 // Shares a published program by its code while the identity is locked.
 export async function seedProgram(programId: string, driveKey: string): Promise<void> {
-  await sendCommand(CMD_SEED_PROGRAM, { driveKey, programId })
+  await sendCommand(CMD.SEED_PROGRAM, { driveKey, programId })
 }
 
 // A course's course.json and claimed publisher by its code, without importing
@@ -263,12 +216,12 @@ export async function peekCourse(
   publisherId: string | null
   publisherName?: string | null
 }> {
-  return sendCommand(CMD_PEEK_COURSE, { driveKey, withContents })
+  return sendCommand(CMD.PEEK_COURSE, { driveKey, withContents })
 }
 
 // Reopens an imported course's drive and announces it again (after a restart).
 export async function followCourse(driveKey: string): Promise<void> {
-  await sendCommand(CMD_FOLLOW_COURSE, { driveKey })
+  await sendCommand(CMD.FOLLOW_COURSE, { driveKey })
 }
 
 // Which version an imported course's drive holds now, from its small files
@@ -279,7 +232,7 @@ export async function checkUpdate(
   driveKey: string,
   { waitForPeers = false }: { waitForPeers?: boolean } = {},
 ): Promise<RemoteCourseVersion> {
-  return sendCommand<RemoteCourseVersion>(CMD_CHECK_UPDATE, { driveKey, waitForPeers })
+  return sendCommand<RemoteCourseVersion>(CMD.CHECK_UPDATE, { driveKey, waitForPeers })
 }
 
 export type DownloadedUpdate = {
@@ -293,21 +246,21 @@ export async function downloadUpdate(
   targetPath: string,
   transferId?: string,
 ): Promise<DownloadedUpdate> {
-  return sendCommand<DownloadedUpdate>(CMD_DOWNLOAD_UPDATE, { driveKey, targetPath, transferId })
+  return sendCommand<DownloadedUpdate>(CMD.DOWNLOAD_UPDATE, { driveKey, targetPath, transferId })
 }
 
 export async function getTransfer(transferId: string): Promise<TransferInfo | null> {
-  return (await sendCommand<{ transfer: TransferInfo | null }>(CMD_GET_TRANSFER, { transferId })).transfer
+  return (await sendCommand<{ transfer: TransferInfo | null }>(CMD.GET_TRANSFER, { transferId })).transfer
 }
 
 export async function cancelTransfer(transferId: string): Promise<void> {
-  await sendCommand(CMD_CANCEL_TRANSFER, { transferId })
+  await sendCommand(CMD.CANCEL_TRANSFER, { transferId })
 }
 
 // Peers connected for a course shared from this device (your own by course id,
 // an imported one by drive key); null when it isn't shared here right now.
 export async function getPeers(target: { courseId: string; driveKey?: string } | { driveKey: string }): Promise<number | null> {
-  return (await sendCommand<{ peers: number | null }>(CMD_GET_PEERS, target)).peers
+  return (await sendCommand<{ peers: number | null }>(CMD.GET_PEERS, target)).peers
 }
 
 export type IdentityBackupInfo = { createdAt: string; publisherId: string }
@@ -316,20 +269,20 @@ export type IdentityBackupInfo = { createdAt: string; publisherId: string }
 // who it belongs to and when it was saved. Fails with `code` INVALID_FILE or
 // UNSUPPORTED_VERSION.
 export async function readIdentityBackup(text: string): Promise<IdentityBackupInfo> {
-  return sendCommand<IdentityBackupInfo>(CMD_READ_IDENTITY_BACKUP, { text })
+  return sendCommand<IdentityBackupInfo>(CMD.READ_IDENTITY_BACKUP, { text })
 }
 
 // The publisher identity (SLJ-55) is kept by main (electron/publisher-identity.ts)
 // and handed to the worker in memory; null takes it back (locked). Returns the
 // publisher id it signs as.
 export async function setIdentity(key: Buffer | null): Promise<string | null> {
-  return (await sendCommand<{ publisherId: string | null }>(CMD_SET_IDENTITY, { key: key?.toString('base64') ?? null }))
+  return (await sendCommand<{ publisherId: string | null }>(CMD.SET_IDENTITY, { key: key?.toString('base64') ?? null }))
     .publisherId
 }
 
 // The identity locked with `password`, in the backup file's format (no courses).
 export async function sealIdentity(key: Buffer, password: string): Promise<string> {
-  return (await sendCommand<{ sealed: string }>(CMD_SEAL_IDENTITY, { key: key.toString('base64'), password })).sealed
+  return (await sendCommand<{ sealed: string }>(CMD.SEAL_IDENTITY, { key: key.toString('base64'), password })).sealed
 }
 
 export type OpenedIdentity = { courses: { id: string; title: string }[]; key: Buffer; publisherId: string }
@@ -338,7 +291,7 @@ export type OpenedIdentity = { courses: { id: string; title: string }[]; key: Bu
 // with `code` WRONG_PASSWORD on a wrong password, INVALID_FILE on a damaged file.
 export async function openIdentity(text: string, password: string): Promise<OpenedIdentity> {
   const result = await sendCommand<{ courses: OpenedIdentity['courses']; key: string; publisherId: string }>(
-    CMD_OPEN_IDENTITY,
+    CMD.OPEN_IDENTITY,
     { password, text },
   )
   return { courses: result.courses, key: Buffer.from(result.key, 'base64'), publisherId: result.publisherId }
@@ -347,7 +300,7 @@ export async function openIdentity(text: string, password: string): Promise<Open
 // Shares a published course by its code without the identity (locked):
 // students can still download it; a new version needs the identity.
 export async function seedCourse(courseId: string, driveKey: string): Promise<void> {
-  await sendCommand(CMD_SEED_COURSE, { courseId, driveKey })
+  await sendCommand(CMD.SEED_COURSE, { courseId, driveKey })
 }
 
 export type FoundCourse = {
@@ -370,7 +323,7 @@ export async function findCourse(input: {
   timeoutMs: number
   transferId?: string
 }): Promise<FoundCourse> {
-  return sendCommand<FoundCourse>(CMD_FIND_COURSE, input)
+  return sendCommand<FoundCourse>(CMD.FIND_COURSE, input)
 }
 
 export type FoundProgram = {
@@ -388,7 +341,7 @@ export async function findProgram(input: {
   timeoutMs: number
   transferId?: string
 }): Promise<FoundProgram> {
-  return sendCommand<FoundProgram>(CMD_FIND_PROGRAM, input)
+  return sendCommand<FoundProgram>(CMD.FIND_PROGRAM, input)
 }
 
 // ─── Courses shared by several maintainers (SLJ-11) ────────────────────────
@@ -461,7 +414,7 @@ export async function sharedCourseOp<K extends keyof SharedCourseOps>(
   op: K,
   args: SharedCourseOps[K][0],
 ): Promise<SharedCourseOps[K][1]> {
-  return sendCommand<SharedCourseOps[K][1]>(CMD_SHARED_COURSE, { ...args, op })
+  return sendCommand<SharedCourseOps[K][1]>(CMD.SHARED_COURSE, { ...args, op })
 }
 
 // A course board's operations (workers/main.cjs, boardOp). Boards are named
@@ -486,7 +439,7 @@ type BoardOps = {
 }
 
 export async function boardOp<K extends keyof BoardOps>(op: K, args: BoardOps[K][0]): Promise<BoardOps[K][1]> {
-  return sendCommand<BoardOps[K][1]>(CMD_BOARD, { ...args, op })
+  return sendCommand<BoardOps[K][1]>(CMD.BOARD, { ...args, op })
 }
 
 const boardChangedListeners = new Set<(driveKey: string) => void>()
@@ -524,7 +477,7 @@ export function onDriveChanged(listener: (driveKey: string) => void): void {
 // Leaves the swarm for a course: a published one by `courseId`, an imported
 // (followed) one by `driveKey`.
 export async function stopSharing(target: { courseId: string } | { driveKey: string }): Promise<void> {
-  await sendCommand(CMD_STOP_SHARING, target)
+  await sendCommand(CMD.STOP_SHARING, target)
 }
 
 export async function publishGatedCourse(
@@ -533,19 +486,10 @@ export async function publishGatedCourse(
 ): Promise<{ discoveryKey: string; driveKey: string }> {
   const coursePath = await resolveSharedCoursePackagePath(courseId, version)
 
-  const request = requireRpc().request(CMD_PUBLISH_GATED_COURSE)
-  request.send(JSON.stringify({ courseId, coursePath }))
-
-  const reply = await request.reply('utf-8')
-  const result = JSON.parse(reply ? reply.toString() : '{}') as {
-    discoveryKey?: string
-    driveKey?: string
-    error?: string
-  }
-
-  if (result.error) {
-    throw new Error(result.error)
-  }
+  const result = await sendCommand<{ discoveryKey?: string; driveKey?: string }>(CMD.PUBLISH_GATED_COURSE, {
+    courseId,
+    coursePath,
+  })
 
   return { discoveryKey: result.discoveryKey ?? '', driveKey: result.driveKey ?? '' }
 }
@@ -556,26 +500,13 @@ export async function createInvite(
   driveKey: string,
   options?: { expiresInMs?: number; maxUses?: number },
 ): Promise<string> {
-  const request = requireRpc().request(CMD_CREATE_INVITE)
-  request.send(
-    JSON.stringify({
-      courseId,
-      discoveryKey,
-      driveKey,
-      expiresInMs: options?.expiresInMs,
-      maxUses: options?.maxUses,
-    }),
-  )
-
-  const reply = await request.reply('utf-8')
-  const result = JSON.parse(reply ? reply.toString() : '{}') as {
-    error?: string
-    invite?: string
-  }
-
-  if (result.error) {
-    throw new Error(result.error)
-  }
+  const result = await sendCommand<{ invite?: string }>(CMD.CREATE_INVITE, {
+    courseId,
+    discoveryKey,
+    driveKey,
+    expiresInMs: options?.expiresInMs,
+    maxUses: options?.maxUses,
+  })
 
   return result.invite ?? ''
 }
@@ -583,18 +514,7 @@ export async function createInvite(
 export async function redeemInvite(invite: string): Promise<{ courseId: string }> {
   const coursesRoot = path.join(getProfileDataDir(), 'courses')
 
-  const request = requireRpc().request(CMD_REDEEM_INVITE)
-  request.send(JSON.stringify({ coursesRoot, invite }))
-
-  const reply = await request.reply('utf-8')
-  const result = JSON.parse(reply ? reply.toString() : '{}') as {
-    courseId?: string
-    error?: string
-  }
-
-  if (result.error) {
-    throw new Error(result.error)
-  }
+  const result = await sendCommand<{ courseId?: string }>(CMD.REDEEM_INVITE, { coursesRoot, invite })
 
   return { courseId: result.courseId ?? '' }
 }
@@ -628,26 +548,10 @@ let quitHookInstalled = false
 // on the new profile's p2p/ store). Resolves once the process has exited;
 // calls still waiting for it fail ("Bare worker is not running").
 export async function stopBareWorker(): Promise<void> {
-  const worker = workerProcess
-  workerProcess = null
-  rpc = null
+  const running = worker
+  worker = null
   globalThis.__matkoWorkerStatus = 'stopped'
-
-  if (!worker || worker.exitCode !== null || worker.signalCode !== null) {
-    return
-  }
-
-  await new Promise<void>((resolve) => {
-    const timeout = setTimeout(() => {
-      worker.kill('SIGKILL')
-      resolve()
-    }, 5_000)
-    worker.once('exit', () => {
-      clearTimeout(timeout)
-      resolve()
-    })
-    worker.kill()
-  })
+  await running?.stop()
 }
 
 export function spawnBareWorker(): void {
@@ -664,75 +568,44 @@ export function spawnBareWorker(): void {
     // JSON, so an e2e test can cross them with a tiny course. Unset in the app.
     const downloadLimits = process.env.MATKO_DOWNLOAD_LIMITS ?? ''
 
-    const worker = spawnBare('bare', {
-      args: downloadLimits
-        ? [workerPath, storagePath, bootstrap, downloadLimits]
-        : bootstrap
-          ? [workerPath, storagePath, bootstrap]
-          : [workerPath, storagePath],
-      stdio: ['pipe', 'pipe', 'pipe', 'pipe'],
-    })
-    workerProcess = worker
-
-    worker.on('error', (error) => {
-      globalThis.__matkoWorkerStatus = `error: ${error.message}`
-      console.error('[bare-worker] failed to spawn:', error)
-    })
-
-    worker.on('exit', (code, signal) => {
-      console.log('[bare-worker] worker exited', { code, signal })
-    })
-
-    worker.stdout?.on('data', (chunk: Buffer) => {
-      console.log('[bare-worker] worker stdout:', chunk.toString())
-    })
-
-    worker.stderr?.on('data', (chunk: Buffer) => {
-      console.error('[bare-worker] worker stderr:', chunk.toString())
-    })
-
-    // Node's own child_process types don't capture that an extra 'pipe' stdio slot
-    // (beyond stdin/stdout/stderr) is actually a full-duplex Socket at runtime — and
-    // bare-rpc's own Duplex type (from `bare-stream`) declares Bare-internal members a
-    // Node Socket doesn't structurally have, even though it satisfies bare-rpc's actual
-    // (duck-typed) runtime usage. Double-cast through `unknown` for that boundary.
-    const controlPipe = worker.stdio[3] as unknown as ConstructorParameters<typeof RPC>[0]
-    rpc = new RPC(controlPipe, (req) => {
-      if (req.command === EVENT_MAINTAINER_JOINED) {
-        try {
-          const joined = JSON.parse(req.data?.toString() ?? '{}') as MaintainerJoined
-          for (const listener of maintainerJoinedListeners) listener(joined)
-        } catch (error) {
-          console.error('[bare-worker] bad maintainer-joined event:', error)
-        }
+    // Each event is JSON naming the drive or maintainer it's about.
+    const parse = <T>(data: string): T | null => {
+      try {
+        return JSON.parse(data || '{}') as T
+      } catch (error) {
+        console.error('[bare-worker] bad event from the worker:', error)
+        return null
       }
-      if (req.command === EVENT_BOARD_CHANGED) {
-        try {
-          const { driveKey } = JSON.parse(req.data?.toString() ?? '{}') as { driveKey?: string }
-          if (driveKey) for (const listener of boardChangedListeners) listener(driveKey)
-        } catch (error) {
-          console.error('[bare-worker] bad board-changed event:', error)
+    }
+
+    worker = startWorker({
+      args: downloadLimits ? [storagePath, bootstrap, downloadLimits] : bootstrap ? [storagePath, bootstrap] : [storagePath],
+      onError: (error) => {
+        globalThis.__matkoWorkerStatus = `error: ${error.message}`
+        console.error('[bare-worker] failed to spawn:', error)
+      },
+      onEvent: (command, data) => {
+        if (command === EVENT.MAINTAINER_JOINED) {
+          const joined = parse<MaintainerJoined>(data)
+          if (joined) for (const listener of maintainerJoinedListeners) listener(joined)
+          return
         }
-      }
-      if (req.command === EVENT_ACTIVITY_CHANGED) {
-        try {
-          const { driveKey } = JSON.parse(req.data?.toString() ?? '{}') as { driveKey?: string }
-          if (driveKey) for (const listener of activityChangedListeners) listener(driveKey)
-        } catch (error) {
-          console.error('[bare-worker] bad activity-changed event:', error)
-        }
-      }
-      if (req.command === EVENT_DRIVE_CHANGED) {
-        try {
-          const { driveKey } = JSON.parse(req.data?.toString() ?? '{}') as { driveKey?: string }
-          if (driveKey) {
-            for (const listener of driveChangedListeners) listener(driveKey)
-          }
-        } catch (error) {
-          console.error('[bare-worker] bad drive-changed event:', error)
-        }
-      }
-      req.reply('')
+        const driveKey = parse<{ driveKey?: string }>(data)?.driveKey
+        if (!driveKey) return
+        const listeners =
+          command === EVENT.BOARD_CHANGED
+            ? boardChangedListeners
+            : command === EVENT.ACTIVITY_CHANGED
+              ? activityChangedListeners
+              : command === EVENT.DRIVE_CHANGED
+                ? driveChangedListeners
+                : []
+        for (const listener of listeners) listener(driveKey)
+      },
+      onExit: (code, signal) => console.log('[bare-worker] worker exited', { code, signal }),
+      onStderr: (text) => console.error('[bare-worker] worker stderr:', text),
+      onStdout: (text) => console.log('[bare-worker] worker stdout:', text),
+      workerPath,
     })
 
     getCreatorKey()
@@ -747,7 +620,7 @@ export function spawnBareWorker(): void {
     if (!quitHookInstalled) {
       quitHookInstalled = true
       app.on('will-quit', () => {
-        workerProcess?.kill()
+        worker?.kill()
       })
     }
   } catch (error) {

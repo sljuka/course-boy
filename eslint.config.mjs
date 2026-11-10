@@ -10,8 +10,9 @@ import globals from "globals";
 // `files` restriction applies to every file `eslint .` walks (e2e/*.mjs,
 // scripts/*.mjs, workers/*.cjs, dist-electron output, ...), which is how
 // upstream presets below are published. Scope every unscoped preset to
-// **/*.{ts,tsx} so the file set linted stays exactly what it was.
-const TS_FILES = ["**/*.ts", "**/*.tsx"];
+// **/*.{ts,tsx} so the file set linted stays exactly what it was, plus the
+// .mts/.cts type files next to plain-JS modules (workers/worker-client.d.mts).
+const TS_FILES = ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"];
 
 function scopeToTypeScript(config) {
   return (Array.isArray(config) ? config : [config]).map((entry) =>

@@ -1,0 +1,38 @@
+{
+  "_about": "The worker's RPC protocol: host -> worker command numbers and worker -> host event numbers. Shared by workers/main.cjs (the worker, in Bare), electron/bare-worker.ts (the app's host) and the headless seeder (SLJ-144). Never reuse or renumber an entry: an older worker or host may still send it.",
+  "commands": {
+    "GET_CREATOR_KEY": 1,
+    "PUBLISH_COURSE": 2,
+    "IMPORT_COURSE": 3,
+    "PUBLISH_GATED_COURSE": 4,
+    "CREATE_INVITE": 5,
+    "REDEEM_INVITE": 6,
+    "FOLLOW_COURSE": 7,
+    "STOP_SHARING": 8,
+    "CHECK_UPDATE": 9,
+    "DOWNLOAD_UPDATE": 10,
+    "GET_TRANSFER": 11,
+    "CANCEL_TRANSFER": 12,
+    "GET_PEERS": 13,
+    "READ_IDENTITY_BACKUP": 15,
+    "OPEN_IDENTITY": 16,
+    "FIND_COURSE": 17,
+    "SET_IDENTITY": 18,
+    "SEAL_IDENTITY": 19,
+    "SEED_COURSE": 20,
+    "PUBLISH_PROGRAM": 21,
+    "SEED_PROGRAM": 22,
+    "PEEK_COURSE": 23,
+    "FIND_PROGRAM": 24,
+    "SHARED_COURSE": 25,
+    "BOARD": 26,
+    "KEEP_DRIVE": 27,
+    "LIST_KEPT_DRIVES": 28
+  },
+  "events": {
+    "DRIVE_CHANGED": 100,
+    "MAINTAINER_JOINED": 101,
+    "BOARD_CHANGED": 102,
+    "ACTIVITY_CHANGED": 103
+  }
+}

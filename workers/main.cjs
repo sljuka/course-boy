@@ -42,54 +42,15 @@ const {
 const { createIdentityBackup, IdentityBackupError, openIdentityBackup, readIdentityBackup } = require('./identity-backup.cjs')
 const { courseKeyPair, creatorKeyPair, programKeyPair, publicCourseId, publicProgramId } = require('./identity-keys.cjs')
 
-const CMD_GET_CREATOR_KEY = 1 // must match electron/bare-worker.ts
-const CMD_PUBLISH_COURSE = 2 // must match electron/bare-worker.ts
-const CMD_IMPORT_COURSE = 3 // must match electron/bare-worker.ts
-const CMD_PUBLISH_GATED_COURSE = 4 // must match electron/bare-worker.ts
-const CMD_CREATE_INVITE = 5 // must match electron/bare-worker.ts
-const CMD_REDEEM_INVITE = 6 // must match electron/bare-worker.ts
-const CMD_FOLLOW_COURSE = 7 // must match electron/bare-worker.ts
-const CMD_STOP_SHARING = 8 // must match electron/bare-worker.ts
-const CMD_CHECK_UPDATE = 9 // must match electron/bare-worker.ts
-const CMD_DOWNLOAD_UPDATE = 10 // must match electron/bare-worker.ts
-const CMD_GET_TRANSFER = 11 // must match electron/bare-worker.ts
-const CMD_CANCEL_TRANSFER = 12 // must match electron/bare-worker.ts
-const CMD_GET_PEERS = 13 // must match electron/bare-worker.ts
-const CMD_READ_IDENTITY_BACKUP = 15 // must match electron/bare-worker.ts
-const CMD_OPEN_IDENTITY = 16 // must match electron/bare-worker.ts
-const CMD_FIND_COURSE = 17 // must match electron/bare-worker.ts
-const CMD_SET_IDENTITY = 18 // must match electron/bare-worker.ts
-const CMD_SEAL_IDENTITY = 19 // must match electron/bare-worker.ts
-const CMD_SEED_COURSE = 20 // must match electron/bare-worker.ts
-const CMD_PUBLISH_PROGRAM = 21 // must match electron/bare-worker.ts
-const CMD_SEED_PROGRAM = 22 // must match electron/bare-worker.ts
-const CMD_PEEK_COURSE = 23 // must match electron/bare-worker.ts
-const CMD_FIND_PROGRAM = 24 // must match electron/bare-worker.ts
-// Courses shared by several maintainers (SLJ-11): one command, the operation
-// named by `op` (see sharedCourseOp below).
-const CMD_SHARED_COURSE = 25 // must match electron/bare-worker.ts
-// Course boards (SLJ-149): one command, the operation named by `op` (see
-// boardOp below).
-const CMD_BOARD = 26 // must match electron/bare-worker.ts
-// The headless seeder (SLJ-144): keep a full copy of a drive and serve it, and
-// list what's kept. Not used by the app.
-const CMD_KEEP_DRIVE = 27
-const CMD_LIST_KEPT_DRIVES = 28
+// The RPC protocol's numbers, shared with the hosts (electron/bare-worker.ts,
+// the headless seeder): workers/protocol.json.
+const { commands: CMD, events: EVENT } = require('./protocol.json')
 
 // Programs (SLJ-32) share `publishedDrives` with courses under this prefix, so
 // a program's id can never collide with a course's.
 const PROGRAM_ENTRY_PREFIX = 'program:'
 // Peeking at a course (its course.json only) waits this long for a peer.
 const PEEK_TIMEOUT_MS = 20_000
-// Worker → main: an imported course's drive may hold a newer version. Main
-// decides what that means (electron/course-sharing.ts).
-const EVENT_DRIVE_CHANGED = 100 // must match electron/bare-worker.ts
-// Worker → main: someone joined as a maintainer with one of our invites.
-const EVENT_MAINTAINER_JOINED = 101 // must match electron/bare-worker.ts
-// Worker → main: a course board's messages or moderation list changed.
-const EVENT_BOARD_CHANGED = 102 // must match electron/bare-worker.ts
-// Worker → main: the teacher's device counted new activity on a course (SLJ-168).
-const EVENT_ACTIVITY_CHANGED = 103 // must match electron/bare-worker.ts
 
 // How often followed drives are checked for a new version even without an
 // 'append' event (e.g. after being offline). Main ignores repeats.
@@ -131,7 +92,7 @@ const bootstrap = argv[3]
   : undefined
 // The store holds no secret (SLJ-55): its seed is random and unrelated to the
 // publisher, so copying p2p/ gives nobody the right to publish. The publisher
-// identity is held by main and handed over in memory (CMD_SET_IDENTITY); every
+// identity is held by main and handed over in memory (CMD.SET_IDENTITY); every
 // core is created from its public manifest, and only a writing session gets the
 // key pair, in memory. See "Publisher key at rest" in docs/pear-integration-notes.md.
 // Test-only: smaller download limits, as JSON (MATKO_DOWNLOAD_LIMITS, see
@@ -189,8 +150,8 @@ async function start() {
   const boards = createBoards({
     folder: `${storagePath}-boards`,
     fs: fsp,
-    onActivity: (hex) => notifyMain(EVENT_ACTIVITY_CHANGED, { driveKey: IdEncoding.normalize(Buffer.from(hex, 'hex')) }),
-    onChange: (hex) => notifyMain(EVENT_BOARD_CHANGED, { driveKey: IdEncoding.normalize(Buffer.from(hex, 'hex')) }),
+    onActivity: (hex) => notifyMain(EVENT.ACTIVITY_CHANGED, { driveKey: IdEncoding.normalize(Buffer.from(hex, 'hex')) }),
+    onChange: (hex) => notifyMain(EVENT.BOARD_CHANGED, { driveKey: IdEncoding.normalize(Buffer.from(hex, 'hex')) }),
   })
 
   const connectionsByPeerKey = new Map() // hex peer key -> live conn, for upgrading an already-open one
@@ -548,7 +509,7 @@ async function start() {
     const keptHex = drive.key.toString('hex')
     if (keptDrives.has(keptHex)) keepSoon(keptHex)
     if (!rpc) return
-    const request = rpc.request(EVENT_DRIVE_CHANGED)
+    const request = rpc.request(EVENT.DRIVE_CHANGED)
     request.send(JSON.stringify({ driveKey: IdEncoding.normalize(drive.key) }))
     request.reply().catch(() => {})
   }
@@ -856,8 +817,8 @@ async function start() {
 
   // ─── Transfers (SLJ-43) ─────────────────────────────────────────────────
   // An import or an update download, tracked under an id the caller chooses, so
-  // main can poll its progress (CMD_GET_TRANSFER) and cancel it
-  // (CMD_CANCEL_TRANSFER). Phases: "finding" (no peer with the data yet: it
+  // main can poll its progress (CMD.GET_TRANSFER) and cancel it
+  // (CMD.CANCEL_TRANSFER). Phases: "finding" (no peer with the data yet: it
   // waits, it never gives up by itself), "downloading", then "done" /
   // "cancelled" / "error". The total is exact and known before downloading.
   const transfers = new Map() // id -> transfer
@@ -1500,8 +1461,8 @@ async function start() {
 
   const maintainers = createMaintainers({
     identity: () => identity,
-    onJoined: (joined) => notifyMain(EVENT_MAINTAINER_JOINED, joined),
-    onMailboxChanged: (key) => notifyMain(EVENT_DRIVE_CHANGED, { driveKey: key }),
+    onJoined: (joined) => notifyMain(EVENT.MAINTAINER_JOINED, joined),
+    onMailboxChanged: (key) => notifyMain(EVENT.DRIVE_CHANGED, { driveKey: key }),
     pairing,
     store,
     swarm,
@@ -1829,12 +1790,12 @@ async function start() {
   rpc = new RPC(stream, async (req) => {
     // The publisher id while the identity is unlocked here, else ''. Main asks
     // it once at start to know the worker answers (scripts/check-packaged.mjs).
-    if (req.command === CMD_GET_CREATOR_KEY) {
+    if (req.command === CMD.GET_CREATOR_KEY) {
       req.reply(identity ? publisherIdOf(identity) : '')
       return
     }
 
-    if (req.command === CMD_SET_IDENTITY) {
+    if (req.command === CMD.SET_IDENTITY) {
       try {
         const { key } = JSON.parse(req.data.toString())
         const next = key ? Buffer.from(key, 'base64') : null
@@ -1850,7 +1811,7 @@ async function start() {
 
     // Main's password-locked copy of the identity: the backup file's format
     // with no courses in it.
-    if (req.command === CMD_SEAL_IDENTITY) {
+    if (req.command === CMD.SEAL_IDENTITY) {
       try {
         const { key, password } = JSON.parse(req.data.toString())
         const primaryKey = Buffer.from(key, 'base64')
@@ -1863,7 +1824,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_OPEN_IDENTITY) {
+    if (req.command === CMD.OPEN_IDENTITY) {
       try {
         const { password, text } = JSON.parse(req.data.toString())
         const opened = openIdentity(text, password)
@@ -1881,7 +1842,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_SEED_COURSE) {
+    if (req.command === CMD.SEED_COURSE) {
       try {
         const { courseId, driveKey } = JSON.parse(req.data.toString())
         if (!isValidCourseId(courseId)) throw new Error('Invalid course id')
@@ -1894,7 +1855,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_PUBLISH_PROGRAM) {
+    if (req.command === CMD.PUBLISH_PROGRAM) {
       const { programId, programPath, publicIndex, publisherName } = JSON.parse(req.data.toString())
       try {
         if (!isValidCourseId(programId)) throw new Error('Invalid program id')
@@ -1907,7 +1868,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_SEED_PROGRAM) {
+    if (req.command === CMD.SEED_PROGRAM) {
       try {
         const { programId, driveKey } = JSON.parse(req.data.toString())
         if (!isValidCourseId(programId)) throw new Error('Invalid program id')
@@ -1920,7 +1881,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_PEEK_COURSE) {
+    if (req.command === CMD.PEEK_COURSE) {
       try {
         const { driveKey, withContents = false } = JSON.parse(req.data.toString())
         req.reply(JSON.stringify(await peekCourse(driveKey, { withContents })))
@@ -1932,7 +1893,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_PUBLISH_COURSE) {
+    if (req.command === CMD.PUBLISH_COURSE) {
       const { channelCode, courseId, coursePath, publicIndex, publisherName } = JSON.parse(req.data.toString())
 
       try {
@@ -1945,7 +1906,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_IMPORT_COURSE) {
+    if (req.command === CMD.IMPORT_COURSE) {
       const { driveKey, coursesRoot, programsRoot, transferId } = JSON.parse(req.data.toString())
 
       try {
@@ -1967,7 +1928,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_PUBLISH_GATED_COURSE) {
+    if (req.command === CMD.PUBLISH_GATED_COURSE) {
       const { courseId, coursePath } = JSON.parse(req.data.toString())
 
       try {
@@ -1985,7 +1946,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_CREATE_INVITE) {
+    if (req.command === CMD.CREATE_INVITE) {
       const { courseId, discoveryKey, driveKey, expiresInMs, maxUses } = JSON.parse(
         req.data.toString(),
       )
@@ -2006,7 +1967,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_REDEEM_INVITE) {
+    if (req.command === CMD.REDEEM_INVITE) {
       const { invite, coursesRoot } = JSON.parse(req.data.toString())
 
       try {
@@ -2025,7 +1986,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_FOLLOW_COURSE) {
+    if (req.command === CMD.FOLLOW_COURSE) {
       const { driveKey } = JSON.parse(req.data.toString())
 
       try {
@@ -2038,7 +1999,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_CHECK_UPDATE) {
+    if (req.command === CMD.CHECK_UPDATE) {
       const { driveKey, waitForPeers } = JSON.parse(req.data.toString())
 
       try {
@@ -2050,7 +2011,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_DOWNLOAD_UPDATE) {
+    if (req.command === CMD.DOWNLOAD_UPDATE) {
       const { driveKey, targetPath, transferId } = JSON.parse(req.data.toString())
 
       try {
@@ -2062,7 +2023,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_GET_TRANSFER) {
+    if (req.command === CMD.GET_TRANSFER) {
       const { transferId } = JSON.parse(req.data.toString())
       const transfer = transfers.get(transferId)
       req.reply(JSON.stringify({ transfer: transfer ? transferSnapshot(transfer) : null }))
@@ -2071,7 +2032,7 @@ async function start() {
 
     // The backup file's public part (who it belongs to, when it was made), to
     // show before asking for the password.
-    if (req.command === CMD_READ_IDENTITY_BACKUP) {
+    if (req.command === CMD.READ_IDENTITY_BACKUP) {
       try {
         const { text } = JSON.parse(req.data.toString())
         const backup = readIdentityBackup(text)
@@ -2082,7 +2043,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_FIND_COURSE) {
+    if (req.command === CMD.FIND_COURSE) {
       const { index, stagingPath, timeoutMs, transferId } = JSON.parse(req.data.toString())
 
       try {
@@ -2104,7 +2065,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_SHARED_COURSE) {
+    if (req.command === CMD.SHARED_COURSE) {
       let args = {}
       try {
         args = JSON.parse(req.data.toString())
@@ -2116,7 +2077,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_BOARD) {
+    if (req.command === CMD.BOARD) {
       let args = {}
       try {
         args = JSON.parse(req.data.toString())
@@ -2128,7 +2089,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_FIND_PROGRAM) {
+    if (req.command === CMD.FIND_PROGRAM) {
       const { index, stagingPath, timeoutMs, transferId } = JSON.parse(req.data.toString())
 
       try {
@@ -2148,7 +2109,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_KEEP_DRIVE) {
+    if (req.command === CMD.KEEP_DRIVE) {
       try {
         const { driveKey } = JSON.parse(req.data.toString())
         req.reply(JSON.stringify(await keepDrive(driveKey)))
@@ -2159,7 +2120,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_LIST_KEPT_DRIVES) {
+    if (req.command === CMD.LIST_KEPT_DRIVES) {
       try {
         req.reply(JSON.stringify({ kept: await listKeptDrives() }))
       } catch (error) {
@@ -2168,7 +2129,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_GET_PEERS) {
+    if (req.command === CMD.GET_PEERS) {
       try {
         req.reply(JSON.stringify({ peers: countPeers(JSON.parse(req.data.toString())) }))
       } catch {
@@ -2177,7 +2138,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_CANCEL_TRANSFER) {
+    if (req.command === CMD.CANCEL_TRANSFER) {
       const { transferId } = JSON.parse(req.data.toString())
       const transfer = transfers.get(transferId)
       if (transfer && !transfer.isCancelled && transfer.phase !== 'done') transfer.cancel()
@@ -2185,7 +2146,7 @@ async function start() {
       return
     }
 
-    if (req.command === CMD_STOP_SHARING) {
+    if (req.command === CMD.STOP_SHARING) {
       const { courseId, driveKey } = JSON.parse(req.data.toString())
 
       try {
