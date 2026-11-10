@@ -1,4 +1,5 @@
-import { defineConfig } from 'vite'
+import { createHash } from 'node:crypto'
+import { defineConfig, type Plugin } from 'vite'
 import { configDefaults } from 'vitest/config'
 import type { ChildProcess } from 'node:child_process'
 import path from 'node:path'
@@ -36,9 +37,54 @@ async function restartDevElectron(): Promise<void> {
   await startup(devElectronArgs)
 }
 
+// The window's Content-Security-Policy (SLJ-154): the backstop if a script
+// ever slips into the window through course content (a BlockNote or DOMPurify
+// bug, a new exercise kind rendering raw markup). Then it can't run, so it
+// never reaches the preload's bridges (publishing, identity, profiles).
+// - Scripts: only the app's own files, plus each inline script of index.html
+//   by its hash (the theme before the first paint), so no other inline script
+//   or `eval` runs.
+// - Styles may be inline (React's `style=`, BlockNote): a much smaller risk.
+// - Course images, video and audio come over `matko-asset:`; data: and blob:
+//   for pictures made in the page (video print frames, uploads).
+// Build only: in development Vite's own inline script and HMR websocket need
+// a looser page, and the built app is what ships.
+function contentSecurityPolicy(): Plugin {
+  return {
+    apply: 'build',
+    name: 'matko-content-security-policy',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html) {
+        const inlineScripts = Array.from(html.matchAll(/<script>([\s\S]*?)<\/script>/g)).map(
+          ([, code]) => `'sha256-${createHash('sha256').update(code).digest('base64')}'`,
+        )
+        const policy = [
+          "default-src 'self'",
+          ["script-src 'self'", ...inlineScripts].join(' '),
+          "style-src 'self' 'unsafe-inline'",
+          "img-src 'self' matko-asset: data: blob:",
+          "media-src 'self' matko-asset: data: blob:",
+          "font-src 'self' data:",
+          "connect-src 'self' matko-asset:",
+          "object-src 'none'",
+          "frame-src 'none'",
+          "base-uri 'none'",
+          "form-action 'none'",
+        ].join('; ')
+        return {
+          html,
+          tags: [{ attrs: { content: policy, 'http-equiv': 'Content-Security-Policy' }, injectTo: 'head-prepend', tag: 'meta' }],
+        }
+      },
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    contentSecurityPolicy(),
     tailwindcss(),
     react(),
     electron({

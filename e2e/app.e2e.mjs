@@ -78,6 +78,36 @@ describe('launch', () => {
     expect(colored).toBeGreaterThan(200)
   })
 
+  // SLJ-154: the built window has a Content-Security-Policy, so a script that
+  // slips in with course content can't run (and can't reach the bridges). The
+  // theme script in index.html runs by its hash. Any resource the policy
+  // blocks later in this file is a console error, caught by the "no uncaught
+  // renderer errors" check at the end.
+  it('runs only its own scripts: the policy is set, the theme script runs, an injected one does not', async () => {
+    const policy = await harness.page.evaluate(
+      () => document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.getAttribute('content') ?? null,
+    )
+    expect(policy).toContain("script-src 'self' 'sha256-")
+    // Never 'unsafe-inline' or 'unsafe-eval' for scripts.
+    expect(policy.split(';').find((directive) => directive.trim().startsWith('script-src'))).not.toMatch(/unsafe-(inline|eval)/)
+    // Nothing refused so far: the theme script ran, by its hash.
+    expect(harness.errors.filter((message) => message.includes('Content Security Policy'))).toEqual([])
+
+    const ran = await harness.page.evaluate(async () => {
+      window.__injectedScriptRan = false
+      const script = document.createElement('script')
+      script.textContent = 'window.__injectedScriptRan = true'
+      document.head.append(script)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      script.remove()
+      return window.__injectedScriptRan
+    })
+    expect(ran).toBe(false)
+
+    // The refusal is logged as a console error: the behavior under test.
+    harness.errors = harness.errors.filter((message) => !message.includes('violates the following Content Security Policy'))
+  })
+
   // Contract 1 in docs/contracts.md: preload.ts and electron-env.d.ts are
   // hand-maintained mirrors of each other with nothing verifying they agree.
   // This is the only automated check that they do.
@@ -172,6 +202,7 @@ describe('launch', () => {
     expect(surface.sharing).toEqual([
       'applyCourseUpdate',
       'cancelTransfer',
+      'checkCourseUpdate',
       'chooseIdentityFile',
       'findCode',
       'finishOnVersion',

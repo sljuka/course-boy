@@ -274,17 +274,22 @@ Not blockers, but do not mistake them for patterns to copy:
   the string never reappears on screen. Several remain in the `*-prototype`
   components (e.g. the explorer's "Test" node label). An `i18next/no-literal-string`
   eslint rule would catch the whole class.
-- No Content-Security-Policy is set, so Electron logs a warning on every launch. Exposure
-  is still low for most content — `react-markdown` runs without `rehype-raw` — but the
-  `region-picker` exercise kind (`src/components/region-picker-canvas.tsx`) is now a real
-  exception: it renders an uploaded SVG's raw markup inline via `dangerouslySetInnerHTML`
-  so individual shapes can be clicked, sanitizing with `DOMPurify` (SVG profile, plus a
-  hook stripping non-fragment/non-`data:` `href`/`xlink:href` values) immediately before
-  every render. Since SLJ-48 the window itself is locked (`electron/window-security.ts`):
-  it only ever shows the app, outside links open in the system browser, new windows and
+- The `region-picker` exercise kind (`src/components/region-picker-canvas.tsx`) renders
+  an uploaded SVG's raw markup inline via `dangerouslySetInnerHTML`, so individual
+  shapes can be clicked: the one place course content becomes markup. It's sanitized
+  with `DOMPurify` (SVG profile, plus a hook stripping non-fragment/non-`data:`
+  `href`/`xlink:href` values) immediately before every render. Two backstops stand
+  behind it. The window is locked (SLJ-48, `electron/window-security.ts`): it only
+  ever shows the app, outside links open in the system browser, new windows and
   `<webview>` are refused, and permissions are denied except clipboard write and
-  fullscreen. So a hostile link in imported content can't load an outside page with the
-  preload's bridges. `matko://` links to course content (SLJ-60) are handed to the app
-  to open (see contract 9 in docs/contracts.md). CSP for the rest of the app is still open.
+  fullscreen, so a hostile link can't load an outside page with the preload's bridges
+  (`matko://` links to course content, SLJ-60, are handed to the app; contract 9 in
+  docs/contracts.md). And the built window has a Content-Security-Policy (SLJ-154,
+  `contentSecurityPolicy` in `vite.config.ts`): scripts only from the app's own files
+  and index.html's inline theme script by its hash, no `eval`; styles may be inline;
+  course media over `matko-asset:`. It's added at build time only (Vite's dev server
+  needs inline scripts), so Electron's CSP warning still shows in `npm run dev`. A new
+  resource type or origin needs a line in that policy: `e2e/app.e2e.mjs` fails on any
+  refusal.
 - The `*-prototype` components (`editor-prototype`, `course-structure-prototype`,
   `test-editor-prototype`) are exploratory and hold most of the styling violations.
