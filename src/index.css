@@ -157,6 +157,18 @@ button:disabled {
   }
 }
 
+/* A lesson's headings (BlockNote) have room below them, more than between
+   paragraphs (BlockNote gives both the same 3px), so a heading reads as the
+   title of the text under it rather than its first line. In em of the
+   heading's own size, so a smaller heading gets less and the room above it
+   stays clearly larger. On screen only: print sets its own heading spacing
+   below. */
+@media screen {
+  .bn-default-styles [data-content-type="heading"] {
+    padding-bottom: 0.3em;
+  }
+}
+
 @media print {
   :root {
     --app-titlebar-height: 0px;
