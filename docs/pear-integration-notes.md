@@ -1576,7 +1576,7 @@ students who followed it can seed the new drive from their old copy (`copyProlog
   `workers/board-sync.test.mjs`, `src/lib/course-activity.test.ts`,
   `electron/course-activity.test.ts`, and `e2e/sharing-activity.e2e.mjs`.
 
-### Keeping a drive in full: the headless seeder's core (SLJ-144, in progress, 2026-11-10)
+### Keeping a drive in full: the headless seeder (SLJ-144, 2026-11-10)
 
 A seeder is a process without Electron that runs `workers/main.cjs`, the same worker as
 the app, and keeps courses, programs and channels online while their publisher's
@@ -1618,4 +1618,4 @@ computer is off. It never holds the publishing identity: it only serves.
   quits, the teacher publishes again and the seeder fetches it on its own; the teacher
   quits and the student, started again, is offered the version and applies it, from the
   seeder only. Then `remove` and SIGTERM. A failing test prints the seeder's log.
-- **Not yet:** packaging and running it as a service. See SLJ-144.
+- **Not yet:** packaging, running it as a service, its web page and the Umbrel app (SLJ-194).

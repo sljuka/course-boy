@@ -152,8 +152,8 @@ display was already off when the run started.
   The built-in course is a published course too (SLJ-115): the app ships a snapshot and
   `courses/bundled.json` holds its code, and the maintainer updates it with
   `scripts/built-in-course.mjs` (adopt, publish, snapshot).
-  The headless seeder (SLJ-144, in progress, `seeder/`) runs the same worker without
-  Electron and keeps courses online while their teacher's computer is off; it and
+  The headless seeder (SLJ-144, `seeder/`; packaging and Umbrel in SLJ-194) runs the same
+  worker without Electron and keeps courses online while their teacher's computer is off; it and
   `electron/bare-worker.ts` start the worker through one client
   (`workers/worker-client.mjs`) and share its RPC numbers (`workers/protocol.json`,
   contract 12 in docs/contracts.md).
