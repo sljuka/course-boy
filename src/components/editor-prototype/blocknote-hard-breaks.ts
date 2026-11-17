@@ -5,11 +5,15 @@
 // (SLJ-19). CommonMark ignores spaces at the start of the line after a hard
 // break, so they never carry meaning and are safe to drop.
 //
+// Except in a code block, where a line's leading spaces are its content (an
+// indented program, numbers lined up in columns: SLJ-231) and the import
+// adds none.
+//
 // Kept free of `@blocknote/core` imports (it needs a DOM) so it can be unit
 // tested in Node; `blocknote-translation.ts` applies it after every import.
 
 type InlineNode = { type?: string; text?: string; content?: unknown };
-type BlockNode = { content?: unknown; children?: unknown };
+type BlockNode = { content?: unknown; children?: unknown; type?: string };
 
 function stripInline(nodes: InlineNode[]): void {
   let previousEndedWithBreak = false;
@@ -36,7 +40,7 @@ function stripInline(nodes: InlineNode[]): void {
 
 export function stripSpacesAfterHardBreaks<T extends BlockNode>(blocks: T[]): T[] {
   for (const block of blocks) {
-    if (Array.isArray(block.content)) {
+    if (Array.isArray(block.content) && block.type !== "codeBlock") {
       stripInline(block.content as InlineNode[]);
     }
 

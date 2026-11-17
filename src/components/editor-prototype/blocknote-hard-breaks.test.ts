@@ -3,6 +3,13 @@ import { describe, expect, it } from "vitest";
 import { stripSpacesAfterHardBreaks } from "./blocknote-hard-breaks";
 
 describe("stripSpacesAfterHardBreaks", () => {
+  it("keeps a code block's leading spaces, which line its columns up", () => {
+    const text = "   1 587 634\n + 3 327 154\n ───────────"
+    const blocks = [{ type: "codeBlock", content: [{ type: "text", text, styles: {} }], children: [] }];
+
+    expect(stripSpacesAfterHardBreaks(blocks)[0].content[0].text).toBe(text);
+  });
+
   it("drops the space BlockNote's import adds after each line break", () => {
     // What `tryParseMarkdownToBlocks("first line\\\nsecond line\\\nthird line")` returns.
     const blocks = [
