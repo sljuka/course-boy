@@ -36,6 +36,8 @@ const CLI = path.join(import.meta.dirname, '..', 'seeder', 'cli.mjs')
 const SEEDER_DATA = path.join(ROOT, 'seeder')
 const IMAGE = process.env.MATKO_SEEDER_IMAGE || null
 const CONTAINER = 'matko-seeder-e2e'
+// The program scenario's seeder serves its web page here (SLJ-194).
+const WEB_PORT = 18_391
 
 // How to run a seeder command: `node seeder/cli.mjs`, or the image's.
 function seederCommand(args, { container = CONTAINER, dataDir = SEEDER_DATA, inRunning = false } = {}) {
@@ -214,6 +216,13 @@ describe('a program on the seeder keeps the courses it lists (SLJ-194)', () => {
     }
   }
   const keptFor = (code) => status().find((entry) => entry.driveKey === code) ?? null
+  const web = `http://127.0.0.1:${WEB_PORT}`
+  const webChange = (action, code, headers = {}) =>
+    fetch(`${web}/api/${action}`, {
+      body: JSON.stringify({ code }),
+      headers: { 'Content-Type': 'application/json', 'X-Matko-Seeder': '1', ...headers },
+      method: 'POST',
+    })
   const dumpSeederLog = () => onTestFailed(() => console.log(`seeder log:\n${seederLog.join('')}`))
 
   async function publishCourse(page, title) {
@@ -264,11 +273,14 @@ describe('a program on the seeder keeps the courses it lists (SLJ-194)', () => {
     programId = (await teacher.evaluate(() => window.programs.create({ locale: 'en', title: 'E2E Seeded Program' }))).programId
     programCode = await publishProgram(teacher, [first])
 
-    expect(cli('add', programCode)).toMatch(/^Added /)
-    const [command, commandArgs] = seederCommand(['run'], { container, dataDir })
+    // With its web page (SLJ-194): the program is added there, not with `add`.
+    const [command, commandArgs] = seederCommand(['run', '--web', String(WEB_PORT)], { container, dataDir })
     seeder = spawn(command, commandArgs, { env: { ...process.env, MATKO_DHT_BOOTSTRAP: bootstrap() } })
     seeder.stdout.on('data', (chunk) => seederLog.push(chunk.toString()))
     seeder.stderr.on('data', (chunk) => seederLog.push(chunk.toString()))
+    await expect.poll(() => seederLog.join(''), { interval: 250, timeout: 30_000 }).toContain(`web page on http://127.0.0.1:${WEB_PORT}/`)
+    expect(await (await fetch(`${web}/`)).text()).toContain('Matko seeder')
+    expect(await (await webChange('add', `matko://import/${programCode}`)).json()).toEqual({ changed: true, code: programCode })
 
     await expect.poll(() => keptFor(programCode)?.state, { interval: 250, timeout: 60_000 }).toBe('kept')
     await expect.poll(() => keptFor(first.code)?.state, { interval: 250, timeout: 60_000 }).toBe('kept')
@@ -277,6 +289,11 @@ describe('a program on the seeder keeps the courses it lists (SLJ-194)', () => {
     // On the list: only the program.
     expect(cli('list').split('\n')).toHaveLength(1)
     expect(cli('status')).toMatch(/E2E Seeded Program \(program\)[\s\S]*└ .*E2E Program Seeded One \(course\)  kept/)
+    // The page's state: the program on the list, its course kept for it.
+    const state = await (await fetch(`${web}/api/state`)).json()
+    expect(state.added.map((entry) => entry.code)).toEqual([programCode])
+    expect(state.kept.find((entry) => entry.driveKey === first.code)).toMatchObject({ state: 'kept', via: programCode })
+    expect(state.recent.map((entry) => entry.line).join('\n')).toContain(`listed by ${programCode.slice(0, 8)}`)
   })
 
   it('a course added to the program later is kept too', async () => {
@@ -297,7 +314,9 @@ describe('a program on the seeder keeps the courses it lists (SLJ-194)', () => {
 
   it("removing the program drops its courses too, and SIGTERM stops the seeder", async () => {
     dumpSeederLog()
-    expect(cli('remove', programCode)).toMatch(/^Removed /)
+    // Another site can't remove it; the page can.
+    expect((await webChange('remove', programCode, { Origin: 'https://example.com' })).status).toBe(403)
+    expect(await (await webChange('remove', programCode)).json()).toEqual({ changed: true, code: programCode })
     await expect.poll(() => status().length, { interval: 250, timeout: 20_000 }).toBe(0)
     seeder.kill('SIGTERM')
     await expect.poll(() => seeder.exitCode, { timeout: 15_000 }).toBe(0)

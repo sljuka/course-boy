@@ -30,6 +30,23 @@ and every course they show on it stays online (SLJ-194). Those aren't on the lis
 themselves; `status` shows them under what they're kept for, and removing the channel
 or program drops them, unless they're on the list on their own too.
 
+### The web page
+
+`run --web <port>` (or `MATKO_SEED_WEB_PORT`) also serves a small page for people who'd
+rather not use a terminal: whether it's online and the disk space left, a box to paste a
+code or link, what it keeps (with what a channel or program keeps for it, underneath)
+and Remove, and what happened recently. In English and Serbian (Latin and Cyrillic).
+
+```sh
+node seeder/cli.mjs run --web 8380      # then open http://127.0.0.1:8380/
+```
+
+It listens on `127.0.0.1` unless `MATKO_SEED_WEB_HOST` says otherwise (`0.0.0.0` for
+every network). Anywhere but this computer it won't start without
+`MATKO_SEED_WEB_PASSWORD` (asked by the browser, any user name), unless
+`MATKO_SEED_WEB_OPEN=1` says something in front of it already checks who's there, as
+Umbrel's login does. It never shows a course's content, and can't publish.
+
 `--data <dir>` chooses where it keeps everything (default: `$MATKO_SEED_DATA`, or
 `~/.matko-seed`):
 
@@ -62,6 +79,15 @@ docker run -d --name matko-seeder --restart unless-stopped \
 docker exec matko-seeder node seeder/cli.mjs add <code>
 docker exec matko-seeder node seeder/cli.mjs status
 docker logs -f matko-seeder
+```
+
+With the web page, on port 8380 of every network the host is on, behind a password:
+
+```sh
+docker run -d --name matko-seeder --restart unless-stopped \
+  --network host -v matko-seeder:/data \
+  -e MATKO_SEED_WEB_PORT=8380 -e MATKO_SEED_WEB_HOST=0.0.0.0 \
+  -e MATKO_SEED_WEB_PASSWORD='choose one' matko-seeder
 ```
 
 `--network host` keeps the seeder off Docker's own NAT, so other computers reach it
@@ -110,5 +136,5 @@ Then `systemctl enable --now matko-seeder`, and add codes as the same user:
 ## Not yet
 
 - A published image, built for both platforms in CI (SLJ-194).
-- A small web page for adding and watching what it keeps, and an Umbrel app (SLJ-194).
+- An Umbrel app (SLJ-194).
 - Pairing with the app, so every Publish adds the course on its own (SLJ-188).

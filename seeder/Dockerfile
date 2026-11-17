@@ -37,5 +37,7 @@ COPY seeder ./seeder
 RUN mkdir -p /data && chown node:node /data
 USER node
 VOLUME ["/data"]
+# The web page's usual port, when MATKO_SEED_WEB_PORT asks for it (off unless set).
+EXPOSE 8380
 ENTRYPOINT ["node", "seeder/cli.mjs"]
 CMD ["run"]

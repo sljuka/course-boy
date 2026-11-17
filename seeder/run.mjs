@@ -24,6 +24,7 @@ import protocol from '../workers/protocol.json' with { type: 'json' }
 import { startWorker } from '../workers/worker-client.mjs'
 import { readKeptList } from './kept-list.mjs'
 import { wantedCodes } from './wanted.mjs'
+import { startWebServer } from './web.mjs'
 
 const CMD = protocol.commands
 const WORKER_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '../workers/main.cjs')
@@ -65,16 +66,27 @@ function claim(dataDir) {
   }
 }
 
+// How many log lines the web page shows.
+const RECENT_LINES = 50
+
 // Runs until `stop()` (or SIGINT/SIGTERM, with `handleSignals`). `bootstrap`:
 // a test-only local DHT ("host:port,…"), the public network otherwise.
+// `web`: { port, host, password, open } to serve the page (web.mjs), or null.
 export async function runSeeder({
   bootstrap = process.env.MATKO_DHT_BOOTSTRAP ?? '',
   dataDir,
   handleSignals = false,
-  log = (line) => console.log(`[${new Date().toISOString()}] ${line}`),
+  log: print = (line) => console.log(`[${new Date().toISOString()}] ${line}`),
   pollMs = 3_000,
+  web = null,
 } = {}) {
   fs.mkdirSync(dataDir, { recursive: true })
+  const recent = []
+  const log = (line) => {
+    recent.push({ at: new Date().toISOString(), line })
+    if (recent.length > RECENT_LINES) recent.shift()
+    print(line)
+  }
   const release = claim(dataDir)
   let stopping = false
   let resolveDone
@@ -98,6 +110,9 @@ export async function runSeeder({
   const active = new Map()
   // The worker's last report: what kept channels and programs list.
   let lastKept = []
+  // The same, with each entry's `via`, for status.json and the page.
+  let keptNow = []
+  let webServer = null
   let timer = null
 
   async function sync() {
@@ -136,6 +151,7 @@ export async function runSeeder({
     lastKept = reported
     // `via`: the program or channel a code is kept for; null when it's on the list.
     const kept = reported.map((entry) => ({ ...entry, via: wanted.get(entry.driveKey)?.via ?? null }))
+    keptNow = kept
     for (const entry of kept) {
       const seen = `${entry.state} ${entry.version ?? ''} ${entry.error ?? ''}`
       if (active.get(entry.driveKey) === seen) continue
@@ -162,6 +178,7 @@ export async function runSeeder({
     if (stopping) return done
     stopping = true
     clearTimeout(timer)
+    await webServer?.close().catch(() => {})
     await worker.stop().catch(() => {})
     try {
       const file = path.join(dataDir, STATUS_FILE)
@@ -189,5 +206,15 @@ export async function runSeeder({
   log(`seeder running on ${dataDir} (${bootstrap ? 'local test network' : 'public network'})`)
   await loop()
 
-  return { done, stop }
+  if (web) {
+    try {
+      webServer = await startWebServer({ ...web, dataDir, state: () => ({ kept: keptNow, recent, running: !stopping }) })
+      log(`web page on http://${web.host?.includes(':') ? `[${web.host}]` : (web.host ?? '127.0.0.1')}:${webServer.port}/${web.password ? ' (with a password)' : ''}`)
+    } catch (error) {
+      await stop(1)
+      throw new Error(`The web page didn't start: ${error.message}`)
+    }
+  }
+
+  return { done, stop, webPort: webServer?.port ?? null }
 }

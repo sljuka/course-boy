@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Matko seeder</title>
+    <link rel="stylesheet" href="app.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1 data-text="title">Matko seeder</h1>
+        <label class="language">
+          <span class="visually-hidden" data-text="language">Language</span>
+          <select id="language">
+            <option value="en">English</option>
+            <option value="sr">Srpski</option>
+            <option value="sr-Cyrl">Српски</option>
+          </select>
+        </label>
+      </header>
+
+      <p class="summary" id="summary" aria-live="polite"></p>
+
+      <form id="add" autocomplete="off">
+        <label for="code" data-text="addLabel">Course, program or channel code or link</label>
+        <div class="add-row">
+          <input id="code" name="code" spellcheck="false" required />
+          <button type="submit" data-text="addButton">Keep it</button>
+        </div>
+        <p class="hint" data-text="addHint"></p>
+        <p class="message" id="message" role="status"></p>
+      </form>
+
+      <section aria-labelledby="kept-heading">
+        <h2 id="kept-heading" data-text="kept">Kept</h2>
+        <ul class="kept" id="kept"></ul>
+        <p class="empty" id="empty" data-text="nothing" hidden></p>
+      </section>
+
+      <section aria-labelledby="recent-heading">
+        <h2 id="recent-heading" data-text="recent">Recent</h2>
+        <ol class="recent" id="recent"></ol>
+      </section>
+
+      <p class="warning" data-text="warning"></p>
+    </main>
+  </body>
+</html>

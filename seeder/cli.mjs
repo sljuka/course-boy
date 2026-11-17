@@ -18,7 +18,12 @@ const USAGE = `Usage: node seeder/cli.mjs <command> [--data <dir>]
   status           What the running seeder keeps now
 
 --data <dir>  Where the seeder keeps everything (default: $MATKO_SEED_DATA,
-              or ~/.matko-seed). One running seeder per folder.`
+              or ~/.matko-seed). One running seeder per folder.
+--web <port>  With run: also serve a web page to add, list and remove
+              (default: $MATKO_SEED_WEB_PORT; none if unset). It listens on
+              $MATKO_SEED_WEB_HOST (default 127.0.0.1); anywhere else it needs
+              $MATKO_SEED_WEB_PASSWORD, or MATKO_SEED_WEB_OPEN=1 behind a
+              proxy that already checks who it is (Umbrel).`
 
 // A status this old is from a seeder that isn't running any more.
 const STALE_MS = 30_000
@@ -32,7 +37,25 @@ function parse(argv) {
     if (!dataDir) throw new Error('--data needs a folder')
     args.splice(index, 2)
   }
-  return { args, dataDir: path.resolve(dataDir) }
+  let webPort = process.env.MATKO_SEED_WEB_PORT || null
+  const webIndex = args.indexOf('--web')
+  if (webIndex !== -1) {
+    webPort = args[webIndex + 1]
+    if (!webPort) throw new Error('--web needs a port')
+    args.splice(webIndex, 2)
+  }
+  let web = null
+  if (webPort) {
+    const port = Number.parseInt(webPort, 10)
+    if (!Number.isInteger(port) || port < 0 || port > 65_535) throw new Error(`"${webPort}" is not a port`)
+    web = {
+      host: process.env.MATKO_SEED_WEB_HOST || '127.0.0.1',
+      open: process.env.MATKO_SEED_WEB_OPEN === '1',
+      password: process.env.MATKO_SEED_WEB_PASSWORD || '',
+      port,
+    }
+  }
+  return { args, dataDir: path.resolve(dataDir), web }
 }
 
 function requireCode(input) {
@@ -88,11 +111,11 @@ function printStatus(dataDir) {
 }
 
 async function main(argv) {
-  const { args, dataDir } = parse(argv)
+  const { args, dataDir, web } = parse(argv)
   const [command, input] = args
   switch (command) {
     case 'run': {
-      const { done } = await runSeeder({ dataDir, handleSignals: true })
+      const { done } = await runSeeder({ dataDir, handleSignals: true, web })
       return done
     }
     case 'add': {
