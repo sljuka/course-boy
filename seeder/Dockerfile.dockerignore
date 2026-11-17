@@ -8,3 +8,4 @@
 workers/**/*.test.*
 seeder/**/*.test.*
 seeder/Dockerfile*
+seeder/umbrel

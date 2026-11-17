@@ -1,0 +1,2 @@
+id: "matko" # The store's id: every app in it starts with "matko-".
+name: "Matko" # Shown in umbrelOS as "Matko App Store".

@@ -136,5 +136,5 @@ Then `systemctl enable --now matko-seeder`, and add codes as the same user:
 ## Not yet
 
 - A published image, built for both platforms in CI (SLJ-194).
-- An Umbrel app (SLJ-194).
+- An Umbrel store repository with the app in it: the files are ready in `seeder/umbrel/` (SLJ-194).
 - Pairing with the app, so every Publish adds the course on its own (SLJ-188).

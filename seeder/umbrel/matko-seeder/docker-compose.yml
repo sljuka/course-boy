@@ -1,0 +1,24 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      # <app-id>_<service>_1, and the port the seeder's page listens on inside.
+      APP_HOST: matko-seeder_seeder_1
+      APP_PORT: 8380
+
+  seeder:
+    # Filled in by pin-image.sh from the released multi-arch image.
+    image: ghcr.io/sljuka/matko-seeder:VERSION@sha256:DIGEST
+    user: "1000:1000"
+    init: true
+    restart: on-failure
+    environment:
+      MATKO_SEED_DATA: /data
+      # The page, behind Umbrel's own login (its app proxy), so no password of
+      # its own (SLJ-194).
+      MATKO_SEED_WEB_PORT: 8380
+      MATKO_SEED_WEB_HOST: 0.0.0.0
+      MATKO_SEED_WEB_OPEN: "1"
+    volumes:
+      - ${APP_DATA_DIR}/data/seeder:/data

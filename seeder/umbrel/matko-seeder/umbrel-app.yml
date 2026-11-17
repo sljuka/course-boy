@@ -1,0 +1,34 @@
+manifestVersion: 1
+id: matko-seeder
+storage:
+  dataRoot: data
+category: networking
+name: Matko seeder
+version: "VERSION"
+tagline: Keep Matko courses online while their teacher's computer is off
+description: >-
+  Matko is an open app for making, taking and sharing courses, shared directly between
+  teachers' and students' computers.
+
+
+  This seeder keeps courses, programs and channels online on your Umbrel, so students can
+  import them and get new versions even when the teacher's computer is off. Paste a code
+  or matko:// link on its page; a channel or program also keeps every course it lists,
+  including ones added later.
+
+
+  It can read the courses it keeps, so add only courses you're happy for whoever runs
+  this box to see. It never publishes anything and holds no publishing identity.
+releaseNotes: ""
+developer: Matko
+website: https://github.com/sljuka/course-boy
+dependencies: []
+repo: https://github.com/sljuka/course-boy
+support: https://github.com/sljuka/course-boy/issues
+port: 8380
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: Matko
+submission: https://github.com/sljuka/course-boy
