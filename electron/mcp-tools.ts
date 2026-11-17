@@ -22,6 +22,7 @@ import { regionPickerSvgPresets } from "../src/lib/region-picker-svg-presets";
 import { type CourseTagDefinition, createCourseTagDefinition, courseTagColorOptions } from "../src/lib/course-tags";
 import { isExerciseCount } from "../src/lib/course-exercise-pool";
 import type { CourseExerciseMedia } from "../src/lib/exercise-media";
+import { canSatisfy as canSatisfyColumnRules, MAX_COLUMN_OPERAND, MAX_COLUMN_OPERANDS, MIN_COLUMN_OPERANDS } from "../src/lib/exercise-kinds/column-arithmetic";
 import { SPEECH_LANGUAGES } from "../src/lib/exercise-speech";
 import { DEFAULT_EXERCISE_POINTS, MAX_EXERCISE_POINTS, MIN_EXERCISE_POINTS } from "../src/lib/grade-bands";
 import { isLocale, type Locale } from "../src/lib/i18n";
@@ -380,6 +381,34 @@ const questionSchema = z.discriminatedUnion("type", [
     readAloud,
     tags,
   }),
+  // Written addition and subtraction (SLJ-231): numbers stacked by place
+  // value; the student writes the answer digit by digit, noting carries.
+  z.object({
+    type: z.literal("written_calculation"),
+    image,
+    prompt: z.string().min(1).describe('The instruction, e.g. "Izračunaj pažljivo!"'),
+    operation: z.enum(["add", "subtract"]).describe("Add the numbers, or take the second from the first (never below zero)"),
+    numbers: z
+      .array(
+        z.object({
+          min: z.number().int().min(0).max(MAX_COLUMN_OPERAND),
+          max: z.number().int().min(0).max(MAX_COLUMN_OPERAND),
+        }),
+      )
+      .min(MIN_COLUMN_OPERANDS)
+      .max(MAX_COLUMN_OPERANDS)
+      .describe("Each number's range, top to bottom; every attempt draws new numbers. 2 to 4 to add, exactly 2 to subtract. E.g. 7-digit numbers: { min: 1000000, max: 9999999 }"),
+    regrouping: z
+      .enum(["any", "required", "none"])
+      .optional()
+      .describe('"required": at least one carry or borrow; "none": not a single one (default "any")'),
+    checkCarries: z.boolean().optional().describe("Also check the small boxes for carried digits (default false: scratch only)"),
+    printSpace: z.enum(["sm", "md", "lg", "xl"]).optional().describe('Blank room under the problem on a printed sheet (default "md")'),
+    hint: z.string().optional(),
+    points,
+    readAloud,
+    tags,
+  }),
   z.object({
     type: z.literal("region_picker"),
     prompt: z.string().min(1).describe('The instruction, e.g. "Click the countries that border Serbia"'),
@@ -650,6 +679,26 @@ function exerciseFromQuestion(
     };
   }
 
+  if (question.type === "written_calculation") {
+    const operands = question.numbers.map(({ max, min }) => ({ max, min }));
+    if (operands.some((range) => range.min > range.max)) throw new Error(`"${question.prompt}": a number's min is above its max`);
+    if (question.operation === "subtract" && operands.length !== 2) throw new Error(`"${question.prompt}": subtraction takes exactly 2 numbers`);
+    const regrouping = question.regrouping ?? "any";
+    if (!canSatisfyColumnRules({ operands, operation: question.operation, regrouping })) {
+      throw new Error(`"${question.prompt}": no numbers in these ranges follow the rules (carrying, or an answer below zero)`);
+    }
+    return {
+      ...(question.checkCarries ? { gradeCarries: true } : {}),
+      kind: "column-arithmetic",
+      locales: { [locale]: { ...hint, prompt: question.prompt } },
+      operands,
+      operation: question.operation,
+      ...(regrouping !== "any" ? { regrouping } : {}),
+      space: question.printSpace ?? "md",
+      tags: [],
+    };
+  }
+
   if (question.type === "rewrite") {
     const source = question.source?.trim();
     return {
@@ -886,6 +935,18 @@ function questionFromExercise(exercise: CourseExercise): Record<string, unknown>
       prompt: exercise.prompt,
       text: joinPunctuationSentence(exercise.words, exercise.gaps),
       type: "punctuation",
+      ...(exercise.hint ? { hint: exercise.hint } : {}),
+    };
+  }
+  if (exercise.kind === "column-arithmetic") {
+    return {
+      numbers: exercise.operands,
+      operation: exercise.operation,
+      prompt: exercise.prompt,
+      type: "written_calculation",
+      ...(exercise.regrouping !== "any" ? { regrouping: exercise.regrouping } : {}),
+      ...(exercise.gradeCarries ? { checkCarries: true } : {}),
+      ...(typeof exercise.solutionSpace === "string" ? { printSpace: exercise.solutionSpace } : {}),
       ...(exercise.hint ? { hint: exercise.hint } : {}),
     };
   }

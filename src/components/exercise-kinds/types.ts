@@ -63,6 +63,8 @@ export type ReviewComponentProps<TCourse extends CourseExercise> = {
 
 export type PrintAnswerComponentProps<TCourse extends CourseExercise> = {
   exercise: TCourse;
+  // This sheet's attempt: e.g. the numbers drawn for a written calculation.
+  instance: ExerciseInstance;
   printAnswerStyle: CoursePrintAnswerStyle;
 };
 

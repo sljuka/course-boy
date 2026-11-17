@@ -4155,6 +4155,56 @@ describe('read aloud', () => {
     await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
   })
 
+  // SLJ-231: written addition, typed from the right; a wrong column is marked.
+  it('adds numbers in columns, digit by digit from the right', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Written Calculation Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Big numbers' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Add in columns' })
+      await window.courses.saveSectionTest({
+        courseId,
+        sectionId,
+        test: {
+          exercises: [
+            {
+              kind: 'column-arithmetic',
+              locales: { en: { prompt: 'Calculate carefully!' } },
+              // Fixed numbers: 587 + 277 = 864.
+              operands: [{ max: 587, min: 587 }, { max: 277, min: 277 }],
+              operation: 'add',
+              tags: [],
+            },
+          ],
+          template: '',
+        },
+        testId,
+      })
+      return { courseId, testId }
+    })
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const operands = page.locator('[data-testid="column-arithmetic-operand"]')
+    await expect.poll(() => operands.count()).toBe(2)
+    const digits = page.locator('[data-testid="column-arithmetic-digit"]')
+    // Typing moves left: 4, 6, then 5 lands in the hundreds.
+    await digits.first().click()
+    await page.keyboard.type('465')
+    await expect.poll(async () => Promise.all([0, 1, 2].map((i) => digits.nth(i).inputValue()))).toEqual(['4', '6', '5'])
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => digits.nth(2).getAttribute('aria-invalid')).toBe('true')
+    expect(await digits.nth(0).getAttribute('aria-invalid')).toBeNull()
+    await digits.nth(2).fill('8')
+    await page.getByRole('button', { exact: true, name: /Check answer|Proveri odgovor/ }).click()
+    await expect.poll(() => page.locator('body').innerText()).toMatch(/Correct|Tačno|Continue|Nastavi/)
+  })
+
   // SLJ-180: drag the cards into place with the mouse, or with the keyboard on a card's grip.
   it('puts cards in order by dragging them', async () => {
     const { page } = harness

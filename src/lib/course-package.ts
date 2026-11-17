@@ -112,7 +112,8 @@ export type ExerciseKind =
   | "match-pairs"
   | "put-in-order"
   | "sort-groups"
-  | "find-in-picture";
+  | "find-in-picture"
+  | "column-arithmetic";
 
 export type NumericCourseExercise = {
   kind: "numeric";
@@ -393,6 +394,32 @@ export type RegionLabelCourseExercise = {
   viewBox?: string;
 };
 
+// Written addition and subtraction (SLJ-231, lib/exercise-kinds/column-
+// arithmetic.ts): numbers stacked by place value, worked column by column.
+// Each number is drawn from its range per attempt; addition has 2 to 4
+// numbers, subtraction 2 (the first minus the second, never below zero).
+export type ColumnArithmeticOperation = "add" | "subtract";
+// "required": at least one carry (or borrow); "none": not a single one.
+export type ColumnArithmeticRegrouping = "any" | "required" | "none";
+export type ColumnArithmeticOperandRange = { max: number; min: number };
+
+export type ColumnArithmeticCourseExercise = {
+  kind: "column-arithmetic";
+  // The carry and borrow boxes are checked too; otherwise they're scratch.
+  gradeCarries: boolean;
+  hint?: string;
+  id: string;
+  // An image or video shown above the prompt (SLJ-56); see lib/exercise-media.ts.
+  media?: CourseExerciseMedia;
+  operands: ColumnArithmeticOperandRange[];
+  operation: ColumnArithmeticOperation;
+  prompt: string;
+  regrouping: ColumnArithmeticRegrouping;
+  // Room left under the problem on a printed sheet.
+  solutionSpace: CourseExerciseSolutionSpace;
+  tags: string[];
+};
+
 // What every exercise kind can have.
 export type ExercisePointsField = {
   // Earned for solving it correctly in a graded test (SLJ-135); missing
@@ -448,6 +475,7 @@ export type CourseExercise = (
   | PutInOrderCourseExercise
   | SortGroupsCourseExercise
   | FindInPictureCourseExercise
+  | ColumnArithmeticCourseExercise
 ) &
   ExercisePointsField &
   ExerciseSpeechField;
@@ -591,6 +619,20 @@ export type SharedFindInPictureTestExerciseDefinition = {
   tags: string[];
 };
 
+// On disk (SLJ-231): the numbers' ranges and the settings outside `locales`;
+// `regrouping` and `gradeCarries` are written only when set.
+export type SharedColumnArithmeticTestExerciseDefinition = {
+  kind: "column-arithmetic";
+  locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string }>>;
+  media?: SharedExerciseMedia;
+  operation: ColumnArithmeticOperation;
+  operands: ColumnArithmeticOperandRange[];
+  regrouping?: "required" | "none";
+  gradeCarries?: boolean;
+  space?: CourseExerciseSolutionSpace;
+  tags: string[];
+};
+
 export type SharedMultipleChoiceTestExerciseDefinition = {
   kind: "multiple-choice";
   locales: Partial<Record<Locale, { hint?: string; mediaAlt?: string; prompt: string; options: string[] }>>;
@@ -698,6 +740,7 @@ export type SharedTestExerciseDefinition = (
   | SharedPutInOrderTestExerciseDefinition
   | SharedSortGroupsTestExerciseDefinition
   | SharedFindInPictureTestExerciseDefinition
+  | SharedColumnArithmeticTestExerciseDefinition
 ) &
   ExercisePointsField &
   ExerciseSpeechField;

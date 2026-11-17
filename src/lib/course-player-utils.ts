@@ -12,6 +12,8 @@ export type ExerciseInstance =
   | { kind: "put-in-order"; order: number[] }
   | { kind: "sort-groups"; cardOrder: number[] }
   | { kind: "find-in-picture" }
+  // The numbers drawn for this attempt, top to bottom.
+  | { kind: "column-arithmetic"; operands: number[] }
   | { kind: "word-types" }
   | { kind: "missing-word" }
   | { kind: "region-picker" }

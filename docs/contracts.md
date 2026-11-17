@@ -824,6 +824,19 @@ exercise). The answer is `{ areas: id[], misses: [x, y][], points? }`: a tap on 
 about 20 px from every one) is a miss and counts as wrong; `points` (where each area was
 tapped) only places the ring, so hits and misses look the same until the check.
 
+**Written calculation** (`column-arithmetic`, SLJ-231): written addition and subtraction,
+the numbers stacked by place value as on squared paper. On disk only the rules: the
+`operation` (`add`, 2 to 4 numbers; `subtract`, exactly 2, never below zero), each
+number's range (`operands`, `{ min, max }`, up to 12 digits), `regrouping` (`required` /
+`none`, missing: either), `gradeCarries` and the printed `space`. The numbers themselves
+are drawn per attempt (the instance's `operands`), like numeric's variables. The answer
+is `{ digits, carries }`, each a box per column, ones first; a borrow is noted like a
+carry (a 1 over the column it goes into), so both operations check the same row. Each
+digit is a part; the carries are parts only with `gradeCarries`. It prints the numbers
+drawn for that sheet, which is why `PrintAnswerComponent` gets the `instance` too. Its
+answer row's ones box has `data-autofocus`, which the one-at-a-time player focuses
+before a kind's first field.
+
 **An editor that doesn't know a field drops it on save.** `fromSharedTestExerciseDefinition`
 rebuilds an exercise from the fields its version knows, so an app version from before
 `speech` (or any later field) that edits and saves a test writes it back without that

@@ -1790,5 +1790,44 @@
     "right": "Tačno",
     "small": "Možda teško za dodir na malim ekranima",
     "removeArea": "Ukloni oblast {{number}}"
+  },
+  "columnArithmetic": {
+    "answerLabel": "Pismeno računanje",
+    "digitLabel": "Rezultat, {{number}}. cifra zdesna",
+    "carryLabel": "Preneto u {{number}}. cifru zdesna",
+    "noAnswer": "Prvo upiši cifre rezultata.",
+    "promptLabel": "Zadatak",
+    "promptPlaceholder": "Izračunaj pažljivo!",
+    "operationLabel": "Računska operacija",
+    "operation": {
+      "add": "Sabiranje",
+      "subtract": "Oduzimanje"
+    },
+    "numbersLabel": "Brojevi",
+    "numbersHelp": "Svaki pokušaj dobija nove brojeve iz ovih opsega. Kod oduzimanja se drugi broj oduzima od prvog, a rezultat nikad nije manji od nule.",
+    "numberLabel": "Broj {{number}}",
+    "min": "Od",
+    "max": "Do",
+    "addNumber": "Dodaj broj",
+    "removeNumber": "Ukloni broj {{number}}",
+    "regroupingLabel": "Prenos i pozajmljivanje",
+    "regrouping": {
+      "any": "Svejedno",
+      "required": "Bar jednom",
+      "none": "Nikad"
+    },
+    "gradeCarries": "Proveri i prenete cifre (male kućice iznad)",
+    "spaceLabel": "Prostor pri štampanju",
+    "spaceHelp": "Koliko praznog prostora ostaviti ispod zadatka na odštampanom listu.",
+    "space": {
+      "sm": "Malo (1 red)",
+      "md": "Srednje (3 reda)",
+      "lg": "Veliko (5 redova)",
+      "xl": "Najveće (8 redova)"
+    },
+    "hintLabel": "Pomoć",
+    "hintPlaceholder": "Kreni od jedinica, sa desne strane.",
+    "valid": "Spremno",
+    "invalid": "Treba ispraviti"
   }
 }

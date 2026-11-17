@@ -282,6 +282,52 @@ describe("questions", () => {
     expect(readBack).toEqual({ images: ["dig-0123456789abcdef.svg", null], items: ["dig", "seed"], prompt: "Put in order.", type: "put_in_order" });
   });
 
+  // SLJ-231: written addition and subtraction, and back.
+  it("become written calculations, and back", () => {
+    const numbers = [
+      { max: 9_999_999, min: 1_000_000 },
+      { max: 999_999, min: 100_000 },
+    ];
+    const [exercise] = testFromQuestions(
+      [{ numbers, operation: "subtract" as const, printSpace: "lg" as const, prompt: "Izračunaj pažljivo!", regrouping: "required" as const, type: "written_calculation" as const }],
+      "sr",
+    ).exercises;
+    expect(exercise).toEqual({
+      kind: "column-arithmetic",
+      locales: { sr: { prompt: "Izračunaj pažljivo!" } },
+      operands: numbers,
+      operation: "subtract",
+      regrouping: "required",
+      space: "lg",
+      tags: [],
+    });
+    expect(() =>
+      testFromQuestions([{ numbers: [...numbers, ...numbers], operation: "subtract" as const, prompt: "?", type: "written_calculation" as const }], "sr"),
+    ).toThrow("exactly 2");
+    expect(() =>
+      testFromQuestions(
+        [{ numbers: [{ max: 4, min: 0 }, { max: 4, min: 0 }], operation: "add" as const, prompt: "?", regrouping: "required" as const, type: "written_calculation" as const }],
+        "sr",
+      ),
+    ).toThrow("follow the rules");
+    const [readBack] = questionsFromTest({
+      exercises: [
+        {
+          gradeCarries: true,
+          id: "q1",
+          kind: "column-arithmetic",
+          operands: numbers,
+          operation: "add",
+          prompt: "Izračunaj!",
+          regrouping: "any",
+          solutionSpace: "md",
+          tags: [],
+        },
+      ],
+    } as never);
+    expect(readBack).toEqual({ checkCarries: true, numbers, operation: "add", printSpace: "md", prompt: "Izračunaj!", type: "written_calculation" });
+  });
+
   // SLJ-176: pairs in order; heard items need a language.
   it("become match-the-pairs exercises, and back", () => {
     const [exercise] = testFromQuestions(

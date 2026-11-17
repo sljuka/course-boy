@@ -8,6 +8,7 @@ import { resolveExerciseMediaForPlayer, type SharedExerciseMedia, supportsExerci
 import { isValidExerciseSpeech } from "../exercise-speech";
 import type { Locale } from "../i18n";
 
+import { columnArithmeticExerciseRuntime } from "./column-arithmetic";
 import { findInPictureExerciseRuntime } from "./find-in-picture";
 import { listenChooseExerciseRuntime } from "./listen-choose";
 import { matchPairsExerciseRuntime } from "./match-pairs";
@@ -32,6 +33,7 @@ import { wordTypesExerciseRuntime } from "./word-types";
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- registry necessarily erases each kind's concrete shared/course type
 const EXERCISE_KIND_RUNTIMES: Record<ExerciseKind, ExerciseKindRuntime<any, any>> = {
+  "column-arithmetic": columnArithmeticExerciseRuntime,
   "find-in-picture": findInPictureExerciseRuntime,
   "listen-choose": listenChooseExerciseRuntime,
   "match-pairs": matchPairsExerciseRuntime,

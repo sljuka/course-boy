@@ -3,7 +3,7 @@ import type { ExerciseMediaKind } from "@/lib/exercise-media";
 import type { ExerciseSpeech } from "@/lib/exercise-speech";
 import type { CourseTagDefinition } from "@/lib/course-tags";
 import type { GradeBand } from "@/lib/grade-bands";
-import type { PictureArea } from "@/lib/course-package";
+import type { ColumnArithmeticOperation, ColumnArithmeticRegrouping, PictureArea } from "@/lib/course-package";
 
 type BlueprintRule = {
   count: number;
@@ -67,6 +67,22 @@ type NumericTestExercise = {
   solutionSpace: NumericSolutionSpace;
   tagIds: string[];
   variables: PromptVariable[];
+};
+
+// Written addition and subtraction (SLJ-231): see
+// `SharedColumnArithmeticTestExerciseDefinition`. Each number's range has an
+// id, for React keys while numbers are added and removed.
+type ColumnArithmeticTestExercise = {
+  kind: "column-arithmetic";
+  id: string;
+  media?: ExerciseMediaDraft;
+  locales: Record<string, { hint: string; prompt: string }>;
+  operation: ColumnArithmeticOperation;
+  operands: { id: string; max: number; min: number }[];
+  regrouping: ColumnArithmeticRegrouping;
+  gradeCarries: boolean;
+  solutionSpace: NumericSolutionSpace;
+  tagIds: string[];
 };
 
 // Find in the picture (SLJ-179): see `SharedFindInPictureTestExerciseDefinition`.
@@ -318,6 +334,7 @@ type TestExercise = (
   | RegionPickerTestExercise
   | RegionMarkerTestExercise
   | RegionLabelTestExercise
+  | ColumnArithmeticTestExercise
 ) & { points?: number; speech?: ExerciseSpeech };
 
 type TestEditorState = {
@@ -357,6 +374,7 @@ type SolutionValidationResult =
 
 export type {
   BlueprintRule,
+  ColumnArithmeticTestExercise,
   ExerciseMediaDraft,
   CourseTagDefinition,
   ExerciseLocaleContent,

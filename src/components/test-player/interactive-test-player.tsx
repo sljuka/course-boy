@@ -70,10 +70,14 @@ export function InteractiveTestPlayer({
   // one real `<input>`/`<textarea>`/`<select>`. Kinds with no such control
   // (e.g. a click-driven diagram) fall back to focusing the container itself,
   // so Enter-to-submit below still has something focused inside the form to
-  // bubble from.
+  // bubble from. A kind whose first field isn't where the student starts
+  // marks that one `data-autofocus` (a written calculation starts at the
+  // answer's ones, not the carry boxes above).
   useEffect(() => {
     const container = answerContainerRef.current;
-    const firstField = container?.querySelector<HTMLElement>("input, textarea, select");
+    const firstField =
+      container?.querySelector<HTMLElement>("[data-autofocus]") ??
+      container?.querySelector<HTMLElement>("input, textarea, select");
 
     (firstField ?? container)?.focus();
     setIsHintRevealed(false);

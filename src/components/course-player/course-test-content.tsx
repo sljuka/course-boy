@@ -194,7 +194,7 @@ export const CourseTestContent = ({
 
                 return (
                   PrintAnswerComponent && (
-                    <PrintAnswerComponent exercise={exercise} printAnswerStyle={printAnswerStyle} />
+                    <PrintAnswerComponent exercise={exercise} instance={exerciseInstance} printAnswerStyle={printAnswerStyle} />
                   )
                 );
               })()}

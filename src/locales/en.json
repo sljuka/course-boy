@@ -1790,5 +1790,44 @@
     "right": "Right",
     "small": "May be hard to tap on small screens",
     "removeArea": "Remove area {{number}}"
+  },
+  "columnArithmetic": {
+    "answerLabel": "Written calculation",
+    "digitLabel": "Answer, digit {{number}} from the right",
+    "carryLabel": "Carried into digit {{number}} from the right",
+    "noAnswer": "Write the answer's digits first.",
+    "promptLabel": "Task",
+    "promptPlaceholder": "Calculate carefully!",
+    "operationLabel": "Operation",
+    "operation": {
+      "add": "Addition",
+      "subtract": "Subtraction"
+    },
+    "numbersLabel": "Numbers",
+    "numbersHelp": "Every attempt gets new numbers from these ranges. In a subtraction the second number is taken from the first, and the answer is never below zero.",
+    "numberLabel": "Number {{number}}",
+    "min": "From",
+    "max": "To",
+    "addNumber": "Add a number",
+    "removeNumber": "Remove number {{number}}",
+    "regroupingLabel": "Carrying and borrowing",
+    "regrouping": {
+      "any": "Either way",
+      "required": "At least once",
+      "none": "Never"
+    },
+    "gradeCarries": "Check the carried digits too (the small boxes above)",
+    "spaceLabel": "Space when printed",
+    "spaceHelp": "How much blank space to leave under the problem on a printed sheet.",
+    "space": {
+      "sm": "Small (1 line)",
+      "md": "Medium (3 lines)",
+      "lg": "Large (5 lines)",
+      "xl": "Extra large (8 lines)"
+    },
+    "hintLabel": "Hint",
+    "hintPlaceholder": "Start from the ones, on the right.",
+    "valid": "Ready",
+    "invalid": "Needs a change"
   }
 }
