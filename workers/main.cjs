@@ -798,12 +798,30 @@ async function start() {
       id: manifest?.id ?? null,
       kept: entry.kept,
       kind: program ? (program.kind === 'channel' ? 'channel' : 'program') : course ? 'course' : null,
+      // What a program or channel lists by code (its courses, and a channel's
+      // programs), so a seeder can keep those too (SLJ-194). Unpublished ones
+      // have no code.
+      listed: program ? listedCodes(program) : [],
       peers: drive.core.peers.length,
       state: entry.state,
       title: manifest?.locales?.[manifest?.defaultLocale]?.title ?? manifest?.title ?? null,
       // The course's or program's own version ("0.3"), from its manifest.
       version: typeof manifest?.version === 'string' ? manifest.version : null,
     }
+  }
+
+  function listedCodes(program) {
+    const codes = []
+    for (const item of [...(Array.isArray(program.courses) ? program.courses : []), ...(Array.isArray(program.programs) ? program.programs : [])]) {
+      if (typeof item?.code !== 'string' || !item.code) continue
+      try {
+        const code = IdEncoding.normalize(item.code)
+        if (!codes.includes(code)) codes.push(code)
+      } catch {
+        // not a code: skipped
+      }
+    }
+    return codes
   }
 
   async function listKeptDrives() {

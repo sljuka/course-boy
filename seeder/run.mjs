@@ -4,6 +4,9 @@
 // version, fetched again whenever a new version is published
 // (CMD.KEEP_DRIVE, workers/drive-keeping.cjs).
 //
+// A kept channel or program also keeps everything it lists, including what's
+// added to it later (SLJ-194, wanted.mjs).
+//
 // Every few seconds it lines the worker up with the list (so `add` and
 // `remove` reach a running seeder), and writes `<data>/status.json` for
 // `status`. It logs what changes: a code kept or dropped, a new version kept,
@@ -20,6 +23,7 @@ import { fileURLToPath } from 'node:url'
 import protocol from '../workers/protocol.json' with { type: 'json' }
 import { startWorker } from '../workers/worker-client.mjs'
 import { readKeptList } from './kept-list.mjs'
+import { wantedCodes } from './wanted.mjs'
 
 const CMD = protocol.commands
 const WORKER_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '../workers/main.cjs')
@@ -92,22 +96,27 @@ export async function runSeeder({
 
   // code -> what was last logged about it ("state version"), to log changes only.
   const active = new Map()
+  // The worker's last report: what kept channels and programs list.
+  let lastKept = []
   let timer = null
 
   async function sync() {
     let wanted
     try {
-      wanted = new Set(readKeptList(dataDir).map((entry) => entry.code))
+      wanted = wantedCodes(
+        readKeptList(dataDir).map((entry) => entry.code),
+        lastKept,
+      )
     } catch (error) {
       log(`can't read ${path.join(dataDir, 'kept.json')}: ${error.message}; keeping what's kept`)
-      wanted = new Set(active.keys())
+      wanted = new Map([...active.keys()].map((code) => [code, { via: null }]))
     }
-    for (const code of wanted) {
+    for (const [code, { via }] of wanted) {
       if (active.has(code)) continue
       try {
         await worker.request(CMD.KEEP_DRIVE, { driveKey: code })
         active.set(code, '')
-        log(`keeping ${short(code)}`)
+        log(via ? `keeping ${short(code)}, listed by ${short(via)}` : `keeping ${short(code)}`)
       } catch (error) {
         log(`can't keep ${short(code)}: ${error.message}`)
       }
@@ -123,7 +132,10 @@ export async function runSeeder({
       }
     }
 
-    const { kept } = await worker.request(CMD.LIST_KEPT_DRIVES, {})
+    const { kept: reported } = await worker.request(CMD.LIST_KEPT_DRIVES, {})
+    lastKept = reported
+    // `via`: the program or channel a code is kept for; null when it's on the list.
+    const kept = reported.map((entry) => ({ ...entry, via: wanted.get(entry.driveKey)?.via ?? null }))
     for (const entry of kept) {
       const seen = `${entry.state} ${entry.version ?? ''} ${entry.error ?? ''}`
       if (active.get(entry.driveKey) === seen) continue

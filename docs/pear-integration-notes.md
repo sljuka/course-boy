@@ -1600,7 +1600,10 @@ computer is off. It never holds the publishing identity: it only serves.
 - **`CMD_LIST_KEPT_DRIVES`** (28) reports each kept drive:
   - its kind, id, title and version (from its manifest);
   - its state: `fetching`, `kept` (with `driveVersion`, file count and time) or `error`;
-  - its peer count.
+  - its peer count;
+  - for a program or channel, `listed`: the codes its `program.json` lists (its courses,
+    and a channel's programs), so the seeder keeps those too (SLJ-194). Unpublished
+    entries have no code and aren't listed.
 - **Shared with the app (step 3):** the worker's RPC numbers are `workers/protocol.json`,
   and starting and talking to the worker is `workers/worker-client.mjs` (Node), used by
   `electron/bare-worker.ts` and by the seeder alike (contract 12 in docs/contracts.md).

@@ -52,13 +52,9 @@ function printStatus(dataDir) {
     console.log('Nothing to keep yet: node seeder/cli.mjs add <code>')
     return
   }
-  const byCode = new Map((status?.kept ?? []).map((entry) => [entry.driveKey, entry]))
-  for (const { code } of listed) {
-    const entry = byCode.get(code)
-    if (!entry) {
-      console.log(`  ${short(code)}  waiting to start`)
-      continue
-    }
+  const kept = status?.kept ?? []
+  const byCode = new Map(kept.map((entry) => [entry.driveKey, entry]))
+  const line = (entry, indent) => {
     const name = entry.title ? `${entry.title} (${entry.kind})` : (entry.kind ?? 'unknown')
     const detail =
       entry.state === 'kept'
@@ -66,7 +62,28 @@ function printStatus(dataDir) {
         : entry.state === 'error'
           ? `error: ${entry.error}`
           : 'fetching'
-    console.log(`  ${short(code)}  ${name}  ${detail}  ${entry.peers} peer(s)`)
+    console.log(`${indent}${short(entry.driveKey)}  ${name}  ${detail}  ${entry.peers} peer(s)`)
+  }
+  // Under each, what it's kept for: a channel's courses and programs, a
+  // program's courses (SLJ-194).
+  const printListed = (code, depth, seen) => {
+    for (const entry of kept) {
+      if (entry.via !== code || seen.has(entry.driveKey)) continue
+      seen.add(entry.driveKey)
+      line(entry, `  ${'    '.repeat(depth)}└ `)
+      printListed(entry.driveKey, depth + 1, seen)
+    }
+  }
+  const seen = new Set()
+  for (const { code } of listed) {
+    const entry = byCode.get(code)
+    if (!entry) {
+      console.log(`  ${short(code)}  waiting to start`)
+      continue
+    }
+    seen.add(code)
+    line(entry, '  ')
+    printListed(code, 0, seen)
   }
 }
 

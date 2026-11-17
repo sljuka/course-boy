@@ -9,6 +9,9 @@
 //   teacher quits; the student starts → offered the new version, applies it
 //   `remove` → a running seeder stops keeping it; SIGTERM → it stops
 //
+// And a program's code alone (SLJ-194): the seeder keeps the courses the
+// program lists, also one added to it later, and drops them with it.
+//
 // With MATKO_SEEDER_IMAGE set (e.g. `matko-seeder:dev`, built from
 // seeder/Dockerfile), the same scenario runs against that Docker image
 // instead (SLJ-194): `run` is a container on the host's network, the other
@@ -24,6 +27,7 @@ import IdEncoding from 'hypercore-id-encoding'
 import { currentVersionFiles, cutAndPublish, importCourse, setUpIdentity, sharingSuite, unlockIdentity, waitForSharing, waitForUpdate, writeLesson } from './sharing-suite.mjs'
 
 const { ROOT, bootstrap, close, data, launch } = sharingSuite('seeder', {
+  programStudent: 'program-student',
   student: 'student',
   teacher: 'teacher',
 })
@@ -34,14 +38,14 @@ const IMAGE = process.env.MATKO_SEEDER_IMAGE || null
 const CONTAINER = 'matko-seeder-e2e'
 
 // How to run a seeder command: `node seeder/cli.mjs`, or the image's.
-function seederCommand(args, { inRunning = false } = {}) {
-  if (!IMAGE) return ['node', [CLI, ...args, '--data', SEEDER_DATA]]
-  if (inRunning) return ['docker', ['exec', CONTAINER, 'node', 'seeder/cli.mjs', ...args]]
+function seederCommand(args, { container = CONTAINER, dataDir = SEEDER_DATA, inRunning = false } = {}) {
+  if (!IMAGE) return ['node', [CLI, ...args, '--data', dataDir]]
+  if (inRunning) return ['docker', ['exec', container, 'node', 'seeder/cli.mjs', ...args]]
   // Owned by whoever runs the test, so the mounted folder stays theirs.
   const user = typeof process.getuid === 'function' ? ['--user', `${process.getuid()}:${process.getgid()}`] : []
   return [
     'docker',
-    ['run', '--rm', '--network', 'host', ...user, '-v', `${SEEDER_DATA}:/data`, '-e', `MATKO_DHT_BOOTSTRAP=${bootstrap()}`, ...(args[0] === 'run' ? ['--name', CONTAINER] : []), IMAGE, ...args],
+    ['run', '--rm', '--network', 'host', ...user, '-v', `${dataDir}:/data`, '-e', `MATKO_DHT_BOOTSTRAP=${bootstrap()}`, ...(args[0] === 'run' ? ['--name', container] : []), IMAGE, ...args],
   ]
 }
 
@@ -184,5 +188,118 @@ describe('the headless seeder (SLJ-144)', () => {
     await expect.poll(() => seeder.exitCode, { timeout: 15_000 }).toBe(0)
     expect(cli('status')).toMatch(/^Not running/)
     expect(fs.existsSync(path.join(SEEDER_DATA, 'seeder.pid'))).toBe(false)
+  })
+})
+
+describe('a program on the seeder keeps the courses it lists (SLJ-194)', () => {
+  const dataDir = path.join(ROOT, 'seeder-program')
+  const container = `${CONTAINER}-program`
+  let seeder = null
+  const seederLog = []
+  let teacher
+  let first
+  let second
+  let programId
+  let programCode
+
+  const cli = (...args) => {
+    const [command, commandArgs] = seederCommand(args, { container, dataDir, inRunning: Boolean(IMAGE && seeder && seeder.exitCode === null) })
+    return execFileSync(command, commandArgs, { encoding: 'utf8', env: { ...process.env, MATKO_DHT_BOOTSTRAP: bootstrap() } }).trim()
+  }
+  const status = () => {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(dataDir, 'status.json'), 'utf8')).kept
+    } catch {
+      return []
+    }
+  }
+  const keptFor = (code) => status().find((entry) => entry.driveKey === code) ?? null
+  const dumpSeederLog = () => onTestFailed(() => console.log(`seeder log:\n${seederLog.join('')}`))
+
+  async function publishCourse(page, title) {
+    const ids = await page.evaluate(async (title) => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Section' })
+      const { lessonId } = await window.courses.createLesson({ courseId, sectionId, title: 'Lesson' })
+      return { courseId, lessonId, sectionId }
+    }, title)
+    await writeLesson(page, ids, `${title} lesson.`)
+    const version = await cutAndPublish(page, ids.courseId)
+    const code = IdEncoding.normalize((await waitForSharing(page, ids.courseId, (info) => info.status === 'shared')).code)
+    return { code, courseId: ids.courseId, title, version }
+  }
+
+  // Puts the courses on the program and publishes it; its code never changes.
+  async function publishProgram(page, courses) {
+    const entries = courses.map((course) => ({
+      code: course.code,
+      courseId: course.courseId,
+      snapshot: { locales: { en: { description: '', title: course.title } }, publisherId: null, supportedLocales: ['en'], version: course.version },
+    }))
+    await page.evaluate(async ({ entries, id }) => {
+      const program = await window.programs.get(id)
+      await window.programs.update({ ...program, courses: entries })
+    }, { entries, id: programId })
+    const { code } = await page.evaluate((id) => window.programs.publish(id), programId)
+    return IdEncoding.normalize(code)
+  }
+
+  afterAll(async () => {
+    if (seeder && seeder.exitCode === null) {
+      seeder.kill('SIGKILL')
+      await new Promise((resolve) => seeder.once('exit', resolve))
+    }
+    if (IMAGE) spawnSync('docker', ['rm', '-f', container])
+  })
+
+  it("keeps the program and the course on it, from the program's code alone", async () => {
+    dumpSeederLog()
+    teacher = await launch('teacher', { fresh: false })
+    await unlockIdentity(teacher)
+    first = await publishCourse(teacher, 'E2E Program Seeded One')
+    programId = (await teacher.evaluate(() => window.programs.create({ locale: 'en', title: 'E2E Seeded Program' }))).programId
+    programCode = await publishProgram(teacher, [first])
+
+    expect(cli('add', programCode)).toMatch(/^Added /)
+    const [command, commandArgs] = seederCommand(['run'], { container, dataDir })
+    seeder = spawn(command, commandArgs, { env: { ...process.env, MATKO_DHT_BOOTSTRAP: bootstrap() } })
+    seeder.stdout.on('data', (chunk) => seederLog.push(chunk.toString()))
+    seeder.stderr.on('data', (chunk) => seederLog.push(chunk.toString()))
+
+    await expect.poll(() => keptFor(programCode)?.state, { interval: 250, timeout: 60_000 }).toBe('kept')
+    await expect.poll(() => keptFor(first.code)?.state, { interval: 250, timeout: 60_000 }).toBe('kept')
+    expect(keptFor(first.code)).toMatchObject({ kind: 'course', title: 'E2E Program Seeded One', via: programCode })
+    expect(keptFor(programCode)).toMatchObject({ kind: 'program', listed: [first.code], via: null })
+    // On the list: only the program.
+    expect(cli('list').split('\n')).toHaveLength(1)
+    expect(cli('status')).toMatch(/E2E Seeded Program \(program\)[\s\S]*└ .*E2E Program Seeded One \(course\)  kept/)
+  })
+
+  it('a course added to the program later is kept too', async () => {
+    dumpSeederLog()
+    second = await publishCourse(teacher, 'E2E Program Seeded Two')
+    expect(await publishProgram(teacher, [first, second])).toBe(programCode)
+    await expect.poll(() => keptFor(second.code)?.state, { interval: 250, timeout: 90_000 }).toBe('kept')
+    expect(keptFor(second.code)).toMatchObject({ via: programCode })
+  })
+
+  it('with the teacher closed, a new student imports that course from the seeder alone', async () => {
+    dumpSeederLog()
+    await close('teacher')
+    const student = await launch('programStudent')
+    expect(await importCourse(student, second.code)).toEqual({ courseId: second.courseId })
+    await close('programStudent')
+  })
+
+  it("removing the program drops its courses too, and SIGTERM stops the seeder", async () => {
+    dumpSeederLog()
+    expect(cli('remove', programCode)).toMatch(/^Removed /)
+    await expect.poll(() => status().length, { interval: 250, timeout: 20_000 }).toBe(0)
+    seeder.kill('SIGTERM')
+    await expect.poll(() => seeder.exitCode, { timeout: 15_000 }).toBe(0)
   })
 })

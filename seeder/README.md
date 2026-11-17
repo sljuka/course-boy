@@ -24,6 +24,12 @@ node seeder/cli.mjs remove <code>
 `add` and `remove` work whether or not `run` is running; a running seeder picks the
 change up within a few seconds. Stop it with Ctrl-C or SIGTERM.
 
+A channel or program also keeps every course it lists, and a channel its programs and
+theirs, including ones added to it later: a teacher can add their channel's code once
+and every course they show on it stays online (SLJ-194). Those aren't on the list
+themselves; `status` shows them under what they're kept for, and removing the channel
+or program drops them, unless they're on the list on their own too.
+
 `--data <dir>` chooses where it keeps everything (default: `$MATKO_SEED_DATA`, or
 `~/.matko-seed`):
 
