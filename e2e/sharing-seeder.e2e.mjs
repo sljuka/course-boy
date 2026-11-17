@@ -43,6 +43,9 @@ const WEB_PORT = 18_391
 function seederCommand(args, { container = CONTAINER, dataDir = SEEDER_DATA, inRunning = false } = {}) {
   if (!IMAGE) return ['node', [CLI, ...args, '--data', dataDir]]
   if (inRunning) return ['docker', ['exec', container, 'node', 'seeder/cli.mjs', ...args]]
+  // Made before Docker mounts it: a mount point Docker has to create itself
+  // belongs to root on Linux, and the seeder runs as this user.
+  fs.mkdirSync(dataDir, { recursive: true })
   // Owned by whoever runs the test, so the mounted folder stays theirs.
   const user = typeof process.getuid === 'function' ? ['--user', `${process.getuid()}:${process.getgid()}`] : []
   return [
