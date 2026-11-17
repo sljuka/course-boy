@@ -38,8 +38,71 @@ change up within a few seconds. Stop it with Ctrl-C or SIGTERM.
 Gated courses (shared only with chosen students) can't be kept: a seeder isn't a vetted
 student.
 
+## In Docker
+
+The image holds the seeder, the worker and their runtime dependencies only (SLJ-194).
+Build it from the repository root, on the machine that will run it or for its
+platform (`linux/amd64` or `linux/arm64`):
+
+```sh
+docker build -f seeder/Dockerfile -t matko-seeder .
+```
+
+Run it with its data in a volume, and add codes in the running container:
+
+```sh
+docker run -d --name matko-seeder --restart unless-stopped \
+  --network host -v matko-seeder:/data matko-seeder
+docker exec matko-seeder node seeder/cli.mjs add <code>
+docker exec matko-seeder node seeder/cli.mjs status
+docker logs -f matko-seeder
+```
+
+`--network host` keeps the seeder off Docker's own NAT, so other computers reach it
+as easily as they would the host itself. On Linux that's the host's network. Docker
+Desktop (macOS, Windows) runs containers in a VM, where it's the VM's network unless
+host networking is turned on in its settings. The seeder runs as an unprivileged
+user (`node`) and stops cleanly on `docker stop`.
+
+To run the seeder's end-to-end test against an image instead of the repository's
+seeder:
+
+```sh
+MATKO_SEEDER_IMAGE=matko-seeder npx vitest run --config vitest.config.e2e.mjs e2e/sharing-seeder.e2e.mjs
+```
+
+It needs host networking (above), since the test's apps and the seeder meet on a
+local test network.
+
+## As a service (systemd)
+
+Without Docker, on a Linux machine with Node 22: a copy of the repository with only
+the runtime dependencies (`npm ci --omit=dev --ignore-scripts`), and a unit like:
+
+```ini
+# /etc/systemd/system/matko-seeder.service
+[Unit]
+Description=Matko seeder
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=matko
+WorkingDirectory=/opt/matko
+Environment=MATKO_SEED_DATA=/var/lib/matko-seed
+StateDirectory=matko-seed
+ExecStart=/usr/bin/node seeder/cli.mjs run
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then `systemctl enable --now matko-seeder`, and add codes as the same user:
+`sudo -u matko MATKO_SEED_DATA=/var/lib/matko-seed node /opt/matko/seeder/cli.mjs add <code>`.
+
 ## Not yet
 
-- Packaged builds that don't need the repository, and running it as a service
-  (systemd, launchd).
+- A published image, built for both platforms in CI (SLJ-194).
+- A small web page for adding and watching what it keeps, and an Umbrel app (SLJ-194).
 - Pairing with the app, so every Publish adds the course on its own (SLJ-188).

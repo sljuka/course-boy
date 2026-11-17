@@ -8,9 +8,16 @@
 //   student quits; teacher publishes again → the seeder fetches it on its own
 //   teacher quits; the student starts → offered the new version, applies it
 //   `remove` → a running seeder stops keeping it; SIGTERM → it stops
+//
+// With MATKO_SEEDER_IMAGE set (e.g. `matko-seeder:dev`, built from
+// seeder/Dockerfile), the same scenario runs against that Docker image
+// instead (SLJ-194): `run` is a container on the host's network, the other
+// commands run in it (or in a throwaway one while it isn't running), and the
+// data folder is mounted at /data. Host networking needs Linux, or Docker
+// Desktop with host networking turned on.
 
 import { afterAll, describe, expect, it, onTestFailed } from 'vitest'
-import { execFileSync, spawn } from 'node:child_process'
+import { execFileSync, spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import IdEncoding from 'hypercore-id-encoding'
@@ -23,6 +30,20 @@ const { ROOT, bootstrap, close, data, launch } = sharingSuite('seeder', {
 
 const CLI = path.join(import.meta.dirname, '..', 'seeder', 'cli.mjs')
 const SEEDER_DATA = path.join(ROOT, 'seeder')
+const IMAGE = process.env.MATKO_SEEDER_IMAGE || null
+const CONTAINER = 'matko-seeder-e2e'
+
+// How to run a seeder command: `node seeder/cli.mjs`, or the image's.
+function seederCommand(args, { inRunning = false } = {}) {
+  if (!IMAGE) return ['node', [CLI, ...args, '--data', SEEDER_DATA]]
+  if (inRunning) return ['docker', ['exec', CONTAINER, 'node', 'seeder/cli.mjs', ...args]]
+  // Owned by whoever runs the test, so the mounted folder stays theirs.
+  const user = typeof process.getuid === 'function' ? ['--user', `${process.getuid()}:${process.getgid()}`] : []
+  return [
+    'docker',
+    ['run', '--rm', '--network', 'host', ...user, '-v', `${SEEDER_DATA}:/data`, '-e', `MATKO_DHT_BOOTSTRAP=${bootstrap()}`, ...(args[0] === 'run' ? ['--name', CONTAINER] : []), IMAGE, ...args],
+  ]
+}
 
 describe('the headless seeder (SLJ-144)', () => {
   let seeder = null
@@ -32,11 +53,15 @@ describe('the headless seeder (SLJ-144)', () => {
   let firstVersion
   let secondVersion
 
-  const cli = (...args) =>
-    execFileSync('node', [CLI, ...args, '--data', SEEDER_DATA], {
+  // A command runs in the container while the seeder runs there: a second
+  // container would have a process namespace of its own.
+  const cli = (...args) => {
+    const [command, commandArgs] = seederCommand(args, { inRunning: Boolean(IMAGE && seeder && seeder.exitCode === null) })
+    return execFileSync(command, commandArgs, {
       encoding: 'utf8',
       env: { ...process.env, MATKO_DHT_BOOTSTRAP: bootstrap() },
     }).trim()
+  }
 
   // What the running seeder reports for the course, once `predicate` holds.
   async function waitForSeeder(predicate, timeout = 60_000) {
@@ -67,6 +92,8 @@ describe('the headless seeder (SLJ-144)', () => {
       seeder.kill('SIGKILL')
       await new Promise((resolve) => seeder.once('exit', resolve))
     }
+    // Killing `docker run` leaves its container running.
+    if (IMAGE) spawnSync('docker', ['rm', '-f', CONTAINER])
   })
 
   it('a teacher publishes, and the seeder keeps the course once its code is added', async () => {
@@ -91,7 +118,8 @@ describe('the headless seeder (SLJ-144)', () => {
     expect(cli('add', `matko://import/${code}`)).toMatch(/^Added /)
     expect(cli('status')).toMatch(/Not running[\s\S]*waiting to start/)
 
-    seeder = spawn('node', [CLI, 'run', '--data', SEEDER_DATA], {
+    const [command, commandArgs] = seederCommand(['run'])
+    seeder = spawn(command, commandArgs, {
       env: { ...process.env, MATKO_DHT_BOOTSTRAP: bootstrap() },
     })
     seeder.stdout.on('data', (chunk) => seederLog.push(chunk.toString()))
@@ -99,7 +127,8 @@ describe('the headless seeder (SLJ-144)', () => {
 
     const kept = await waitForSeeder((entry) => entry.state === 'kept')
     expect(kept).toMatchObject({ id: ids.courseId, kind: 'course', title: 'E2E Seeded Course', version: firstVersion })
-    expect(cli('status')).toMatch(new RegExp(`^Running \\(pid ${seeder.pid}\\)[\\s\\S]*E2E Seeded Course \\(course\\)  kept ${firstVersion.replace('.', '\\.')}`))
+    // In a container the seeder is its first process.
+    expect(cli('status')).toMatch(new RegExp(`^Running \\(pid ${IMAGE ? 1 : seeder.pid}\\)[\\s\\S]*E2E Seeded Course \\(course\\)  kept ${firstVersion.replace('.', '\\.')}`))
 
     // One seeder per folder: a second run is refused, the first keeps running.
     expect(() => cli('run')).toThrow(/already running/)

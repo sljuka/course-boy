@@ -1,0 +1,10 @@
+# Only what the seeder image needs: package.json, the lockfile, workers/ and
+# seeder/. Everything else in the repository stays out of the build context.
+*
+!package.json
+!package-lock.json
+!workers/
+!seeder/
+workers/**/*.test.*
+seeder/**/*.test.*
+seeder/Dockerfile*
