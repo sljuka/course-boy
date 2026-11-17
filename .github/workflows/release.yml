@@ -1,7 +1,7 @@
 # Checks every push to main, releases when it holds a `feat` or `fix`, and
 # builds the desktop app on each OS for that release, attaching the
 # installers to its *draft* GitHub Release. Publishing that release is a
-# manual step on GitHub; nothing here publishes.
+# manual step on GitHub (the seeder's image, below, is the exception).
 #
 # Versions come from the commit messages (Conventional Commits, checked by
 # commitlint): semantic-release (.releaserc.json) picks the next version, sets
@@ -20,9 +20,15 @@
 # Branches: day-to-day work goes to `develop`; merging it into `main` is what
 # releases (everything merged since the last release becomes one version).
 #
+# The headless seeder's Docker image (SLJ-194) is built and tested on every
+# run (`seeder-image`, one runner per architecture) and, for a release, pushed
+# to GHCR as ghcr.io/<owner>/matko-seeder:<version> and :latest. That push is
+# the one thing here that publishes without a manual step.
+#
 # Triggers:
-#   - push to main → check; for a `feat`/`fix`, release + build + attach
-#   - push to develop, or a pull request → check only
+#   - push to main → check + seeder image; for a `feat`/`fix`, release + build
+#     + attach, and the seeder image pushed
+#   - push to develop, or a pull request → check + seeder image (not pushed)
 #   - "Run workflow" on the Actions tab → check + build only; installers are
 #     kept as workflow artifacts for a week
 
@@ -184,6 +190,84 @@ jobs:
             release/*/*.AppImage
             release/*/*.deb
             release/*/*.rpm
+
+  # The headless seeder's Docker image (SLJ-194), built natively on each
+  # architecture for the same reason as the app: npm installs only this
+  # machine's Bare runtime binary. Each build runs the seeder's e2e against
+  # the container (a real seeder in Docker, real apps, a local testnet; host
+  # networking, which only Linux has). Pushed to GHCR only for a release, as
+  # `<version>-<arch>`; `seeder-image-publish` joins them into one image.
+  seeder-image:
+    needs: [check, release]
+    # Every push and pull request (release skipped or nothing released), and
+    # a release.
+    if: >-
+      always() && needs.check.result == 'success' &&
+      (needs.release.result == 'success' || needs.release.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            os: ubuntu-24.04
+          - arch: arm64
+            os: ubuntu-24.04-arm
+    runs-on: ${{ matrix.os }}
+    name: seeder image (${{ matrix.arch }})
+    permissions:
+      contents: read
+      # Pushes this architecture's image, only when a version was released.
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release.outputs.tag || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # The e2e's teachers and students are the built app.
+      - run: npx vite build
+      - name: Build the image
+        run: docker build -f seeder/Dockerfile -t matko-seeder:ci .
+      - name: Seeder e2e against the image
+        env:
+          MATKO_SEEDER_IMAGE: matko-seeder:ci
+        run: |
+          # As in `build`: Electron's sandbox needs unprivileged user namespaces.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          command -v xvfb-run >/dev/null || (sudo apt-get update && sudo apt-get install -y xvfb)
+          xvfb-run --auto-servernum npx vitest run --config vitest.config.e2e.mjs e2e/sharing-seeder.e2e.mjs
+      - name: Push to GHCR (release)
+        if: needs.release.outputs.tag != ''
+        env:
+          TAG: ${{ needs.release.outputs.tag }}
+          TOKEN: ${{ github.token }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/matko-seeder:${TAG#v}-${{ matrix.arch }}"
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag matko-seeder:ci "$image"
+          docker push "$image"
+
+  # One image for both architectures, as `<version>` and `latest`.
+  seeder-image-publish:
+    needs: [release, seeder-image]
+    if: needs.release.outputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Join the architectures
+        env:
+          TAG: ${{ needs.release.outputs.tag }}
+          TOKEN: ${{ github.token }}
+        run: |
+          base="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/matko-seeder"
+          version="${TAG#v}"
+          echo "$TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx imagetools create -t "$base:$version" -t "$base:latest" "$base:$version-amd64" "$base:$version-arm64"
+          docker buildx imagetools inspect "$base:$version"
 
   # The installers go on the draft release semantic-release created.
   attach-installers:

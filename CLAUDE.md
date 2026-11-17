@@ -54,7 +54,11 @@ Versions are automatic: every push to `main` is checked, and one that holds a `f
 or `fix` is released by semantic-release (`.releaserc.json`), which sets the version in
 `package.json`, writes `CHANGELOG.md`, commits `chore(release): x.y.z`, tags `vx.y.z` and
 creates a *draft* GitHub Release, to which the builds attach the installers. Don't set
-versions or push tags by hand. "Run workflow" only builds (its files are downloads on the
+versions or push tags by hand. The headless seeder's Docker image (`seeder/Dockerfile`,
+SLJ-194) is built natively per architecture (amd64, arm64) on every push, with the
+seeder's e2e run against the container, and a release pushes it to GHCR
+(`ghcr.io/<owner>/matko-seeder:<version>` and `:latest`): the one publishing step that
+isn't a draft. "Run workflow" only builds (its files are downloads on the
 run for 7 days). Linux ships as an AppImage, a deb and an rpm (Fedora). Builds are
 unsigned for now (SLJ-34).
 
