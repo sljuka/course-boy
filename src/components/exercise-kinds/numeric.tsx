@@ -152,21 +152,24 @@ function PrintAnswerComponent({
   const { t } = useTranslation();
   const boxCount = numericSolutions(exercise).length;
 
-  // Several solutions (SLJ-139): a labelled answer area each.
+  const rows = resolveSolutionSpaceRows(exercise.solutionSpace);
+
+  // Several solutions (SLJ-139): a labelled answer area each, every one as
+  // big as the solution area the teacher chose.
   if (boxCount > 1) {
     return (
       <div className="hidden flex-col gap-2 print:flex">
         {Array.from({ length: boxCount }, (_, boxIndex) => (
           <div className="flex flex-col gap-1" key={boxIndex}>
             <span className="text-sm">{solutionLabel(exercise, boxIndex, t)}</span>
-            <PrintAnswerArea printAnswerStyle={printAnswerStyle} rows={1} />
+            <PrintAnswerArea printAnswerStyle={printAnswerStyle} rows={rows} />
           </div>
         ))}
       </div>
     );
   }
 
-  return <PrintAnswerArea printAnswerStyle={printAnswerStyle} rows={resolveSolutionSpaceRows(exercise.solutionSpace)} />;
+  return <PrintAnswerArea printAnswerStyle={printAnswerStyle} rows={rows} />;
 }
 
 
