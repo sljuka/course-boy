@@ -35,7 +35,9 @@ export function createExercise(locales: Locale[]): ColumnArithmeticTestExercise 
     operands: [operand(1000, 9999), operand(1000, 9999)],
     operation: "add",
     regrouping: "any",
-    solutionSpace: "md",
+    // The problem already has its own answer row on paper; room below it
+    // is the exception, not the rule.
+    solutionSpace: "sm",
     tagIds: [],
   };
 }

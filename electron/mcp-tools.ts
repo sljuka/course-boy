@@ -403,7 +403,7 @@ const questionSchema = z.discriminatedUnion("type", [
       .optional()
       .describe('"required": at least one carry or borrow; "none": not a single one (default "any")'),
     checkCarries: z.boolean().optional().describe("Also check the small boxes for carried digits (default false: scratch only)"),
-    printSpace: z.enum(["sm", "md", "lg", "xl"]).optional().describe('Blank room under the problem on a printed sheet (default "md")'),
+    printSpace: z.enum(["sm", "md", "lg", "xl"]).optional().describe('Blank room under the problem on a printed sheet: "sm" none (the answer row is always there), "md" 3 lines, "lg" 5, "xl" 8 (default "sm")'),
     hint: z.string().optional(),
     points,
     readAloud,
@@ -694,7 +694,7 @@ function exerciseFromQuestion(
       operands,
       operation: question.operation,
       ...(regrouping !== "any" ? { regrouping } : {}),
-      space: question.printSpace ?? "md",
+      space: question.printSpace ?? "sm",
       tags: [],
     };
   }

@@ -1820,7 +1820,7 @@
     "spaceLabel": "Space when printed",
     "spaceHelp": "How much blank space to leave under the problem on a printed sheet.",
     "space": {
-      "sm": "Small (1 line)",
+      "sm": "No extra space",
       "md": "Medium (3 lines)",
       "lg": "Large (5 lines)",
       "xl": "Extra large (8 lines)"

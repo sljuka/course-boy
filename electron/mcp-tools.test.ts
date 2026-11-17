@@ -301,6 +301,9 @@ describe("questions", () => {
       space: "lg",
       tags: [],
     });
+    // No print space asked for: none below the answer row.
+    const [plain] = testFromQuestions([{ numbers, operation: "add" as const, prompt: "?", type: "written_calculation" as const }], "sr").exercises;
+    expect(plain).toMatchObject({ space: "sm" });
     expect(() =>
       testFromQuestions([{ numbers: [...numbers, ...numbers], operation: "subtract" as const, prompt: "?", type: "written_calculation" as const }], "sr"),
     ).toThrow("exactly 2");

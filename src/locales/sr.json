@@ -1820,7 +1820,7 @@
     "spaceLabel": "Prostor pri štampanju",
     "spaceHelp": "Koliko praznog prostora ostaviti ispod zadatka na odštampanom listu.",
     "space": {
-      "sm": "Malo (1 red)",
+      "sm": "Bez dodatnog prostora",
       "md": "Srednje (3 reda)",
       "lg": "Veliko (5 redova)",
       "xl": "Najveće (8 redova)"

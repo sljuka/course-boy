@@ -17,7 +17,7 @@ import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry"
 describe("column-arithmetic editor logic", () => {
   it("starts as a valid addition of two four-digit numbers", () => {
     const exercise = createExercise(["sr"])
-    expect(exercise).toMatchObject({ operation: "add", regrouping: "any", solutionSpace: "md" })
+    expect(exercise).toMatchObject({ operation: "add", regrouping: "any", solutionSpace: "sm" })
     expect(validate(exercise, "sr").status).toBe("valid")
     expect(getExerciseKindRuntime("column-arithmetic").isValid(toShared(exercise) as never)).toBe(true)
   })
