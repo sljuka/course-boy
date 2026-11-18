@@ -22,6 +22,9 @@ export type CoursePrintOptions = {
   // A graded test's points beside each question (SLJ-135): off unless asked.
   showPoints: boolean;
   showTestSeparators: boolean;
+  // A test's code (SLJ-232), small in the corner, to rebuild the sheet later:
+  // on unless the student turns it off. Lessons have none.
+  showTestCode: boolean;
 };
 
 export const defaultLessonPrintOptions: CoursePrintOptions = {
@@ -33,6 +36,7 @@ export const defaultLessonPrintOptions: CoursePrintOptions = {
   showHeader: true,
   showNameField: false,
   showPoints: false,
+  showTestCode: false,
   showTestSeparators: true,
 };
 
@@ -45,5 +49,6 @@ export const defaultTestPrintOptions: CoursePrintOptions = {
   showHeader: true,
   showNameField: false,
   showPoints: false,
+  showTestCode: true,
   showTestSeparators: true,
 };

@@ -115,6 +115,7 @@
     "printExerciseHintsHide": "Немој да штампаш",
     "printExerciseHintsPrint": "Штампај",
     "printExerciseHintsUpsideDown": "Штампај наопако",
+    "printOptionTestHeader": "Заглавље теста",
     "printOptionHeader": "Штампај заглавље",
     "printOptionSeparators": "Штампај разделнике задатака",
     "printOptions": "Опције штампе",
@@ -125,7 +126,6 @@
     "printTest": "Штампај тест",
     "printHeaderSection": "{{title}} (одељак)",
     "printHeaderItem": "{{title}} ({{kind}})",
-    "refreshExercise": "Освежи задатак",
     "reviewUnansweredExercise": "Прегледај задатак {{number}}, још без одговора",
     "reviewExercise": "Прегледај задатак {{number}}",
     "sections": "Секције",
@@ -2175,5 +2175,25 @@
   },
   "wordTypeTokens": {
     "unmarked": "неозначено"
+  },
+  "testCode": {
+    "menu": "Шифра теста",
+    "copy": "Копирај шифру {{code}}",
+    "copied": "Копирано",
+    "randomize": "Промешај",
+    "enterCode": "Унеси шифру…",
+    "randomizeTitle": "Почети испочетка са новом шифром?",
+    "randomizeDescription": "Тест се саставља изнова: други задаци (ако их бира) и нови бројеви.",
+    "discardWarning": "Досадашњи одговори биће обрисани и тест почиње испочетка, од првог питања.",
+    "cancel": "Откажи",
+    "enterTitle": "Унеси шифру теста",
+    "enterDescription": "Шифра прави потпуно исти тест: исте задатке, бројеве и редослед. Одштампана је на листу и приказана у овом менију.",
+    "codeLabel": "Шифра",
+    "codePlaceholder": "нпр. {{example}}",
+    "apply": "Користи шифру",
+    "invalid": "Ово није шифра теста. Шифра има осам слова и цифара, као {{example}}.",
+    "otherVersion": "Ова шифра је направљена за другу верзију овог теста, па не може да га направи поново.",
+    "printOption": "Шифра теста",
+    "printed": "Шифра теста: {{code}}"
   }
 }

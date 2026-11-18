@@ -90,10 +90,8 @@ export function LessonPlayerView({
   const playerActions = (
     <CoursePlayerActions
       copyLink={isIntroStepId(activeLesson.id) ? undefined : lessonAppLink(playerState.courseId, activeLesson.id)}
-      isRefreshingAvailable={false}
       mnemonicsToggle={<MnemonicsToggle courseId={playerState.courseId} />}
       onClose={playerState.exitPlayer}
-      onRefreshExercise={() => {}}
       printControl={
         <PrintOptionsMenu
           mode="lesson"

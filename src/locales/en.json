@@ -115,6 +115,7 @@
     "printExerciseHintsHide": "Don't print",
     "printExerciseHintsPrint": "Print",
     "printExerciseHintsUpsideDown": "Print upside down",
+    "printOptionTestHeader": "Test header",
     "printOptionHeader": "Print header",
     "printOptionSeparators": "Print exercise separators",
     "printOptions": "Print options",
@@ -125,7 +126,6 @@
     "printTest": "Print test",
     "printHeaderSection": "{{title}} (section)",
     "printHeaderItem": "{{title}} ({{kind}})",
-    "refreshExercise": "Refresh exercise",
     "reviewUnansweredExercise": "Review exercise {{number}}, no answer yet",
     "reviewExercise": "Review exercise {{number}}",
     "sections": "Sections",
@@ -2175,5 +2175,25 @@
   },
   "wordTypeTokens": {
     "unmarked": "unmarked"
+  },
+  "testCode": {
+    "menu": "Test code",
+    "copy": "Copy the code {{code}}",
+    "copied": "Copied",
+    "randomize": "Randomize",
+    "enterCode": "Enter code…",
+    "randomizeTitle": "Start again with a new code?",
+    "randomizeDescription": "The test is put together anew: other exercises (if it picks them) and new numbers.",
+    "discardWarning": "Your answers so far will be discarded and the test starts again from the first question.",
+    "cancel": "Cancel",
+    "enterTitle": "Enter a test code",
+    "enterDescription": "A code rebuilds exactly the same test: the same exercises, numbers and order. It's printed on the sheet and shown in this menu.",
+    "codeLabel": "Code",
+    "codePlaceholder": "e.g. {{example}}",
+    "apply": "Use code",
+    "invalid": "This isn't a test code. A code has eight letters and digits, like {{example}}.",
+    "otherVersion": "This code was made for a different version of this test, so it can't rebuild it.",
+    "printOption": "Test code",
+    "printed": "Test code: {{code}}"
   }
 }

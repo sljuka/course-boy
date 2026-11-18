@@ -5,6 +5,7 @@ import type { ExerciseInstance } from "../course-player-utils";
 import { isValidExerciseSpeech } from "../exercise-speech";
 import { isLocale } from "../i18n";
 
+import type { Random } from "../random";
 import { shuffleIndexes, shuffleIndexesUnlike } from "./shuffle";
 import { hasValidTags, partShare, type ExerciseKindRuntime, type GradeResult, type ResolveForPlayerContext, type ReviewPart } from "./types";
 
@@ -72,10 +73,10 @@ function resolveForPlayer(shared: SharedMatchPairsTestExerciseDefinition, contex
 
 // The right column never lines up with the left one, or every pair would sit
 // side by side.
-function buildInstance(exercise: MatchPairsCourseExercise): ExerciseInstance {
+function buildInstance(exercise: MatchPairsCourseExercise, random: Random = Math.random): ExerciseInstance {
   const count = exercise.left.length;
-  const leftOrder = shuffleIndexes(count);
-  return { kind: "match-pairs", leftOrder, rightOrder: shuffleIndexesUnlike(count, leftOrder) };
+  const leftOrder = shuffleIndexes(count, random);
+  return { kind: "match-pairs", leftOrder, rightOrder: shuffleIndexesUnlike(count, leftOrder, random) };
 }
 
 // The answer: for each left item (by its index in the file), the right item

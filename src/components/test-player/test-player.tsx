@@ -12,6 +12,7 @@ import { CoursePlayerShell } from "@/components/course-player/course-player-shel
 import { CourseSpree } from "@/components/course-player/course-spree";
 import { CourseTestContent } from "@/components/course-player/course-test-content";
 import { PrintDocumentHeader } from "@/components/course-player/print-document-header";
+import { PrintTestCode } from "@/components/course-player/print-test-code";
 import { useCoursePlayer, type CoursePlayerReadyState } from "@/components/course-player/use-course-player";
 import { CourseIndexSidePanel } from "@/components/course-player/course-index-panel";
 import { Page } from "@/components/page/page";
@@ -24,6 +25,7 @@ import { FinishGradedTestDialog } from "@/components/test-player/finish-graded-t
 import { GradedTestResult } from "@/components/test-player/graded-test-result";
 import { GradedTestSummary } from "@/components/test-player/graded-test-summary";
 import { PracticeTestResult, type PracticeTestResultValue } from "@/components/test-player/practice-test-result";
+import { TestCodeMenu } from "@/components/test-player/test-code-menu";
 import { TestStartScreen } from "@/components/test-player/test-start-screen";
 import { InteractiveTestPlayer } from "@/components/test-player/interactive-test-player";
 import { TestPlayerPrintHint } from "@/components/test-player/test-player-print-hint";
@@ -156,14 +158,15 @@ function TestPlayerContent({
   const {
     activeTestExercises,
     activeTestInstances,
+    applyTestCode,
     exerciseAnswers,
     exerciseResults,
     firstTryCorrect,
     gradeAll,
+    hasProgress,
     isInteractiveMode,
     isPrintHintVisible,
     isTestPassed,
-    refreshExercises,
     restart,
     revealAnswer,
     revealedAnswers,
@@ -171,6 +174,7 @@ function TestPlayerContent({
     setIsPrintHintVisible,
     submitExercise,
     submitSingleExercise,
+    testCode,
     testFeedback,
     updateExerciseAnswer,
   } = useTestPlayerState(activeItem, {
@@ -215,12 +219,21 @@ function TestPlayerContent({
     });
   }
 
-  function tryPracticeTestAgain() {
-    restart();
+  // A new attempt (Try again, Randomize, a code typed in) starts at its first
+  // question, with no result or summary showing.
+  function showNewAttempt() {
     setCurrentExerciseIndex(0);
     setReachedExerciseIndex(0);
     setPracticeResult(null);
+    setGradedResult(null);
+    setIsShowingSummary(false);
+    setPendingFinish(null);
     setSpreeBestAtStart(spree.best);
+  }
+
+  function tryPracticeTestAgain() {
+    restart();
+    showNewAttempt();
   }
 
   // Asks first when answers are empty, or when asked to (Enter): then Finish
@@ -264,12 +277,26 @@ function TestPlayerContent({
   }
 
   function tryGradedTestAgain() {
-    setIsShowingSummary(false);
     restart();
-    setCurrentExerciseIndex(0);
-    setReachedExerciseIndex(0);
-    setGradedResult(null);
+    showNewAttempt();
   }
+
+  // The dice (SLJ-232): this attempt's code, Randomize and Enter code.
+  const testCodeControl = testCode && (
+    <TestCodeMenu
+      code={testCode}
+      hasProgress={hasProgress}
+      onApplyCode={(text) => {
+        const result = applyTestCode(text);
+        if (result === "applied") showNewAttempt();
+        return result;
+      }}
+      onRandomize={() => {
+        restart();
+        showNewAttempt();
+      }}
+    />
+  );
 
   function startInteractiveMode() {
     setCurrentExerciseIndex(0);
@@ -311,18 +338,12 @@ function TestPlayerContent({
   // X leaves the test in both modes; interactive mode reaches paper mode
   // through its own two buttons. A graded test's results card has only X.
   const toolbarActions = isShowingResult ? (
-    <CoursePlayerActions
-      isRefreshingAvailable={false}
-      onClose={playerState.exitPlayer}
-      onRefreshExercise={refreshExercises}
-      printControl={null}
-    />
+    <CoursePlayerActions onClose={playerState.exitPlayer} printControl={null} testCodeControl={testCodeControl} />
   ) : isInteractiveMode ? (
     <CoursePlayerActions
-      isRefreshingAvailable={false}
       mnemonicsToggle={mnemonicsToggle}
       onClose={playerState.exitPlayer}
-      onRefreshExercise={refreshExercises}
+      testCodeControl={testCodeControl}
       printControl={
         <div className="flex items-center gap-2">
           <PlayerIconButton
@@ -344,10 +365,9 @@ function TestPlayerContent({
     />
   ) : (
     <CoursePlayerActions
-      isRefreshingAvailable={activeTestExercises.length > 0}
       mnemonicsToggle={mnemonicsToggle}
       onClose={playerState.exitPlayer}
-      onRefreshExercise={refreshExercises}
+      testCodeControl={testCodeControl}
       printControl={
         <div className="flex items-center gap-2">
           <PrintOptionsMenu
@@ -453,6 +473,7 @@ function TestPlayerContent({
           sectionTitle={playerState.sectionTitle}
           title={activeItem.title}
         />
+        <PrintTestCode code={testCode} show={printOptions.showTestCode} />
         <PrintFillInFields showDate={printOptions.showDateField} showName={printOptions.showNameField} />
         <PromptMnemonicsContext.Provider value={allowsMnemonics ? shownMnemonics : NO_MNEMONICS}>
           {gradedResult && isShowingSummary ? (

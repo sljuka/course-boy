@@ -2163,6 +2163,80 @@ describe('formula in a numeric prompt', () => {
   })
 })
 
+// SLJ-232: a test code rebuilds an attempt. The dice shows this attempt's
+// code; Randomize asks first once something is answered and gives new
+// numbers; typing the old code back gives the old numbers.
+describe('test code', () => {
+  it('randomizes after asking, and rebuilds an attempt from its code', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Test Code Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Codes' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Codes test' })
+      const exercise = {
+        kind: 'numeric',
+        locales: { en: { prompt: 'What is {{a}} plus one?' } },
+        solution: { formula: 'a + 1', precision: 0 },
+        tags: [],
+        variables: { a: { max: 9999, min: 1000, type: 'integer' } },
+      }
+      await window.courses.saveSectionTest({ courseId, sectionId, test: { exercises: [exercise], template: '' }, testId })
+      return { courseId, testId }
+    })
+
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const number = () => page.locator('strong').first().textContent()
+    const openMenu = () => page.locator('[data-testid="test-code-menu"]').click()
+    const readCode = async () => {
+      await openMenu()
+      const code = (await page.locator('[data-testid="test-code"]').innerText()).trim()
+      await page.keyboard.press('Escape')
+      return code
+    }
+    await page.locator('strong').first().waitFor({ timeout: 15_000 })
+    const firstNumber = await number()
+    const firstCode = await readCode()
+    expect(firstCode).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/)
+
+    // Something typed: Randomize asks first.
+    await page.getByPlaceholder('Type the result').fill('1')
+    await openMenu()
+    await page.locator('[data-testid="test-code-randomize"]').click()
+    await page.locator('[data-testid="test-code-randomize-dialog"]').waitFor()
+    await waitForText(page, 'Your answers so far will be discarded')
+    await page.locator('[data-testid="test-code-randomize-confirm"]').click()
+    await expect.poll(readCode).not.toBe(firstCode)
+    expect(await page.getByPlaceholder('Type the result').inputValue()).toBe('')
+
+    // Refused in the dialog: what isn't a code, and a code made for another
+    // version of the test (its fingerprint isn't this test's); the old code
+    // gives the old numbers.
+    await openMenu()
+    await page.locator('[data-testid="test-code-enter"]').click()
+    const input = page.locator('#test-code-input')
+    await input.fill('ABC')
+    await page.locator('[data-testid="test-code-apply"]').click()
+    await waitForText(page, "This isn't a test code.")
+    await input.fill(firstCode.slice(0, -1) + (firstCode.endsWith('0') ? '1' : '0'))
+    await page.locator('[data-testid="test-code-apply"]').click()
+    await waitForText(page, 'This code was made for a different version of this test')
+    await input.fill(firstCode.toLowerCase())
+    await page.locator('[data-testid="test-code-apply"]').click()
+    await page.locator('[data-testid="test-code-enter-dialog"]').waitFor({ state: 'detached' })
+    expect(await number()).toBe(firstNumber)
+    expect(await readCode()).toBe(firstCode)
+
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+  })
+})
+
 // SLJ-136: a final test with no exercises of its own includes the course's
 // other tests', picking a number of them round robin: one from each test.
 describe('final test', () => {

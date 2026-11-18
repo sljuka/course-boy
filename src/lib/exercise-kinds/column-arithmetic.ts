@@ -9,6 +9,7 @@ import type { ExerciseInstance } from "../course-player-utils";
 import { isLocale } from "../i18n";
 
 import { hasValidTags, partShare, type ExerciseKindRuntime, type GradeResult, type ResolveForPlayerContext, type ReviewPart } from "./types";
+import type { Random } from "../random";
 
 // Written addition and subtraction (SLJ-231), the way it's done on squared
 // paper: the numbers stacked by place value, the answer written digit by
@@ -75,8 +76,8 @@ function satisfiesRegrouping(operation: ColumnArithmeticOperation, operands: num
   return regrouping === "required" ? regroups : !regroups;
 }
 
-function rollInRange({ max, min }: ColumnArithmeticOperandRange): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+function rollInRange({ max, min }: ColumnArithmeticOperandRange, random: Random): number {
+  return Math.floor(random() * (max - min + 1)) + min;
 }
 
 function isAcceptable(exercise: Pick<ColumnArithmeticCourseExercise, "operation" | "regrouping">, operands: number[]): boolean {
@@ -87,11 +88,13 @@ function isAcceptable(exercise: Pick<ColumnArithmeticCourseExercise, "operation"
 // Numbers for one attempt, within each one's range and the exercise's rules.
 export function rollColumnOperands(
   exercise: Pick<ColumnArithmeticCourseExercise, "operands" | "operation" | "regrouping">,
+  random: Random = Math.random,
 ): number[] {
-  let operands = exercise.operands.map(rollInRange);
+  const roll = () => exercise.operands.map((range) => rollInRange(range, random));
+  let operands = roll();
 
   for (let attempt = 1; attempt < MAX_ROLLS && !isAcceptable(exercise, operands); attempt += 1) {
-    operands = exercise.operands.map(rollInRange);
+    operands = roll();
   }
 
   // Never a negative answer, even when the rules couldn't be met.
@@ -106,7 +109,7 @@ export function rollColumnOperands(
 // player draws them, for the editor's check.
 export function canSatisfy(exercise: Pick<ColumnArithmeticCourseExercise, "operands" | "operation" | "regrouping">): boolean {
   for (let attempt = 0; attempt < MAX_ROLLS; attempt += 1) {
-    if (isAcceptable(exercise, exercise.operands.map(rollInRange))) return true;
+    if (isAcceptable(exercise, exercise.operands.map((range) => rollInRange(range, Math.random)))) return true;
   }
   return false;
 }
@@ -171,8 +174,8 @@ function resolveForPlayer(
   };
 }
 
-function buildInstance(exercise: ColumnArithmeticCourseExercise): ExerciseInstance {
-  return { kind: "column-arithmetic", operands: rollColumnOperands(exercise) };
+function buildInstance(exercise: ColumnArithmeticCourseExercise, random: Random = Math.random): ExerciseInstance {
+  return { kind: "column-arithmetic", operands: rollColumnOperands(exercise, random) };
 }
 
 // The answer: what's in each box, by column (ones first). `carries[c]` is

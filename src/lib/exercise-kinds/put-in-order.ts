@@ -5,6 +5,7 @@ import type { ExerciseInstance } from "../course-player-utils";
 import { isValidExerciseSpeech } from "../exercise-speech";
 import { isLocale } from "../i18n";
 
+import type { Random } from "../random";
 import { shuffleIndexesUnlike } from "./shuffle";
 import { hasValidTags, partShare, type ExerciseKindRuntime, type GradeResult, type ResolveForPlayerContext, type ReviewPart } from "./types";
 
@@ -63,8 +64,8 @@ function resolveForPlayer(shared: SharedPutInOrderTestExerciseDefinition, contex
 }
 
 // Never shown already in order.
-function buildInstance(exercise: PutInOrderCourseExercise): ExerciseInstance {
-  return { kind: "put-in-order", order: shuffleIndexesUnlike(exercise.items.length) };
+function buildInstance(exercise: PutInOrderCourseExercise, random: Random = Math.random): ExerciseInstance {
+  return { kind: "put-in-order", order: shuffleIndexesUnlike(exercise.items.length, undefined, random) };
 }
 
 // The answer: the items' indexes (in the file) in the order tapped; an item

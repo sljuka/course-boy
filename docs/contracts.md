@@ -748,10 +748,22 @@ To add a kind:
    a graded test's summary) — pure, no React, no filesystem, safe to import from
    Electron main. A kind with several parts (blanks, boxes, regions) returns from
    `grade` the `share` of parts right (partial credit) and `parts`, which are right.
+   `buildInstance(exercise, random)` draws only from `random`, never `Math.random`: a
+   test code (SLJ-232, [src/lib/test-code.ts](../src/lib/test-code.ts:1)) is the seed
+   of that source, and rebuilds an attempt only if every draw comes from it.
 3. Create `src/components/exercise-kinds/<kind>.tsx` implementing `ExerciseKindEditor`
    (`createExercise`, `validate`, `toShared`/`fromShared`, `FieldsComponent`,
    `AnswerComponent`, optional `PrintAnswerComponent`) — register it in both
    registries.
+
+**Test codes are a seed, not a stored attempt (SLJ-232).** A code holds a seed and a
+fingerprint of the test's content without its text (so it works in every language of the
+course); the attempt is rebuilt by drawing again, in the same
+order: the exercises picked (`buildTestExerciseSequence`), then each one's
+`buildInstance`. The fingerprint catches a changed test, but not a changed way of
+drawing: changing the order or number of draws in a kind or in test assembly makes codes
+already printed give other numbers, without saying so. Such a change should say so in
+its commit (and the release notes).
 
 A kind with no `PrintAnswerComponent` simply never renders in the print pass — that is
 the mechanism behind "multiple-choice and word-types are interactive-only."

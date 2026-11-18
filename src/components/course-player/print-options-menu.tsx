@@ -80,7 +80,11 @@ export function PrintOptionsMenu({
     decorativeMedia: mode === "test" ? t("exerciseMedia.printDecorative") : undefined,
     nameField: mode === "test" ? t("courseDetails.printNameField") : undefined,
     points: mode === "test" && graded ? t("courseDetails.printGradePoints") : undefined,
-    header: t("courseDetails.printOptionHeader"),
+    // On a test it's the test's own header ("Test header"), on a lesson the
+    // printout's.
+    header: mode === "test" ? t("courseDetails.printOptionTestHeader") : t("courseDetails.printOptionHeader"),
+    // The test's code (SLJ-232), right under the header option.
+    testCode: mode === "test" ? t("testCode.printOption") : undefined,
     printNow: t("courseDetails.printNow"),
     testSeparators:
       mode === "test" ? t("courseDetails.printOptionSeparators") : undefined,
@@ -124,6 +128,15 @@ export function PrintOptionsMenu({
         >
           {labels.header}
         </DropdownMenuCheckboxItem>
+        {labels.testCode && (
+          <DropdownMenuCheckboxItem
+            checked={printOptions.showTestCode}
+            data-testid="print-test-code-option"
+            onCheckedChange={(checked) => updateOption("showTestCode", checked)}
+          >
+            {labels.testCode}
+          </DropdownMenuCheckboxItem>
+        )}
         {labels.nameField && (
           <DropdownMenuCheckboxItem
             checked={printOptions.showNameField}

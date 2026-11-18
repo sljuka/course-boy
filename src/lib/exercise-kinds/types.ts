@@ -1,6 +1,7 @@
 import type { ExerciseKind, SharedTestExerciseDefinition } from "../course-package";
 import type { ExerciseInstance } from "../course-player-utils";
 import type { Locale } from "../i18n";
+import type { Random } from "../random";
 
 /**
  * The locale-collapsing context every kind's `resolveForPlayer` needs.
@@ -61,7 +62,10 @@ export type ExerciseKindRuntime<TShared extends SharedTestExerciseDefinition, TC
   kind: ExerciseKind;
   isValid(exercise: Record<string, unknown>): exercise is TShared;
   resolveForPlayer(shared: TShared, context: ResolveForPlayerContext): TCourse;
-  buildInstance(exercise: TCourse): ExerciseInstance;
+  // One attempt's draws (numbers, the order of options or cards). `random`
+  // is the test's source (seeded by its code, SLJ-232); every draw must come
+  // from it, never from `Math.random`, or a code won't rebuild the test.
+  buildInstance(exercise: TCourse, random?: Random): ExerciseInstance;
   grade(exercise: TCourse, instance: ExerciseInstance, rawAnswer: string): GradeResult;
   // The answer and the correct one, part by part, for the summary. Missing
   // for kinds whose solution is drawn on a diagram or text: right/wrong only.

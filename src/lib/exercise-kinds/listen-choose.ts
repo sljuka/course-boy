@@ -11,6 +11,7 @@ import { isLocale } from "../i18n";
 
 import { multipleChoiceExerciseRuntime, normalizeMultipleChoiceCorrectOptions } from "./multiple-choice";
 import { hasValidTags, type ExerciseKindRuntime, type GradeResult, type ReviewPart, type ResolveForPlayerContext } from "./types";
+import type { Random } from "../random";
 
 // Listen and choose (SLJ-175): the student hears a word or sentence they can't
 // see (`spoken`, in the exercise's `speech.lang`) and picks the matching
@@ -89,8 +90,8 @@ function resolveForPlayer(
 // and which are correct, which this kind has in the same shape.
 const asChoice = (exercise: ListenChooseCourseExercise) => exercise as unknown as MultipleChoiceCourseExercise;
 
-function buildInstance(exercise: ListenChooseCourseExercise): ExerciseInstance {
-  const instance = multipleChoiceExerciseRuntime.buildInstance(asChoice(exercise));
+function buildInstance(exercise: ListenChooseCourseExercise, random: Random = Math.random): ExerciseInstance {
+  const instance = multipleChoiceExerciseRuntime.buildInstance(asChoice(exercise), random);
   return { kind: "listen-choose", optionOrder: instance.kind === "multiple-choice" ? instance.optionOrder : [] };
 }
 

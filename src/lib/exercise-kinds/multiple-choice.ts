@@ -13,6 +13,8 @@ import {
   partShare,
   type ReviewPart,
 } from "./types";
+import type { Random } from "../random";
+import { shuffleIndexes } from "./shuffle";
 
 /**
  * A file written before multi-select existed stores a single
@@ -148,23 +150,10 @@ export function decodeMultipleChoiceSelection(raw: string): number[] {
   return [];
 }
 
-function shuffleIndexes(length: number): number[] {
-  const order = Array.from({ length }, (_unused, index) => index);
-
-  for (let currentIndex = order.length - 1; currentIndex > 0; currentIndex -= 1) {
-    const randomIndex = Math.floor(Math.random() * (currentIndex + 1));
-    const currentValue = order[currentIndex];
-    order[currentIndex] = order[randomIndex];
-    order[randomIndex] = currentValue;
-  }
-
-  return order;
-}
-
-function buildInstance(exercise: MultipleChoiceCourseExercise): ExerciseInstance {
+function buildInstance(exercise: MultipleChoiceCourseExercise, random: Random = Math.random): ExerciseInstance {
   return {
     kind: "multiple-choice",
-    optionOrder: shuffleIndexes(exercise.options.length),
+    optionOrder: shuffleIndexes(exercise.options.length, random),
   };
 }
 

@@ -1,6 +1,7 @@
 import { buildCourseExercisePool, pickRoundRobin } from "@/lib/course-exercise-pool";
 import type { CourseExercise, CourseTest, CourseTestStructureRule } from "@/lib/course-package";
 import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
+import type { Random } from "@/lib/random";
 import { fillTemplate } from "@/lib/template-variables";
 
 export type ExerciseInstance =
@@ -33,8 +34,8 @@ export function interpolateTemplate(
   return fillTemplate(template, variables, options.emphasizeValues ? (value) => `**${value}**` : undefined);
 }
 
-export function buildExerciseInstance(exercise: CourseExercise): ExerciseInstance {
-  return getExerciseKindRuntime(exercise.kind).buildInstance(exercise);
+export function buildExerciseInstance(exercise: CourseExercise, random: Random = Math.random): ExerciseInstance {
+  return getExerciseKindRuntime(exercise.kind).buildInstance(exercise, random);
 }
 
 // A numeric exercise's prompt is a template with `{{variable}}` placeholders
@@ -54,11 +55,11 @@ export function getExercisePromptSource(
   return exercise.prompt;
 }
 
-function shuffleExercises(exercises: CourseExercise[]): CourseExercise[] {
+function shuffleExercises(exercises: CourseExercise[], random: Random): CourseExercise[] {
   const nextExercises = [...exercises];
 
   for (let currentIndex = nextExercises.length - 1; currentIndex > 0; currentIndex -= 1) {
-    const randomIndex = Math.floor(Math.random() * (currentIndex + 1));
+    const randomIndex = Math.floor(random() * (currentIndex + 1));
     const currentExercise = nextExercises[currentIndex];
     nextExercises[currentIndex] = nextExercises[randomIndex];
     nextExercises[randomIndex] = currentExercise;
@@ -73,9 +74,11 @@ function shuffleExercises(exercises: CourseExercise[]): CourseExercise[] {
 // order (`listCourseTests`), for a final test that includes their exercises
 // (SLJ-136): the tag rules pick from all of them, else `exerciseCount` picked
 // round robin, else all.
+// `random`: the attempt's source, seeded by its code (SLJ-232).
 export function buildTestExerciseSequence(
   lesson: { test: CourseTest | null },
   courseTests: CourseTest[] = [],
+  random: Random = Math.random,
 ): CourseExercise[] {
   const test = lesson.test;
 
@@ -88,20 +91,24 @@ export function buildTestExerciseSequence(
     const exercises = sources.flatMap((source) => source.exercises);
 
     if (test.structure && test.structure.length > 0) {
-      return pickByTagRules(exercises, test.structure);
+      return pickByTagRules(exercises, test.structure, random);
     }
 
-    return test.exerciseCount ? pickRoundRobin(sources, test.exerciseCount) : exercises;
+    return test.exerciseCount ? pickRoundRobin(sources, test.exerciseCount, random) : exercises;
   }
 
   if (!test.structure || test.structure.length === 0) {
     return test.exercises;
   }
 
-  return pickByTagRules(test.exercises, test.structure);
+  return pickByTagRules(test.exercises, test.structure, random);
 }
 
-function pickByTagRules(exercises: CourseExercise[], structure: CourseTestStructureRule[]): CourseExercise[] {
+function pickByTagRules(
+  exercises: CourseExercise[],
+  structure: CourseTestStructureRule[],
+  random: Random,
+): CourseExercise[] {
   const remainingExercises = [...exercises];
   const selectedExercises: CourseExercise[] = [];
 
@@ -113,7 +120,7 @@ function pickByTagRules(exercises: CourseExercise[], structure: CourseTestStruct
     // Take however many are available rather than requiring the full count —
     // a single underfilled rule should not throw away every other rule's
     // selection.
-    const chosenExercises = shuffleExercises(matchingExercises).slice(
+    const chosenExercises = shuffleExercises(matchingExercises, random).slice(
       0,
       Math.min(rule.count, matchingExercises.length),
     );

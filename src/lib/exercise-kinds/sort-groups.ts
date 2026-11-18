@@ -5,6 +5,7 @@ import type { ExerciseInstance } from "../course-player-utils";
 import { isValidExerciseSpeech } from "../exercise-speech";
 import { isLocale } from "../i18n";
 
+import type { Random } from "../random";
 import { shuffleIndexes } from "./shuffle";
 import { hasValidTags, partShare, type ExerciseKindRuntime, type GradeResult, type ResolveForPlayerContext, type ReviewPart } from "./types";
 
@@ -81,8 +82,8 @@ function resolveForPlayer(shared: SharedSortGroupsTestExerciseDefinition, contex
   };
 }
 
-function buildInstance(exercise: SortGroupsCourseExercise): ExerciseInstance {
-  return { cardOrder: shuffleIndexes(exercise.cards.length), kind: "sort-groups" };
+function buildInstance(exercise: SortGroupsCourseExercise, random: Random = Math.random): ExerciseInstance {
+  return { cardOrder: shuffleIndexes(exercise.cards.length, random), kind: "sort-groups" };
 }
 
 // The answer: for each card (by its index in the file), the group it's in,

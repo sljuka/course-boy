@@ -115,6 +115,7 @@
     "printExerciseHintsHide": "Nemoj da štampaš",
     "printExerciseHintsPrint": "Štampaj",
     "printExerciseHintsUpsideDown": "Štampaj naopako",
+    "printOptionTestHeader": "Zaglavlje testa",
     "printOptionHeader": "Štampaj zaglavlje",
     "printOptionSeparators": "Štampaj razdelnike zadataka",
     "printOptions": "Opcije štampe",
@@ -125,7 +126,6 @@
     "printTest": "Štampaj test",
     "printHeaderSection": "{{title}} (odeljak)",
     "printHeaderItem": "{{title}} ({{kind}})",
-    "refreshExercise": "Osveži zadatak",
     "reviewUnansweredExercise": "Pregledaj zadatak {{number}}, još bez odgovora",
     "reviewExercise": "Pregledaj zadatak {{number}}",
     "sections": "Sekcije",
@@ -2175,5 +2175,25 @@
   },
   "wordTypeTokens": {
     "unmarked": "neoznačeno"
+  },
+  "testCode": {
+    "menu": "Šifra testa",
+    "copy": "Kopiraj šifru {{code}}",
+    "copied": "Kopirano",
+    "randomize": "Promešaj",
+    "enterCode": "Unesi šifru…",
+    "randomizeTitle": "Početi ispočetka sa novom šifrom?",
+    "randomizeDescription": "Test se sastavlja iznova: drugi zadaci (ako ih bira) i novi brojevi.",
+    "discardWarning": "Dosadašnji odgovori biće obrisani i test počinje ispočetka, od prvog pitanja.",
+    "cancel": "Otkaži",
+    "enterTitle": "Unesi šifru testa",
+    "enterDescription": "Šifra pravi potpuno isti test: iste zadatke, brojeve i redosled. Odštampana je na listu i prikazana u ovom meniju.",
+    "codeLabel": "Šifra",
+    "codePlaceholder": "npr. {{example}}",
+    "apply": "Koristi šifru",
+    "invalid": "Ovo nije šifra testa. Šifra ima osam slova i cifara, kao {{example}}.",
+    "otherVersion": "Ova šifra je napravljena za drugu verziju ovog testa, pa ne može da ga napravi ponovo.",
+    "printOption": "Šifra testa",
+    "printed": "Šifra testa: {{code}}"
   }
 }

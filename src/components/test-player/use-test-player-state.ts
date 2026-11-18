@@ -3,12 +3,21 @@ import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import type { CourseExercise, CourseTest } from "@/lib/course-package";
-import {
-  buildExerciseInstance,
-  buildTestExerciseSequence,
-  type ExerciseInstance,
-} from "@/lib/course-player-utils";
+import type { ExerciseInstance } from "@/lib/course-player-utils";
 import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
+import {
+  buildTestAttempt,
+  createTestSeed,
+  fingerprintTest,
+  formatTestCode,
+  parseTestCode,
+  type TestAttempt,
+  type TestCode,
+} from "@/lib/test-code";
+
+// What typing in a test code did (SLJ-232): rebuilt that attempt, or not,
+// because it isn't a code or was made for another version of the test.
+export type ApplyTestCodeResult = "applied" | "invalid" | "otherVersion";
 
 export type ExerciseResult = {
   feedback: string | null;
@@ -143,8 +152,11 @@ export function useTestPlayerState(
   const [revealedAnswers, setRevealedAnswers] = useState<boolean[]>([]);
   const [isPrintHintVisible, setIsPrintHintVisible] = useState(true);
   const [isInteractiveMode, setIsInteractiveMode] = useState(startInteractive);
+  // This attempt's code (SLJ-232): its seed rebuilds it exactly.
+  const [attemptCode, setAttemptCode] = useState<TestCode | null>(null);
 
   function resetExerciseState() {
+    setAttemptCode(null);
     setActiveTestExercises([]);
     setActiveTestInstances([]);
     setExerciseAnswers([]);
@@ -155,11 +167,10 @@ export function useTestPlayerState(
     setIsTestPassed(false);
   }
 
-  function hydrateExercises(exercises: CourseExercise[]) {
+  function hydrateAttempt({ code, exercises, instances }: TestAttempt) {
+    setAttemptCode(code);
     setActiveTestExercises(exercises);
-    setActiveTestInstances(
-      exercises.map((exercise) => buildExerciseInstance(exercise)),
-    );
+    setActiveTestInstances(instances);
     setExerciseAnswers(exercises.map(() => ""));
     setExerciseResults(createEmptyResults(exercises));
     setFirstTryCorrect(exercises.map(() => null));
@@ -187,24 +198,22 @@ export function useTestPlayerState(
     );
   }
 
-  useEffect(() => {
+  // A new attempt from its seed, a new random one unless a code gives it:
+  // the exercises picked and every number drawn from that seed alone. A
+  // final test (SLJ-136) can have no exercises of its own: what's picked
+  // decides, and with nothing picked there's no attempt.
+  function startAttempt(seed: number = createTestSeed()) {
     resetExerciseState();
+    if (!activeLesson?.test) return;
+    const attempt = buildTestAttempt(activeLesson.test, courseTestsRef.current, seed);
+    if (attempt.exercises.length > 0) hydrateAttempt(attempt);
+  }
+
+  useEffect(() => {
     setIsInteractiveMode(startInteractive);
     setIsPrintHintVisible(true);
-
-    // A final test (SLJ-136) can have no exercises of its own: what's
-    // picked decides.
-    if (!activeLesson?.test) {
-      return;
-    }
-
-    const selectedExercises = buildTestExerciseSequence(activeLesson, courseTestsRef.current);
-
-    if (selectedExercises.length === 0) {
-      return;
-    }
-
-    hydrateExercises(selectedExercises);
+    startAttempt();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a new attempt only for another test or mode
   }, [activeLesson, startInteractive]);
 
   function updateExerciseAnswer(index: number, value: string) {
@@ -231,23 +240,28 @@ export function useTestPlayerState(
     );
   }
 
-  // Try again: a new attempt, with a new pick of exercises (if the test picks
-  // them at random) and new numbers.
+  // Try again, and Randomize: a new attempt with a new code, so a new pick
+  // of exercises (if the test picks them at random) and new numbers.
   function restart() {
-    resetExerciseState();
-    const selectedExercises = activeLesson ? buildTestExerciseSequence(activeLesson, courseTestsRef.current) : [];
-    if (selectedExercises.length > 0) hydrateExercises(selectedExercises);
+    startAttempt();
   }
 
-  function refreshExercises() {
-    if (activeTestExercises.length === 0) {
-      return;
+  // A code typed in (SLJ-232) rebuilds its attempt, from the start. A code
+  // made for another version of the test (its fingerprint differs) would
+  // give a different attempt, so it's refused instead.
+  function applyTestCode(text: string): ApplyTestCodeResult {
+    const parsed = parseTestCode(text);
+    if (parsed.status === "invalid") return "invalid";
+    if (!activeLesson?.test || parsed.code.fingerprint !== fingerprintTest(activeLesson.test, courseTestsRef.current)) {
+      return "otherVersion";
     }
-
-    hydrateExercises(activeTestExercises);
-    setTestFeedback(null);
-    setIsTestPassed(false);
+    startAttempt(parsed.code.seed);
+    return "applied";
   }
+
+  // Anything typed or checked in this attempt, which a new one would lose.
+  const hasProgress =
+    exerciseAnswers.some((answer) => answer.trim() !== "") || firstTryCorrect.some((firstTry) => firstTry !== null);
 
   function submitExercise() {
     if (activeTestExercises.length === 0 || activeTestInstances.length === 0) {
@@ -311,6 +325,8 @@ export function useTestPlayerState(
   return {
     activeTestExercises,
     activeTestInstances,
+    applyTestCode,
+    hasProgress,
     exerciseAnswers,
     exerciseResults,
     firstTryCorrect,
@@ -318,7 +334,6 @@ export function useTestPlayerState(
     isInteractiveMode,
     isPrintHintVisible,
     isTestPassed,
-    refreshExercises,
     restart,
     revealAnswer,
     revealedAnswers,
@@ -326,6 +341,7 @@ export function useTestPlayerState(
     setIsPrintHintVisible,
     submitExercise,
     submitSingleExercise,
+    testCode: attemptCode ? formatTestCode(attemptCode) : null,
     testFeedback,
     updateExerciseAnswer,
   };

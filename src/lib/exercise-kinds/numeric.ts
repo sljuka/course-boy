@@ -7,6 +7,7 @@ import type {
 import type { ExerciseInstance } from "../course-player-utils";
 import { evaluateFormula } from "../formula-dsl";
 import { isLocale, type Locale } from "../i18n";
+import type { Random } from "../random";
 import { findTemplateVariables } from "../template-variables";
 
 import {
@@ -44,11 +45,11 @@ function nearestValueWithParity(
   return min;
 }
 
-export function rollVariableValue(definition: CourseExerciseVariable): number {
+export function rollVariableValue(definition: CourseExerciseVariable, random: Random = Math.random): number {
   const span = definition.max - definition.min + 1;
 
   for (let attempt = 0; attempt < MAX_PARITY_RESAMPLE_ATTEMPTS; attempt += 1) {
-    const candidate = Math.floor(Math.random() * span) + definition.min;
+    const candidate = Math.floor(random() * span) + definition.min;
 
     if (matchesParity(candidate, definition.parity)) {
       return candidate;
@@ -235,10 +236,10 @@ function resolveForPlayer(
   };
 }
 
-function buildInstance(exercise: NumericCourseExercise): ExerciseInstance {
+function buildInstance(exercise: NumericCourseExercise, random: Random = Math.random): ExerciseInstance {
   const variables = Object.fromEntries(
     Object.entries(exercise.variables).map(([variableName, variableDefinition]) => {
-      return [variableName, rollVariableValue(variableDefinition)];
+      return [variableName, rollVariableValue(variableDefinition, random)];
     }),
   );
   const expectedAnswers = solveInOrder(numericSolutions(exercise), variables);
