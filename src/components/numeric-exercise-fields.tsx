@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +24,7 @@ import type {
 } from "@/components/test-editor-prototype-types";
 import {
   addConstraintToVariable,
+  checkPromptPlaceholders,
   extractPromptVariables,
   removeConstraintFromVariable,
   removeVariableFromExercise,
@@ -57,6 +58,9 @@ export function NumericExerciseFields({
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const answerPlaceholder = exercise.locales[locale]?.answerPlaceholder ?? "";
   const hint = exercise.locales[locale]?.hint ?? "";
+  // A `{{…}}` that isn't a variable or a formula, or can't be calculated
+  // (SLJ-233), flagged right under the prompt.
+  const promptProblem = checkPromptPlaceholders(exercise, locale);
   const usedVariableNames = useMemo(
     () => new Set(extractPromptVariables(prompt)),
     [prompt],
@@ -92,7 +96,7 @@ export function NumericExerciseFields({
             {t("numeric.promptLabel")}
           </FieldLabel>
           <InfoTooltip>
-            {t("numeric.promptHelp", { braces: "{{}}", example: "{{x}}" })}
+            {t("numeric.promptHelp", { braces: "{{}}", example: "{{x}}", formula: "{{x * 100}}" })}
           </InfoTooltip>
         </div>
         <Textarea
@@ -109,6 +113,11 @@ export function NumericExerciseFields({
           rows={2}
           value={prompt}
         />
+        {promptProblem && (
+          <FieldError>
+            {t(promptProblem.key, promptProblem.values)}
+          </FieldError>
+        )}
       </Field>
 
       {exercise.variables.length > 0 && (

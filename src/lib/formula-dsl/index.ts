@@ -8,6 +8,7 @@ export type {
 } from "./types";
 
 export { FormulaError } from "./errors";
+export { collectFormulaVariables } from "./variables";
 export { evaluateFormulaAst, parseFormula };
 
 export function evaluateFormula(

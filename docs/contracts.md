@@ -349,6 +349,14 @@ graded on its own. A later solution's formula can use an earlier one's rounded r
 `solution1`, `solution2`… (`solveInOrder`). A student's answer to several boxes is a JSON
 list of strings (`encodeNumericAnswers`); one box's is still the plain text.
 
+**Formulas in a numeric prompt (SLJ-233):** a `{{…}}` in a numeric exercise's prompt or
+hint holds a variable (`{{a}}`) or a formula over variables with the answer formula's
+operators (`{{a * 100}}`); the player shows its value, bold in the prompt
+([src/lib/template-variables.ts](../src/lib/template-variables.ts:1), one definition for
+the editor, the runtime and the player). The format on disk is unchanged: it's still the
+prompt's text. An older app, which only knows `{{name}}`, shows a formula as written, and
+saving such an exercise in it keeps the text.
+
 **`showSummary: false` (SLJ-140)** on a graded test turns off the summary of answers after
 it (missing: shown). The summary asks each kind's runtime for `review` (the answer and the
 correct one, part by part); a kind without it shows right or wrong only.

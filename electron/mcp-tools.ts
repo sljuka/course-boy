@@ -292,7 +292,9 @@ const questionSchema = z.discriminatedUnion("type", [
     prompt: z
       .string()
       .min(1)
-      .describe("May use variables as {{a}}; each is rolled anew for every student"),
+      .describe(
+        "May use variables as {{a}}; each is rolled anew for every student. The braces can also hold a formula over the variables, e.g. {{a * 100}}, to show a calculated number",
+      ),
     answer: z
       .string()
       .min(1)

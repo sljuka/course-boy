@@ -1,7 +1,7 @@
 import {
+  collectFormulaVariables,
   evaluateFormulaAst,
   parseFormula,
-  type FormulaAstNode,
   FormulaError,
 } from "@/lib/formula-dsl";
 import type {
@@ -11,6 +11,7 @@ import type {
 import type { Locale } from "@/lib/i18n";
 
 import type {
+  CheckMessage,
   NumericSolutionSpace,
   NumericTestExercise,
   PromptVariable,
@@ -19,7 +20,11 @@ import type {
   VariableConstraintType,
 } from "@/components/test-editor-prototype-types";
 import { filterValidLocaleEntries } from "@/components/exercise-kinds/types";
-import { findTemplateVariables } from "@/lib/template-variables";
+import {
+  findInvalidPlaceholders,
+  findPlaceholderFormulas,
+  findTemplateVariables,
+} from "@/lib/template-variables";
 import { earlierSolutionName, solveInOrder } from "@/lib/exercise-kinds/numeric";
 
 function createId(prefix: string) {
@@ -170,19 +175,6 @@ export function removeVariableFromExercise(
   };
 }
 
-function collectFormulaVariables(node: FormulaAstNode): string[] {
-  switch (node.type) {
-    case "variable":
-      return [node.name];
-    case "binary":
-      return [...collectFormulaVariables(node.left), ...collectFormulaVariables(node.right)];
-    case "negate":
-      return collectFormulaVariables(node.operand);
-    case "number":
-      return [];
-  }
-}
-
 type VariableBounds = {
   max: number;
   min: number;
@@ -258,7 +250,30 @@ function resolveSampleValue(variable: PromptVariable): number {
 }
 
 export function validate(exercise: NumericTestExercise, locale: Locale): SolutionValidationResult {
+  const promptProblem = checkPromptPlaceholders(exercise, locale);
+  if (promptProblem) return { message: promptProblem, status: "error" };
   return validateFormula(exercise, locale, exercise.solution);
+}
+
+// The prompt's `{{…}}`: each must be a variable or a formula over variables
+// (SLJ-233), and calculable with a sample value for each variable, so the
+// student never sees one as written. Null when they all are.
+export function checkPromptPlaceholders(exercise: NumericTestExercise, locale: Locale): CheckMessage | null {
+  const prompt = exercise.locales[locale]?.prompt ?? "";
+  const [invalid] = findInvalidPlaceholders(prompt);
+  if (invalid) return { key: "exerciseCheck.numeric.badPlaceholder", values: { example: "{{a * 100}}", placeholder: invalid } };
+
+  try {
+    const samples = Object.fromEntries(
+      exercise.variables.map((variable) => [variable.name, resolveSampleValue(variable)]),
+    );
+    for (const formula of findPlaceholderFormulas(prompt)) evaluateFormulaAst(formula, samples);
+  } catch (error) {
+    if (error instanceof FormulaError) return { key: error.key, values: error.values };
+    return { key: "exerciseCheck.formula.invalid" };
+  }
+
+  return null;
 }
 
 // One solution's formula, checked against the exercise's variables with a

@@ -1832,7 +1832,7 @@
   },
   "numeric": {
     "promptLabel": "Prompt *",
-    "promptHelp": "Use {{braces}} to make variables. For instance {{example}} for a variable named x. Set constraints on it, like the smallest and largest random value it can get. Use it in the solution formula that calculates the answer.",
+    "promptHelp": "Use {{braces}} to make variables. For instance {{example}} for a variable named x. Set constraints on it, like the smallest and largest random value it can get. Use it in the solution formula that calculates the answer. The braces can also hold a formula, e.g. {{formula}}, to show a number calculated from the variables.",
     "promptPlaceholder": "Mary had {{variable}} apples...",
     "sampleVariable": "apple_number",
     "variablesLabel": "Variables",
@@ -1955,7 +1955,8 @@
       "unusedInPrompt": "Variable \"{{name}}\" is not used in prompt",
       "evenAndOdd": "Variable \"{{name}}\" cannot be both even and odd",
       "impossibleBounds": "Variable \"{{name}}\" has impossible bounds ({{min}} > {{max}})",
-      "noValidValues": "Variable \"{{name}}\" has no valid values"
+      "noValidValues": "Variable \"{{name}}\" has no valid values",
+      "badPlaceholder": "{{placeholder}} in the prompt isn't a variable or a formula, e.g. {{example}}"
     },
     "formula": {
       "invalid": "Invalid solution",

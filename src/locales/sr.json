@@ -1832,7 +1832,7 @@
   },
   "numeric": {
     "promptLabel": "Zadatak *",
-    "promptHelp": "Promenljive se prave sa {{braces}}. Na primer {{example}} za promenljivu koja se zove x. Postavi joj ograničenja, kao najmanju i najveću nasumičnu vrednost koju može da dobije. Koristi je u formuli rešenja, po kojoj se računa odgovor.",
+    "promptHelp": "Promenljive se prave sa {{braces}}. Na primer {{example}} za promenljivu koja se zove x. Postavi joj ograničenja, kao najmanju i najveću nasumičnu vrednost koju može da dobije. Koristi je u formuli rešenja, po kojoj se računa odgovor. U zagradama može da stoji i formula, na primer {{formula}}, da se prikaže broj izračunat iz promenljivih.",
     "promptPlaceholder": "Marija je imala {{variable}} jabuka...",
     "sampleVariable": "broj_jabuka",
     "variablesLabel": "Promenljive",
@@ -1955,7 +1955,8 @@
       "unusedInPrompt": "Promenljiva „{{name}}“ se ne koristi u zadatku",
       "evenAndOdd": "Promenljiva „{{name}}“ ne može da bude i parna i neparna",
       "impossibleBounds": "Promenljiva „{{name}}“ ima nemoguća ograničenja ({{min}} > {{max}})",
-      "noValidValues": "Promenljiva „{{name}}“ nema nijednu moguću vrednost"
+      "noValidValues": "Promenljiva „{{name}}“ nema nijednu moguću vrednost",
+      "badPlaceholder": "{{placeholder}} u zadatku nije promenljiva ni formula, na primer {{example}}"
     },
     "formula": {
       "invalid": "Neispravno rešenje",

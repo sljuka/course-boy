@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { SharedNumericTestExerciseDefinition } from "@/lib/course-package";
+import { getExercisePromptSource } from "@/lib/course-player-utils";
 import {
   decodeNumericAnswers,
   encodeNumericAnswers,
@@ -101,6 +102,42 @@ describe("several solutions", () => {
     expect(decodeNumericAnswers("7", 1)).toEqual(["7"]);
     expect(decodeNumericAnswers(encodeNumericAnswers(["1", "2"]), 2)).toEqual(["1", "2"]);
     expect(decodeNumericAnswers("", 2)).toEqual(["", ""]);
+  });
+});
+
+// SLJ-233: the prompt shows a value calculated from a variable, and the answer
+// follows the same draw.
+describe("a formula in the prompt", () => {
+  const shared: SharedNumericTestExerciseDefinition = {
+    kind: "numeric",
+    locales: { sr: { prompt: "{{a * 100}} cm² = ___ dm²" } },
+    solution: { formula: "a", precision: 0 },
+    tags: [],
+    variables: { a: { max: 99, min: 10, type: "integer" } },
+  };
+  const exercise = numericExerciseRuntime.resolveForPlayer(shared, {
+    courseId: "c",
+    id: "t#1",
+    prompt: shared.locales.sr!.prompt,
+    requestedLocales: ["sr"],
+  });
+
+  it("is valid when the formula's variables are declared, and not when one is missing", () => {
+    expect(numericExerciseRuntime.isValid(shared as never)).toBe(true);
+    expect(
+      numericExerciseRuntime.isValid({ ...shared, locales: { sr: { prompt: "{{a * b}} cm²" } } } as never),
+    ).toBe(false);
+  });
+
+  it("shows the calculated value and expects the matching answer on every draw", () => {
+    for (let draw = 0; draw < 20; draw += 1) {
+      const instance = numericExerciseRuntime.buildInstance(exercise);
+      if (instance.kind !== "numeric") throw new Error("expected a numeric instance");
+      const shown = getExercisePromptSource(exercise, instance);
+
+      expect(shown).toBe(`**${instance.variables.a * 100}** cm² = ___ dm²`);
+      expect(instance.expectedAnswer).toBe(instance.variables.a);
+    }
   });
 });
 

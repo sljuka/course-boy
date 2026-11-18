@@ -2124,6 +2124,45 @@ describe('several solutions', () => {
   })
 })
 
+// SLJ-233: a numeric prompt's `{{…}}` can hold a formula: the student sees its
+// value in bold, with the thousands set apart, and answers with the variable.
+describe('formula in a numeric prompt', () => {
+  it('shows the calculated value and accepts the answer that matches it', async () => {
+    const { page } = harness
+    const ids = await page.evaluate(async () => {
+      const { courseId } = await window.courses.createDraft({
+        defaultLocale: 'en',
+        locales: { en: { description: '', title: 'E2E Prompt Formula Course' } },
+        supportedLocales: ['en'],
+      })
+      const { sectionId } = await window.courses.createSection({ courseId, title: 'Length' })
+      const { testId } = await window.courses.createSectionTest({ courseId, sectionId, title: 'Metres to kilometres' })
+      const exercise = {
+        kind: 'numeric',
+        locales: { en: { prompt: '{{a * 1000}} m = ___ km' } },
+        solution: { formula: 'a', precision: 0 },
+        tags: [],
+        variables: { a: { max: 45, min: 45, type: 'integer' } },
+      }
+      await window.courses.saveSectionTest({ courseId, sectionId, test: { exercises: [exercise], template: '' }, testId })
+      return { courseId, testId }
+    })
+
+    await page.evaluate(({ courseId, testId }) => {
+      location.hash = `#/courses/${courseId}/lessons/${testId}/test`
+    }, ids)
+    await page.locator('[data-testid="test-start"]').click({ timeout: 15_000 })
+    const value = page.locator('strong', { hasText: '45' }).first()
+    await value.waitFor({ timeout: 15_000 })
+    expect(await value.textContent()).toBe('45\u00a0000')
+
+    await page.getByPlaceholder('Type the result').fill('45')
+    await page.getByRole('button', { exact: true, name: 'Check answer' }).click()
+    await page.getByRole('button', { exact: true, name: 'Continue' }).waitFor()
+    await page.getByRole('button', { exact: true, name: 'Close course' }).click()
+  })
+})
+
 // SLJ-136: a final test with no exercises of its own includes the course's
 // other tests', picking a number of them round robin: one from each test.
 describe('final test', () => {

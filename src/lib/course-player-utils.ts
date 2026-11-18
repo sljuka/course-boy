@@ -1,7 +1,7 @@
 import { buildCourseExercisePool, pickRoundRobin } from "@/lib/course-exercise-pool";
 import type { CourseExercise, CourseTest, CourseTestStructureRule } from "@/lib/course-package";
 import { getExerciseKindRuntime } from "@/lib/exercise-kinds/registry";
-import { replaceTemplateVariables } from "@/lib/template-variables";
+import { fillTemplate } from "@/lib/template-variables";
 
 export type ExerciseInstance =
   // `expectedAnswers`: every solution's, the first being `expectedAnswer`.
@@ -27,13 +27,10 @@ export function interpolateTemplate(
   variables: Record<string, number>,
   options: { emphasizeValues?: boolean } = {},
 ): string {
-  return replaceTemplateVariables(template, (variableName) => {
-    const value = String(variables[variableName] ?? "");
-    // `**value**` renders bold via InlineMarkdown — used for the prompt (the
-    // substituted numbers should stand out against otherwise regular-weight
-    // text), not for hints, which stay plain.
-    return options.emphasizeValues ? `**${value}**` : value;
-  });
+  // `**value**` renders bold via InlineMarkdown — used for the prompt (the
+  // substituted numbers should stand out against otherwise regular-weight
+  // text), not for hints, which stay plain.
+  return fillTemplate(template, variables, options.emphasizeValues ? (value) => `**${value}**` : undefined);
 }
 
 export function buildExerciseInstance(exercise: CourseExercise): ExerciseInstance {

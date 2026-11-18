@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  checkPromptPlaceholders,
   fromCourseExerciseVariable,
   toCourseExerciseVariable,
   validate,
@@ -133,6 +134,38 @@ describe("validate", () => {
     }
 
     expect(validate(exercise, "en").status).toBe("valid")
+  })
+})
+
+// SLJ-233: a prompt's `{{…}}` can hold a formula over the variables.
+describe("checkPromptPlaceholders", () => {
+  const withPrompt = (prompt: string, variables: PromptVariable[] = [variable("a", [])]): NumericTestExercise => ({
+    kind: "numeric",
+    id: "ex_num",
+    locales: { en: { answerPlaceholder: "", hint: "", prompt } },
+    solution: "a",
+    moreSolutions: [],
+    solutionSpace: "sm",
+    tagIds: [],
+    variables,
+  })
+
+  it("accepts variables and formulas over them", () => {
+    expect(checkPromptPlaceholders(withPrompt("{{a * 100}} cm² = ___ dm², {{ a }}"), "en")).toBeNull()
+    expect(validate(withPrompt("{{a * 100}} cm² = ___ dm²"), "en").status).toBe("valid")
+  })
+
+  it("flags braces that aren't a formula, before the solution is checked", () => {
+    const problem = { key: "exerciseCheck.numeric.badPlaceholder", values: { example: "{{a * 100}}", placeholder: "{{a +}}" } }
+
+    expect(checkPromptPlaceholders(withPrompt("{{a}} and {{a +}}"), "en")).toEqual(problem)
+    expect(validate(withPrompt("{{a}} and {{a +}}"), "en")).toEqual({ message: problem, status: "error" })
+  })
+
+  it("flags a formula that can't be calculated with the sample values", () => {
+    const exercise = withPrompt("{{a / (b - b)}}", [variable("a", []), variable("b", [])])
+
+    expect(checkPromptPlaceholders(exercise, "en")).toEqual({ key: "exerciseCheck.formula.divisionByZero" })
   })
 })
 
