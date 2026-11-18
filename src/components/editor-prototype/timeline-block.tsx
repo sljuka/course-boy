@@ -4,6 +4,7 @@ import { History } from "lucide-react";
 
 import { TimelinePointFields } from "@/components/editor-prototype/timeline-point-fields";
 import { parseTimelineMarker, serializeTimelineMarker } from "@/lib/lesson-timeline";
+import { courseSlashGroup } from "@/components/editor-prototype/course-slash-group";
 
 // A point on the lesson's timeline (SLJ-35), placed where the lesson reaches
 // that moment. The teacher fills it in here; students see nothing in the
@@ -44,7 +45,7 @@ export function createTimelineSlashMenuItem(
 ) {
   return {
     aliases: ["timeline", "date", "year", "history", "vremenska linija", "godina", "istorija", "временска линија", "година"],
-    group: "Course",
+    group: courseSlashGroup(),
     icon: <History size={18} />,
     onItemClick: () => {
       editor.insertBlocks([{ type: "timeline", props: { data: "" } }], editor.getTextCursorPosition().block, "after");

@@ -1,5 +1,7 @@
 import { BookOpen } from "lucide-react";
 
+import { courseSlashGroup } from "@/components/editor-prototype/course-slash-group";
+
 // The `/` menu's "Link to a lesson": writes the chosen lesson's title as a
 // link where the cursor is.
 export function createLessonLinkSlashMenuItem({
@@ -14,7 +16,7 @@ export function createLessonLinkSlashMenuItem({
   return {
     aliases: ["link", "lesson", "lekcija", "veza", "лекција", "веза"],
     // The exercise item's group (exercise-block.tsx): content of this course.
-    group: "Course",
+    group: courseSlashGroup(),
     icon: <BookOpen size={18} />,
     onItemClick: onClick,
     subtext,

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 import type {
@@ -173,31 +173,27 @@ function PrintAnswerComponent({
 }
 
 
-const EXAMPLE_EXERCISE: NumericCourseExercise = {
-  formula: "x - y + z",
-  id: "example",
-  kind: "numeric",
-  precision: 0,
-  prompt:
-    "Mary had {{x}} apples. She sold {{y}} of them, then bought {{z}} more. How many apples does she have now?",
-  solutionSpace: "sm",
-  tags: [],
-  variables: {
-    x: { max: 20, min: 5, type: "integer" },
-    y: { max: 5, min: 1, type: "integer" },
-    z: { max: 5, min: 1, type: "integer" },
-  },
-};
+// The example in the "Add exercise" picker, in the app's language. The
+// prompt's `{{x}}` placeholders are passed in, so i18next leaves them for
+// the exercise to fill.
+function buildExampleTest(t: TFunction): CourseTest {
+  const exercise: NumericCourseExercise = {
+    formula: "x - y + z",
+    id: "example",
+    kind: "numeric",
+    precision: 0,
+    prompt: t("exerciseExamples.numeric", { x: "{{x}}", y: "{{y}}", z: "{{z}}" }),
+    solutionSpace: "sm",
+    tags: [],
+    variables: {
+      x: { max: 20, min: 5, type: "integer" },
+      y: { max: 5, min: 1, type: "integer" },
+      z: { max: 5, min: 1, type: "integer" },
+    },
+  };
 
-const EXAMPLE_TEST: CourseTest = {
-  exercises: [EXAMPLE_EXERCISE],
-  graded: false,
-  id: "example",
-  includeCourseExercises: false,
-  partialCredit: false,
-};
-
-const EXAMPLE_LESSON = { test: EXAMPLE_TEST };
+  return { exercises: [exercise], graded: false, id: "example", includeCourseExercises: false, partialCredit: false };
+}
 
 // A live, gradeable instance of the example — reuses the exact same state
 // machine (`useTestPlayerState`) and grading runtime the real player and
@@ -205,6 +201,8 @@ const EXAMPLE_LESSON = { test: EXAMPLE_TEST };
 // to checking a real exercise's, not a lookalike.
 function ExampleComponent() {
   const { t } = useTranslation();
+  // Rebuilt only when the language changes: a new one starts the example over.
+  const exampleLesson = useMemo(() => ({ test: buildExampleTest(t) }), [t]);
   const {
     activeTestExercises,
     activeTestInstances,
@@ -214,7 +212,7 @@ function ExampleComponent() {
     submitExercise,
     testFeedback,
     updateExerciseAnswer,
-  } = useTestPlayerState(EXAMPLE_LESSON);
+  } = useTestPlayerState(exampleLesson);
 
   const exercise = activeTestExercises[0];
   const instance = activeTestInstances[0];

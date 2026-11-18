@@ -2195,5 +2195,26 @@
     "otherVersion": "Ova šifra je napravljena za drugu verziju ovog testa, pa ne može da ga napravi ponovo.",
     "printOption": "Šifra testa",
     "printed": "Šifra testa: {{code}}"
+  },
+  "exerciseExamples": {
+    "numeric": "Marija je imala {{x}} jabuka. Prodala je {{y}}, a zatim kupila još {{z}}. Koliko jabuka sada ima?",
+    "multipleChoice": "Koji od ovih gradova su glavni gradovi evropskih zemalja?",
+    "regionLabel": "Napiši ime svake označene zemlje.",
+    "regionMarker": "Poveži svaku zemlju sa njenom bojom.",
+    "regionPicker": "Označi zemlje Skandinavskog poluostrva.",
+    "cities": {
+      "tokyo": "Tokio",
+      "paris": "Pariz",
+      "berlin": "Berlin",
+      "cairo": "Kairo"
+    },
+    "countries": {
+      "hungary": "Mađarska",
+      "norway": "Norveška",
+      "ireland": "Irska"
+    }
+  },
+  "slashMenu": {
+    "courseGroup": "Kurs"
   }
 }

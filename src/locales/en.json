@@ -2195,5 +2195,26 @@
     "otherVersion": "This code was made for a different version of this test, so it can't rebuild it.",
     "printOption": "Test code",
     "printed": "Test code: {{code}}"
+  },
+  "exerciseExamples": {
+    "numeric": "Mary had {{x}} apples. She sold {{y}} of them, then bought {{z}} more. How many apples does she have now?",
+    "multipleChoice": "Which of these are capitals of European countries?",
+    "regionLabel": "Name each numbered country.",
+    "regionMarker": "Match each country to its color.",
+    "regionPicker": "Mark the countries of the Scandinavian peninsula.",
+    "cities": {
+      "tokyo": "Tokyo",
+      "paris": "Paris",
+      "berlin": "Berlin",
+      "cairo": "Cairo"
+    },
+    "countries": {
+      "hungary": "Hungary",
+      "norway": "Norway",
+      "ireland": "Ireland"
+    }
+  },
+  "slashMenu": {
+    "courseGroup": "Course"
   }
 }

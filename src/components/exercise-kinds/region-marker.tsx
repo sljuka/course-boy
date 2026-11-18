@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import exampleSvgUrl from "@/assets/region-picker-example-europe.svg?url";
@@ -75,34 +76,32 @@ function AnswerComponent({
 // The exact three-region example from the feature's own design conversation
 // (Hungary/Norway/Ireland), on the same bundled map region-picker's example
 // uses — a real map, not a simplified stand-in.
-const EXAMPLE_EXERCISE: RegionMarkerCourseExercise = {
-  id: "example",
-  kind: "region-marker",
-  prompt: "Match each country to its color.",
-  regions: [
-    { color: "#bbf7d0", id: "Hungary", label: "Hungary" },
-    { color: "#fecaca", id: "Norway", label: "Norway" },
-    { color: "#bfdbfe", id: "Ireland", label: "Ireland" },
-  ],
-  svgAssetUrl: exampleSvgUrl,
-  tags: [],
-};
+// The example in the "Add exercise" picker, in the app's language. The
+// regions' ids are the map's shapes, their labels the countries' names.
+function buildExampleTest(t: TFunction): CourseTest {
+  const exercise: RegionMarkerCourseExercise = {
+    id: "example",
+    kind: "region-marker",
+    prompt: t("exerciseExamples.regionMarker"),
+    regions: [
+      { color: "#bbf7d0", id: "Hungary", label: t("exerciseExamples.countries.hungary") },
+      { color: "#fecaca", id: "Norway", label: t("exerciseExamples.countries.norway") },
+      { color: "#bfdbfe", id: "Ireland", label: t("exerciseExamples.countries.ireland") },
+    ],
+    svgAssetUrl: exampleSvgUrl,
+    tags: [],
+  };
 
-const EXAMPLE_TEST: CourseTest = {
-  exercises: [EXAMPLE_EXERCISE],
-  graded: false,
-  id: "example",
-  includeCourseExercises: false,
-  partialCredit: false,
-};
-
-const EXAMPLE_LESSON = { test: EXAMPLE_TEST };
+  return { exercises: [exercise], graded: false, id: "example", includeCourseExercises: false, partialCredit: false };
+}
 
 // A live, gradeable instance of the example — reuses the exact same state
 // machine (`useTestPlayerState`) and grading runtime the real player and
 // "Preview test" use.
 function ExampleComponent() {
   const { t } = useTranslation();
+  // Rebuilt only when the language changes: a new one starts the example over.
+  const exampleLesson = useMemo(() => ({ test: buildExampleTest(t) }), [t]);
   const {
     activeTestExercises,
     activeTestInstances,
@@ -112,7 +111,7 @@ function ExampleComponent() {
     submitExercise,
     testFeedback,
     updateExerciseAnswer,
-  } = useTestPlayerState(EXAMPLE_LESSON);
+  } = useTestPlayerState(exampleLesson);
 
   const exercise = activeTestExercises[0];
   const instance = activeTestInstances[0];

@@ -37,6 +37,7 @@ import { resolveSharedExerciseForPlayer } from "@/lib/exercise-kinds/registry";
 import { i18n, type Locale } from "@/lib/i18n";
 import { exerciseSpeechLanguage } from "@/lib/exercise-speech";
 import { useAppState } from "@/lib/use-app-state";
+import { courseSlashGroup } from "@/components/editor-prototype/course-slash-group";
 
 function parseExercise(data: string): TestExercise | null {
   if (!data) {
@@ -300,7 +301,7 @@ export function createExerciseSlashMenuItem(
     // Its own group, not "Advanced" — sharing a group name with a built-in
     // item (Table) produces a duplicate group header once the built-in item
     // gets filtered out of a narrowed query but the group name doesn't.
-    group: "Course",
+    group: courseSlashGroup(),
     // Same icon as a test's row in the explorer (course-structure-prototype.tsx)
     // — both represent the same underlying concept, a gradable exercise.
     icon: <FlaskConical size={18} />,
