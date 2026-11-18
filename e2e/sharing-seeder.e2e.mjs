@@ -40,7 +40,8 @@ const CONTAINER = 'matko-seeder-e2e'
 const WEB_PORT = 18_391
 
 // How to run a seeder command: `node seeder/cli.mjs`, or the image's.
-function seederCommand(args, { container = CONTAINER, dataDir = SEEDER_DATA, inRunning = false } = {}) {
+// `env`: extra settings for the seeder (passed into the container too).
+function seederCommand(args, { container = CONTAINER, dataDir = SEEDER_DATA, env = {}, inRunning = false } = {}) {
   if (!IMAGE) return ['node', [CLI, ...args, '--data', dataDir]]
   if (inRunning) return ['docker', ['exec', container, 'node', 'seeder/cli.mjs', ...args]]
   // Made before Docker mounts it: a mount point Docker has to create itself
@@ -50,7 +51,11 @@ function seederCommand(args, { container = CONTAINER, dataDir = SEEDER_DATA, inR
   const user = typeof process.getuid === 'function' ? ['--user', `${process.getuid()}:${process.getgid()}`] : []
   return [
     'docker',
-    ['run', '--rm', '--network', 'host', ...user, '-v', `${dataDir}:/data`, '-e', `MATKO_DHT_BOOTSTRAP=${bootstrap()}`, ...(args[0] === 'run' ? ['--name', container] : []), IMAGE, ...args],
+    [
+      'run', '--rm', '--network', 'host', ...user, '-v', `${dataDir}:/data`, '-e', `MATKO_DHT_BOOTSTRAP=${bootstrap()}`,
+      ...Object.entries(env).flatMap(([name, value]) => ['-e', `${name}=${value}`]),
+      ...(args[0] === 'run' ? ['--name', container] : []), IMAGE, ...args,
+    ],
   ]
 }
 
@@ -142,6 +147,40 @@ describe('the headless seeder (SLJ-144)', () => {
     // One seeder per folder: a second run is refused, the first keeps running.
     expect(() => cli('run')).toThrow(/already running/)
     expect(seeder.exitCode).toBeNull()
+  })
+
+  // SLJ-194: a seeder whose disk has too little left (here a floor no disk
+  // meets) doesn't start keeping a new code: it waits for space.
+  it('without space, a new code waits instead of being fetched', async () => {
+    const dataDir = path.join(ROOT, 'seeder-full')
+    const env = { MATKO_SEED_MIN_FREE: '1000TB' }
+    const container = `${CONTAINER}-full`
+    const [addCommand, addArgs] = seederCommand(['add', code], { container, dataDir, env })
+    execFileSync(addCommand, addArgs, { env: { ...process.env, ...env } })
+    const [command, commandArgs] = seederCommand(['run'], { container, dataDir, env })
+    const full = spawn(command, commandArgs, { env: { ...process.env, ...env, MATKO_DHT_BOOTSTRAP: bootstrap() } })
+    const log = []
+    full.stdout.on('data', (chunk) => log.push(chunk.toString()))
+    onTestFailed(() => console.log(`full seeder log:\n${log.join('')}`))
+    try {
+      await expect
+        .poll(
+          () => {
+            try {
+              return JSON.parse(fs.readFileSync(path.join(dataDir, 'status.json'), 'utf8'))
+            } catch {
+              return null
+            }
+          },
+          { interval: 250, timeout: 30_000 },
+        )
+        .toMatchObject({ kept: [], space: { full: 'disk' }, waiting: [code] })
+      expect(log.join('')).toMatch(/the disk is nearly full: new codes wait/)
+    } finally {
+      full.kill('SIGTERM')
+      await new Promise((resolve) => full.once('exit', resolve))
+      if (IMAGE) spawnSync('docker', ['rm', '-f', container])
+    }
   })
 
   it('with the teacher closed, a new student imports the course from the seeder alone', async () => {

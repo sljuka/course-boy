@@ -21,6 +21,7 @@ import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { addCode, codeFromInput, readKeptList, removeCode } from './kept-list.mjs'
+import { diskOf } from './space.mjs'
 
 const PAGE_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'web')
 const FILES = {
@@ -87,16 +88,9 @@ function isFromPage(req) {
   }
 }
 
-function disk(dataDir) {
-  try {
-    const stats = fs.statfsSync(dataDir)
-    return { free: stats.bavail * stats.bsize, total: stats.blocks * stats.bsize }
-  } catch {
-    return null
-  }
-}
-
-// `state()`: { kept, recent } from the running seeder. Resolves to
+// `state()`: { kept, recent, running, space, waiting } from the running
+// seeder (space: space.mjs's `spaceState`; waiting: codes waiting for
+// space). Resolves to
 // { close, port } once listening.
 export function startWebServer({ dataDir, host = '127.0.0.1', open = false, password = '', port, state }) {
   if (!isLoopback(host) && !password && !open) {
@@ -128,7 +122,7 @@ export function startWebServer({ dataDir, host = '127.0.0.1', open = false, pass
       }
 
       if (req.method === 'GET' && url.pathname === '/api/state') {
-        const { kept, recent, running } = state()
+        const { kept, recent, running, space = null, waiting = [] } = state()
         let added = []
         try {
           added = readKeptList(dataDir)
@@ -136,7 +130,7 @@ export function startWebServer({ dataDir, host = '127.0.0.1', open = false, pass
           send(res, 500, { error: error.message })
           return
         }
-        send(res, 200, { added, disk: disk(dataDir), kept, recent, running })
+        send(res, 200, { added, disk: diskOf(dataDir), kept, recent, running, space, waiting })
         return
       }
 

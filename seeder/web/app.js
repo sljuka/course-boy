@@ -30,8 +30,15 @@ const TEXT = {
     recent: 'Recent',
     remove: 'Remove',
     removed: 'Removed.',
+    spaceCapFull: 'The seeder reached its size limit ({max}). What’s kept stays online; new codes wait until something is removed or the limit is raised.',
+    spaceCapLow: 'The seeder is close to its size limit: {used} of {max}.',
+    spaceDiskFull: 'The disk is nearly full ({free} left). What’s kept stays online; new codes wait until there’s more space.',
+    spaceDiskLow: 'The disk is getting full: {free} left.',
     title: 'Matko seeder',
+    used: 'Matko uses {used}',
+    usedOf: 'Matko uses {used} of {max}',
     waiting: 'Waiting to start',
+    waitingSpace: 'Waiting for space',
     warning: 'This box can read the courses it keeps. Add only courses you’re happy for whoever runs it to see.',
   },
   sr: {
@@ -60,8 +67,15 @@ const TEXT = {
     recent: 'Nedavno',
     remove: 'Ukloni',
     removed: 'Uklonjeno.',
+    spaceCapFull: 'Dostignuto je ograničenje veličine ({max}). Sačuvano ostaje na mreži; novi kodovi čekaju dok se nešto ne ukloni ili se ograničenje ne poveća.',
+    spaceCapLow: 'Blizu je ograničenja veličine: {used} od {max}.',
+    spaceDiskFull: 'Disk je skoro pun (ostalo je {free}). Sačuvano ostaje na mreži; novi kodovi čekaju dok ne bude više mesta.',
+    spaceDiskLow: 'Disk se puni: ostalo je {free}.',
     title: 'Matko: čuvanje kurseva',
+    used: 'Matko zauzima {used}',
+    usedOf: 'Matko zauzima {used} od {max}',
     waiting: 'Čeka pokretanje',
+    waitingSpace: 'Čeka mesto na disku',
     warning: 'Ovaj uređaj može da čita kurseve koje čuva. Dodaj samo kurseve za koje ti ne smeta da ih vidi onaj ko ga drži.',
   },
 }
@@ -159,8 +173,11 @@ function element(tag, className, text) {
   return node
 }
 
-function describe(entry) {
-  if (!entry) return { name: '', state: t('waiting'), stateClass: 'fetching' }
+function describe(entry, code) {
+  if (!entry) {
+    const isWaitingForSpace = latest?.waiting?.includes(code)
+    return { name: '', state: t(isWaitingForSpace ? 'waitingSpace' : 'waiting'), stateClass: isWaitingForSpace ? 'error' : 'fetching' }
+  }
   const name = entry.title ?? shortCode(entry.driveKey)
   const kind = entry.kind ? t(`kind.${entry.kind}`) : t('lookingUp')
   const state =
@@ -175,7 +192,7 @@ function describe(entry) {
 function keptItem(entry, { code, listedFor }) {
   const item = element('li', listedFor ? 'listed' : '')
   item.dataset.code = code
-  const { kind, name, state, stateClass } = describe(entry)
+  const { kind, name, state, stateClass } = describe(entry, code)
   const top = element('div', 'row')
   top.append(element('span', 'name', name || shortCode(code)))
   if (!listedFor) {
@@ -206,12 +223,16 @@ function render() {
       [
         latest.running ? t('online') : t('notRunning'),
         t('keptCount', { count: latest.kept.filter((entry) => entry.state === 'kept').length }),
+        latest.space
+          ? t(latest.space.maxStore ? 'usedOf' : 'used', { max: bytes(latest.space.maxStore), used: bytes(latest.space.storeBytes) })
+          : null,
         latest.disk ? t('disk', { free: bytes(latest.disk.free), total: bytes(latest.disk.total) }) : null,
       ]
         .filter(Boolean)
         .join(' · '),
     ),
   )
+  renderSpace(latest.space)
 
   const byCode = new Map(latest.kept.map((entry) => [entry.driveKey, entry]))
   const list = document.getElementById('kept')
@@ -244,6 +265,26 @@ function render() {
       return item
     }),
   )
+}
+
+// Full (new codes wait) or getting there: said above the list, in words.
+function renderSpace(space) {
+  const node = document.getElementById('space')
+  const values = { free: bytes(space?.free), max: bytes(space?.maxStore), used: bytes(space?.storeBytes) }
+  const key = !space
+    ? null
+    : space.full === 'cap'
+      ? 'spaceCapFull'
+      : space.full === 'disk'
+        ? 'spaceDiskFull'
+        : space.low
+          ? space.maxStore && space.storeBytes >= space.maxStore * 0.9
+            ? 'spaceCapLow'
+            : 'spaceDiskLow'
+          : null
+  node.hidden = key === null
+  node.textContent = key ? t(key, values) : ''
+  node.className = `message${space?.full ? ' bad' : ''}`
 }
 
 function say(key, bad = false) {

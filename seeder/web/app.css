@@ -142,6 +142,11 @@ form label {
   color: var(--bad);
 }
 
+/* The space warning, between the summary and the form. */
+#space {
+  margin-bottom: 1rem;
+}
+
 ul.kept,
 ol.recent {
   list-style: none;

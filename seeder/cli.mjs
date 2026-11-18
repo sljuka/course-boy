@@ -8,6 +8,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { addCode, codeFromInput, readKeptList, removeCode } from './kept-list.mjs'
 import { STATUS_FILE, isRunning, runSeeder, short } from './run.mjs'
+import { DEFAULT_MIN_FREE, parseSize } from './space.mjs'
 
 const USAGE = `Usage: node seeder/cli.mjs <command> [--data <dir>]
 
@@ -23,7 +24,11 @@ const USAGE = `Usage: node seeder/cli.mjs <command> [--data <dir>]
               (default: $MATKO_SEED_WEB_PORT; none if unset). It listens on
               $MATKO_SEED_WEB_HOST (default 127.0.0.1); anywhere else it needs
               $MATKO_SEED_WEB_PASSWORD, or MATKO_SEED_WEB_OPEN=1 behind a
-              proxy that already checks who it is (Umbrel).`
+              proxy that already checks who it is (Umbrel).
+
+Space (with run): a new code waits while the store is over
+$MATKO_SEED_MAX_SIZE (e.g. 40GB; no limit if unset) or the disk has less
+than $MATKO_SEED_MIN_FREE free (default 1GB). What's kept stays online.`
 
 // A status this old is from a seeder that isn't running any more.
 const STALE_MS = 30_000
@@ -55,7 +60,18 @@ function parse(argv) {
       port,
     }
   }
-  return { args, dataDir: path.resolve(dataDir), web }
+  return { args, dataDir: path.resolve(dataDir), web, ...spaceLimits() }
+}
+
+function spaceLimits() {
+  const size = (name, fallback) => {
+    const text = process.env[name]
+    if (!text) return fallback
+    const bytes = parseSize(text)
+    if (bytes === null) throw new Error(`${name}="${text}" is not a size, like 40GB or 500MB`)
+    return bytes
+  }
+  return { maxStore: size('MATKO_SEED_MAX_SIZE', null), minFree: size('MATKO_SEED_MIN_FREE', DEFAULT_MIN_FREE) }
 }
 
 function requireCode(input) {
@@ -101,7 +117,7 @@ function printStatus(dataDir) {
   for (const { code } of listed) {
     const entry = byCode.get(code)
     if (!entry) {
-      console.log(`  ${short(code)}  waiting to start`)
+      console.log(`  ${short(code)}  ${status?.waiting?.includes(code) ? 'waiting for space' : 'waiting to start'}`)
       continue
     }
     seen.add(code)
@@ -111,11 +127,11 @@ function printStatus(dataDir) {
 }
 
 async function main(argv) {
-  const { args, dataDir, web } = parse(argv)
+  const { args, dataDir, maxStore, minFree, web } = parse(argv)
   const [command, input] = args
   switch (command) {
     case 'run': {
-      const { done } = await runSeeder({ dataDir, handleSignals: true, web })
+      const { done } = await runSeeder({ dataDir, handleSignals: true, maxStore, minFree, web })
       return done
     }
     case 'add': {

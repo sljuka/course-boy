@@ -53,7 +53,15 @@ describe('the seeder web page (seeder/web.mjs)', () => {
     const state = await (await fetch(`${base}/api/state`)).json()
     expect(state).toMatchObject({ added: [], kept, recent, running: true })
     expect(state.disk.total).toBeGreaterThan(0)
+    expect(state).toMatchObject({ space: null, waiting: [] })
     expect((await fetch(`${base}/../package.json`)).status).toBe(404)
+  })
+
+  it('passes on what the seeder says about space, and the codes waiting for it', async () => {
+    const space = { free: 100, full: 'cap', low: false, maxStore: 1000, minFree: 10, storeBytes: 1000, total: 5000 }
+    const { base } = await start({ state: () => ({ kept, recent, running: true, space, waiting: [code] }) })
+
+    expect(await (await fetch(`${base}/api/state`)).json()).toMatchObject({ space, waiting: [code] })
   })
 
   it('adds and removes a code or link, and refuses anything else', async () => {

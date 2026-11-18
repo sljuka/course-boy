@@ -12,6 +12,10 @@
 // `status`. It logs what changes: a code kept or dropped, a new version kept,
 // an error. It never holds a publishing identity: it only serves.
 //
+// A new code starts only while there's space (space.mjs): under the store's
+// cap, if one is set, and with enough of the disk left free. Otherwise it
+// waits, and starts once something is removed or the disk has room again.
+//
 // <data>/
 //   store/        the worker's Corestore (the courses' blocks)
 //   kept.json     the codes to keep (kept-list.mjs)
@@ -23,6 +27,7 @@ import { fileURLToPath } from 'node:url'
 import protocol from '../workers/protocol.json' with { type: 'json' }
 import { startWorker } from '../workers/worker-client.mjs'
 import { readKeptList } from './kept-list.mjs'
+import { DEFAULT_MIN_FREE, diskOf, folderSize, spaceState } from './space.mjs'
 import { wantedCodes } from './wanted.mjs'
 import { startWebServer } from './web.mjs'
 
@@ -68,15 +73,20 @@ function claim(dataDir) {
 
 // How many log lines the web page shows.
 const RECENT_LINES = 50
+// How often the store's size is measured: walking it costs more than a sync.
+const MEASURE_MS = 60_000
 
 // Runs until `stop()` (or SIGINT/SIGTERM, with `handleSignals`). `bootstrap`:
 // a test-only local DHT ("host:port,…"), the public network otherwise.
 // `web`: { port, host, password, open } to serve the page (web.mjs), or null.
+// `maxStore` / `minFree`: the space limits in bytes (space.mjs).
 export async function runSeeder({
   bootstrap = process.env.MATKO_DHT_BOOTSTRAP ?? '',
   dataDir,
   handleSignals = false,
   log: print = (line) => console.log(`[${new Date().toISOString()}] ${line}`),
+  maxStore = null,
+  minFree = DEFAULT_MIN_FREE,
   pollMs = 3_000,
   web = null,
 } = {}) {
@@ -114,6 +124,30 @@ export async function runSeeder({
   let keptNow = []
   let webServer = null
   let timer = null
+  // The store's size, measured now and then (MEASURE_MS), and what the
+  // limits say about it; codes waiting for space.
+  let storeBytes = 0
+  let measuredAt = 0
+  let space = spaceState({ disk: diskOf(dataDir), maxStore, minFree, storeBytes })
+  // What the log last said about it, so a full disk is said once, also at
+  // the start.
+  let loggedFull = null
+  const waiting = new Set()
+
+  function checkSpace() {
+    if (Date.now() - measuredAt >= MEASURE_MS) {
+      storeBytes = folderSize(path.join(dataDir, 'store'))
+      measuredAt = Date.now()
+    }
+    space = spaceState({ disk: diskOf(dataDir), maxStore, minFree, storeBytes })
+    if (space.full === loggedFull) return
+    if (space.full) {
+      log(space.full === 'cap' ? 'the store reached its size limit: new codes wait' : 'the disk is nearly full: new codes wait')
+    } else {
+      log('there is space again: waiting codes start')
+    }
+    loggedFull = space.full
+  }
 
   async function sync() {
     let wanted
@@ -126,21 +160,32 @@ export async function runSeeder({
       log(`can't read ${path.join(dataDir, 'kept.json')}: ${error.message}; keeping what's kept`)
       wanted = new Map([...active.keys()].map((code) => [code, { via: null }]))
     }
+    checkSpace()
     for (const [code, { via }] of wanted) {
       if (active.has(code)) continue
+      if (space.full) {
+        if (!waiting.has(code)) log(`${short(code)} waits for space`)
+        waiting.add(code)
+        continue
+      }
+      waiting.delete(code)
       try {
         await worker.request(CMD.KEEP_DRIVE, { driveKey: code })
         active.set(code, '')
+        // Measured again soon: a new code may be big.
+        measuredAt = 0
         log(via ? `keeping ${short(code)}, listed by ${short(via)}` : `keeping ${short(code)}`)
       } catch (error) {
         log(`can't keep ${short(code)}: ${error.message}`)
       }
     }
+    for (const code of [...waiting]) if (!wanted.has(code)) waiting.delete(code)
     for (const code of [...active.keys()]) {
       if (wanted.has(code)) continue
       try {
         await worker.request(CMD.STOP_SHARING, { driveKey: code })
         active.delete(code)
+        measuredAt = 0
         log(`stopped keeping ${short(code)}`)
       } catch (error) {
         log(`can't stop keeping ${short(code)}: ${error.message}`)
@@ -161,7 +206,14 @@ export async function runSeeder({
       else if (entry.state === 'error') log(`${name}: ${entry.error} (trying again in a minute)`)
       else log(`fetching ${name}`)
     }
-    writeJson(path.join(dataDir, STATUS_FILE), { kept, pid: process.pid, running: true, updatedAt: new Date().toISOString() })
+    writeJson(path.join(dataDir, STATUS_FILE), {
+      kept,
+      pid: process.pid,
+      running: true,
+      space,
+      updatedAt: new Date().toISOString(),
+      waiting: [...waiting],
+    })
   }
 
   async function loop() {
@@ -208,7 +260,11 @@ export async function runSeeder({
 
   if (web) {
     try {
-      webServer = await startWebServer({ ...web, dataDir, state: () => ({ kept: keptNow, recent, running: !stopping }) })
+      webServer = await startWebServer({
+        ...web,
+        dataDir,
+        state: () => ({ kept: keptNow, recent, running: !stopping, space, waiting: [...waiting] }),
+      })
       log(`web page on http://${web.host?.includes(':') ? `[${web.host}]` : (web.host ?? '127.0.0.1')}:${webServer.port}/${web.password ? ' (with a password)' : ''}`)
     } catch (error) {
       await stop(1)

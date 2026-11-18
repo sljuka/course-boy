@@ -61,6 +61,21 @@ Umbrel's login does. It never shows a course's content, and can't publish.
 Gated courses (shared only with chosen students) can't be kept: a seeder isn't a vetted
 student.
 
+### Disk space
+
+An always-on box runs other things too, so the seeder doesn't fill its disk (SLJ-194). A
+new code starts being kept only while there's space:
+
+- `MATKO_SEED_MIN_FREE`: free disk space it always leaves (default `1GB`).
+- `MATKO_SEED_MAX_SIZE`: a cap on its own store, e.g. `40GB` (no cap unless set).
+
+Sizes are binary (1 GB = 1024 MB), like the page shows them. When either limit is
+reached, a new code waits ("waiting for space" in `status` and on the page) and starts
+once something is removed or the disk has room again. What's already kept stays online
+and still gets its new versions: stopping them would leave students on an old version.
+The page shows how much the seeder uses, and warns before it's full (under twice the
+free-space floor left, or 90% of the cap used).
+
 ## In Docker
 
 The image holds the seeder, the worker and their runtime dependencies only (SLJ-194).
@@ -135,6 +150,9 @@ Then `systemctl enable --now matko-seeder`, and add codes as the same user:
 
 ## Not yet
 
-- A published image, built for both platforms in CI (SLJ-194).
-- An Umbrel store repository with the app in it: the files are ready in `seeder/umbrel/` (SLJ-194).
+- The image is built for both platforms in CI and pushed to GHCR at a release, and the
+  Umbrel app is ready in `seeder/umbrel/`; the store repository itself is made and
+  pushed by hand (seeder/umbrel/README.md). Still to confirm on a real Umbrel: that
+  students reach a seeder on its bridge network (one more NAT) and that it keeps a
+  course across a reboot (SLJ-194).
 - Pairing with the app, so every Publish adds the course on its own (SLJ-188).
