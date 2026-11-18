@@ -77,14 +77,6 @@ export function extractPromptVariables(prompt: string) {
   return findTemplateVariables(prompt);
 }
 
-export function getConstraintLabel(constraint: VariableConstraint) {
-  if (constraint.value === null) {
-    return constraint.type;
-  }
-
-  return `${constraint.type}: ${constraint.value}`;
-}
-
 export function syncExercisePrompt(
   exercise: NumericTestExercise,
   locale: Locale,

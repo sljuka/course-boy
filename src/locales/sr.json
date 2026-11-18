@@ -1829,5 +1829,44 @@
     "hintPlaceholder": "Kreni od jedinica, sa desne strane.",
     "valid": "Spremno",
     "invalid": "Treba ispraviti"
+  },
+  "numeric": {
+    "promptLabel": "Zadatak *",
+    "promptHelp": "Promenljive se prave sa {{braces}}. Na primer {{example}} za promenljivu koja se zove x. Postavi joj ograničenja, kao najmanju i najveću nasumičnu vrednost koju može da dobije. Koristi je u formuli rešenja, po kojoj se računa odgovor.",
+    "promptPlaceholder": "Marija je imala {{variable}} jabuka...",
+    "sampleVariable": "broj_jabuka",
+    "variablesLabel": "Promenljive",
+    "variableUnused": "Promenljiva se ne koristi u zadatku",
+    "removeVariable": "Ukloni promenljivu {{name}}",
+    "newConstraint": "Novo ograničenje",
+    "addConstraint": "Dodaj",
+    "removeConstraint": "Ukloni {{constraint}}",
+    "constraint": {
+      "min-value": "Najmanja vrednost",
+      "max-value": "Najveća vrednost",
+      "even-number": "Paran broj",
+      "odd-number": "Neparan broj"
+    },
+    "constraintWithValue": "{{constraint}}: {{value}}",
+    "answerPlaceholderLabel": "Tekst u polju za rezultat",
+    "answerPlaceholderPlaceholder": "Ovde upiši rezultat",
+    "spaceLabel": "Prostor za rešenje",
+    "spaceHelp": "Koliko praznog prostora ostaviti za odgovor kada se ovaj test odštampa.",
+    "space": {
+      "sm": "Malo (1 red)",
+      "md": "Srednje (3 reda)",
+      "lg": "Veliko (5 redova)",
+      "xl": "Najveće (8 redova)"
+    },
+    "hintLabel": "Pomoć",
+    "hintHelp": "Prikazuje se učeniku na zahtev posle netačnog odgovora, u interaktivnom režimu.",
+    "hintPlaceholder": "Probaj da podeliš zadatak na manje korake.",
+    "solutionLabel": "Rešenje *",
+    "sampleVariables": "Primer vrednosti: {{variables}}. {{message}}",
+    "validation": {
+      "error": "Neispravno",
+      "warning": "Upozorenje",
+      "valid": "Ispravno"
+    }
   }
 }

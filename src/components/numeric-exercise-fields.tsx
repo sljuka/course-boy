@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Plus, TriangleAlert, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,12 +19,12 @@ import { Textarea } from "@/components/ui/textarea";
 import type {
   NumericSolutionSpace,
   NumericTestExercise,
+  VariableConstraint,
   VariableConstraintType,
 } from "@/components/test-editor-prototype-types";
 import {
   addConstraintToVariable,
   extractPromptVariables,
-  getConstraintLabel,
   removeConstraintFromVariable,
   removeVariableFromExercise,
   syncExercisePrompt,
@@ -31,13 +32,14 @@ import {
 import type { FieldsComponentProps } from "@/components/exercise-kinds/types";
 import { NumericSolutionsField } from "@/components/numeric-solutions-field";
 
-const SOLUTION_SPACE_LABELS: Record<NumericSolutionSpace, string> = {
-  sm: "Small (1 line)",
-  md: "Medium (3 lines)",
-  lg: "Large (5 lines)",
-  xl: "Extra large (8 lines)",
-};
+const SOLUTION_SPACES: NumericSolutionSpace[] = ["sm", "md", "lg", "xl"];
 
+const CONSTRAINT_TYPES: VariableConstraintType[] = [
+  "min-value",
+  "max-value",
+  "even-number",
+  "odd-number",
+];
 
 export function NumericExerciseFields({
   exercise,
@@ -45,6 +47,7 @@ export function NumericExerciseFields({
   moreOptions,
   onChange,
 }: FieldsComponentProps<NumericTestExercise>) {
+  const { t } = useTranslation();
   const [activeConstraintVariableId, setActiveConstraintVariableId] = useState<
     string | null
   >(null);
@@ -58,6 +61,14 @@ export function NumericExerciseFields({
     () => new Set(extractPromptVariables(prompt)),
     [prompt],
   );
+
+  // The kind in words; the id (`min-value`, …) is what's saved.
+  function constraintLabel(constraint: VariableConstraint) {
+    const kind = t(`numeric.constraint.${constraint.type}`);
+    return constraint.value === null
+      ? kind
+      : t("numeric.constraintWithValue", { constraint: kind, value: constraint.value });
+  }
 
   function submitConstraint(variableId: string) {
     const nextValue =
@@ -78,12 +89,10 @@ export function NumericExerciseFields({
       <Field>
         <div className="flex items-center gap-1">
           <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>
-            Prompt *
+            {t("numeric.promptLabel")}
           </FieldLabel>
           <InfoTooltip>
-            {
-              "Use {{}} to make variables. For instance {{x}} for variable named x. Set constraints on it like minimal and maximal random value that can be assigned to it. Use it in the solution formula that will be used to calculate the answer."
-            }
+            {t("numeric.promptHelp", { braces: "{{}}", example: "{{x}}" })}
           </InfoTooltip>
         </div>
         <Textarea
@@ -94,7 +103,9 @@ export function NumericExerciseFields({
               syncExercisePrompt(currentExercise, locale, event.target.value),
             )
           }
-          placeholder="Mary had {{ apple_number }} apples..."
+          placeholder={t("numeric.promptPlaceholder", {
+            variable: `{{ ${t("numeric.sampleVariable")} }}`,
+          })}
           rows={2}
           value={prompt}
         />
@@ -102,7 +113,7 @@ export function NumericExerciseFields({
 
       {exercise.variables.length > 0 && (
         <Field>
-          <FieldLabel>Variables</FieldLabel>
+          <FieldLabel>{t("numeric.variablesLabel")}</FieldLabel>
           {exercise.variables.map((variable) => {
             const isUsed = usedVariableNames.has(variable.name);
 
@@ -115,12 +126,12 @@ export function NumericExerciseFields({
                       <>
                         <span
                           className="inline-flex items-center"
-                          title="variable not used in prompt"
+                          title={t("numeric.variableUnused")}
                         >
                           <TriangleAlert aria-hidden="true" className="h-3.5 w-3.5" />
                         </span>
                         <button
-                          aria-label={`Remove variable ${variable.name}`}
+                          aria-label={t("numeric.removeVariable", { name: variable.name })}
                           className="inline-flex items-center"
                           onClick={() =>
                             onChange((currentExercise) =>
@@ -136,9 +147,11 @@ export function NumericExerciseFields({
                   </Badge>
                   {variable.constraints.map((constraint) => (
                     <Badge className="gap-1.5 pr-1" key={constraint.id} variant="secondary">
-                      <span>{getConstraintLabel(constraint)}</span>
+                      <span>{constraintLabel(constraint)}</span>
                       <button
-                        aria-label={`Remove ${getConstraintLabel(constraint)}`}
+                        aria-label={t("numeric.removeConstraint", {
+                          constraint: constraintLabel(constraint),
+                        })}
                         className="inline-flex items-center"
                         onClick={() =>
                           onChange((currentExercise) =>
@@ -165,7 +178,7 @@ export function NumericExerciseFields({
                     variant="ghost"
                   >
                     <Plus aria-hidden="true" className="h-4 w-4" />
-                    New constraint
+                    {t("numeric.newConstraint")}
                   </Button>
                 </div>
 
@@ -178,13 +191,16 @@ export function NumericExerciseFields({
                       value={constraintType}
                     >
                       <SelectTrigger className="w-full sm:w-48">
-                        <SelectValue />
+                        <SelectValue>
+                          {(value: VariableConstraintType) => t(`numeric.constraint.${value}`)}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="min-value">min-value</SelectItem>
-                        <SelectItem value="max-value">max-value</SelectItem>
-                        <SelectItem value="even-number">even-number</SelectItem>
-                        <SelectItem value="odd-number">odd-number</SelectItem>
+                        {CONSTRAINT_TYPES.map((type) => (
+                          <SelectItem key={type} value={type}>
+                            {t(`numeric.constraint.${type}`)}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     {(constraintType === "min-value" || constraintType === "max-value") && (
@@ -196,7 +212,7 @@ export function NumericExerciseFields({
                       />
                     )}
                     <Button onClick={() => submitConstraint(variable.id)} size="sm" variant="secondary">
-                      Add
+                      {t("numeric.addConstraint")}
                     </Button>
                   </div>
                 )}
@@ -211,7 +227,7 @@ export function NumericExerciseFields({
       <ExerciseMoreOptions defaultOpen={hasMoreOptionsSet(exercise)}>
           <Field>
             <FieldLabel htmlFor={`exercise-answer-placeholder-${exercise.id}-${locale}`}>
-              Result input placeholder
+              {t("numeric.answerPlaceholderLabel")}
             </FieldLabel>
             <Input
               id={`exercise-answer-placeholder-${exercise.id}-${locale}`}
@@ -231,7 +247,7 @@ export function NumericExerciseFields({
                   },
                 }))
               }
-              placeholder="Enter your result here"
+              placeholder={t("numeric.answerPlaceholderPlaceholder")}
               value={answerPlaceholder}
             />
           </Field>
@@ -239,11 +255,9 @@ export function NumericExerciseFields({
           <Field>
             <div className="flex items-center gap-1">
               <FieldLabel htmlFor={`exercise-solution-space-${exercise.id}`}>
-                Solution area size
+                {t("numeric.spaceLabel")}
               </FieldLabel>
-              <InfoTooltip>
-                How much blank space to leave for the answer when this test is printed.
-              </InfoTooltip>
+              <InfoTooltip>{t("numeric.spaceHelp")}</InfoTooltip>
             </div>
             <Select
               onValueChange={(value) =>
@@ -256,14 +270,15 @@ export function NumericExerciseFields({
             >
               <SelectTrigger className="w-full sm:w-64" id={`exercise-solution-space-${exercise.id}`}>
                 <SelectValue>
-                  {(value: NumericSolutionSpace) => SOLUTION_SPACE_LABELS[value]}
+                  {(value: NumericSolutionSpace) => t(`numeric.space.${value}`)}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="sm">{SOLUTION_SPACE_LABELS.sm}</SelectItem>
-                <SelectItem value="md">{SOLUTION_SPACE_LABELS.md}</SelectItem>
-                <SelectItem value="lg">{SOLUTION_SPACE_LABELS.lg}</SelectItem>
-                <SelectItem value="xl">{SOLUTION_SPACE_LABELS.xl}</SelectItem>
+                {SOLUTION_SPACES.map((space) => (
+                  <SelectItem key={space} value={space}>
+                    {t(`numeric.space.${space}`)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Field>
@@ -271,11 +286,9 @@ export function NumericExerciseFields({
           <Field>
             <div className="flex items-center gap-1">
               <FieldLabel htmlFor={`exercise-hint-${exercise.id}-${locale}`}>
-                Hint
+                {t("numeric.hintLabel")}
               </FieldLabel>
-              <InfoTooltip>
-                Shown to a student on request after an incorrect answer, in interactive mode.
-              </InfoTooltip>
+              <InfoTooltip>{t("numeric.hintHelp")}</InfoTooltip>
             </div>
             <Textarea
               className="min-h-0 resize-none overflow-hidden"
@@ -296,7 +309,7 @@ export function NumericExerciseFields({
                   },
                 }))
               }
-              placeholder="Try breaking the problem into smaller steps."
+              placeholder={t("numeric.hintPlaceholder")}
               rows={2}
               value={hint}
             />

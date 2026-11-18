@@ -1829,5 +1829,44 @@
     "hintPlaceholder": "Start from the ones, on the right.",
     "valid": "Ready",
     "invalid": "Needs a change"
+  },
+  "numeric": {
+    "promptLabel": "Prompt *",
+    "promptHelp": "Use {{braces}} to make variables. For instance {{example}} for a variable named x. Set constraints on it, like the smallest and largest random value it can get. Use it in the solution formula that calculates the answer.",
+    "promptPlaceholder": "Mary had {{variable}} apples...",
+    "sampleVariable": "apple_number",
+    "variablesLabel": "Variables",
+    "variableUnused": "Variable not used in the prompt",
+    "removeVariable": "Remove variable {{name}}",
+    "newConstraint": "New constraint",
+    "addConstraint": "Add",
+    "removeConstraint": "Remove {{constraint}}",
+    "constraint": {
+      "min-value": "Smallest value",
+      "max-value": "Largest value",
+      "even-number": "Even",
+      "odd-number": "Odd"
+    },
+    "constraintWithValue": "{{constraint}}: {{value}}",
+    "answerPlaceholderLabel": "Result input placeholder",
+    "answerPlaceholderPlaceholder": "Enter your result here",
+    "spaceLabel": "Solution area size",
+    "spaceHelp": "How much blank space to leave for the answer when this test is printed.",
+    "space": {
+      "sm": "Small (1 line)",
+      "md": "Medium (3 lines)",
+      "lg": "Large (5 lines)",
+      "xl": "Extra large (8 lines)"
+    },
+    "hintLabel": "Hint",
+    "hintHelp": "Shown to a student on request after an incorrect answer, in interactive mode.",
+    "hintPlaceholder": "Try breaking the problem into smaller steps.",
+    "solutionLabel": "Solution *",
+    "sampleVariables": "Sample variables: {{variables}}. {{message}}",
+    "validation": {
+      "error": "Invalid",
+      "warning": "Warning",
+      "valid": "Valid"
+    }
   }
 }

@@ -19,17 +19,6 @@ function createSolutionId() {
   return `solution_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function getValidationLabel(status: "error" | "valid" | "warning") {
-  switch (status) {
-    case "error":
-      return "Invalid";
-    case "warning":
-      return "Warning";
-    case "valid":
-      return "Valid";
-  }
-}
-
 // Every solution's formula, the first being the exercise's own `solution`.
 function formulasOf(exercise: NumericTestExercise): string[] {
   return [exercise.solution, ...exercise.moreSolutions.map((solution) => solution.formula)];
@@ -195,12 +184,12 @@ function SolutionFormula({
 
   return (
     <Field>
-      <FieldLabel htmlFor={id}>{showLabel ? "Solution *" : t("testEditor.solutionFormula")}</FieldLabel>
+      <FieldLabel htmlFor={id}>{showLabel ? t("numeric.solutionLabel") : t("testEditor.solutionFormula")}</FieldLabel>
       <Textarea
         className="min-h-0 resize-none overflow-hidden"
         id={id}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="apple_number + 42"
+        placeholder={`${t("numeric.sampleVariable")} + 42`}
         rows={2}
         value={formula}
       />
@@ -210,11 +199,14 @@ function SolutionFormula({
       {validation.status !== "idle" && (
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={validation.status === "valid" ? "success" : "warning"}>
-            {getValidationLabel(validation.status)}
+            {t(`numeric.validation.${validation.status}`)}
           </Badge>
           <CardDescription>
             {validation.sampleVariables
-              ? `Sample variables: ${formatSampleVariables(validation.sampleVariables)}. ${validation.message}`
+              ? t("numeric.sampleVariables", {
+                  message: validation.message,
+                  variables: formatSampleVariables(validation.sampleVariables),
+                })
               : validation.message}
           </CardDescription>
         </div>
