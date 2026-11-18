@@ -58,9 +58,9 @@ export function validate(exercise: PunctuationTestExercise, locale: Locale): Sol
   const text = exercise.locales[locale]?.text ?? "";
   if (text.trim().length === 0) return { status: "idle" };
   if (!parsePunctuationText(text, marksFromText(exercise.marks)).gaps.some(Boolean)) {
-    return { message: "Write the sentence with its punctuation marks", status: "error" };
+    return { message: { key: "exerciseCheck.punctuation.writeSentence" }, status: "error" };
   }
-  return { message: "Looks good", status: "valid" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(exercise: PunctuationTestExercise): SharedPunctuationTestExerciseDefinition {

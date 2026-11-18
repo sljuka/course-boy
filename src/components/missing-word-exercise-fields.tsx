@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import { Badge } from "@/components/ui/badge";
@@ -21,23 +22,13 @@ import {
 import type { FieldsComponentProps } from "@/components/exercise-kinds/types";
 import { parseMissingWordMarkup } from "@/lib/missing-word-markup";
 
-function getValidationLabel(status: "error" | "valid" | "warning") {
-  switch (status) {
-    case "error":
-      return "Invalid";
-    case "warning":
-      return "Warning";
-    case "valid":
-      return "Valid";
-  }
-}
-
 export function MissingWordExerciseFields({
   exercise,
   locale,
   moreOptions,
   onChange,
 }: FieldsComponentProps<MissingWordTestExercise>) {
+  const { t } = useTranslation();
   const content = exercise.locales[locale];
   const prompt = content?.prompt ?? "";
   const text = content?.text ?? "";
@@ -51,7 +42,7 @@ export function MissingWordExerciseFields({
     <>
       <Field>
         <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>
-          Prompt
+          {t("missingWordEditor.promptLabel")}
         </FieldLabel>
         <Textarea
           className="min-h-0 resize-none overflow-hidden"
@@ -59,21 +50,22 @@ export function MissingWordExerciseFields({
           onChange={(event) =>
             onChange((currentExercise) => updatePrompt(currentExercise, locale, event.target.value))
           }
-          placeholder="Fill in the missing words"
+          placeholder={t("missingWordEditor.promptPlaceholder")}
           rows={2}
           value={prompt}
         />
       </Field>
 
       <Field>
-        <FieldLabel htmlFor={`exercise-text-${exercise.id}-${locale}`}>Text</FieldLabel>
+        <FieldLabel htmlFor={`exercise-text-${exercise.id}-${locale}`}>{t("missingWordEditor.textLabel")}</FieldLabel>
         <Textarea
           className="min-h-0 resize-none overflow-hidden"
           id={`exercise-text-${exercise.id}-${locale}`}
           onChange={(event) =>
             onChange((currentExercise) => updateText(currentExercise, locale, event.target.value))
           }
-          placeholder="The capital of France is {{c1}}. Capital of Serbia is {{c2}}."
+          // The blanks are the exercise's own syntax, passed as values so i18next shows them as typed.
+          placeholder={t("missingWordEditor.textPlaceholder", { first: "{{c1}}", second: "{{c2}}" })}
           rows={2}
           value={text}
         />
@@ -81,20 +73,20 @@ export function MissingWordExerciseFields({
 
       {variables.length > 0 && (
         <Field>
-          <FieldLabel>Missing words</FieldLabel>
+          <FieldLabel>{t("missingWordEditor.missingWordsLabel")}</FieldLabel>
           <div className="flex flex-col gap-2">
             {variables.map((variable) => (
               <div className="flex flex-wrap items-center gap-2" key={variable.name}>
                 <Badge variant="secondary">{`{{${variable.name}}}`}</Badge>
                 <Input
-                  aria-label={`Answer for {{${variable.name}}}`}
+                  aria-label={t("missingWordEditor.answerFor", { blank: `{{${variable.name}}}` })}
                   className="min-w-40 flex-1"
                   onChange={(event) =>
                     onChange((currentExercise) =>
                       updateVariableAnswers(currentExercise, locale, variable.name, event.target.value),
                     )
                   }
-                  placeholder="Paris, or Solution1, Solution2"
+                  placeholder={t("missingWordEditor.answersPlaceholder")}
                   value={variable.answers}
                 />
                 <Label>
@@ -106,7 +98,7 @@ export function MissingWordExerciseFields({
                       )
                     }
                   />
-                  Match case
+                  {t("missingWordEditor.matchCase")}
                 </Label>
               </div>
             ))}
@@ -117,9 +109,9 @@ export function MissingWordExerciseFields({
       {validation.status !== "idle" && (
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={validation.status === "valid" ? "success" : "warning"}>
-            {getValidationLabel(validation.status)}
+            {t(`missingWordEditor.validation.${validation.status}`)}
           </Badge>
-          <CardDescription>{validation.message}</CardDescription>
+          <CardDescription>{t(validation.message.key, validation.message.values)}</CardDescription>
         </div>
       )}
 

@@ -81,7 +81,7 @@ export function ExercisePromptCard({
   const [isTagPickerOpen, setIsTagPickerOpen] = useState(false);
   const tagPickerAnchor = useComboboxAnchor();
   const prompt = exercise.locales[locale]?.prompt ?? "";
-  const { FieldsComponent, label: exerciseKindLabel } = getExerciseKindEditor(
+  const { FieldsComponent, labelKey: exerciseKindLabelKey } = getExerciseKindEditor(
     exercise.kind,
   );
 
@@ -89,7 +89,7 @@ export function ExercisePromptCard({
     const normalizedPrompt = prompt.replace(/\s+/g, " ").trim();
 
     if (!normalizedPrompt) {
-      return "No prompt yet";
+      return t("exerciseEditor.noPrompt");
     }
 
     if (normalizedPrompt.length <= collapsedPromptPreviewMaxLength) {
@@ -97,7 +97,7 @@ export function ExercisePromptCard({
     }
 
     return `${normalizedPrompt.slice(0, collapsedPromptPreviewMaxLength)}...`;
-  }, [collapsedPromptPreviewMaxLength, prompt]);
+  }, [collapsedPromptPreviewMaxLength, prompt, t]);
   const selectedTags = useMemo(
     () =>
       descriptiveTags.filter((tag) => exercise.tagIds.includes(tag.id)),
@@ -155,9 +155,9 @@ export function ExercisePromptCard({
                   )}
                   style={titleAccentStyle?.style}
                 >
-                  Exercise
+                  {t("exerciseEditor.exercise")}
                 </span>
-                <Badge variant="secondary">{exerciseKindLabel}</Badge>
+                <Badge variant="secondary">{t(exerciseKindLabelKey)}</Badge>
                 {isCollapsed && (
                   <span className="truncate text-sm text-muted-foreground">
                     {promptPreview}
@@ -188,8 +188,8 @@ export function ExercisePromptCard({
               value={exercise.tagIds}
             >
               <ComboboxContent anchor={tagPickerAnchor} className="w-72">
-                <ComboboxInput placeholder="Find a tag" showTrigger={false} />
-                <ComboboxEmpty>No descriptive tags defined yet.</ComboboxEmpty>
+                <ComboboxInput placeholder={t("exerciseEditor.findTag")} showTrigger={false} />
+                <ComboboxEmpty>{t("exerciseEditor.noTags")}</ComboboxEmpty>
                 <ComboboxList>
                   {(tagId) => {
                     const tag = descriptiveTagsById.get(tagId);
@@ -212,7 +212,7 @@ export function ExercisePromptCard({
               <DropdownMenuTrigger
                 render={
                   <Button
-                    aria-label="Exercise actions"
+                    aria-label={t("exerciseEditor.actions")}
                     className="h-8 w-8"
                     size="icon"
                     variant="ghost"
@@ -227,24 +227,24 @@ export function ExercisePromptCard({
                   onClick={() => onMoveUp(exercise.id)}
                 >
                   <ArrowUp aria-hidden="true" className="h-4 w-4" />
-                  Move up
+                  {t("exerciseEditor.moveUp")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={!canMoveDown}
                   onClick={() => onMoveDown(exercise.id)}
                 >
                   <ArrowDown aria-hidden="true" className="h-4 w-4" />
-                  Move down
+                  {t("exerciseEditor.moveDown")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <TagIcon aria-hidden="true" className="h-4 w-4" />
-                    Tags
+                    {t("exerciseEditor.tags")}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     {descriptiveTags.length === 0 ? (
-                      <DropdownMenuItem disabled>No descriptive tags defined yet</DropdownMenuItem>
+                      <DropdownMenuItem disabled>{t("exerciseEditor.noTags")}</DropdownMenuItem>
                     ) : (
                       descriptiveTags.map((tag) => (
                         <DropdownMenuCheckboxItem
@@ -261,7 +261,7 @@ export function ExercisePromptCard({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onDelete(exercise.id)} variant="destructive">
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
-                  Delete
+                  {t("exerciseEditor.delete")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
               </DropdownMenu>
@@ -302,7 +302,7 @@ export function ExercisePromptCard({
                   <Tag className="gap-1.5 pr-1" color={tag.color} key={tag.id}>
                     <span>{tag.label}</span>
                     <button
-                      aria-label={`Remove ${tag.label} tag`}
+                      aria-label={t("exerciseEditor.removeTag", { tag: tag.label })}
                       className="inline-flex items-center"
                       onClick={(event) => {
                         event.preventDefault();
@@ -325,7 +325,7 @@ export function ExercisePromptCard({
                   type="button"
                 >
                   <Plus aria-hidden="true" className="h-3.5 w-3.5" />
-                  Add tag
+                  {t("exerciseEditor.addTag")}
                 </button>
                 <InfoTooltip>{t("testEditor.tagsTooltip")}</InfoTooltip>
               </div>

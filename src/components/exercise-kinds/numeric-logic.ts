@@ -2,6 +2,7 @@ import {
   evaluateFormulaAst,
   parseFormula,
   type FormulaAstNode,
+  FormulaError,
 } from "@/lib/formula-dsl";
 import type {
   CourseExerciseVariable,
@@ -203,7 +204,9 @@ export function resolveVariableBounds(variable: PromptVariable): VariableBounds 
   );
 
   if (hasEvenConstraint && hasOddConstraint) {
-    throw new Error(`Variable "${variable.name}" cannot be both even and odd`);
+    throw new FormulaError(`Variable "${variable.name}" cannot be both even and odd`, "exerciseCheck.numeric.evenAndOdd", {
+      name: variable.name,
+    });
   }
 
   const minValue = minValueConstraints.reduce(
@@ -219,8 +222,10 @@ export function resolveVariableBounds(variable: PromptVariable): VariableBounds 
   const resolvedMax = Number.isFinite(maxValue) ? maxValue : 100;
 
   if (resolvedMin > resolvedMax) {
-    throw new Error(
+    throw new FormulaError(
       `Variable "${variable.name}" has impossible bounds (${resolvedMin} > ${resolvedMax})`,
+      "exerciseCheck.numeric.impossibleBounds",
+      { max: resolvedMax, min: resolvedMin, name: variable.name },
     );
   }
 
@@ -247,7 +252,9 @@ function resolveSampleValue(variable: PromptVariable): number {
     return candidate;
   }
 
-  throw new Error(`Variable "${variable.name}" has no valid values`);
+  throw new FormulaError(`Variable "${variable.name}" has no valid values`, "exerciseCheck.numeric.noValidValues", {
+    name: variable.name,
+  });
 }
 
 export function validate(exercise: NumericTestExercise, locale: Locale): SolutionValidationResult {
@@ -287,7 +294,7 @@ export function validateFormula(
 
     if (unknownVariables.length > 0) {
       return {
-        message: `Unknown variable "${unknownVariables[0]}"`,
+        message: { key: "exerciseCheck.formula.unknownVariable", values: { name: unknownVariables[0] } },
         status: "error",
       };
     }
@@ -320,7 +327,7 @@ export function validateFormula(
 
     if (promptUnusedVariables.length > 0) {
       return {
-        message: `Variable "${promptUnusedVariables[0]}" is not used in prompt`,
+        message: { key: "exerciseCheck.numeric.unusedInPrompt", values: { name: promptUnusedVariables[0] } },
         sampleResult,
         sampleVariables,
         status: "warning",
@@ -328,14 +335,18 @@ export function validateFormula(
     }
 
     return {
-      message: `Result is ${sampleResult}`,
+      message: { key: "exerciseCheck.numeric.result", values: { result: sampleResult } },
       sampleResult,
       sampleVariables,
       status: "valid",
     };
   } catch (error) {
     return {
-      message: error instanceof Error ? error.message : "Invalid solution",
+      // Anything that isn't a FormulaError is a bug, not the teacher's mistake.
+      message:
+        error instanceof FormulaError
+          ? { key: error.key, values: error.values }
+          : { key: "exerciseCheck.formula.invalid" },
       status: "error",
     };
   }

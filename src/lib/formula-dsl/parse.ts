@@ -1,3 +1,4 @@
+import { FormulaError } from "./errors";
 import { tokenizeFormula } from "./tokenize";
 import type { FormulaAstNode, FormulaToken } from "./types";
 
@@ -10,7 +11,7 @@ class FormulaParser {
     const expression = this.parseExpression();
 
     if (!this.isAtEnd()) {
-      throw new Error("Unexpected trailing tokens in formula");
+      throw new FormulaError("Unexpected trailing tokens in formula", "exerciseCheck.formula.trailingTokens");
     }
 
     return expression;
@@ -64,7 +65,7 @@ class FormulaParser {
       const expression = this.parseExpression();
 
       if (!this.matchesOperator(")")) {
-        throw new Error('Expected closing ")"');
+        throw new FormulaError('Expected closing ")"', "exerciseCheck.formula.missingClosingParen");
       }
 
       return expression;
@@ -73,7 +74,7 @@ class FormulaParser {
     const currentToken = this.peek();
 
     if (!currentToken) {
-      throw new Error("Unexpected end of formula");
+      throw new FormulaError("Unexpected end of formula", "exerciseCheck.formula.unexpectedEnd");
     }
 
     if (currentToken.type === "number") {
@@ -86,7 +87,7 @@ class FormulaParser {
       return { type: "variable", name: currentToken.value };
     }
 
-    throw new Error("Expected a number, variable, or parenthesized expression");
+    throw new FormulaError("Expected a number, variable, or parenthesized expression", "exerciseCheck.formula.expectedOperand");
   }
 
   private matchesOperator(
@@ -115,7 +116,7 @@ class FormulaParser {
       previousToken?.type !== "operator" ||
       !allowedOperators.includes(previousToken.value as TOperator)
     ) {
-      throw new Error("Internal parser state error");
+      throw new FormulaError("Internal parser state error", "exerciseCheck.formula.invalid");
     }
 
     return previousToken.value as TOperator;

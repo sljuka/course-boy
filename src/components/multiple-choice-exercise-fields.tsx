@@ -1,4 +1,5 @@
 import { Plus, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import { Badge } from "@/components/ui/badge";
@@ -24,23 +25,13 @@ import type { FieldsComponentProps } from "@/components/exercise-kinds/types";
 
 const MIN_OPTIONS = 2;
 
-function getValidationLabel(status: "error" | "valid" | "warning") {
-  switch (status) {
-    case "error":
-      return "Invalid";
-    case "warning":
-      return "Warning";
-    case "valid":
-      return "Valid";
-  }
-}
-
 export function MultipleChoiceExerciseFields({
   exercise,
   locale,
   moreOptions,
   onChange,
 }: FieldsComponentProps<MultipleChoiceTestExercise>) {
+  const { t } = useTranslation();
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const options = exercise.locales[locale]?.options ?? [];
   const validation = validate(exercise, locale);
@@ -49,7 +40,7 @@ export function MultipleChoiceExerciseFields({
     <>
       <Field>
         <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>
-          Prompt
+          {t("multipleChoiceEditor.promptLabel")}
         </FieldLabel>
         <Textarea
           className="min-h-0 resize-none overflow-hidden"
@@ -57,14 +48,14 @@ export function MultipleChoiceExerciseFields({
           onChange={(event) =>
             onChange((currentExercise) => updatePrompt(currentExercise, locale, event.target.value))
           }
-          placeholder="What is the capital of France?"
+          placeholder={t("multipleChoiceEditor.promptPlaceholder")}
           rows={2}
           value={prompt}
         />
       </Field>
 
       <Field>
-        <FieldLabel>Options</FieldLabel>
+        <FieldLabel>{t("multipleChoiceEditor.optionsLabel")}</FieldLabel>
         {exercise.selectionMode === "single" ? (
           <RadioGroup
             onValueChange={(value) =>
@@ -75,7 +66,7 @@ export function MultipleChoiceExerciseFields({
             {options.map((optionText, optionIndex) => (
               <div className="flex items-center gap-2" key={optionIndex}>
                 <RadioGroupItem
-                  aria-label={`Mark option ${optionIndex + 1} as correct`}
+                  aria-label={t("multipleChoiceEditor.markCorrect", { number: optionIndex + 1 })}
                   value={String(optionIndex)}
                 />
                 <Input
@@ -84,11 +75,11 @@ export function MultipleChoiceExerciseFields({
                       updateOptionText(currentExercise, locale, optionIndex, event.target.value),
                     )
                   }
-                  placeholder={`Option ${optionIndex + 1}`}
+                  placeholder={t("multipleChoiceEditor.option", { number: optionIndex + 1 })}
                   value={optionText}
                 />
                 <button
-                  aria-label={`Remove option ${optionIndex + 1}`}
+                  aria-label={t("multipleChoiceEditor.removeOption", { number: optionIndex + 1 })}
                   className="inline-flex items-center text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                   disabled={options.length <= MIN_OPTIONS}
                   onClick={() =>
@@ -106,7 +97,7 @@ export function MultipleChoiceExerciseFields({
             {options.map((optionText, optionIndex) => (
               <div className="flex items-center gap-2" key={optionIndex}>
                 <Checkbox
-                  aria-label={`Mark option ${optionIndex + 1} as correct`}
+                  aria-label={t("multipleChoiceEditor.markCorrect", { number: optionIndex + 1 })}
                   checked={exercise.correctOptionIndexes.includes(optionIndex)}
                   onCheckedChange={() =>
                     onChange((currentExercise) => toggleCorrectOption(currentExercise, optionIndex))
@@ -118,11 +109,11 @@ export function MultipleChoiceExerciseFields({
                       updateOptionText(currentExercise, locale, optionIndex, event.target.value),
                     )
                   }
-                  placeholder={`Option ${optionIndex + 1}`}
+                  placeholder={t("multipleChoiceEditor.option", { number: optionIndex + 1 })}
                   value={optionText}
                 />
                 <button
-                  aria-label={`Remove option ${optionIndex + 1}`}
+                  aria-label={t("multipleChoiceEditor.removeOption", { number: optionIndex + 1 })}
                   className="inline-flex items-center text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
                   disabled={options.length <= MIN_OPTIONS}
                   onClick={() =>
@@ -142,7 +133,7 @@ export function MultipleChoiceExerciseFields({
           variant="ghost"
         >
           <Plus aria-hidden="true" className="h-4 w-4" />
-          Add option
+          {t("multipleChoiceEditor.addOption")}
         </Button>
         <Label>
           <Checkbox
@@ -153,14 +144,14 @@ export function MultipleChoiceExerciseFields({
               )
             }
           />
-          Single answer (radio-button) selection
+          {t("multipleChoiceEditor.singleAnswer")}
         </Label>
         {validation.status !== "idle" && (
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={validation.status === "valid" ? "success" : "warning"}>
-              {getValidationLabel(validation.status)}
+              {t(`multipleChoiceEditor.validation.${validation.status}`)}
             </Badge>
-            <CardDescription>{validation.message}</CardDescription>
+            <CardDescription>{t(validation.message.key, validation.message.values)}</CardDescription>
           </div>
         )}
       </Field>

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { getTagAccentStyle, Tag } from "@/components/ui/tag";
 import { WordMarker } from "@/components/ui/word-marker";
 import type { WordTypeToken } from "@/lib/course-package";
@@ -67,6 +69,7 @@ export function WordTypeTokens({
   tokens: WordTypeToken[];
   wordTypes: WordTypeLegendEntry[];
 }) {
+  const { t } = useTranslation();
   const wordTypesById = new Map(wordTypes.map((wordType) => [wordType.id, wordType]));
   const hasIcons = wordTypes.some((wordType) => wordType.icon);
   let markedWordIndex = -1;
@@ -131,7 +134,7 @@ export function WordTypeTokens({
 
           return (
             <button
-              aria-label={`${token.value}: ${selectedType?.name ?? "unmarked"}`}
+              aria-label={`${token.value}: ${selectedType?.name ?? t("wordTypeTokens.unmarked")}`}
               className="group cursor-pointer"
               key={tokenIndex}
               onClick={() => onWordClick(currentMarkedWordIndex)}

@@ -88,15 +88,15 @@ export function validate(exercise: PutInOrderTestExercise, locale: Locale): Solu
   const hasPicture = exercise.images.some((image) => image !== null);
   if (content.items.every((item) => !item.trim()) && !hasPicture) return { status: "idle" };
 
-  if (content.items.length < MIN_ORDER_ITEMS) return { message: `Add at least ${MIN_ORDER_ITEMS} items`, status: "error" };
+  if (content.items.length < MIN_ORDER_ITEMS) return { message: { key: "exerciseCheck.putInOrder.minItems", values: { count: MIN_ORDER_ITEMS } }, status: "error" };
   if (content.items.some((item) => !item.trim())) {
-    return { message: "Every item needs text (for a picture: what it shows)", status: "error" };
+    return { message: { key: "exerciseCheck.putInOrder.itemNeedsText" }, status: "error" };
   }
   if (new Set(content.items.map((item) => item.trim().toLocaleLowerCase())).size !== content.items.length) {
-    return { message: "Two items are the same: the student couldn't tell which goes where", status: "error" };
+    return { message: { key: "exerciseCheck.putInOrder.duplicateItems" }, status: "error" };
   }
-  if (exercise.listen && !exercise.speech) return { message: "Choose the language the items are heard in", status: "error" };
-  return { message: "Looks good", status: "valid" };
+  if (exercise.listen && !exercise.speech) return { message: { key: "exerciseCheck.putInOrder.chooseLanguage" }, status: "error" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(exercise: PutInOrderTestExercise): SharedPutInOrderTestExerciseDefinition {

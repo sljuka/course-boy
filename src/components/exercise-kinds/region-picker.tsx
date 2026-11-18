@@ -194,9 +194,8 @@ export const regionPickerExerciseEditor: ExerciseKindEditor<
   createExercise,
   fromShared,
   kind: "region-picker",
-  label: "Region picker",
-  description:
-    "Upload a diagram (an SVG with id'd shapes, like a country map) and mark which shapes are the correct answer. Students answer by clicking the same shapes in the diagram.",
+  labelKey: "exerciseEditor.kinds.regionPicker.label",
+  descriptionKey: "exerciseEditor.kinds.regionPicker.description",
   toShared,
   validate,
 };

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Info, Map, RotateCcw, Upload, X, ZoomIn } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -36,17 +37,6 @@ import {
 } from "@/components/exercise-kinds/region-picker-logic";
 import type { FieldsComponentProps } from "@/components/exercise-kinds/types";
 
-function getValidationLabel(status: "error" | "valid" | "warning") {
-  switch (status) {
-    case "error":
-      return "Invalid";
-    case "warning":
-      return "Warning";
-    case "valid":
-      return "Valid";
-  }
-}
-
 function RegionPickerMarkerColorField({
   onChange,
   value,
@@ -54,11 +44,13 @@ function RegionPickerMarkerColorField({
   onChange: (color: string) => void;
   value: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <ColorPickerField
       colorOptions={STRONG_COLOR_OPTIONS}
       onChange={onChange}
-      trigger={<Button aria-label="Choose color" className="h-8 w-8" size="icon" variant="ghost" />}
+      trigger={<Button aria-label={t("regionEditor.picker.chooseColor")} className="h-8 w-8" size="icon" variant="ghost" />}
       value={value}
     >
       <ColorSwatch className="size-5" color={value} />
@@ -73,6 +65,7 @@ export function RegionPickerExerciseFields({
   moreOptions,
   onChange,
 }: FieldsComponentProps<RegionPickerTestExercise>) {
+  const { t } = useTranslation();
   const promptRef = useRef<HTMLTextAreaElement | null>(null);
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const validation = validate(exercise, locale);
@@ -90,14 +83,14 @@ export function RegionPickerExerciseFields({
   return (
     <>
       <Field>
-        <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>Prompt</FieldLabel>
+        <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>{t("regionEditor.promptLabel")}</FieldLabel>
         <Textarea
           className="min-h-0 resize-none overflow-hidden"
           id={`exercise-prompt-${exercise.id}-${locale}`}
           onChange={(event) =>
             onChange((currentExercise) => updatePrompt(currentExercise, locale, event.target.value))
           }
-          placeholder="Mark countries from the Scandinavian peninsula"
+          placeholder={t("regionEditor.picker.promptPlaceholder")}
           ref={promptRef}
           rows={2}
           value={prompt}
@@ -105,19 +98,19 @@ export function RegionPickerExerciseFields({
       </Field>
 
       <Field>
-        <FieldLabel>Diagram</FieldLabel>
+        <FieldLabel>{t("regionEditor.diagramLabel")}</FieldLabel>
         <div className="flex items-center gap-2">
           {!exercise.svgAssetFilename && (
             <DropdownMenu>
               <DropdownMenuTrigger render={<Button size="sm" variant="outline" />}>
                 <Map aria-hidden="true" className="h-4 w-4" />
-                Choose diagram
+                {t("regionEditor.chooseDiagram")}
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
                     <Map aria-hidden="true" className="h-4 w-4" />
-                    Presets
+                    {t("regionEditor.presets")}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     {regionPickerSvgPresets.map((preset) => (
@@ -137,7 +130,9 @@ export function RegionPickerExerciseFields({
                           )
                         }
                       >
-                        {preset.label}
+                        {/* Preset names are app-defined, so they are translated by id;
+                            a preset without a key yet falls back to its English label. */}
+                        {t(`regionEditor.presetNames.${preset.id}`, { defaultValue: preset.label })}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuSubContent>
@@ -158,7 +153,7 @@ export function RegionPickerExerciseFields({
                   }
                 >
                   <Upload aria-hidden="true" className="h-4 w-4" />
-                  Upload
+                  {t("regionEditor.upload")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -172,7 +167,7 @@ export function RegionPickerExerciseFields({
                 variant={isAdjustingView ? "default" : "outline"}
               >
                 <ZoomIn aria-hidden="true" className="h-4 w-4" />
-                {isAdjustingView ? "Done" : "Adjust view"}
+                {isAdjustingView ? t("regionEditor.done") : t("regionEditor.adjustView")}
               </Button>
               {isAdjustingView && exercise.viewBox && (
                 <Button
@@ -183,7 +178,7 @@ export function RegionPickerExerciseFields({
                   variant="ghost"
                 >
                   <RotateCcw aria-hidden="true" className="h-4 w-4" />
-                  Reset view
+                  {t("regionEditor.resetView")}
                 </Button>
               )}
               <Button
@@ -195,7 +190,7 @@ export function RegionPickerExerciseFields({
                 variant="ghost"
               >
                 <X aria-hidden="true" className="h-4 w-4" />
-                Clear diagram
+                {t("regionEditor.clearDiagram")}
               </Button>
             </>
           )}
@@ -206,8 +201,8 @@ export function RegionPickerExerciseFields({
               <Info aria-hidden="true" className="h-4 w-4 text-info" />
               <AlertDescription>
                 {isAdjustingView
-                  ? "Drag to pan, use the zoom buttons to crop. This is the crop students will see."
-                  : "Click the regions students should mark as correct."}
+                  ? t("regionEditor.adjustViewHelp")
+                  : t("regionEditor.picker.help")}
               </AlertDescription>
             </Alert>
             <RegionPickerCanvas
@@ -224,10 +219,9 @@ export function RegionPickerExerciseFields({
             />
             {outOfViewShapeIds.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Badge variant="warning">Warning</Badge>
+                <Badge variant="warning">{t("regionEditor.validation.warning")}</Badge>
                 <CardDescription>
-                  These correct regions are outside the current view:{" "}
-                  {outOfViewShapeIds.join(", ")}
+                  {t("regionEditor.picker.outOfView", { regions: outOfViewShapeIds.join(", ") })}
                 </CardDescription>
               </div>
             )}
@@ -236,9 +230,11 @@ export function RegionPickerExerciseFields({
         {validation.status !== "idle" && (
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={validation.status === "valid" ? "success" : "warning"}>
-              {getValidationLabel(validation.status)}
+              {t(`regionEditor.validation.${validation.status}`)}
             </Badge>
-            <CardDescription>{validation.message}</CardDescription>
+            <CardDescription>
+              {t(validation.message.key, validation.message.values)}
+            </CardDescription>
           </div>
         )}
       </Field>
@@ -246,7 +242,7 @@ export function RegionPickerExerciseFields({
       <ExerciseMoreOptions defaultOpen={hasMoreOptionsSet(exercise)}>
           <Field>
             <div className="flex items-center gap-2">
-              <FieldLabel>Marker color</FieldLabel>
+              <FieldLabel>{t("regionEditor.picker.markerColor")}</FieldLabel>
               <RegionPickerMarkerColorField
                 onChange={(color) =>
                   onChange((currentExercise) => setMarkerColor(currentExercise, color))

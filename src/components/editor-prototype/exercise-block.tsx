@@ -34,7 +34,7 @@ import {
   getExercisePromptSource,
 } from "@/lib/course-player-utils";
 import { resolveSharedExerciseForPlayer } from "@/lib/exercise-kinds/registry";
-import type { Locale } from "@/lib/i18n";
+import { i18n, type Locale } from "@/lib/i18n";
 import { exerciseSpeechLanguage } from "@/lib/exercise-speech";
 import { useAppState } from "@/lib/use-app-state";
 
@@ -55,33 +55,34 @@ function ExerciseKindPicker({
 }: {
   onChoose: (kind: ExerciseKind) => void;
 }) {
+  const { t } = useTranslation();
   const [kind, setKind] = useState<ExerciseKind>("numeric");
 
   return (
     <div className="flex w-full flex-col gap-2 rounded-lg border border-dashed border-border p-4">
-      <Label htmlFor="inline-exercise-kind">Exercise type</Label>
+      <Label htmlFor="inline-exercise-kind">{t("exerciseEditor.exerciseType")}</Label>
       <div className="flex flex-wrap items-center gap-2">
         <Select
           onValueChange={(value) => value && setKind(value as ExerciseKind)}
           value={kind}
         >
           <SelectTrigger className="w-full sm:w-56" id="inline-exercise-kind">
-            <SelectValue>{getExerciseKindEditor(kind).label}</SelectValue>
+            <SelectValue>{t(getExerciseKindEditor(kind).labelKey)}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {listExerciseKindEditors().map((editor) => (
               <SelectItem key={editor.kind} value={editor.kind}>
-                {editor.label}
+                {t(editor.labelKey)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Button onClick={() => onChoose(kind)} size="sm">
-          Add exercise
+          {t("exerciseEditor.addExercise")}
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        {getExerciseKindEditor(kind).description}
+        {t(getExerciseKindEditor(kind).descriptionKey, getExerciseKindEditor(kind).descriptionValues)}
       </p>
     </div>
   );
@@ -312,7 +313,8 @@ export function createExerciseSlashMenuItem(
         "after",
       );
     },
-    subtext: "A gradable exercise a student answers inline",
-    title: "Exercise",
+    // Built each time the slash menu opens, so the app's current language.
+    subtext: i18n.t("exerciseEditor.slashSubtext"),
+    title: i18n.t("exerciseEditor.exercise"),
   };
 }

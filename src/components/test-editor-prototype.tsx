@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode, useEffect, useState } from "react";
 import { Play, Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ export function TestEditorPrototype({
   renderTitle,
   getIsLocaleIncomplete,
 }: TestEditorPrototypeProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const generatedLocale = useGeneratedSerbianLocale();
   const [isAddingExercise, setIsAddingExercise] = useState(false);
@@ -234,12 +236,12 @@ export function TestEditorPrototype({
             variant="secondary"
           >
             <Play aria-hidden="true" className="h-4 w-4" />
-            Preview test
+            {t("exerciseEditor.previewTest")}
           </Button>
         </TooltipTrigger>
         {!hasExercises && (
           <TooltipContent>
-            Add at least one exercise to preview this test
+            {t("exerciseEditor.previewNeedsExercise")}
           </TooltipContent>
         )}
       </Tooltip>
@@ -354,7 +356,7 @@ export function TestEditorPrototype({
                   variant="default"
                 >
                   <Plus aria-hidden="true" className="h-4 w-4" />
-                  Add exercise
+                  {t("exerciseEditor.addExercise")}
                 </Button>
               ) : (
                 <Card>
@@ -363,7 +365,7 @@ export function TestEditorPrototype({
                       <>
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="draft-exercise-kind">
-                            Exercise type
+                            {t("exerciseEditor.exerciseType")}
                           </Label>
                           <div className="flex flex-wrap items-center gap-2">
                             <Select
@@ -379,10 +381,10 @@ export function TestEditorPrototype({
                                 id="draft-exercise-kind"
                               >
                                 <SelectValue>
-                                  {
+                                  {t(
                                     getExerciseKindEditor(draftExerciseKind)
-                                      .label
-                                  }
+                                      .labelKey,
+                                  )}
                                 </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
@@ -391,32 +393,34 @@ export function TestEditorPrototype({
                                     key={editor.kind}
                                     value={editor.kind}
                                   >
-                                    {editor.label}
+                                    {t(editor.labelKey)}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                             <Button onClick={selectDraftExerciseKind} size="sm">
-                              Confirm
+                              {t("exerciseEditor.confirm")}
                             </Button>
                             <Button
                               onClick={cancelAddExercise}
                               size="sm"
                               variant="ghost"
                             >
-                              Cancel
+                              {t("exerciseEditor.cancel")}
                             </Button>
                           </div>
                         </div>
                         <div className="flex flex-col gap-1">
                           <p className="text-sm font-medium text-foreground">
-                            {getExerciseKindEditor(draftExerciseKind).label}
+                            {t(getExerciseKindEditor(draftExerciseKind).labelKey)}
                           </p>
                           <CardDescription>
-                            {
+                            {t(
                               getExerciseKindEditor(draftExerciseKind)
-                                .description
-                            }
+                                .descriptionKey,
+                              getExerciseKindEditor(draftExerciseKind)
+                                .descriptionValues,
+                            )}
                           </CardDescription>
                         </div>
                         {(() => {
@@ -426,7 +430,7 @@ export function TestEditorPrototype({
                           return (
                             ExampleComponent && (
                               <div className="flex flex-col gap-2">
-                                <Eyebrow size="small">Example</Eyebrow>
+                                <Eyebrow size="small">{t("exerciseEditor.example")}</Eyebrow>
                                 <ExampleComponent />
                               </div>
                             )
@@ -482,7 +486,7 @@ export function TestEditorPrototype({
                           const validationMessage =
                             validation.status === "idle"
                               ? null
-                              : validation.message;
+                              : t(validation.message.key, validation.message.values);
                           const isDraftIncomplete =
                             isMissingPrompt || isInvalid;
 
@@ -497,15 +501,15 @@ export function TestEditorPrototype({
                                     onClick={commitDraftExercise}
                                     size="sm"
                                   >
-                                    Save exercise
+                                    {t("exerciseEditor.saveExercise")}
                                   </Button>
                                 </TooltipTrigger>
                                 {isDraftIncomplete && (
                                   <TooltipContent>
                                     {isMissingPrompt && isInvalid
-                                      ? `Add a prompt before saving this exercise. ${validationMessage}`
+                                      ? t("exerciseEditor.needsPromptAnd", { problem: validationMessage })
                                       : isMissingPrompt
-                                        ? "Add a prompt before saving this exercise"
+                                        ? t("exerciseEditor.needsPrompt")
                                         : validationMessage}
                                   </TooltipContent>
                                 )}
@@ -515,7 +519,7 @@ export function TestEditorPrototype({
                                 size="sm"
                                 variant="ghost"
                               >
-                                Cancel
+                                {t("exerciseEditor.cancel")}
                               </Button>
                             </div>
                           );

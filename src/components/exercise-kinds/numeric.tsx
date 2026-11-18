@@ -276,9 +276,10 @@ export const numericExerciseEditor: ExerciseKindEditor<
   createExercise,
   fromShared,
   kind: "numeric",
-  label: "Template",
-  description:
-    'Template exercise is usually a story involving some activity that can be described numerically. Story can contain variables that are marked with {{x}} (this is example for variable "x"). Solution formula is provided which uses the values of the variable to calculate a solution. Teacher provides the story (prompt), variables (including their constraints) and a formula.',
+  labelKey: "exerciseEditor.kinds.numeric.label",
+  descriptionKey: "exerciseEditor.kinds.numeric.description",
+  // Shown literally: how a variable is written in the story.
+  descriptionValues: { variable: "{{x}}" },
   toShared,
   validate,
 };

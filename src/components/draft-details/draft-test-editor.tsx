@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
 import { getLocaleLabel } from "@/components/draft-details/draft-locale-utils";
@@ -60,9 +61,10 @@ function isTestTitleValid(title: string | undefined): boolean {
 function getTestTitleValidationMessage(
   locale: Locale,
   title: string | undefined,
+  t: TFunction,
 ) {
   if (!isTestTitleValid(title)) {
-    return `Test title for ${locale} is required.`;
+    return t("exerciseEditor.testTitleRequired", { language: getLocaleLabel(locale, t) });
   }
 
   return null;
@@ -373,7 +375,7 @@ function DraftStandaloneTestEditor({
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor={`draft-test-title-${locale}`}>
-            Test title
+            {t("exerciseEditor.testTitle")}
             <span aria-hidden="true" className="text-destructive">
               *
             </span>
@@ -382,12 +384,12 @@ function DraftStandaloneTestEditor({
             aria-invalid={!isTestTitleValid(titleLocales[locale])}
             id={`draft-test-title-${locale}`}
             onChange={(event) => updateTitleLocale(locale, event.target.value)}
-            placeholder="Test title"
+            placeholder={t("exerciseEditor.testTitle")}
             value={titleLocales[locale] ?? ""}
           />
-          {getTestTitleValidationMessage(locale, titleLocales[locale]) && (
+          {getTestTitleValidationMessage(locale, titleLocales[locale], t) && (
             <FieldDescription variant="destructive">
-              {getTestTitleValidationMessage(locale, titleLocales[locale])}
+              {getTestTitleValidationMessage(locale, titleLocales[locale], t)}
             </FieldDescription>
           )}
         </Field>

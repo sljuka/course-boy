@@ -80,12 +80,18 @@ export type ExerciseKindEditor<
   TCourse extends CourseExercise,
 > = {
   kind: ExerciseKind;
-  label: string;
-  /** One sentence shown while choosing an exercise kind — see the "Add exercise" wizard in test-editor-prototype.tsx. */
-  description: string;
+  /** Translation key of the kind's name, e.g. "exerciseEditor.kinds.rewrite.label"; rendered with `t`. */
+  labelKey: string;
+  /**
+   * Translation key of one sentence shown while choosing an exercise kind —
+   * see the "Add exercise" wizard in test-editor-prototype.tsx.
+   */
+  descriptionKey: string;
+  /** Values interpolated into the description, if it needs any. */
+  descriptionValues?: Record<string, string>;
   /**
    * A static, non-interactive rendering of what this kind looks like to a
-   * student — shown under an "Example" label below `description` in the
+   * student — shown under an "Example" label below the description in the
    * "Add exercise" wizard's kind-choosing step. Optional: a kind with no
    * illustrative example yet simply shows no example section.
    */

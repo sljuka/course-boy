@@ -126,10 +126,10 @@ export const punctuationExerciseEditor: ExerciseKindEditor<
   FieldsComponent: PunctuationExerciseFields,
   PrintAnswerComponent,
   createExercise,
-  description: "A sentence without its punctuation: the student places each mark where it belongs.",
+  descriptionKey: "exerciseEditor.kinds.punctuation.description",
   fromShared,
   kind: "punctuation",
-  label: "Punctuation",
+  labelKey: "exerciseEditor.kinds.punctuation.label",
   toShared,
   validate,
 };

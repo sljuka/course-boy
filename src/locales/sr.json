@@ -1868,5 +1868,311 @@
       "warning": "Upozorenje",
       "valid": "Ispravno"
     }
+  },
+  "exerciseCheck": {
+    "common": {
+      "looksGood": "Sve je u redu",
+      "promptRequired": "Zadatak je obavezan",
+      "chooseDiagram": "Izaberi crtež",
+      "markRegion": "Označi bar jednu oblast",
+      "markOneCorrect": "Označi samo jedan tačan odgovor"
+    },
+    "matchPairs": {
+      "minPairs": "Dodaj bar {{count}} para",
+      "itemNeedsText": "Svaka stavka mora da ima tekst (uz sliku: šta je na njoj)",
+      "duplicateItems": "Dve stavke u koloni su iste: učenik ne bi mogao da ih razlikuje",
+      "chooseLanguage": "Izaberi jezik na kom se leve stavke čuju"
+    },
+    "findInPicture": {
+      "addPicture": "Dodaj sliku",
+      "describePicture": "Napiši šta je na slici (za čitače ekrana)",
+      "drawArea": "Nacrtaj oblast na slici: prevuci preko onoga što učenik treba da pronađe",
+      "markRightArea": "Označi bar jednu oblast kao tačnu"
+    },
+    "missingWord": {
+      "markMissingWord": "Označi reč koja nedostaje sa {{marker}}",
+      "enterAnswer": "Upiši odgovor za {{blank}}"
+    },
+    "punctuation": {
+      "writeSentence": "Napiši rečenicu sa njenim znakovima interpunkcije"
+    },
+    "multipleChoice": {
+      "optionNeedsText": "Svaki ponuđeni odgovor mora da ima tekst",
+      "uniqueOptions": "Ponuđeni odgovori moraju da budu različiti",
+      "markValidOption": "Označi jedan od ponuđenih odgovora kao tačan"
+    },
+    "putInOrder": {
+      "minItems": "Dodaj bar {{count}} stavke",
+      "itemNeedsText": "Svaka stavka mora da ima tekst (uz sliku: šta je na njoj)",
+      "duplicateItems": "Dve stavke su iste: učenik ne bi znao koja gde ide",
+      "chooseLanguage": "Izaberi jezik na kom se stavke čuju"
+    },
+    "regionLabel": {
+      "regionNeedsAnswer": "Svaka oblast mora da ima bar jedan prihvaćen odgovor"
+    },
+    "regionMarker": {
+      "regionNeedsLabel": "Svaka oblast mora da ima naziv"
+    },
+    "regionPicker": {
+      "uploadSvg": "Dodaj SVG crtež",
+      "markCorrectRegion": "Klikni bar jednu oblast da je označiš kao tačnu"
+    },
+    "sortGroups": {
+      "nameEveryGroup": "Daj naziv svakoj grupi",
+      "cardNeedsText": "Svaka kartica mora da ima tekst (uz sliku: šta je na njoj)",
+      "emptyGroup": "Nijedna kartica ne pripada grupi „{{group}}“",
+      "chooseLanguage": "Izaberi jezik na kom se kartice čuju"
+    },
+    "rewrite": {
+      "writeAnswer": "Napiši bar jedan tačan odgovor"
+    },
+    "listenChoose": {
+      "writeSpoken": "Napiši šta učenik čuje",
+      "chooseLanguage": "Izaberi jezik onoga što se čuje",
+      "minOptions": "Dodaj bar dva ponuđena odgovora",
+      "optionNeedsText": "Svaki ponuđeni odgovor mora da ima tekst (uz sliku: šta je na njoj)",
+      "markRightOption": "Označi tačan odgovor"
+    },
+    "wordTypes": {
+      "defineType": "Dodaj bar jednu vrstu reči",
+      "singleCharacterSymbol": "Oznaka svake vrste mora da bude jedan znak",
+      "typeNeedsName": "Svaka vrsta mora da ima naziv",
+      "uniqueSymbols": "Oznake vrsta moraju da budu različite",
+      "markWord": "Označi bar jednu reč sa {{marker}}",
+      "unknownSymbol": "Nepoznata oznaka vrste „{{symbol}}“"
+    },
+    "columnArithmetic": {
+      "wholeNumbers": "Broj {{number}}: koristi cele brojeve od 0 do {{max}}",
+      "minAboveMax": "Broj {{number}}: najmanji je veći od najvećeg",
+      "alwaysNegative": "Prvi broj je uvek manji od drugog: rezultat bi bio manji od nule",
+      "neverRegroups": "Nijedan broj iz ovih opsega ne traži prenos ni pozajmljivanje: proširi opsege",
+      "alwaysRegroups": "Brojevi iz ovih opsega uvek traže prenos ili pozajmljivanje: promeni opsege",
+      "mostlyNegative": "Prvi broj je retko veći od drugog: rezultat bi bio manji od nule",
+      "example": "Na primer {{sample}}"
+    },
+    "numeric": {
+      "result": "Rezultat je {{result}}",
+      "unusedInPrompt": "Promenljiva „{{name}}“ se ne koristi u zadatku",
+      "evenAndOdd": "Promenljiva „{{name}}“ ne može da bude i parna i neparna",
+      "impossibleBounds": "Promenljiva „{{name}}“ ima nemoguća ograničenja ({{min}} > {{max}})",
+      "noValidValues": "Promenljiva „{{name}}“ nema nijednu moguću vrednost"
+    },
+    "formula": {
+      "invalid": "Neispravno rešenje",
+      "unexpectedToken": "Neočekivan znak kod „{{near}}“",
+      "trailingTokens": "Višak na kraju formule",
+      "missingClosingParen": "Nedostaje zatvorena zagrada „)“",
+      "unexpectedEnd": "Formula se završava prerano",
+      "expectedOperand": "Ovde treba broj, promenljiva ili izraz u zagradi",
+      "unknownVariable": "Nepoznata promenljiva „{{name}}“",
+      "notANumber": "Promenljiva „{{name}}“ mora da bude ispravan broj",
+      "divisionByZero": "Deljenje nulom"
+    }
+  },
+  "regionEditor": {
+    "promptLabel": "Zadatak",
+    "diagramLabel": "Dijagram",
+    "chooseDiagram": "Izaberi dijagram",
+    "presets": "Gotovi dijagrami",
+    "presetNames": {
+      "europe": "Evropa",
+      "africa": "Afrika"
+    },
+    "upload": "Otpremi",
+    "adjustView": "Podesi prikaz",
+    "done": "Gotovo",
+    "resetView": "Vrati prikaz",
+    "clearDiagram": "Ukloni dijagram",
+    "adjustViewHelp": "Prevuci da pomeriš prikaz, a dugmićima za uvećanje iseci deo. Učenici će videti baš ovaj isečak.",
+    "validation": {
+      "error": "Neispravno",
+      "warning": "Upozorenje",
+      "valid": "Ispravno"
+    },
+    "loadError": "Dijagram nije mogao da se učita.",
+    "loading": "Dijagram se učitava…",
+    "zoomIn": "Uvećaj",
+    "zoomOut": "Umanji",
+    "label": {
+      "promptPlaceholder": "Napiši naziv svake numerisane oblasti",
+      "help": "Klikni oblasti redom kojim učenici treba da ih numerišu. Ponovo klikni označenu oblast da je ukloniš. Prevuci broj da mu doteraš položaj; dvoklik ga vraća na mesto.",
+      "answersLabel": "Prihvaćeni odgovori za oblast {{number}}",
+      "answersPlaceholder": "Pariz, ili Rešenje1, Rešenje2",
+      "matchCase": "Velika slova moraju da se poklope",
+      "removeRegion": "Ukloni oblast {{number}}"
+    },
+    "marker": {
+      "promptPlaceholder": "Poveži svaku oblast sa njenom bojom",
+      "help": "Klikni oblast da je označiš — svaka dobija svoju boju. Ponovo klikni označenu oblast da je ukloniš.",
+      "labelFor": "Naziv za {{region}}",
+      "labelPlaceholder": "Naziv ili oznaka oblasti",
+      "removeRegion": "Ukloni {{region}}"
+    },
+    "picker": {
+      "promptPlaceholder": "Označi zemlje Skandinavskog poluostrva",
+      "help": "Klikni oblasti koje učenici treba da označe kao tačne.",
+      "outOfView": "Ove tačne oblasti su van trenutnog prikaza: {{regions}}",
+      "markerColor": "Boja oznake",
+      "chooseColor": "Izaberi boju"
+    }
+  },
+  "exerciseEditor": {
+    "previewTest": "Pregledaj test",
+    "previewNeedsExercise": "Dodaj bar jedan zadatak da bi pregledao test",
+    "addExercise": "Dodaj zadatak",
+    "exerciseType": "Vrsta zadatka",
+    "confirm": "Potvrdi",
+    "cancel": "Otkaži",
+    "example": "Primer",
+    "saveExercise": "Sačuvaj zadatak",
+    "needsPrompt": "Upiši zadatak pre čuvanja",
+    "needsPromptAnd": "Upiši zadatak pre čuvanja. {{problem}}",
+    "noPrompt": "Još nema teksta zadatka",
+    "exercise": "Zadatak",
+    "findTag": "Pronađi oznaku",
+    "noTags": "Još nema opisnih oznaka.",
+    "actions": "Radnje za zadatak",
+    "moveUp": "Pomeri gore",
+    "moveDown": "Pomeri dole",
+    "tags": "Oznake",
+    "delete": "Obriši",
+    "removeTag": "Ukloni oznaku {{tag}}",
+    "addTag": "Dodaj oznaku",
+    "testTitle": "Naziv testa",
+    "testTitleRequired": "Naziv testa za {{language}} je obavezan.",
+    "slashSubtext": "Zadatak sa ocenom koji učenik rešava u lekciji",
+    "kinds": {
+      "columnArithmetic": {
+        "label": "Pismeno računanje",
+        "description": "Sabiranje ili oduzimanje velikih brojeva potpisanih jedan ispod drugog, kao na kockastom papiru: učenik piše rezultat cifru po cifru zdesna, beležeći šta prenosi ili pozajmljuje. Svaki pokušaj dobija nove brojeve iz opsega koje zadaš; svaka cifra se računa."
+      },
+      "findInPicture": {
+        "label": "Pronađi na slici",
+        "description": "Slika ili fotografija na kojoj nacrtaš oblasti: učenik dodiruje ono što pitanje traži („Pronađi sat”). Tačno je kad dodirne tačno prave oblasti."
+      },
+      "listenChoose": {
+        "label": "Poslušaj i izaberi",
+        "description": "Učenik čuje reč ili rečenicu (čita je glas sistema, nikad se ne prikazuje) i bira sliku ili tekst koji joj odgovara. Za mlađe učenike i jezike: „Poslušaj i izaberi”."
+      },
+      "matchPairs": {
+        "label": "Spoji parove",
+        "description": "Dve kolone reči ili slika (ili zvukova): učenik dodirne stavku, pa njen par, dok sve ne spoji. Svaki tačan par se računa."
+      },
+      "missingWord": {
+        "label": "Reči koje nedostaju",
+        "description": "Tekst sa prazninama koje učenik popunjava tačnom rečju ili izrazom."
+      },
+      "multipleChoice": {
+        "label": "Višestruki izbor",
+        "description": "Pitanje sa više odgovora, od kojih učenik može da označi jedan, više njih ili nijedan kao tačan. Uključi „Samo jedan tačan odgovor” ispod za klasično pitanje sa jednim tačnim odgovorom (prikazano sa kružićima); ostavi isključeno da učenik označi svaki odgovor za koji misli da je tačan."
+      },
+      "numeric": {
+        "label": "Šablon",
+        "description": "Zadatak po šablonu je obično priča o nečemu što se može opisati brojevima. Priča može imati promenljive označene sa {{variable}} (ovo je primer za promenljivu „x”). Formula rešenja vrednostima promenljivih računa rešenje. Nastavnik zadaje priču (zadatak), promenljive (sa njihovim ograničenjima) i formulu."
+      },
+      "punctuation": {
+        "label": "Interpunkcija",
+        "description": "Rečenica bez znakova interpunkcije: učenik stavlja svaki znak tamo gde mu je mesto."
+      },
+      "putInOrder": {
+        "label": "Poređaj",
+        "description": "Izmešane kartice (reči, rečenice, slike ili zvukovi): učenik ih dodiruje pravim redom i tako ih numeriše 1, 2, 3… Svaka kartica na svom mestu se računa."
+      },
+      "regionLabel": {
+        "label": "Imenuj oblasti",
+        "description": "Crtež sa numerisanim, obojenim oblastima koje učenik imenuje tako što za svaki broj upiše tačan naziv."
+      },
+      "regionMarker": {
+        "label": "Označi oblasti",
+        "description": "U ovom zadatku učenik označava oblasti na crtežu. Nastavnik može da otpremi svoj SVG crtež ili da izabere neki od gotovih (kao Evropa u primeru ispod). Može i da uveća i pomeri crtež, da učenik vidi samo njegov deo."
+      },
+      "regionPicker": {
+        "label": "Izaberi oblasti",
+        "description": "Otpremi crtež (SVG sa oblicima koji imaju id, npr. mapu država) i označi koji oblici su tačan odgovor. Učenik odgovara klikom na te oblike na crtežu."
+      },
+      "rewrite": {
+        "label": "Preoblikuj",
+        "description": "Učenik piše rečenicu (ili nekoliko); tačno je kad se poklapa sa bilo kojim od odgovora koje zadaš."
+      },
+      "sortGroups": {
+        "label": "Razvrstaj u grupe",
+        "description": "Dve do četiri imenovane grupe i gomila kartica (reči, slika ili zvukova): učenik dodirom ili prevlačenjem stavlja svaku karticu u njenu grupu. Svaka kartica u svojoj grupi se računa; ili nema tačnog odgovora, za „volim / ne volim”."
+      },
+      "wordTypes": {
+        "label": "Vrste reči",
+        "description": "Tekst u kome učenik označava istaknute reči njihovom vrstom reči."
+      }
+    }
+  },
+  "courseMetadata": {
+    "title": "Naziv kursa",
+    "titlePlaceholder": "Kurs",
+    "description": "Opis",
+    "descriptionPlaceholder": "Dodaj kratak opis kursa",
+    "supportedLanguages": "Podržani jezici",
+    "addLanguages": "Dodaj podržane jezike",
+    "noLanguagesFound": "Nema takvog jezika.",
+    "manageTags": "Uredi oznake"
+  },
+  "missingWordEditor": {
+    "promptLabel": "Zadatak",
+    "promptPlaceholder": "Dopuni reči koje nedostaju",
+    "textLabel": "Tekst",
+    "textPlaceholder": "Glavni grad Francuske je {{first}}. Glavni grad Srbije je {{second}}.",
+    "missingWordsLabel": "Reči koje nedostaju",
+    "answerFor": "Odgovor za {{blank}}",
+    "answersPlaceholder": "Pariz, ili Rešenje1, Rešenje2",
+    "matchCase": "Velika i mala slova moraju da se poklope",
+    "validation": {
+      "error": "Neispravno",
+      "warning": "Upozorenje",
+      "valid": "Ispravno"
+    }
+  },
+  "multipleChoiceEditor": {
+    "promptLabel": "Zadatak",
+    "promptPlaceholder": "Koji je glavni grad Francuske?",
+    "optionsLabel": "Ponuđeni odgovori",
+    "markCorrect": "Označi odgovor {{number}} kao tačan",
+    "option": "Odgovor {{number}}",
+    "removeOption": "Ukloni odgovor {{number}}",
+    "addOption": "Dodaj odgovor",
+    "singleAnswer": "Samo jedan tačan odgovor (kružić umesto kvadratića)",
+    "validation": {
+      "error": "Neispravno",
+      "warning": "Upozorenje",
+      "valid": "Ispravno"
+    }
+  },
+  "wordTypeEditor": {
+    "chooseColor": "Izaberi boju",
+    "chooseIcon": "Izaberi ikonicu (nije obavezno)",
+    "noIcon": "Bez ikonice",
+    "customIcon": "Svoja ikonica",
+    "customIconPlaceholder": "Svoja…",
+    "promptLabel": "Zadatak",
+    "promptPlaceholder": "Označi imenice i glagole",
+    "wordTypesLabel": "Vrste reči",
+    "name": "Naziv",
+    "namePlaceholder": "Imenica",
+    "symbol": "Oznaka",
+    "nounSymbol": "i",
+    "verbSymbol": "g",
+    "removeWordType": "Ukloni vrstu reči",
+    "addType": "Dodaj vrstu",
+    "textLabel": "Tekst",
+    "textPlaceholder": "Mika{{noun}} skače{{verb}} preko ograde{{noun}}.",
+    "validation": {
+      "error": "Neispravno",
+      "warning": "Upozorenje",
+      "valid": "Ispravno"
+    }
+  },
+  "colorPicker": {
+    "customColorMenu": "Druga boja…",
+    "customColor": "Druga boja"
+  },
+  "wordTypeTokens": {
+    "unmarked": "neoznačeno"
   }
 }

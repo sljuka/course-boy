@@ -125,18 +125,18 @@ export function validate(
   }
 
   if (!exercise.svgAssetFilename) {
-    return { message: "Upload an SVG", status: "error" };
+    return { message: { key: "exerciseCheck.regionPicker.uploadSvg" }, status: "error" };
   }
 
   if (content.prompt.trim().length === 0) {
-    return { message: "Prompt is required", status: "error" };
+    return { message: { key: "exerciseCheck.common.promptRequired" }, status: "error" };
   }
 
   if (exercise.correctShapeIds.length === 0) {
-    return { message: "Click at least one region to mark it correct", status: "error" };
+    return { message: { key: "exerciseCheck.regionPicker.markCorrectRegion" }, status: "error" };
   }
 
-  return { message: "Looks good", status: "valid" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(

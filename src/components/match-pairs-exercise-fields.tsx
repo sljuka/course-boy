@@ -166,7 +166,7 @@ export function MatchPairsExerciseFields({
             <Badge variant={validation.status === "valid" ? "success" : "warning"}>
               {t(validation.status === "valid" ? "listenChoose.valid" : "listenChoose.invalid")}
             </Badge>
-            <CardDescription>{validation.message}</CardDescription>
+            <CardDescription>{t(validation.message.key, validation.message.values)}</CardDescription>
           </div>
         )}
       </Field>

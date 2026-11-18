@@ -175,9 +175,8 @@ export const regionMarkerExerciseEditor: ExerciseKindEditor<
   createExercise,
   fromShared,
   kind: "region-marker",
-  label: "Region marker",
-  description:
-    "In this exercise type student can mark various regions on the diagram. Teacher can either upload his own SVG diagram or use one of the presets (like Europe in example below). There is also possibility to zoom-in and pan to show only part of the diagram to the student.",
+  labelKey: "exerciseEditor.kinds.regionMarker.label",
+  descriptionKey: "exerciseEditor.kinds.regionMarker.description",
   toShared,
   validate,
 };

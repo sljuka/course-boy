@@ -33,10 +33,19 @@ describe("column-arithmetic editor logic", () => {
 
   it("explains ranges that can't work", () => {
     const exercise = createExercise(["sr"])
-    expect(validate(updateOperand(exercise, 0, { min: 9000, max: 100 }), "sr")).toMatchObject({ status: "error" })
-    expect(validate(updateOperand(exercise, 0, { min: Number.NaN }), "sr")).toMatchObject({ status: "error" })
+    expect(validate(updateOperand(exercise, 0, { min: 9000, max: 100 }), "sr")).toMatchObject({
+      message: { key: "exerciseCheck.columnArithmetic.minAboveMax", values: { number: 1 } },
+      status: "error",
+    })
+    expect(validate(updateOperand(exercise, 0, { min: Number.NaN }), "sr")).toMatchObject({
+      message: { key: "exerciseCheck.columnArithmetic.wholeNumbers" },
+      status: "error",
+    })
     const small = updateOperand(updateOperand(exercise, 0, { max: 4, min: 0 }), 1, { max: 4, min: 0 })
-    expect(validate({ ...small, regrouping: "required" }, "sr")).toMatchObject({ status: "error" })
+    expect(validate({ ...small, regrouping: "required" }, "sr")).toMatchObject({
+      message: { key: "exerciseCheck.columnArithmetic.neverRegroups" },
+      status: "error",
+    })
   })
 
   it("saves only what isn't the default, and reads it back", () => {

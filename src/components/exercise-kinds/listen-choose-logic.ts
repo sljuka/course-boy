@@ -110,18 +110,18 @@ export function validate(exercise: ListenChooseTestExercise, locale: Locale): So
   if (!content) return { status: "idle" };
   if (!exercise.spoken.trim() && content.options.every((option) => !option.trim())) return { status: "idle" };
 
-  if (!exercise.spoken.trim()) return { message: "Write what the student hears", status: "error" };
-  if (!exercise.speech) return { message: "Choose the language of what's heard", status: "error" };
-  if (content.options.length < 2) return { message: "Add at least two options", status: "error" };
+  if (!exercise.spoken.trim()) return { message: { key: "exerciseCheck.listenChoose.writeSpoken" }, status: "error" };
+  if (!exercise.speech) return { message: { key: "exerciseCheck.listenChoose.chooseLanguage" }, status: "error" };
+  if (content.options.length < 2) return { message: { key: "exerciseCheck.listenChoose.minOptions" }, status: "error" };
   // A picture's text is its alt text, needed too.
   if (content.options.some((option) => !option.trim())) {
-    return { message: "Every option needs text (for a picture: what it shows)", status: "error" };
+    return { message: { key: "exerciseCheck.listenChoose.optionNeedsText" }, status: "error" };
   }
-  if (exercise.correctOptionIndexes.length === 0) return { message: "Mark the right option", status: "error" };
+  if (exercise.correctOptionIndexes.length === 0) return { message: { key: "exerciseCheck.listenChoose.markRightOption" }, status: "error" };
   if (exercise.selectionMode === "single" && exercise.correctOptionIndexes.length !== 1) {
-    return { message: "Mark one option as correct", status: "error" };
+    return { message: { key: "exerciseCheck.common.markOneCorrect" }, status: "error" };
   }
-  return { message: "Looks good", status: "valid" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(exercise: ListenChooseTestExercise): SharedListenChooseTestExerciseDefinition {

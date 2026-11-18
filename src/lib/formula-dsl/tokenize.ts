@@ -1,3 +1,4 @@
+import { FormulaError } from "./errors";
 import type { FormulaToken } from "./types";
 
 const numberPattern = /^(?:\d+\.?\d*|\.\d+)/;
@@ -47,7 +48,8 @@ export function tokenizeFormula(formula: string): FormulaToken[] {
       continue;
     }
 
-    throw new Error(`Unexpected token near "${currentChunk.slice(0, 12)}"`);
+    const near = currentChunk.slice(0, 12);
+    throw new FormulaError(`Unexpected token near "${near}"`, "exerciseCheck.formula.unexpectedToken", { near });
   }
 
   return tokens;

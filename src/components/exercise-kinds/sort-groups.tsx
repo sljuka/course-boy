@@ -241,11 +241,10 @@ export const sortGroupsExerciseEditor: ExerciseKindEditor<
   FieldsComponent: SortGroupsExerciseFields,
   PrintAnswerComponent,
   createExercise,
-  description:
-    "Two to four named groups and a pile of cards (words, pictures or sounds heard): the student taps or drags each card into its group. Each card in its group counts; or no right answer, for \"I like / I don't like\".",
+  descriptionKey: "exerciseEditor.kinds.sortGroups.description",
   fromShared,
   kind: "sort-groups",
-  label: "Sort into groups",
+  labelKey: "exerciseEditor.kinds.sortGroups.label",
   toShared,
   validate,
 };

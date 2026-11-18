@@ -122,11 +122,11 @@ export function validate(exercise: FindInPictureTestExercise, locale: Locale): S
   if (!content) return { status: "idle" };
   if (!exercise.imageAssetFilename && !content.prompt.trim()) return { status: "idle" };
 
-  if (!exercise.imageAssetFilename) return { message: "Add a picture", status: "error" };
-  if (!content.imageAlt.trim()) return { message: "Say what the picture shows (for screen readers)", status: "error" };
-  if (exercise.areas.length === 0) return { message: "Draw an area on the picture: drag across what the student should find", status: "error" };
-  if (!exercise.areas.some((area) => area.correct)) return { message: "Mark at least one area as right", status: "error" };
-  return { message: "Looks good", status: "valid" };
+  if (!exercise.imageAssetFilename) return { message: { key: "exerciseCheck.findInPicture.addPicture" }, status: "error" };
+  if (!content.imageAlt.trim()) return { message: { key: "exerciseCheck.findInPicture.describePicture" }, status: "error" };
+  if (exercise.areas.length === 0) return { message: { key: "exerciseCheck.findInPicture.drawArea" }, status: "error" };
+  if (!exercise.areas.some((area) => area.correct)) return { message: { key: "exerciseCheck.findInPicture.markRightArea" }, status: "error" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(exercise: FindInPictureTestExercise): SharedFindInPictureTestExerciseDefinition {

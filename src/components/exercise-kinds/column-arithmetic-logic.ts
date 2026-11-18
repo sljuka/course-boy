@@ -1,5 +1,6 @@
 import { filterValidLocaleEntries } from "@/components/exercise-kinds/types";
 import type {
+  CheckMessage,
   ColumnArithmeticTestExercise,
   NumericSolutionSpace,
   SolutionValidationResult,
@@ -85,21 +86,29 @@ export function removeOperand(exercise: ColumnArithmeticTestExercise, index: num
 
 const SIGNS: Record<ColumnArithmeticOperation, string> = { add: "+", subtract: "−" };
 
-// "58 734 + 21 391 = 80 125": a sample, as the student might get it.
-export function formatSample(operation: ColumnArithmeticOperation, operands: number[]): string {
-  const format = (value: number) => value.toLocaleString("en").replaceAll(",", " ");
-  return `${operands.map(format).join(` ${SIGNS[operation]} `)} = ${format(columnResult(operation, operands))}`;
+// "80 125": thousands set apart by a space, which reads the same in every
+// language the app has (a comma or a dot would mean a decimal in some).
+function formatWhole(value: number): string {
+  return value.toLocaleString("en").replaceAll(",", " ");
 }
 
-function rangeProblem(exercise: ColumnArithmeticTestExercise): string | null {
+// "58 734 + 21 391 = 80 125": a sample, as the student might get it.
+export function formatSample(operation: ColumnArithmeticOperation, operands: number[]): string {
+  return `${operands.map(formatWhole).join(` ${SIGNS[operation]} `)} = ${formatWhole(columnResult(operation, operands))}`;
+}
+
+function rangeProblem(exercise: ColumnArithmeticTestExercise): CheckMessage | null {
   for (const [index, range] of exercise.operands.entries()) {
     if (!Number.isInteger(range.min) || !Number.isInteger(range.max) || range.min < 0 || range.max > MAX_COLUMN_OPERAND) {
-      return `Number ${index + 1}: use whole numbers from 0 to ${MAX_COLUMN_OPERAND.toLocaleString("en")}`;
+      return {
+        key: "exerciseCheck.columnArithmetic.wholeNumbers",
+        values: { max: formatWhole(MAX_COLUMN_OPERAND), number: index + 1 },
+      };
     }
-    if (range.min > range.max) return `Number ${index + 1}: the smallest is bigger than the biggest`;
+    if (range.min > range.max) return { key: "exerciseCheck.columnArithmetic.minAboveMax", values: { number: index + 1 } };
   }
   if (exercise.operation === "subtract" && exercise.operands[0].max < exercise.operands[1].min) {
-    return "The first number is always smaller than the second: the answer would be below zero";
+    return { key: "exerciseCheck.columnArithmetic.alwaysNegative" };
   }
   return null;
 }
@@ -109,16 +118,24 @@ export function validate(exercise: ColumnArithmeticTestExercise, _locale: Locale
   if (problem) return { message: problem, status: "error" };
   if (!canSatisfy(exercise)) {
     return {
-      message:
-        exercise.regrouping === "required"
-          ? "No numbers in these ranges need carrying or borrowing: widen them"
-          : exercise.regrouping === "none"
-            ? "Numbers in these ranges always need carrying or borrowing: change them"
-            : "The first number is hardly ever bigger than the second: the answer would be below zero",
+      message: {
+        key:
+          exercise.regrouping === "required"
+            ? "exerciseCheck.columnArithmetic.neverRegroups"
+            : exercise.regrouping === "none"
+              ? "exerciseCheck.columnArithmetic.alwaysRegroups"
+              : "exerciseCheck.columnArithmetic.mostlyNegative",
+      },
       status: "error",
     };
   }
-  return { message: `For example ${formatSample(exercise.operation, rollColumnOperands(exercise))}`, status: "valid" };
+  return {
+    message: {
+      key: "exerciseCheck.columnArithmetic.example",
+      values: { sample: formatSample(exercise.operation, rollColumnOperands(exercise)) },
+    },
+    status: "valid",
+  };
 }
 
 function normalizeSpace(space: unknown): NumericSolutionSpace {

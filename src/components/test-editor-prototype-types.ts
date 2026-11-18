@@ -363,16 +363,24 @@ type TestEditorState = {
   useBlueprint: boolean;
 };
 
+// A check's message, as a translation key and its values, so the editor shows
+// it in the app's language (SLJ-235): `t(message.key, message.values)`.
+type CheckMessage = {
+  key: string;
+  values?: Record<string, number | string>;
+};
+
 type SolutionValidationResult =
   | { status: "idle" }
   | {
-      message: string;
+      message: CheckMessage;
       sampleResult?: number;
       sampleVariables?: Record<string, number>;
       status: "error" | "valid" | "warning";
     };
 
 export type {
+  CheckMessage,
   BlueprintRule,
   ColumnArithmeticTestExercise,
   ExerciseMediaDraft,

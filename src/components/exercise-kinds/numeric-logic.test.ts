@@ -154,11 +154,29 @@ describe("validateFormula with several solutions", () => {
   }
 
   it("takes an earlier solution's result, with a sample computed from it", () => {
-    expect(validateFormula(exercise, "en", "solution1 - z", 1)).toMatchObject({ sampleResult: 10, status: "valid" })
+    expect(validateFormula(exercise, "en", "solution1 - z", 1)).toMatchObject({
+      message: { key: "exerciseCheck.numeric.result", values: { result: 10 } },
+      sampleResult: 10,
+      status: "valid",
+    })
+  })
+
+  it("names a formula's mistake with a translation key", () => {
+    expect(validateFormula(exercise, "en", "x +", 0)).toMatchObject({
+      message: { key: "exerciseCheck.formula.unexpectedEnd" },
+      status: "error",
+    })
+    expect(validateFormula(exercise, "en", "x / 0", 0)).toMatchObject({
+      message: { key: "exerciseCheck.formula.divisionByZero" },
+      status: "error",
+    })
   })
 
   it("doesn't know a solution that isn't above it", () => {
-    expect(validateFormula(exercise, "en", "solution1 + 1", 0)).toMatchObject({ status: "error" })
+    expect(validateFormula(exercise, "en", "solution1 + 1", 0)).toMatchObject({
+      message: { key: "exerciseCheck.formula.unknownVariable", values: { name: "solution1" } },
+      status: "error",
+    })
     expect(validateFormula(exercise, "en", "solution2 + 1", 1)).toMatchObject({ status: "error" })
   })
 })

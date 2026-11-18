@@ -187,7 +187,7 @@ export function ColumnArithmeticExerciseFields({
           <Badge variant={validation.status === "valid" ? "success" : "warning"}>
             {validation.status === "valid" ? t("columnArithmetic.valid") : t("columnArithmetic.invalid")}
           </Badge>
-          <CardDescription>{validation.message}</CardDescription>
+          <CardDescription>{t(validation.message.key, validation.message.values)}</CardDescription>
         </div>
       )}
 

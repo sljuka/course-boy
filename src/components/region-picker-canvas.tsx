@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import { ZoomIn, ZoomOut } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 
@@ -136,6 +137,7 @@ export function RegionPickerCanvas({
   // A teacher-chosen crop; `undefined` shows the file's own native viewBox.
   viewBox?: string;
 }) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const previousShapeColorIdsRef = useRef<Set<string>>(new Set());
   // Cached so a re-render only updates existing <text> elements' position/
@@ -703,11 +705,11 @@ export function RegionPickerCanvas({
   }, [selectedShapeIds, sanitizedMarkup, viewBox]);
 
   if (loadError) {
-    return <p className="text-sm text-destructive">Couldn't load this diagram.</p>;
+    return <p className="text-sm text-destructive">{t("regionEditor.loadError")}</p>;
   }
 
   if (sanitizedMarkup === null) {
-    return <p className="text-sm text-muted-foreground">Loading diagram…</p>;
+    return <p className="text-sm text-muted-foreground">{t("regionEditor.loading")}</p>;
   }
 
   const effectiveBox = parseViewBox(viewBox) ?? nativeBox;
@@ -761,7 +763,7 @@ export function RegionPickerCanvas({
         {isAdjustingView && (
           <div className="absolute bottom-2 right-2 flex gap-1">
             <Button
-              aria-label="Zoom in"
+              aria-label={t("regionEditor.zoomIn")}
               onClick={() => zoomBy(1 / ZOOM_STEP_FACTOR)}
               size="icon"
               type="button"
@@ -770,7 +772,7 @@ export function RegionPickerCanvas({
               <ZoomIn aria-hidden="true" className="h-4 w-4" />
             </Button>
             <Button
-              aria-label="Zoom out"
+              aria-label={t("regionEditor.zoomOut")}
               onClick={() => zoomBy(ZOOM_STEP_FACTOR)}
               size="icon"
               type="button"

@@ -213,37 +213,37 @@ export function validate(
   );
 
   if (nonEmptyWordTypes.length === 0) {
-    return { message: "Define at least one word type", status: "error" };
+    return { message: { key: "exerciseCheck.wordTypes.defineType" }, status: "error" };
   }
 
   if (exercise.wordTypes.some((wordType) => wordType.symbol.trim().length !== 1)) {
-    return { message: "Every type symbol must be a single character", status: "error" };
+    return { message: { key: "exerciseCheck.wordTypes.singleCharacterSymbol" }, status: "error" };
   }
 
   if (exercise.wordTypes.some((wordType) => !(wordType.names[locale] ?? "").trim())) {
-    return { message: "Every type needs a name", status: "error" };
+    return { message: { key: "exerciseCheck.wordTypes.typeNeedsName" }, status: "error" };
   }
 
   const uniqueSymbols = new Set(exercise.wordTypes.map((wordType) => wordType.symbol));
 
   if (uniqueSymbols.size !== exercise.wordTypes.length) {
-    return { message: "Type symbols must be unique", status: "error" };
+    return { message: { key: "exerciseCheck.wordTypes.uniqueSymbols" }, status: "error" };
   }
 
   const referencedSymbols = extractWordTypeSymbols(content.text);
 
   if (referencedSymbols.length === 0) {
-    return { message: "Mark at least one word with a {{symbol}}", status: "error" };
+    return { message: { key: "exerciseCheck.wordTypes.markWord", values: { marker: "{{symbol}}" } }, status: "error" };
   }
 
   const definedSymbols = new Set(exercise.wordTypes.map((wordType) => wordType.symbol));
   const unknownSymbol = referencedSymbols.find((symbol) => !definedSymbols.has(symbol));
 
   if (unknownSymbol) {
-    return { message: `Unknown type symbol "${unknownSymbol}"`, status: "error" };
+    return { message: { key: "exerciseCheck.wordTypes.unknownSymbol", values: { symbol: unknownSymbol } }, status: "error" };
   }
 
-  return { message: "Looks good", status: "valid" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(

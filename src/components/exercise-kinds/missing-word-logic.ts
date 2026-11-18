@@ -140,16 +140,16 @@ export function validate(
   }
 
   if (content.variables.length === 0) {
-    return { message: "Mark a missing word with {{name}}", status: "error" };
+    return { message: { key: "exerciseCheck.missingWord.markMissingWord", values: { marker: "{{name}}" } }, status: "error" };
   }
 
   const emptyVariable = content.variables.find((variable) => parseAnswers(variable.answers).length === 0);
 
   if (emptyVariable) {
-    return { message: `Enter an answer for {{${emptyVariable.name}}}`, status: "error" };
+    return { message: { key: "exerciseCheck.missingWord.enterAnswer", values: { blank: `{{${emptyVariable.name}}}` } }, status: "error" };
   }
 
-  return { message: "Looks good", status: "valid" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(

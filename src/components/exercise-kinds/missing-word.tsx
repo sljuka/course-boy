@@ -83,8 +83,8 @@ export const missingWordExerciseEditor: ExerciseKindEditor<
   createExercise,
   fromShared,
   kind: "missing-word",
-  label: "Missing words",
-  description: "A passage with blanks the student fills in with the correct word or phrase.",
+  labelKey: "exerciseEditor.kinds.missingWord.label",
+  descriptionKey: "exerciseEditor.kinds.missingWord.description",
   toShared,
   validate,
 };

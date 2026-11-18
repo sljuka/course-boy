@@ -204,10 +204,10 @@ function SolutionFormula({
           <CardDescription>
             {validation.sampleVariables
               ? t("numeric.sampleVariables", {
-                  message: validation.message,
+                  message: t(validation.message.key, validation.message.values),
                   variables: formatSampleVariables(validation.sampleVariables),
                 })
-              : validation.message}
+              : t(validation.message.key, validation.message.values)}
           </CardDescription>
         </div>
       )}

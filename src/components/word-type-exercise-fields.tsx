@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ExerciseMoreOptions, hasMoreOptionsSet } from "@/components/exercise-kinds/exercise-more-options";
 import { Check, Plus, X } from "lucide-react";
 
@@ -41,10 +42,12 @@ function WordTypeColorField({
   onChange: (color: string) => void;
   value: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <ColorPickerField
       onChange={onChange}
-      trigger={<Button aria-label="Choose color" className="h-8 w-8" size="icon" variant="ghost" />}
+      trigger={<Button aria-label={t("wordTypeEditor.chooseColor")} className="h-8 w-8" size="icon" variant="ghost" />}
       value={value}
     >
       <ColorSwatch className="size-5" color={value} />
@@ -91,16 +94,18 @@ function WordTypeIconField({
   placeholder: string;
   value: string;
 }) {
+  const { t } = useTranslation();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<Button aria-label="Choose icon (optional)" className="h-8 w-16" variant="outline" />}
+        render={<Button aria-label={t("wordTypeEditor.chooseIcon")} className="h-8 w-16" variant="outline" />}
       >
         <span className={value ? undefined : "opacity-40"}>{value || placeholder}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem onClick={() => onChange("")}>
-          <span>No icon</span>
+          <span>{t("wordTypeEditor.noIcon")}</span>
           {!value && <Check aria-hidden="true" className="ml-auto h-4 w-4" />}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -117,11 +122,11 @@ function WordTypeIconField({
               before it reaches this field, even though it's genuinely
               focused. */}
           <Input
-            aria-label="Custom icon"
+            aria-label={t("wordTypeEditor.customIcon")}
             maxLength={MAX_WORD_TYPE_ICON_LENGTH}
             onChange={(event) => onChange(event.target.value)}
             onKeyDown={(event) => event.stopPropagation()}
-            placeholder="Custom…"
+            placeholder={t("wordTypeEditor.customIconPlaceholder")}
             value={value}
           />
         </div>
@@ -130,23 +135,13 @@ function WordTypeIconField({
   );
 }
 
-function getValidationLabel(status: "error" | "valid" | "warning") {
-  switch (status) {
-    case "error":
-      return "Invalid";
-    case "warning":
-      return "Warning";
-    case "valid":
-      return "Valid";
-  }
-}
-
 export function WordTypeExerciseFields({
   exercise,
   locale,
   moreOptions,
   onChange,
 }: FieldsComponentProps<WordTypeTestExercise>) {
+  const { t } = useTranslation();
   const prompt = exercise.locales[locale]?.prompt ?? "";
   const text = exercise.locales[locale]?.text ?? "";
   const validation = validate(exercise, locale);
@@ -187,7 +182,7 @@ export function WordTypeExerciseFields({
     <>
       <Field>
         <FieldLabel htmlFor={`exercise-prompt-${exercise.id}-${locale}`}>
-          Prompt
+          {t("wordTypeEditor.promptLabel")}
         </FieldLabel>
         <Textarea
           className="min-h-0 resize-none overflow-hidden"
@@ -195,14 +190,14 @@ export function WordTypeExerciseFields({
           onChange={(event) =>
             onChange((currentExercise) => updatePrompt(currentExercise, locale, event.target.value))
           }
-          placeholder="Mark the nouns and verbs"
+          placeholder={t("wordTypeEditor.promptPlaceholder")}
           rows={2}
           value={prompt}
         />
       </Field>
 
       <Field>
-        <FieldLabel>Word types</FieldLabel>
+        <FieldLabel>{t("wordTypeEditor.wordTypesLabel")}</FieldLabel>
         <div className="flex flex-col gap-2">
           {exercise.wordTypes.map((wordType) => (
             <div className="flex flex-wrap items-center gap-2" key={wordType.id}>
@@ -213,18 +208,18 @@ export function WordTypeExerciseFields({
                 value={wordType.color}
               />
               <Input
-                aria-label="Name"
+                aria-label={t("wordTypeEditor.name")}
                 className="min-w-32 flex-1"
                 onChange={(event) =>
                   onChange((currentExercise) =>
                     updateName(currentExercise, wordType.id, locale, event.target.value),
                   )
                 }
-                placeholder="Noun"
+                placeholder={t("wordTypeEditor.namePlaceholder")}
                 value={wordType.names[locale] ?? ""}
               />
               <Input
-                aria-label="Symbol"
+                aria-label={t("wordTypeEditor.symbol")}
                 className="w-14 text-center"
                 maxLength={1}
                 onChange={(event) =>
@@ -232,7 +227,7 @@ export function WordTypeExerciseFields({
                     updateSymbol(currentExercise, wordType.id, event.target.value),
                   )
                 }
-                placeholder="n"
+                placeholder={t("wordTypeEditor.nounSymbol")}
                 value={wordType.symbol}
               />
               <WordTypeIconField
@@ -243,7 +238,7 @@ export function WordTypeExerciseFields({
                 value={wordType.icon}
               />
               <button
-                aria-label="Remove word type"
+                aria-label={t("wordTypeEditor.removeWordType")}
                 className="inline-flex items-center text-muted-foreground hover:text-foreground"
                 onClick={() =>
                   onChange((currentExercise) => removeWordType(currentExercise, wordType.id))
@@ -263,19 +258,23 @@ export function WordTypeExerciseFields({
           variant="ghost"
         >
           <Plus aria-hidden="true" className="h-4 w-4" />
-          Add type
+          {t("wordTypeEditor.addType")}
         </Button>
       </Field>
 
       <Field>
-        <FieldLabel htmlFor={`exercise-text-${exercise.id}-${locale}`}>Text</FieldLabel>
+        <FieldLabel htmlFor={`exercise-text-${exercise.id}-${locale}`}>{t("wordTypeEditor.textLabel")}</FieldLabel>
         <Textarea
           className="min-h-0 resize-none overflow-hidden"
           id={`exercise-text-${exercise.id}-${locale}`}
           onChange={(event) =>
             onChange((currentExercise) => updateText(currentExercise, locale, event.target.value))
           }
-          placeholder="Mike{{n}} is jumping{{v}} over the fence{{n}}."
+          // The markers are the exercise's own syntax, passed as values so i18next shows them as typed.
+          placeholder={t("wordTypeEditor.textPlaceholder", {
+            noun: `{{${t("wordTypeEditor.nounSymbol")}}}`,
+            verb: `{{${t("wordTypeEditor.verbSymbol")}}}`,
+          })}
           rows={3}
           value={text}
         />
@@ -295,9 +294,9 @@ export function WordTypeExerciseFields({
         {validation.status !== "idle" && (
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={validation.status === "valid" ? "success" : "warning"}>
-              {getValidationLabel(validation.status)}
+              {t(`wordTypeEditor.validation.${validation.status}`)}
             </Badge>
-            <CardDescription>{validation.message}</CardDescription>
+            <CardDescription>{t(validation.message.key, validation.message.values)}</CardDescription>
           </div>
         )}
       </Field>

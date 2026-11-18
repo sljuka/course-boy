@@ -421,7 +421,7 @@ export function CourseMetadataEditor({
               <FieldGroup>
                 <Field>
                   <FieldLabel htmlFor={`draft-course-title-${locale}`}>
-                    Course title
+                    {t("courseMetadata.title")}
                   </FieldLabel>
                   <Input
                     className="h-9 text-base"
@@ -433,7 +433,7 @@ export function CourseMetadataEditor({
                         event.target.value,
                       )
                     }
-                    placeholder="Course"
+                    placeholder={t("courseMetadata.titlePlaceholder")}
                     ref={
                       locale === activeCourseLocale ? courseTitleRef : undefined
                     }
@@ -442,7 +442,7 @@ export function CourseMetadataEditor({
                 </Field>
                 <Field>
                   <FieldLabel htmlFor={`draft-course-description-${locale}`}>
-                    Description
+                    {t("courseMetadata.description")}
                   </FieldLabel>
                   <Textarea
                     id={`draft-course-description-${locale}`}
@@ -453,7 +453,7 @@ export function CourseMetadataEditor({
                         event.target.value,
                       )
                     }
-                    placeholder="Add a short course description"
+                    placeholder={t("courseMetadata.descriptionPlaceholder")}
                     ref={
                       locale === activeCourseLocale ? descriptionRef : undefined
                     }
@@ -470,7 +470,7 @@ export function CourseMetadataEditor({
             <Field>
               <FieldLabel htmlFor="draft-course-supported-locales">
                 <span className="flex items-center gap-3">
-                  <span>Supported languages</span>
+                  <span>{t("courseMetadata.supportedLanguages")}</span>
                   <Badge shape="circle" variant="secondary">
                     {draft.supportedLocales.length}
                   </Badge>
@@ -532,10 +532,10 @@ export function CourseMetadataEditor({
                       </ComboboxChip>
                     ))}
                   </ComboboxValue>
-                  <ComboboxChipsInput placeholder="Add supported languages" />
+                  <ComboboxChipsInput placeholder={t("courseMetadata.addLanguages")} />
                 </ComboboxChips>
                 <ComboboxContent anchor={supportedLocalesAnchor}>
-                  <ComboboxEmpty>No languages found.</ComboboxEmpty>
+                  <ComboboxEmpty>{t("courseMetadata.noLanguagesFound")}</ComboboxEmpty>
                   <ComboboxList>
                     {locales.map((locale) => (
                       <ComboboxItem key={locale} value={locale}>
@@ -657,7 +657,7 @@ export function CourseMetadataEditor({
               <AccordionItem value="descriptive-tags">
                 <div className="flex items-center gap-1">
                   <AccordionTrigger className="flex-none">
-                    Manage tags
+                    {t("courseMetadata.manageTags")}
                   </AccordionTrigger>
                   <InfoTooltip aria-label={t("courseTags.helpTooltip")}>
                     {t("courseTags.helpTooltip")}

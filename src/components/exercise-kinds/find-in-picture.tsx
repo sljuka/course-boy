@@ -135,11 +135,10 @@ export const findInPictureExerciseEditor: ExerciseKindEditor<
   PrintAnswerComponent,
   ReviewComponent,
   createExercise,
-  description:
-    "A picture or photo with areas you draw on it: the student taps what the question asks for (\"Find the clock\"). Right when exactly the right areas are tapped.",
+  descriptionKey: "exerciseEditor.kinds.findInPicture.description",
   fromShared,
   kind: "find-in-picture",
-  label: "Find in the picture",
+  labelKey: "exerciseEditor.kinds.findInPicture.label",
   toShared,
   validate,
 };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  FormulaError,
   evaluateFormula,
   evaluateFormulaAst,
   parseFormula,
@@ -24,6 +25,13 @@ describe("tokenizeFormula", () => {
 
   it("rejects unexpected characters", () => {
     expect(() => tokenizeFormula("a + $")).toThrow(/Unexpected token/);
+  });
+
+  it("names the mistake with a translation key and values", () => {
+    expect(() => tokenizeFormula("a + $")).toThrow(
+      expect.objectContaining({ key: "exerciseCheck.formula.unexpectedToken", values: { near: "$" } }),
+    );
+    expect(() => tokenizeFormula("a + $")).toThrow(FormulaError);
   });
 });
 
@@ -69,6 +77,9 @@ describe("evaluateFormulaAst", () => {
   it("throws on unknown variables", () => {
     expect(() => evaluateFormulaAst(parseFormula("a + b"), { a: 1 })).toThrow(
       'Unknown variable "b"',
+    );
+    expect(() => evaluateFormulaAst(parseFormula("a + b"), { a: 1 })).toThrow(
+      expect.objectContaining({ key: "exerciseCheck.formula.unknownVariable", values: { name: "b" } }),
     );
   });
 

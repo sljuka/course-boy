@@ -1,3 +1,4 @@
+import { FormulaError } from "./errors";
 import type {
   FormulaAstNode,
   FormulaVariables,
@@ -12,13 +13,17 @@ export function evaluateFormulaAst(
       return node.value;
     case "variable": {
       if (!(node.name in variables)) {
-        throw new Error(`Unknown variable "${node.name}"`);
+        throw new FormulaError(`Unknown variable "${node.name}"`, "exerciseCheck.formula.unknownVariable", {
+          name: node.name,
+        });
       }
 
       const value = variables[node.name];
 
       if (typeof value !== "number" || Number.isNaN(value)) {
-        throw new Error(`Variable "${node.name}" must be a valid number`);
+        throw new FormulaError(`Variable "${node.name}" must be a valid number`, "exerciseCheck.formula.notANumber", {
+          name: node.name,
+        });
       }
 
       return value;
@@ -38,7 +43,7 @@ export function evaluateFormulaAst(
           return left * right;
         case "/":
           if (right === 0) {
-            throw new Error("Division by zero");
+            throw new FormulaError("Division by zero", "exerciseCheck.formula.divisionByZero");
           }
 
           return left / right;

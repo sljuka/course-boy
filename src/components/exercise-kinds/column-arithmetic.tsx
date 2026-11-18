@@ -176,11 +176,10 @@ export const columnArithmeticExerciseEditor: ExerciseKindEditor<
   FieldsComponent: ColumnArithmeticExerciseFields,
   PrintAnswerComponent,
   createExercise,
-  description:
-    "Adding or subtracting big numbers in columns, as on squared paper: the student writes the answer digit by digit from the right, noting what's carried or borrowed. Each attempt gets new numbers from the ranges you set; each digit counts.",
+  descriptionKey: "exerciseEditor.kinds.columnArithmetic.description",
   fromShared,
   kind: "column-arithmetic",
-  label: "Written calculation",
+  labelKey: "exerciseEditor.kinds.columnArithmetic.label",
   toShared,
   validate,
 };

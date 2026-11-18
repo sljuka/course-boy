@@ -122,16 +122,16 @@ export function validate(exercise: SortGroupsTestExercise, locale: Locale): Solu
   const hasPicture = exercise.cardImages.some((image) => image !== null);
   if ([...content.groups, ...content.cards].every((text) => !text.trim()) && !hasPicture) return { status: "idle" };
 
-  if (content.groups.some((group) => !group.trim())) return { message: "Name every group", status: "error" };
+  if (content.groups.some((group) => !group.trim())) return { message: { key: "exerciseCheck.sortGroups.nameEveryGroup" }, status: "error" };
   if (content.cards.some((card) => !card.trim())) {
-    return { message: "Every card needs text (for a picture: what it shows)", status: "error" };
+    return { message: { key: "exerciseCheck.sortGroups.cardNeedsText" }, status: "error" };
   }
   if (!exercise.noRightAnswer) {
     const empty = content.groups.findIndex((_group, index) => !exercise.cardGroups.includes(index));
-    if (empty !== -1) return { message: `No card belongs in "${content.groups[empty]}"`, status: "error" };
+    if (empty !== -1) return { message: { key: "exerciseCheck.sortGroups.emptyGroup", values: { group: content.groups[empty] } }, status: "error" };
   }
-  if (exercise.listen && !exercise.speech) return { message: "Choose the language the cards are heard in", status: "error" };
-  return { message: "Looks good", status: "valid" };
+  if (exercise.listen && !exercise.speech) return { message: { key: "exerciseCheck.sortGroups.chooseLanguage" }, status: "error" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(exercise: SortGroupsTestExercise): SharedSortGroupsTestExerciseDefinition {

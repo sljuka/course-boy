@@ -126,10 +126,10 @@ export const rewriteExerciseEditor: ExerciseKindEditor<
   ReviewComponent,
   reviewIsLabelled: true,
   createExercise,
-  description: "The student writes a sentence (or a few); it's right when it matches any of the answers you give.",
+  descriptionKey: "exerciseEditor.kinds.rewrite.description",
   fromShared,
   kind: "rewrite",
-  label: "Rewrite",
+  labelKey: "exerciseEditor.kinds.rewrite.label",
   toShared,
   validate,
 };

@@ -213,9 +213,8 @@ export const regionLabelExerciseEditor: ExerciseKindEditor<
   createExercise,
   fromShared,
   kind: "region-label",
-  label: "Region label",
-  description:
-    "A diagram with numbered, colored regions the student labels by typing the correct name for each number.",
+  labelKey: "exerciseEditor.kinds.regionLabel.label",
+  descriptionKey: "exerciseEditor.kinds.regionLabel.description",
   toShared,
   validate,
 };

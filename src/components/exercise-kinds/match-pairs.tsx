@@ -182,11 +182,10 @@ export const matchPairsExerciseEditor: ExerciseKindEditor<
   FieldsComponent: MatchPairsExerciseFields,
   PrintAnswerComponent,
   createExercise,
-  description:
-    "Two columns of words or pictures (or sounds heard): the student taps an item, then its partner, until every one is paired. Each right pair counts.",
+  descriptionKey: "exerciseEditor.kinds.matchPairs.description",
   fromShared,
   kind: "match-pairs",
-  label: "Match the pairs",
+  labelKey: "exerciseEditor.kinds.matchPairs.label",
   toShared,
   validate,
 };

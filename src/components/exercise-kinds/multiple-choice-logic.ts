@@ -182,7 +182,7 @@ export function validate(
   const nonEmptyOptions = content.options.filter((option) => option.trim().length > 0);
 
   if (content.options.length < 2 || nonEmptyOptions.length < content.options.length) {
-    return { message: "Every option needs text", status: "error" };
+    return { message: { key: "exerciseCheck.multipleChoice.optionNeedsText" }, status: "error" };
   }
 
   const uniqueOptions = new Set(
@@ -190,7 +190,7 @@ export function validate(
   );
 
   if (uniqueOptions.size !== content.options.length) {
-    return { message: "Options must be unique", status: "error" };
+    return { message: { key: "exerciseCheck.multipleChoice.uniqueOptions" }, status: "error" };
   }
 
   const hasValidRange = exercise.correctOptionIndexes.every(
@@ -198,14 +198,14 @@ export function validate(
   );
 
   if (!hasValidRange) {
-    return { message: "Mark a valid option as correct", status: "error" };
+    return { message: { key: "exerciseCheck.multipleChoice.markValidOption" }, status: "error" };
   }
 
   if (exercise.selectionMode === "single" && exercise.correctOptionIndexes.length !== 1) {
-    return { message: "Mark one option as correct", status: "error" };
+    return { message: { key: "exerciseCheck.common.markOneCorrect" }, status: "error" };
   }
 
-  return { message: "Looks good", status: "valid" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(

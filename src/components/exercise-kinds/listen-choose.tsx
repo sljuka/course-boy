@@ -124,11 +124,10 @@ export const listenChooseExerciseEditor: ExerciseKindEditor<
   FieldsComponent: ListenChooseExerciseFields,
   PrintAnswerComponent,
   createExercise,
-  description:
-    "The student hears a word or sentence (read aloud in the system's voice, never shown) and picks the matching picture or text. For young students and languages: \"Listen and choose\".",
+  descriptionKey: "exerciseEditor.kinds.listenChoose.description",
   fromShared,
   kind: "listen-choose",
-  label: "Listen and choose",
+  labelKey: "exerciseEditor.kinds.listenChoose.label",
   toShared,
   validate,
 };

@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { ColorSwatch } from "@/components/ui/color-swatch";
 import {
@@ -28,6 +29,7 @@ export function ColorPickerField({
   trigger: ReactElement;
   value: string;
 }) {
+  const { t } = useTranslation();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={trigger}>{children}</DropdownMenuTrigger>
@@ -47,9 +49,9 @@ export function ColorPickerField({
         */}
         <DropdownMenuItem closeOnClick={false} render={<label className="relative" />}>
           <ColorSwatch color={value} />
-          <span>Custom color…</span>
+          <span>{t("colorPicker.customColorMenu")}</span>
           <input
-            aria-label="Custom color"
+            aria-label={t("colorPicker.customColor")}
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             onChange={(event) => onChange(event.target.value)}
             type="color"

@@ -60,9 +60,9 @@ export function validate(exercise: RewriteTestExercise, locale: Locale): Solutio
   const content = exercise.locales[locale];
   if (!content || (!content.prompt.trim() && filledSolutions(content.solutions).length === 0)) return { status: "idle" };
   if (filledSolutions(content.solutions).length === 0) {
-    return { message: "Write at least one correct answer", status: "error" };
+    return { message: { key: "exerciseCheck.rewrite.writeAnswer" }, status: "error" };
   }
-  return { message: "Looks good", status: "valid" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(exercise: RewriteTestExercise): SharedRewriteTestExerciseDefinition {

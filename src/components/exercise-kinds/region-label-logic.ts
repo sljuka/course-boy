@@ -194,22 +194,22 @@ export function validate(
   }
 
   if (!exercise.svgAssetFilename) {
-    return { message: "Choose a diagram", status: "error" };
+    return { message: { key: "exerciseCheck.common.chooseDiagram" }, status: "error" };
   }
 
   if (content.prompt.trim().length === 0) {
-    return { message: "Prompt is required", status: "error" };
+    return { message: { key: "exerciseCheck.common.promptRequired" }, status: "error" };
   }
 
   if (exercise.regions.length === 0) {
-    return { message: "Mark at least one region", status: "error" };
+    return { message: { key: "exerciseCheck.common.markRegion" }, status: "error" };
   }
 
   if (exercise.regions.some((region) => parseAnswers(region.answers[locale] ?? "").length === 0)) {
-    return { message: "Every region needs at least one accepted answer", status: "error" };
+    return { message: { key: "exerciseCheck.regionLabel.regionNeedsAnswer" }, status: "error" };
   }
 
-  return { message: "Looks good", status: "valid" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(

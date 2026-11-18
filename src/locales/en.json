@@ -1868,5 +1868,311 @@
       "warning": "Warning",
       "valid": "Valid"
     }
+  },
+  "exerciseCheck": {
+    "common": {
+      "looksGood": "Looks good",
+      "promptRequired": "Prompt is required",
+      "chooseDiagram": "Choose a diagram",
+      "markRegion": "Mark at least one region",
+      "markOneCorrect": "Mark one option as correct"
+    },
+    "matchPairs": {
+      "minPairs": "Add at least {{count}} pairs",
+      "itemNeedsText": "Every item needs text (for a picture: what it shows)",
+      "duplicateItems": "Two items in a column are the same: the student couldn't tell them apart",
+      "chooseLanguage": "Choose the language the left items are heard in"
+    },
+    "findInPicture": {
+      "addPicture": "Add a picture",
+      "describePicture": "Say what the picture shows (for screen readers)",
+      "drawArea": "Draw an area on the picture: drag across what the student should find",
+      "markRightArea": "Mark at least one area as right"
+    },
+    "missingWord": {
+      "markMissingWord": "Mark a missing word with {{marker}}",
+      "enterAnswer": "Enter an answer for {{blank}}"
+    },
+    "punctuation": {
+      "writeSentence": "Write the sentence with its punctuation marks"
+    },
+    "multipleChoice": {
+      "optionNeedsText": "Every option needs text",
+      "uniqueOptions": "Options must be unique",
+      "markValidOption": "Mark a valid option as correct"
+    },
+    "putInOrder": {
+      "minItems": "Add at least {{count}} items",
+      "itemNeedsText": "Every item needs text (for a picture: what it shows)",
+      "duplicateItems": "Two items are the same: the student couldn't tell which goes where",
+      "chooseLanguage": "Choose the language the items are heard in"
+    },
+    "regionLabel": {
+      "regionNeedsAnswer": "Every region needs at least one accepted answer"
+    },
+    "regionMarker": {
+      "regionNeedsLabel": "Every region needs a label"
+    },
+    "regionPicker": {
+      "uploadSvg": "Upload an SVG",
+      "markCorrectRegion": "Click at least one region to mark it correct"
+    },
+    "sortGroups": {
+      "nameEveryGroup": "Name every group",
+      "cardNeedsText": "Every card needs text (for a picture: what it shows)",
+      "emptyGroup": "No card belongs in \"{{group}}\"",
+      "chooseLanguage": "Choose the language the cards are heard in"
+    },
+    "rewrite": {
+      "writeAnswer": "Write at least one correct answer"
+    },
+    "listenChoose": {
+      "writeSpoken": "Write what the student hears",
+      "chooseLanguage": "Choose the language of what's heard",
+      "minOptions": "Add at least two options",
+      "optionNeedsText": "Every option needs text (for a picture: what it shows)",
+      "markRightOption": "Mark the right option"
+    },
+    "wordTypes": {
+      "defineType": "Define at least one word type",
+      "singleCharacterSymbol": "Every type symbol must be a single character",
+      "typeNeedsName": "Every type needs a name",
+      "uniqueSymbols": "Type symbols must be unique",
+      "markWord": "Mark at least one word with a {{marker}}",
+      "unknownSymbol": "Unknown type symbol \"{{symbol}}\""
+    },
+    "columnArithmetic": {
+      "wholeNumbers": "Number {{number}}: use whole numbers from 0 to {{max}}",
+      "minAboveMax": "Number {{number}}: the smallest is bigger than the biggest",
+      "alwaysNegative": "The first number is always smaller than the second: the answer would be below zero",
+      "neverRegroups": "No numbers in these ranges need carrying or borrowing: widen them",
+      "alwaysRegroups": "Numbers in these ranges always need carrying or borrowing: change them",
+      "mostlyNegative": "The first number is hardly ever bigger than the second: the answer would be below zero",
+      "example": "For example {{sample}}"
+    },
+    "numeric": {
+      "result": "Result is {{result}}",
+      "unusedInPrompt": "Variable \"{{name}}\" is not used in prompt",
+      "evenAndOdd": "Variable \"{{name}}\" cannot be both even and odd",
+      "impossibleBounds": "Variable \"{{name}}\" has impossible bounds ({{min}} > {{max}})",
+      "noValidValues": "Variable \"{{name}}\" has no valid values"
+    },
+    "formula": {
+      "invalid": "Invalid solution",
+      "unexpectedToken": "Unexpected token near \"{{near}}\"",
+      "trailingTokens": "Unexpected trailing tokens in formula",
+      "missingClosingParen": "Expected closing \")\"",
+      "unexpectedEnd": "Unexpected end of formula",
+      "expectedOperand": "Expected a number, variable, or parenthesized expression",
+      "unknownVariable": "Unknown variable \"{{name}}\"",
+      "notANumber": "Variable \"{{name}}\" must be a valid number",
+      "divisionByZero": "Division by zero"
+    }
+  },
+  "regionEditor": {
+    "promptLabel": "Prompt",
+    "diagramLabel": "Diagram",
+    "chooseDiagram": "Choose diagram",
+    "presets": "Presets",
+    "presetNames": {
+      "europe": "Europe",
+      "africa": "Africa"
+    },
+    "upload": "Upload",
+    "adjustView": "Adjust view",
+    "done": "Done",
+    "resetView": "Reset view",
+    "clearDiagram": "Clear diagram",
+    "adjustViewHelp": "Drag to pan, use the zoom buttons to crop. This is the crop students will see.",
+    "validation": {
+      "error": "Invalid",
+      "warning": "Warning",
+      "valid": "Valid"
+    },
+    "loadError": "Couldn't load this diagram.",
+    "loading": "Loading diagram…",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "label": {
+      "promptPlaceholder": "Name each numbered region",
+      "help": "Click regions in the order students should number them. Click a marked region again to remove it. Drag a number to fine-tune its position; double-click to reset it.",
+      "answersLabel": "Accepted answers for region {{number}}",
+      "answersPlaceholder": "Paris, or Solution1, Solution2",
+      "matchCase": "Match case",
+      "removeRegion": "Remove region {{number}}"
+    },
+    "marker": {
+      "promptPlaceholder": "Match each region to its color",
+      "help": "Click a region to mark it — each one gets its own color. Click a marked region again to remove it.",
+      "labelFor": "Label for {{region}}",
+      "labelPlaceholder": "Region name or label",
+      "removeRegion": "Remove {{region}}"
+    },
+    "picker": {
+      "promptPlaceholder": "Mark countries from the Scandinavian peninsula",
+      "help": "Click the regions students should mark as correct.",
+      "outOfView": "These correct regions are outside the current view: {{regions}}",
+      "markerColor": "Marker color",
+      "chooseColor": "Choose color"
+    }
+  },
+  "exerciseEditor": {
+    "previewTest": "Preview test",
+    "previewNeedsExercise": "Add at least one exercise to preview this test",
+    "addExercise": "Add exercise",
+    "exerciseType": "Exercise type",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "example": "Example",
+    "saveExercise": "Save exercise",
+    "needsPrompt": "Add a prompt before saving this exercise",
+    "needsPromptAnd": "Add a prompt before saving this exercise. {{problem}}",
+    "noPrompt": "No prompt yet",
+    "exercise": "Exercise",
+    "findTag": "Find a tag",
+    "noTags": "No descriptive tags defined yet.",
+    "actions": "Exercise actions",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "tags": "Tags",
+    "delete": "Delete",
+    "removeTag": "Remove {{tag}} tag",
+    "addTag": "Add tag",
+    "testTitle": "Test title",
+    "testTitleRequired": "Test title for {{language}} is required.",
+    "slashSubtext": "A gradable exercise a student answers inline",
+    "kinds": {
+      "columnArithmetic": {
+        "label": "Written calculation",
+        "description": "Adding or subtracting big numbers in columns, as on squared paper: the student writes the answer digit by digit from the right, noting what's carried or borrowed. Each attempt gets new numbers from the ranges you set; each digit counts."
+      },
+      "findInPicture": {
+        "label": "Find in the picture",
+        "description": "A picture or photo with areas you draw on it: the student taps what the question asks for (\"Find the clock\"). Right when exactly the right areas are tapped."
+      },
+      "listenChoose": {
+        "label": "Listen and choose",
+        "description": "The student hears a word or sentence (read aloud in the system's voice, never shown) and picks the matching picture or text. For young students and languages: \"Listen and choose\"."
+      },
+      "matchPairs": {
+        "label": "Match the pairs",
+        "description": "Two columns of words or pictures (or sounds heard): the student taps an item, then its partner, until every one is paired. Each right pair counts."
+      },
+      "missingWord": {
+        "label": "Missing words",
+        "description": "A passage with blanks the student fills in with the correct word or phrase."
+      },
+      "multipleChoice": {
+        "label": "Multiple choice",
+        "description": "A prompt with several options where the student can mark one, several, or none of them as correct. Turn on \"Single answer\" below for a classic one-correct-answer question (shown with radio buttons); leave it off to let students check every option they believe is correct."
+      },
+      "numeric": {
+        "label": "Template",
+        "description": "Template exercise is usually a story involving some activity that can be described numerically. Story can contain variables that are marked with {{variable}} (this is example for variable \"x\"). Solution formula is provided which uses the values of the variable to calculate a solution. Teacher provides the story (prompt), variables (including their constraints) and a formula."
+      },
+      "punctuation": {
+        "label": "Punctuation",
+        "description": "A sentence without its punctuation: the student places each mark where it belongs."
+      },
+      "putInOrder": {
+        "label": "Put in order",
+        "description": "Cards (words, sentences, pictures or sounds heard) shown shuffled: the student taps them in the right order, numbering them 1, 2, 3… Each card in its place counts."
+      },
+      "regionLabel": {
+        "label": "Region label",
+        "description": "A diagram with numbered, colored regions the student labels by typing the correct name for each number."
+      },
+      "regionMarker": {
+        "label": "Region marker",
+        "description": "In this exercise type student can mark various regions on the diagram. Teacher can either upload his own SVG diagram or use one of the presets (like Europe in example below). There is also possibility to zoom-in and pan to show only part of the diagram to the student."
+      },
+      "regionPicker": {
+        "label": "Region picker",
+        "description": "Upload a diagram (an SVG with id'd shapes, like a country map) and mark which shapes are the correct answer. Students answer by clicking the same shapes in the diagram."
+      },
+      "rewrite": {
+        "label": "Rewrite",
+        "description": "The student writes a sentence (or a few); it's right when it matches any of the answers you give."
+      },
+      "sortGroups": {
+        "label": "Sort into groups",
+        "description": "Two to four named groups and a pile of cards (words, pictures or sounds heard): the student taps or drags each card into its group. Each card in its group counts; or no right answer, for \"I like / I don't like\"."
+      },
+      "wordTypes": {
+        "label": "Word types",
+        "description": "A passage where the student tags highlighted words with their grammatical type."
+      }
+    }
+  },
+  "courseMetadata": {
+    "title": "Course title",
+    "titlePlaceholder": "Course",
+    "description": "Description",
+    "descriptionPlaceholder": "Add a short course description",
+    "supportedLanguages": "Supported languages",
+    "addLanguages": "Add supported languages",
+    "noLanguagesFound": "No languages found.",
+    "manageTags": "Manage tags"
+  },
+  "missingWordEditor": {
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Fill in the missing words",
+    "textLabel": "Text",
+    "textPlaceholder": "The capital of France is {{first}}. Capital of Serbia is {{second}}.",
+    "missingWordsLabel": "Missing words",
+    "answerFor": "Answer for {{blank}}",
+    "answersPlaceholder": "Paris, or Solution1, Solution2",
+    "matchCase": "Match case",
+    "validation": {
+      "error": "Invalid",
+      "warning": "Warning",
+      "valid": "Valid"
+    }
+  },
+  "multipleChoiceEditor": {
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "What is the capital of France?",
+    "optionsLabel": "Options",
+    "markCorrect": "Mark option {{number}} as correct",
+    "option": "Option {{number}}",
+    "removeOption": "Remove option {{number}}",
+    "addOption": "Add option",
+    "singleAnswer": "Single answer (radio-button) selection",
+    "validation": {
+      "error": "Invalid",
+      "warning": "Warning",
+      "valid": "Valid"
+    }
+  },
+  "wordTypeEditor": {
+    "chooseColor": "Choose color",
+    "chooseIcon": "Choose icon (optional)",
+    "noIcon": "No icon",
+    "customIcon": "Custom icon",
+    "customIconPlaceholder": "Custom…",
+    "promptLabel": "Prompt",
+    "promptPlaceholder": "Mark the nouns and verbs",
+    "wordTypesLabel": "Word types",
+    "name": "Name",
+    "namePlaceholder": "Noun",
+    "symbol": "Symbol",
+    "nounSymbol": "n",
+    "verbSymbol": "v",
+    "removeWordType": "Remove word type",
+    "addType": "Add type",
+    "textLabel": "Text",
+    "textPlaceholder": "Mike{{noun}} is jumping{{verb}} over the fence{{noun}}.",
+    "validation": {
+      "error": "Invalid",
+      "warning": "Warning",
+      "valid": "Valid"
+    }
+  },
+  "colorPicker": {
+    "customColorMenu": "Custom color…",
+    "customColor": "Custom color"
+  },
+  "wordTypeTokens": {
+    "unmarked": "unmarked"
   }
 }

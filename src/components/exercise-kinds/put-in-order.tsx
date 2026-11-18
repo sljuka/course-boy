@@ -168,11 +168,10 @@ export const putInOrderExerciseEditor: ExerciseKindEditor<
   FieldsComponent: PutInOrderExerciseFields,
   PrintAnswerComponent,
   createExercise,
-  description:
-    "Cards (words, sentences, pictures or sounds heard) shown shuffled: the student taps them in the right order, numbering them 1, 2, 3… Each card in its place counts.",
+  descriptionKey: "exerciseEditor.kinds.putInOrder.description",
   fromShared,
   kind: "put-in-order",
-  label: "Put in order",
+  labelKey: "exerciseEditor.kinds.putInOrder.label",
   toShared,
   validate,
 };

@@ -228,9 +228,8 @@ export const multipleChoiceExerciseEditor: ExerciseKindEditor<
   createExercise,
   fromShared,
   kind: "multiple-choice",
-  label: "Multiple choice",
-  description:
-    "A prompt with several options where the student can mark one, several, or none of them as correct. Turn on \"Single answer\" below for a classic one-correct-answer question (shown with radio buttons); leave it off to let students check every option they believe is correct.",
+  labelKey: "exerciseEditor.kinds.multipleChoice.label",
+  descriptionKey: "exerciseEditor.kinds.multipleChoice.description",
   toShared,
   validate,
 };

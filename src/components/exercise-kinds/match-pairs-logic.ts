@@ -102,17 +102,17 @@ export function validate(exercise: MatchPairsTestExercise, locale: Locale): Solu
   const hasPicture = [...exercise.leftImages, ...exercise.rightImages].some((image) => image !== null);
   if (items.every((item) => !item.trim()) && !hasPicture) return { status: "idle" };
 
-  if (content.left.length < MIN_PAIRS) return { message: `Add at least ${MIN_PAIRS} pairs`, status: "error" };
+  if (content.left.length < MIN_PAIRS) return { message: { key: "exerciseCheck.matchPairs.minPairs", values: { count: MIN_PAIRS } }, status: "error" };
   // A picture's text is its alt text, needed too.
   if (items.some((item) => !item.trim())) {
-    return { message: "Every item needs text (for a picture: what it shows)", status: "error" };
+    return { message: { key: "exerciseCheck.matchPairs.itemNeedsText" }, status: "error" };
   }
   const repeated = (list: string[]) => new Set(list.map((item) => item.trim().toLocaleLowerCase())).size !== list.length;
   if (repeated(content.left) || repeated(content.right)) {
-    return { message: "Two items in a column are the same: the student couldn't tell them apart", status: "error" };
+    return { message: { key: "exerciseCheck.matchPairs.duplicateItems" }, status: "error" };
   }
-  if (exercise.listenLeft && !exercise.speech) return { message: "Choose the language the left items are heard in", status: "error" };
-  return { message: "Looks good", status: "valid" };
+  if (exercise.listenLeft && !exercise.speech) return { message: { key: "exerciseCheck.matchPairs.chooseLanguage" }, status: "error" };
+  return { message: { key: "exerciseCheck.common.looksGood" }, status: "valid" };
 }
 
 export function toShared(exercise: MatchPairsTestExercise): SharedMatchPairsTestExerciseDefinition {
