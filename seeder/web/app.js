@@ -15,10 +15,11 @@ const TEXT = {
     error: 'Error: {error} (trying again in a minute)',
     failed: 'That didn’t work. Is the seeder still running?',
     fetching: 'Fetching…',
+    fetchingVersion: 'Fetching {version}…',
     invalid: 'That isn’t a Matko code or link.',
     kept: 'Kept',
     keptCount: '{count} kept',
-    keptState: 'Kept {version} · {when}',
+    keptState: 'Kept · {when}',
     kind: { channel: 'channel', course: 'course', program: 'program' },
     language: 'Language',
     listedBy: 'kept for {name}',
@@ -35,8 +36,10 @@ const TEXT = {
     spaceDiskFull: 'The disk is nearly full ({free} left). What’s kept stays online; new codes wait until there’s more space.',
     spaceDiskLow: 'The disk is getting full: {free} left.',
     title: 'Matko seeder',
+    updating: 'fetching {version}…',
     used: 'Matko uses {used}',
     usedOf: 'Matko uses {used} of {max}',
+    version: 'Version {version}',
     waiting: 'Waiting to start',
     waitingSpace: 'Waiting for space',
     warning: 'This box can read the courses it keeps. Add only courses you’re happy for whoever runs it to see.',
@@ -52,10 +55,11 @@ const TEXT = {
     error: 'Greška: {error} (ponovo za minut)',
     failed: 'Nije uspelo. Da li seeder još radi?',
     fetching: 'Preuzima se…',
+    fetchingVersion: 'Preuzima se {version}…',
     invalid: 'To nije Matko kod ni link.',
     kept: 'Čuva',
     keptCount: 'Čuva: {count}',
-    keptState: 'Sačuvano {version} · {when}',
+    keptState: 'Sačuvano · {when}',
     kind: { channel: 'kanal', course: 'kurs', program: 'program' },
     language: 'Jezik',
     listedBy: 'zbog: {name}',
@@ -72,8 +76,10 @@ const TEXT = {
     spaceDiskFull: 'Disk je skoro pun (ostalo je {free}). Sačuvano ostaje na mreži; novi kodovi čekaju dok ne bude više mesta.',
     spaceDiskLow: 'Disk se puni: ostalo je {free}.',
     title: 'Matko: čuvanje kurseva',
+    updating: 'preuzima se {version}…',
     used: 'Matko zauzima {used}',
     usedOf: 'Matko zauzima {used} od {max}',
+    version: 'Verzija {version}',
     waiting: 'Čeka pokretanje',
     waitingSpace: 'Čeka mesto na disku',
     warning: 'Ovaj uređaj može da čita kurseve koje čuva. Dodaj samo kurseve za koje ti ne smeta da ih vidi onaj ko ga drži.',
@@ -141,6 +147,9 @@ function pickLanguage() {
 
 let language = pickLanguage()
 let latest = null
+// The code the "Added" message is about: the message goes once the seeder has
+// found it on the network, since its row then says the rest.
+let addedCode = null
 
 function t(key, values = {}) {
   const text = key.split('.').reduce((node, part) => node?.[part], TEXT[language]) ?? key
@@ -182,19 +191,27 @@ function describe(entry, code) {
   const kind = entry.kind ? t(`kind.${entry.kind}`) : t('lookingUp')
   const state =
     entry.state === 'kept'
-      ? t('keptState', { version: entry.version ?? '', when: when(entry.kept?.keptAt) })
+      ? t('keptState', { when: when(entry.kept?.keptAt) })
       : entry.state === 'error'
         ? t('error', { error: entry.error ?? '' })
-        : t('fetching')
-  return { kind, name, state, stateClass: entry.state ?? 'fetching' }
+        : entry.fetchingVersion
+          ? t('fetchingVersion', { version: entry.fetchingVersion })
+          : t('fetching')
+  // A newer version downloading while the one above stays online.
+  const updating = entry.state === 'kept' && entry.fetchingVersion ? t('updating', { version: entry.fetchingVersion }) : null
+  return { kind, name, state, stateClass: entry.state ?? 'fetching', updating }
 }
 
 function keptItem(entry, { code, listedFor }) {
   const item = element('li', listedFor ? 'listed' : '')
   item.dataset.code = code
-  const { kind, name, state, stateClass } = describe(entry, code)
+  const { kind, name, state, stateClass, updating } = describe(entry, code)
   const top = element('div', 'row')
-  top.append(element('span', 'name', name || shortCode(code)))
+  const heading = element('span', 'heading')
+  heading.append(element('span', 'name', name || shortCode(code)))
+  // The version held in full: what students get from this box now.
+  if (entry?.version) heading.append(element('span', 'version', t('version', { version: entry.version })))
+  top.append(heading)
   if (!listedFor) {
     const remove = element('button', 'quiet', t('remove'))
     remove.type = 'button'
@@ -204,7 +221,9 @@ function keptItem(entry, { code, listedFor }) {
   item.append(top)
   const parts = [kind, listedFor ? t('listedBy', { name: listedFor }) : null, entry ? t('peers', { count: entry.peers ?? 0 }) : null].filter(Boolean)
   const meta = element('div', 'meta')
-  meta.append(element('span', `state-${stateClass}`, state), document.createTextNode(parts.length ? ` · ${parts.join(' · ')}` : ''))
+  meta.append(element('span', `state-${stateClass}`, state))
+  if (updating) meta.append(document.createTextNode(' · '), element('span', 'state-fetching', updating))
+  meta.append(document.createTextNode(parts.length ? ` · ${parts.join(' · ')}` : ''))
   item.append(meta)
   return item
 }
@@ -254,6 +273,7 @@ function render() {
   }
   list.replaceChildren(...items)
   document.getElementById('empty').hidden = latest.added.length > 0
+  if (addedCode && byCode.get(addedCode)?.title) say('')
 
   const recent = document.getElementById('recent')
   recent.replaceChildren(
@@ -287,7 +307,8 @@ function renderSpace(space) {
   node.className = `message${space?.full ? ' bad' : ''}`
 }
 
-function say(key, bad = false) {
+function say(key, bad = false, code = null) {
+  addedCode = key === 'added' ? code : null
   const message = document.getElementById('message')
   message.textContent = key ? t(key) : ''
   message.className = `message${bad ? ' bad' : ''}`
@@ -334,7 +355,7 @@ document.getElementById('add').addEventListener('submit', async (event) => {
       say(body.error === 'invalid' ? 'invalid' : 'failed', true)
       return
     }
-    say(body.changed ? 'added' : 'already')
+    say(body.changed ? 'added' : 'already', false, body.code ?? null)
     if (body.changed) input.value = ''
   } catch {
     say('failed', true)

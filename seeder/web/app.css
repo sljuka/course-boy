@@ -173,9 +173,27 @@ ol.recent {
   gap: 0.75rem;
 }
 
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
 .name {
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+.version {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  padding: 0 0.5rem;
+  white-space: nowrap;
 }
 
 .meta {
