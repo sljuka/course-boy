@@ -28,7 +28,11 @@ support: https://github.com/sljuka/course-boy/issues
 port: 8380
 gallery: []
 path: ""
-defaultUsername: ""
+# The page asks for a password (any user name works): Umbrel's per-install
+# APP_PASSWORD, shown to the owner, since a host-network app isn't behind
+# Umbrel's login (docker-compose.yml).
+defaultUsername: "matko"
 defaultPassword: ""
+deterministicPassword: true
 submitter: Matko
 submission: https://github.com/sljuka/course-boy

@@ -1,24 +1,23 @@
 version: "3.7"
 
 services:
-  app_proxy:
-    environment:
-      # <app-id>_<service>_1, and the port the seeder's page listens on inside.
-      APP_HOST: matko-seeder_seeder_1
-      APP_PORT: 8380
-
   seeder:
     # Filled in by pin-image.sh from the released multi-arch image.
     image: ghcr.io/sljuka/matko-seeder:VERSION@sha256:DIGEST
+    # The host's network, not Umbrel's bridge (SLJ-194): behind the bridge, a
+    # teacher's app on the same home network couldn't be reached from the
+    # seeder (checked on a real Umbrel). Host-network apps can't use Umbrel's
+    # app proxy, so there's no app_proxy service and the page has a password
+    # of its own: Umbrel's per-install APP_PASSWORD, which it shows the owner
+    # (deterministicPassword in umbrel-app.yml).
+    network_mode: host
     user: "1000:1000"
     init: true
     restart: on-failure
     environment:
       MATKO_SEED_DATA: /data
-      # The page, behind Umbrel's own login (its app proxy), so no password of
-      # its own (SLJ-194).
       MATKO_SEED_WEB_PORT: 8380
       MATKO_SEED_WEB_HOST: 0.0.0.0
-      MATKO_SEED_WEB_OPEN: "1"
+      MATKO_SEED_WEB_PASSWORD: ${APP_PASSWORD}
     volumes:
       - ${APP_DATA_DIR}/data/seeder:/data

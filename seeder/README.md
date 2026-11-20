@@ -44,8 +44,8 @@ node seeder/cli.mjs run --web 8380      # then open http://127.0.0.1:8380/
 It listens on `127.0.0.1` unless `MATKO_SEED_WEB_HOST` says otherwise (`0.0.0.0` for
 every network). Anywhere but this computer it won't start without
 `MATKO_SEED_WEB_PASSWORD` (asked by the browser, any user name), unless
-`MATKO_SEED_WEB_OPEN=1` says something in front of it already checks who's there, as
-Umbrel's login does. It never shows a course's content, and can't publish.
+`MATKO_SEED_WEB_OPEN=1` says something in front of it already checks who's there (a
+reverse proxy with its own login). It never shows a course's content, and can't publish.
 
 `--data <dir>` chooses where it keeps everything (default: `$MATKO_SEED_DATA`, or
 `~/.matko-seed`):
@@ -152,7 +152,8 @@ Then `systemctl enable --now matko-seeder`, and add codes as the same user:
 
 - The image is built for both platforms in CI and pushed to GHCR at a release, and the
   Umbrel app is ready in `seeder/umbrel/`; the store repository itself is made and
-  pushed by hand (seeder/umbrel/README.md). Still to confirm on a real Umbrel: that
-  students reach a seeder on its bridge network (one more NAT) and that it keeps a
-  course across a reboot (SLJ-194).
+  pushed by hand (seeder/umbrel/README.md). Checked on a real Umbrel by hand: students
+  import from it alone, and it fetches a new version, on the host's network (the app
+  uses it; on Docker's bridge network it couldn't reach a teacher on the same home
+  network). Still to confirm there: that it keeps a course across a reboot (SLJ-194).
 - Pairing with the app, so every Publish adds the course on its own (SLJ-188).
