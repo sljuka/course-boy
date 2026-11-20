@@ -1627,3 +1627,13 @@ computer is off. It never holds the publishing identity: it only serves.
   seeder only. Then `remove` and SIGTERM. A failing test prints the seeder's log.
 - **Since (SLJ-194):** a Docker image, a web page (`seeder/web.mjs`, `seeder/web/`), and an
   Umbrel app in `seeder/umbrel/`; see seeder/README.md.
+- **The teacher's app looks up what it publishes, not only announces it** (SLJ-194,
+  `PUBLISHED_JOIN` in `workers/main.cjs`), as maintainers of a shared course already did.
+  Announcing alone left reaching the teacher to the seeder: on Docker's bridge network,
+  on the teacher's own home network, it never could (checked on a real Umbrel), so new
+  versions didn't arrive; elsewhere it waited for its next lookup (Hyperswarm refreshes
+  every 10-12 minutes). The teacher's app downloads nothing more for it; it also
+  connects to online students sharing its courses, within the worker's connection limit
+  (`connection-limit.cjs`; Hyperswarm opens at most 64 itself). With more students online
+  than that, a lookup may not reach the seeder: pairing (SLJ-188) tells it directly. The
+  Umbrel app runs on the host's network as well.

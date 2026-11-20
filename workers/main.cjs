@@ -206,6 +206,16 @@ async function start() {
     )
   }
 
+  // How a published course or program joins the swarm: announced, so students
+  // find it, and looked up too (SLJ-194), so this computer finds the seeders
+  // keeping it (and online students) as soon as it starts. The teacher's app
+  // downloads nothing from them; the lookup is what lets a new version reach a
+  // seeder that can't reach the teacher, such as one behind Docker's bridge
+  // network on the teacher's own home network, and it spares a seeder the wait
+  // for its own next lookup (Hyperswarm refreshes every 10-12 minutes). A
+  // course with several maintainers already joins this way (ensureSharedDrive).
+  const PUBLISHED_JOIN = { client: true, server: true }
+
   async function closePublishedDrive(courseId) {
     const entry = publishedDrives.get(courseId)
     if (!entry) return
@@ -223,7 +233,8 @@ async function start() {
 
     const drive = new Hyperdrive(store.session(), IdEncoding.decode(driveKey))
     await drive.ready()
-    const discovery = swarm.join(drive.discoveryKey, { server: true, client: false })
+    // Announced and looked up, like a published one (openPublishedDrive).
+    const discovery = swarm.join(drive.discoveryKey, PUBLISHED_JOIN)
     const entry = { discovery, drive, writable: false }
     publishedDrives.set(courseId, entry)
     clearOldVersionsSoon(drive, { oncePerRun: true, published: true })
@@ -315,9 +326,8 @@ async function start() {
       await cores.close()
     }
 
-    // A fresh course has nothing to download, so client discovery is unnecessary here
-    // — but keep seeding it for as long as this worker process runs.
-    const discovery = swarm.join(drive.discoveryKey, { server: true, client: false })
+    // Seeded for as long as this worker runs: announced, and looked up too.
+    const discovery = swarm.join(drive.discoveryKey, PUBLISHED_JOIN)
     const entry = { discovery, drive, writable: true }
     publishedDrives.set(courseId, entry)
     return entry

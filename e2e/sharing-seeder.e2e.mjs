@@ -5,7 +5,8 @@
 //
 //   teacher publishes → `add` the code, `run` the seeder → it keeps the course
 //   teacher quits → a new student imports, from the seeder alone
-//   student quits; teacher publishes again → the seeder fetches it on its own
+//   student quits; the seeder restarts; teacher publishes again → the seeder
+//   fetches it on its own
 //   teacher quits; the student starts → offered the new version, applies it
 //   `remove` → a running seeder stops keeping it; SIGTERM → it stops
 //
@@ -97,6 +98,15 @@ describe('the headless seeder (SLJ-144)', () => {
     return entry
   }
 
+  function startSeeder() {
+    const [command, commandArgs] = seederCommand(['run'])
+    seeder = spawn(command, commandArgs, {
+      env: { ...process.env, MATKO_DHT_BOOTSTRAP: bootstrap() },
+    })
+    seeder.stdout.on('data', (chunk) => seederLog.push(chunk.toString()))
+    seeder.stderr.on('data', (chunk) => seederLog.push(chunk.toString()))
+  }
+
   // The seeder's own log, when a test fails: it isn't a window, so
   // e2e/failures.mjs can't record it.
   const dumpSeederLog = () => onTestFailed(() => console.log(`seeder log:\n${seederLog.join('')}`))
@@ -132,12 +142,7 @@ describe('the headless seeder (SLJ-144)', () => {
     expect(cli('add', `matko://import/${code}`)).toMatch(/^Added /)
     expect(cli('status')).toMatch(/Not running[\s\S]*waiting to start/)
 
-    const [command, commandArgs] = seederCommand(['run'])
-    seeder = spawn(command, commandArgs, {
-      env: { ...process.env, MATKO_DHT_BOOTSTRAP: bootstrap() },
-    })
-    seeder.stdout.on('data', (chunk) => seederLog.push(chunk.toString()))
-    seeder.stderr.on('data', (chunk) => seederLog.push(chunk.toString()))
+    startSeeder()
 
     const kept = await waitForSeeder((entry) => entry.state === 'kept')
     expect(kept).toMatchObject({ id: ids.courseId, kind: 'course', title: 'E2E Seeded Course', version: firstVersion })
@@ -193,8 +198,19 @@ describe('the headless seeder (SLJ-144)', () => {
     await close('student')
   })
 
-  it("the seeder fetches the teacher's next version on its own", async () => {
+  // The seeder restarts while the teacher's app is closed (a reboot, a new
+  // container), so it has never seen this teacher's app, and its first lookup
+  // finds nobody. The teacher's app looks up what it publishes too (SLJ-194),
+  // so either side can find the other. What that fixes can't happen on this
+  // testnet, where every peer reaches every other: a seeder that can't
+  // connect to the teacher (Docker's bridge network on the teacher's home
+  // network) never got a new version until the teacher's app connected to it.
+  it("a seeder restarted while the teacher was away fetches the teacher's next version on its own", async () => {
     dumpSeederLog()
+    seeder.kill('SIGTERM')
+    await expect.poll(() => seeder.exitCode, { timeout: 15_000 }).toBe(0)
+    startSeeder()
+    await waitForSeeder((entry, status) => status.running && entry.state === 'kept' && entry.version === firstVersion)
     const teacher = await launch('teacher', { fresh: false })
     await unlockIdentity(teacher)
     await writeLesson(teacher, ids, 'Second version, fetched by the seeder.')
