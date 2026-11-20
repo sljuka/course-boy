@@ -17,6 +17,9 @@ description: >-
   including ones added later.
 
 
+  On first open, create the admin account; it can add accounts for other people.
+
+
   It can read the courses it keeps, so add only courses you're happy for whoever runs
   this box to see. It never publishes anything and holds no publishing identity.
 releaseNotes: ""
@@ -28,11 +31,9 @@ support: https://github.com/sljuka/course-boy/issues
 port: 8380
 gallery: []
 path: ""
-# The page asks for a password (any user name works): Umbrel's per-install
-# APP_PASSWORD, shown to the owner, since a host-network app isn't behind
-# Umbrel's login (docker-compose.yml).
-defaultUsername: "matko"
+# None: the page has accounts of its own, the first made on first open
+# (docker-compose.yml).
+defaultUsername: ""
 defaultPassword: ""
-deterministicPassword: true
 submitter: Matko
 submission: https://github.com/sljuka/course-boy

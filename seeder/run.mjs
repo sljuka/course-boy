@@ -78,7 +78,7 @@ const MEASURE_MS = 60_000
 
 // Runs until `stop()` (or SIGINT/SIGTERM, with `handleSignals`). `bootstrap`:
 // a test-only local DHT ("host:port,…"), the public network otherwise.
-// `web`: { port, host, password, open } to serve the page (web.mjs), or null.
+// `web`: { port, host, open, setupOpen } to serve the page (web.mjs), or null.
 // `maxStore` / `minFree`: the space limits in bytes (space.mjs).
 export async function runSeeder({
   bootstrap = process.env.MATKO_DHT_BOOTSTRAP ?? '',
@@ -265,7 +265,7 @@ export async function runSeeder({
         dataDir,
         state: () => ({ kept: keptNow, recent, running: !stopping, space, waiting: [...waiting] }),
       })
-      log(`web page on http://${web.host?.includes(':') ? `[${web.host}]` : (web.host ?? '127.0.0.1')}:${webServer.port}/${web.password ? ' (with a password)' : ''}`)
+      log(`web page on http://${web.host?.includes(':') ? `[${web.host}]` : (web.host ?? '127.0.0.1')}:${webServer.port}/${web.open ? ' (open: something in front of it checks who it is)' : ''}`)
     } catch (error) {
       await stop(1)
       throw new Error(`The web page didn't start: ${error.message}`)

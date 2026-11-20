@@ -31,6 +31,11 @@
   box-sizing: border-box;
 }
 
+/* `hidden` wins over a class's display (the account bar is a flex row). */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -239,4 +244,85 @@ ol.recent {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Accounts (SLJ-194): the account bar, the setup, sign-in and password forms,
+   and the admin's Accounts section. */
+.header-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.account-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.panel {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  padding: 0.25rem 1rem 1rem;
+  margin: 1.5rem 0;
+  max-width: 24rem;
+}
+
+.panel h2 {
+  margin-top: 0.75rem;
+}
+
+.panel label {
+  display: block;
+  margin: 0.75rem 0;
+}
+
+.panel label > span,
+.inline-form label > span {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.panel input {
+  width: 100%;
+}
+
+.panel .buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+p.panel {
+  max-width: none;
+  padding: 1rem;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.inline-form label {
+  margin: 0;
+  flex: 1 1 10rem;
+}
+
+.inline-form input {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
 }

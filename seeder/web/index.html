@@ -5,47 +5,102 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Matko seeder</title>
     <link rel="stylesheet" href="app.css" />
-    <script src="app.js" defer></script>
+    <script type="module" src="app.js"></script>
   </head>
   <body>
     <main>
       <header>
         <h1 data-text="title">Matko seeder</h1>
-        <label class="language">
-          <span class="visually-hidden" data-text="language">Language</span>
-          <select id="language">
-            <option value="en">English</option>
-            <option value="sr">Srpski</option>
-            <option value="sr-Cyrl">Српски</option>
-          </select>
-        </label>
+        <div class="header-end">
+          <span class="account-bar" id="account-bar" hidden>
+            <span id="signed-in-as"></span>
+            <button class="quiet" id="change-password" type="button" data-text="changePassword"></button>
+            <button class="quiet" id="sign-out" type="button" data-text="signOut"></button>
+          </span>
+          <label class="language">
+            <span class="visually-hidden" data-text="language">Language</span>
+            <select id="language">
+              <option value="en">English</option>
+              <option value="sr">Srpski</option>
+              <option value="sr-Cyrl">Српски</option>
+            </select>
+          </label>
+        </div>
       </header>
 
-      <p class="summary" id="summary" aria-live="polite"></p>
-      <p class="message" id="space" role="status" hidden></p>
+      <!-- First run: making the admin account (web.mjs says who may). -->
+      <form class="panel" id="setup-form" autocomplete="on" hidden>
+        <h2 data-text="setupTitle"></h2>
+        <p class="hint" data-text="setupHint"></p>
+        <label><span data-text="name"></span><input name="name" autocomplete="username" maxlength="32" required /></label>
+        <label><span data-text="password"></span><input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <label><span data-text="passwordAgain"></span><input name="again" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <button type="submit" data-text="createAccount"></button>
+        <p class="message" role="status"></p>
+      </form>
+      <p class="panel hint" id="setup-elsewhere" hidden></p>
 
-      <form id="add" autocomplete="off">
-        <label for="code" data-text="addLabel">Course, program or channel code or link</label>
-        <div class="add-row">
-          <input id="code" name="code" spellcheck="false" required />
-          <button type="submit" data-text="addButton">Keep it</button>
-        </div>
-        <p class="hint" data-text="addHint"></p>
-        <p class="message" id="message" role="status"></p>
+      <form class="panel" id="login-form" hidden>
+        <h2 data-text="signIn"></h2>
+        <label><span data-text="name"></span><input name="name" autocomplete="username" required /></label>
+        <label><span data-text="password"></span><input name="password" type="password" autocomplete="current-password" required /></label>
+        <button type="submit" data-text="signIn"></button>
+        <p class="message" role="status"></p>
       </form>
 
-      <section aria-labelledby="kept-heading">
-        <h2 id="kept-heading" data-text="kept">Kept</h2>
-        <ul class="kept" id="kept"></ul>
-        <p class="empty" id="empty" data-text="nothing" hidden></p>
-      </section>
+      <form class="panel" id="password-form" hidden>
+        <h2 data-text="changePassword"></h2>
+        <label><span data-text="currentPassword"></span><input name="current" type="password" autocomplete="current-password" required /></label>
+        <label><span data-text="newPassword"></span><input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <label><span data-text="passwordAgain"></span><input name="again" type="password" autocomplete="new-password" minlength="8" required /></label>
+        <div class="buttons">
+          <button type="submit" data-text="save"></button>
+          <button class="quiet" id="password-cancel" type="button" data-text="cancel"></button>
+        </div>
+        <p class="message" role="status"></p>
+      </form>
 
-      <section aria-labelledby="recent-heading">
-        <h2 id="recent-heading" data-text="recent">Recent</h2>
-        <ol class="recent" id="recent"></ol>
-      </section>
+      <!-- What the seeder keeps: for whoever may use the page. -->
+      <div id="seeder" hidden>
+        <p class="summary" id="summary" aria-live="polite"></p>
+        <p class="message" id="space" role="status" hidden></p>
 
-      <p class="warning" data-text="warning"></p>
+        <form id="add" autocomplete="off">
+          <label for="code" data-text="addLabel">Course, program or channel code or link</label>
+          <div class="add-row">
+            <input id="code" name="code" spellcheck="false" required />
+            <button type="submit" data-text="addButton">Keep it</button>
+          </div>
+          <p class="hint" data-text="addHint"></p>
+          <p class="message" id="message" role="status"></p>
+        </form>
+
+        <section aria-labelledby="kept-heading">
+          <h2 id="kept-heading" data-text="kept">Kept</h2>
+          <ul class="kept" id="kept"></ul>
+          <p class="empty" id="empty" data-text="nothing" hidden></p>
+        </section>
+
+        <!-- The admin's: who else can use the page. -->
+        <section aria-labelledby="accounts-heading" id="accounts-section" hidden>
+          <h2 id="accounts-heading" data-text="accounts"></h2>
+          <p class="hint" data-text="accountsHint"></p>
+          <ul class="kept" id="accounts"></ul>
+          <form class="inline-form" id="add-account" autocomplete="off">
+            <label><span data-text="name"></span><input name="name" maxlength="32" required /></label>
+            <label><span data-text="startingPassword"></span><input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
+            <button type="submit" data-text="addAccount"></button>
+          </form>
+          <p class="message" id="accounts-message" role="status"></p>
+        </section>
+
+        <section aria-labelledby="recent-heading">
+          <h2 id="recent-heading" data-text="recent">Recent</h2>
+          <ol class="recent" id="recent"></ol>
+        </section>
+
+        <p class="warning" data-text="warning"></p>
+      </div>
     </main>
   </body>
 </html>

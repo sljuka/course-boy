@@ -2,7 +2,7 @@
 
 An Umbrel community app store with one app, the Matko seeder. umbrelOS runs it on the
 host's network, with its data in the app's data folder, and opens its web page from the
-dashboard; the page asks for the password Umbrel shows in the app's details.
+dashboard; on first open, its owner creates the admin account there.
 
 ```
 umbrel-app-store.yml          the store: id "matko", so every app id starts with "matko-"
@@ -39,9 +39,10 @@ between versions), then install "Matko seeder" from it.
   The teacher's app now also looks for the seeders keeping its courses, which helps
   there too, but the host's network doesn't depend on it.
 - Umbrel's app proxy, and with it Umbrel's login, can't front a host-network app
-  (Umbrel's packaging guide), so the page has a password of its own: Umbrel's
-  per-install `APP_PASSWORD` (`deterministicPassword: true`), which Umbrel shows the
-  owner. Any user name works; the listing suggests "matko". Port 8380 must be free on
+  (Umbrel's packaging guide), so the page has accounts of its own. The first visitor
+  creates the admin account (`MATKO_SEED_WEB_SETUP=open`), as with Jellyfin: that's the
+  owner, opening it right after installing. The admin adds and removes the others. A
+  lost admin password: `reset-password` (seeder/README.md). Port 8380 must be free on
   the box.
 - `category: networking` follows other networking apps; check it against the store's
   current categories before submitting to the official store. Official submissions also

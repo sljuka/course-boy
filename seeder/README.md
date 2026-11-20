@@ -42,10 +42,39 @@ node seeder/cli.mjs run --web 8380      # then open http://127.0.0.1:8380/
 ```
 
 It listens on `127.0.0.1` unless `MATKO_SEED_WEB_HOST` says otherwise (`0.0.0.0` for
-every network). Anywhere but this computer it won't start without
-`MATKO_SEED_WEB_PASSWORD` (asked by the browser, any user name), unless
-`MATKO_SEED_WEB_OPEN=1` says something in front of it already checks who's there (a
-reverse proxy with its own login). It never shows a course's content, and can't publish.
+every network). It never shows a course's content, and can't publish.
+
+#### Accounts
+
+The page has accounts. The first one is the **admin**: it adds and removes the others
+and resets their passwords, and can't be removed itself. Everyone signed in can add
+and remove what's kept, and change their own password.
+
+- **Once an account exists,** the page asks everyone to sign in, on this computer too.
+- **Before that, on `127.0.0.1` only,** anyone on this computer can use it without
+  signing in, as before accounts.
+- **Before that, on a network,** the page offers to create the admin account to a
+  visitor on this computer, or to anyone with `MATKO_SEED_WEB_SETUP=open` (the Umbrel
+  app, whose owner opens it right after installing). Anyone else is told to create it
+  with `add-user`, so a seeder on a server can't be claimed by whoever finds it first.
+- **`MATKO_SEED_WEB_OPEN=1`:** no accounts, for a page behind a reverse proxy that
+  already checks who's there.
+
+Accounts from the command line, for the first account on a server or a lost password
+(each asks for the password, or reads it from stdin; never as an argument):
+
+```sh
+node seeder/cli.mjs add-user <name>        # the first is the admin
+node seeder/cli.mjs reset-password <name>  # signs it out everywhere
+node seeder/cli.mjs remove-user <name>     # never the admin
+node seeder/cli.mjs accounts
+# in Docker:
+docker exec -it matko-seeder node seeder/cli.mjs reset-password <name>
+```
+
+Passwords are kept as scrypt hashes in `<data>/accounts.json`, and sign-ins (30 days,
+renewed while used) by a hash of their token in `<data>/sessions.json`. Five wrong
+passwords from one address make it wait a minute.
 
 `--data <dir>` chooses where it keeps everything (default: `$MATKO_SEED_DATA`, or
 `~/.matko-seed`):
@@ -56,6 +85,8 @@ reverse proxy with its own login). It never shows a course's content, and can't 
   kept.json     the codes to keep
   status.json   what the running seeder keeps now
   seeder.pid    the running seeder; only one runs per folder
+  accounts.json the web page's accounts (password hashes)
+  sessions.json who's signed in on the page
 ```
 
 Gated courses (shared only with chosen students) can't be kept: a seeder isn't a vetted
@@ -96,14 +127,18 @@ docker exec matko-seeder node seeder/cli.mjs status
 docker logs -f matko-seeder
 ```
 
-With the web page, on port 8380 of every network the host is on, behind a password:
+With the web page, on port 8380 of every network the host is on, and its admin account
+created in the container:
 
 ```sh
 docker run -d --name matko-seeder --restart unless-stopped \
   --network host -v matko-seeder:/data \
-  -e MATKO_SEED_WEB_PORT=8380 -e MATKO_SEED_WEB_HOST=0.0.0.0 \
-  -e MATKO_SEED_WEB_PASSWORD='choose one' matko-seeder
+  -e MATKO_SEED_WEB_PORT=8380 -e MATKO_SEED_WEB_HOST=0.0.0.0 matko-seeder
+docker exec -it matko-seeder node seeder/cli.mjs add-user <name>
 ```
+
+On a home network only, `-e MATKO_SEED_WEB_SETUP=open` lets you create it on the page
+instead.
 
 `--network host` keeps the seeder off Docker's own NAT, so other computers reach it
 as easily as they would the host itself. On Linux that's the host's network. Docker

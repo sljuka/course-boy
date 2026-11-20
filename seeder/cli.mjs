@@ -6,6 +6,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { createAccount, listAccounts, removeAccount, setPassword } from './accounts.mjs'
 import { addCode, codeFromInput, readKeptList, removeCode } from './kept-list.mjs'
 import { STATUS_FILE, isRunning, runSeeder, short } from './run.mjs'
 import { DEFAULT_MIN_FREE, parseSize } from './space.mjs'
@@ -18,13 +19,21 @@ const USAGE = `Usage: node seeder/cli.mjs <command> [--data <dir>]
   list             The codes on the list
   status           What the running seeder keeps now
 
+  accounts               The web page's accounts
+  add-user <name>        Add one (the first is the admin); asks for its password
+  reset-password <name>  A new password for one; it's signed out everywhere
+  remove-user <name>     Remove one (never the admin)
+
 --data <dir>  Where the seeder keeps everything (default: $MATKO_SEED_DATA,
               or ~/.matko-seed). One running seeder per folder.
 --web <port>  With run: also serve a web page to add, list and remove
               (default: $MATKO_SEED_WEB_PORT; none if unset). It listens on
-              $MATKO_SEED_WEB_HOST (default 127.0.0.1); anywhere else it needs
-              $MATKO_SEED_WEB_PASSWORD, or MATKO_SEED_WEB_OPEN=1 behind a
-              proxy that already checks who it is (Umbrel).
+              $MATKO_SEED_WEB_HOST (default 127.0.0.1). Once an account
+              exists, it asks to sign in. Before that, on a network, the first
+              account (the admin) is made on the page from this computer, or
+              from anywhere with MATKO_SEED_WEB_SETUP=open (Umbrel), else with
+              add-user. MATKO_SEED_WEB_OPEN=1: no accounts, behind a proxy
+              that already checks who it is.
 
 Space (with run): a new code waits while the store is over
 $MATKO_SEED_MAX_SIZE (e.g. 40GB; no limit if unset) or the disk has less
@@ -56,8 +65,8 @@ function parse(argv) {
     web = {
       host: process.env.MATKO_SEED_WEB_HOST || '127.0.0.1',
       open: process.env.MATKO_SEED_WEB_OPEN === '1',
-      password: process.env.MATKO_SEED_WEB_PASSWORD || '',
       port,
+      setupOpen: process.env.MATKO_SEED_WEB_SETUP === 'open',
     }
   }
   return { args, dataDir: path.resolve(dataDir), web, ...spaceLimits() }
@@ -72,6 +81,58 @@ function spaceLimits() {
     return bytes
   }
   return { maxStore: size('MATKO_SEED_MAX_SIZE', null), minFree: size('MATKO_SEED_MIN_FREE', DEFAULT_MIN_FREE) }
+}
+
+// A password from a hidden prompt, or from stdin when it isn't a terminal
+// (`echo … | cli.mjs add-user ana`); never an argument, which would show in
+// `ps` and the shell's history.
+async function readPassword(prompt) {
+  if (!process.stdin.isTTY) {
+    let text = ''
+    for await (const chunk of process.stdin) text += chunk
+    return text.replace(/\r?\n$/, '')
+  }
+  process.stdout.write(prompt)
+  process.stdin.setRawMode(true)
+  process.stdin.resume()
+  process.stdin.setEncoding('utf8')
+  return new Promise((resolve, reject) => {
+    let password = ''
+    const onData = (chunk) => {
+      for (const char of chunk) {
+        if (char === '\r' || char === '\n') {
+          done()
+          resolve(password)
+          return
+        }
+        if (char === '\u0003') {
+          done()
+          reject(new Error('Cancelled.'))
+          return
+        }
+        if (char === '\u007f' || char === '\b') password = password.slice(0, -1)
+        else password += char
+      }
+    }
+    const done = () => {
+      process.stdin.off('data', onData)
+      process.stdin.setRawMode(false)
+      process.stdin.pause()
+      process.stdout.write('\n')
+    }
+    process.stdin.on('data', onData)
+  })
+}
+
+async function newPassword() {
+  const password = await readPassword('Password: ')
+  if (process.stdin.isTTY && (await readPassword('Again: ')) !== password) throw new Error("The passwords don't match.")
+  return password
+}
+
+function requireName(input) {
+  if (!input) throw new Error('Which account? Give its name.')
+  return input
 }
 
 function requireCode(input) {
@@ -153,6 +214,30 @@ async function main(argv) {
     case 'status':
       printStatus(dataDir)
       return 0
+    case 'accounts': {
+      const accounts = listAccounts(dataDir)
+      for (const { admin, createdAt, name } of accounts) console.log(`${name}${admin ? '  (admin)' : ''}  since ${createdAt}`)
+      if (accounts.length === 0) console.log('No accounts yet: node seeder/cli.mjs add-user <name>')
+      return 0
+    }
+    case 'add-user': {
+      const name = requireName(input)
+      const { admin, name: added } = createAccount(dataDir, { name, password: await newPassword() })
+      console.log(`Added ${added}${admin ? ', the admin' : ''}.`)
+      return 0
+    }
+    case 'reset-password': {
+      const name = requireName(input)
+      setPassword(dataDir, name, await newPassword())
+      console.log(`New password for ${name}; it's signed out everywhere.`)
+      return 0
+    }
+    case 'remove-user': {
+      const name = requireName(input)
+      removeAccount(dataDir, name)
+      console.log(`Removed ${name}.`)
+      return 0
+    }
     default:
       console.log(USAGE)
       return command && command !== 'help' && command !== '--help' ? 1 : 0

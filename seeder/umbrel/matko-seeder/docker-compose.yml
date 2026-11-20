@@ -7,9 +7,8 @@ services:
     # The host's network, not Umbrel's bridge (SLJ-194): behind the bridge, a
     # teacher's app on the same home network couldn't be reached from the
     # seeder (checked on a real Umbrel). Host-network apps can't use Umbrel's
-    # app proxy, so there's no app_proxy service and the page has a password
-    # of its own: Umbrel's per-install APP_PASSWORD, which it shows the owner
-    # (deterministicPassword in umbrel-app.yml).
+    # app proxy, so there's no app_proxy service and the page has accounts of
+    # its own: the owner makes the first one, the admin, on first open.
     network_mode: host
     user: "1000:1000"
     init: true
@@ -18,6 +17,8 @@ services:
       MATKO_SEED_DATA: /data
       MATKO_SEED_WEB_PORT: 8380
       MATKO_SEED_WEB_HOST: 0.0.0.0
-      MATKO_SEED_WEB_PASSWORD: ${APP_PASSWORD}
+      # The first visitor makes the admin account, as with Jellyfin: the
+      # owner, who opens it right after installing.
+      MATKO_SEED_WEB_SETUP: open
     volumes:
       - ${APP_DATA_DIR}/data/seeder:/data
