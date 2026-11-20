@@ -20,7 +20,7 @@ const { isValidCourseId } = require('./course-id.cjs')
 const { movedToKey, unchangedFileKeys, verifySource } = require('./course-source.cjs')
 const { createMaintainers, requestHash } = require('./maintainers.cjs')
 const { clearOldVersions, publishedClearingIsSafe } = require('./drive-storage.cjs')
-const { keepCurrentVersion } = require('./drive-keeping.cjs')
+const { keepCurrentVersion, manifestOf } = require('./drive-keeping.cjs')
 const { NoSymlinkLocaldrive, assertNoSymlinksOnDisk } = require('./drive-safety.cjs')
 const { limitConnections } = require('./connection-limit.cjs')
 const { createBoards } = require('./board-sync.cjs')
@@ -728,7 +728,9 @@ async function start() {
     await followCourse(driveKey)
     const hex = IdEncoding.decode(driveKey).toString('hex')
     if (!keptDrives.has(hex)) {
-      keptDrives.set(hex, { again: false, error: null, kept: null, retry: null, running: null, state: 'fetching' })
+      // `kept.manifest`: the manifest of the version held in full; `seen`: the
+      // newest manifest read so far, which may still be downloading.
+      keptDrives.set(hex, { again: false, error: null, kept: null, retry: null, running: null, seen: null, state: 'fetching' })
     }
     keepSoon(hex)
     return describeKept(hex)
@@ -752,9 +754,9 @@ async function start() {
         entry.again = false
         if (!entry.kept) entry.state = 'fetching'
         try {
-          const { files, version } = await keepCurrentVersion(followed.drive)
+          const { files, manifest, version } = await keepCurrentVersion(followed.drive)
           // `driveVersion`: the drive's own version number (not the course's).
-          entry.kept = { driveVersion: version, files, keptAt: new Date().toISOString() }
+          entry.kept = { driveVersion: version, files, keptAt: new Date().toISOString(), manifest }
           entry.error = null
           entry.state = 'kept'
           clearOldVersionsSoon(followed.drive)
@@ -776,37 +778,39 @@ async function start() {
   }
 
   // What a kept drive is (from its course.json or program.json) and its state.
+  // The newest manifest is read without waiting, so it's often not here yet
+  // right after a change: the last one read stands in, never nothing (an empty
+  // report would make the seeder drop a program's courses until the next one).
   async function describeKept(hex) {
     const entry = keptDrives.get(hex)
     const followed = followedDrives.get(hex)
     if (!entry || !followed) return null
     const drive = followed.drive
-    const readManifest = async (key) => {
-      try {
-        const buffer = await withTimeout(drive.get(key, { wait: false }), 2_000, 'manifest')
-        return buffer ? JSON.parse(buffer.toString()) : null
-      } catch {
-        return null
-      }
-    }
-    const program = await readManifest('/program.json')
-    const course = program ? null : await readManifest('/course.json')
-    const manifest = program ?? course
+    const latest = await withTimeout(manifestOf(drive), 2_000, 'manifest').catch(() => null)
+    if (latest) entry.seen = latest
+    const seen = entry.seen ?? entry.kept?.manifest ?? null
+    const versionOf = (found) => (typeof found?.manifest?.version === 'string' ? found.manifest.version : null)
+    // The course's own version ("0.3") of what's held in full; programs have none.
+    const version = versionOf(entry.kept?.manifest)
+    const newest = versionOf(seen)
+    const { kind, manifest } = seen ?? {}
     return {
       driveKey: IdEncoding.normalize(drive.key),
       error: entry.error,
+      // A newer version than the one held, while it downloads.
+      fetchingVersion: entry.state !== 'error' && newest && newest !== version ? newest : null,
       id: manifest?.id ?? null,
-      kept: entry.kept,
-      kind: program ? (program.kind === 'channel' ? 'channel' : 'program') : course ? 'course' : null,
+      kept: entry.kept && { driveVersion: entry.kept.driveVersion, files: entry.kept.files, keptAt: entry.kept.keptAt },
+      kind: kind === 'program' ? (manifest.kind === 'channel' ? 'channel' : 'program') : (kind ?? null),
       // What a program or channel lists by code (its courses, and a channel's
-      // programs), so a seeder can keep those too (SLJ-194). Unpublished ones
+      // programs), so a seeder can keep those too (SLJ-194), from the newest
+      // listing, so a course added to it is kept at once. Unpublished ones
       // have no code.
-      listed: program ? listedCodes(program) : [],
+      listed: kind === 'program' ? listedCodes(manifest) : [],
       peers: drive.core.peers.length,
       state: entry.state,
       title: manifest?.locales?.[manifest?.defaultLocale]?.title ?? manifest?.title ?? null,
-      // The course's or program's own version ("0.3"), from its manifest.
-      version: typeof manifest?.version === 'string' ? manifest.version : null,
+      version,
     }
   }
 

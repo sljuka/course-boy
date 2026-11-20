@@ -1119,7 +1119,7 @@ same client, `workers/worker-client.mjs` (Node, never Bare: start, `request`,
 `requestRaw`, events, `stop`):
 
 - the app's main process, `electron/bare-worker.ts`;
-- the headless seeder (SLJ-144, in progress).
+- the headless seeder (SLJ-144), `seeder/run.mjs`.
 
 Adding a worker command touches:
 

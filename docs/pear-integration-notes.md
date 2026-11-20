@@ -1598,7 +1598,11 @@ computer is off. It never holds the publishing identity: it only serves.
   cleared after each keep, as on students' computers. `CMD_STOP_SHARING` with the
   drive key stops it.
 - **`CMD_LIST_KEPT_DRIVES`** (28) reports each kept drive:
-  - its kind, id, title and version (from its manifest);
+  - its kind, id and title (from the newest manifest read; the last one read stands in
+    while a newer one isn't downloaded yet, so a program never reports an empty list);
+  - its `version`: the course's version held in full (read from that version by
+    `keepCurrentVersion`, never the newest one announced), and `fetchingVersion`, a newer
+    one while it downloads, so the page and the log never call a version kept too early;
   - its state: `fetching`, `kept` (with `driveVersion`, file count and time) or `error`;
   - its peer count;
   - for a program or channel, `listed`: the codes its `program.json` lists (its courses,
@@ -1621,4 +1625,5 @@ computer is off. It never holds the publishing identity: it only serves.
   quits, the teacher publishes again and the seeder fetches it on its own; the teacher
   quits and the student, started again, is offered the version and applies it, from the
   seeder only. Then `remove` and SIGTERM. A failing test prints the seeder's log.
-- **Not yet:** packaging, running it as a service, its web page and the Umbrel app (SLJ-194).
+- **Since (SLJ-194):** a Docker image, a web page (`seeder/web.mjs`, `seeder/web/`), and an
+  Umbrel app in `seeder/umbrel/`; see seeder/README.md.

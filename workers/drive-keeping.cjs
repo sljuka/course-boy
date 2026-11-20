@@ -33,11 +33,28 @@ async function missingFiles(drive) {
   return missing
 }
 
+// The drive's manifest, read from a version this computer holds in full:
+// `/program.json` (a program or channel) or `/course.json`; null if neither
+// is there or readable.
+async function manifestOf(snapshot) {
+  for (const key of ['/program.json', '/course.json']) {
+    try {
+      const buffer = await snapshot.get(key, { wait: false })
+      if (buffer) return { kind: key === '/program.json' ? 'program' : 'course', manifest: JSON.parse(buffer.toString()) }
+    } catch {
+      // not there, or not JSON: try the next
+    }
+  }
+  return null
+}
+
 // Downloads every file of the newest version any connected peer has. Works on
 // that version, fixed when it starts: a version published meanwhile is the
 // next call's (the caller runs it again on the next change). Resolves to the
-// version kept and its number of files; throws if a file is still missing
-// afterwards (a peer that left mid-way), so the caller tries again later.
+// drive version kept, its number of files and its manifest (`manifestOf`), so
+// what's reported as kept is what this computer holds, never a newer version
+// still downloading; throws if a file is still missing afterwards (a peer
+// that left mid-way), so the caller tries again later.
 async function keepCurrentVersion(drive) {
   await drive.ready()
   await drive.update({ wait: true })
@@ -54,10 +71,10 @@ async function keepCurrentVersion(drive) {
     }
     let files = 0
     for await (const _entry of filesOf(snapshot)) files++
-    return { files, version }
+    return { files, manifest: await manifestOf(snapshot), version }
   } finally {
     await snapshot.close()
   }
 }
 
-module.exports = { keepCurrentVersion, missingFiles }
+module.exports = { keepCurrentVersion, manifestOf, missingFiles }

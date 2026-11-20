@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import Corestore from 'corestore'
 import Hyperdrive from 'hyperdrive'
-import { keepCurrentVersion, missingFiles } from './drive-keeping.cjs'
+import { keepCurrentVersion, manifestOf, missingFiles } from './drive-keeping.cjs'
 
 // SLJ-144: a seeder keeps a full copy of a drive's current version, so it can
 // serve students alone once the teacher is offline.
@@ -59,7 +59,11 @@ describe('keeping a drive (SLJ-144)', () => {
     const seeder = new Hyperdrive(seederStore, teacher.key)
     await seeder.ready()
     let cutTeacher = connect(teacher.corestore, seederStore)
-    await expect(keepCurrentVersion(seeder)).resolves.toEqual({ files: 3, version: teacher.version })
+    await expect(keepCurrentVersion(seeder)).resolves.toEqual({
+      files: 3,
+      manifest: { kind: 'course', manifest: { id: 'course-a', version: '0.1' } },
+      version: teacher.version,
+    })
     expect(await missingFiles(seeder)).toEqual([])
     cutTeacher()
 
@@ -76,7 +80,11 @@ describe('keeping a drive (SLJ-144)', () => {
     await teacher.put('/video.bin', secondVideo)
     await teacher.put('/course.json', Buffer.from(JSON.stringify({ id: 'course-a', version: '0.2' })))
     cutTeacher = connect(teacher.corestore, seederStore)
-    await expect(keepCurrentVersion(seeder)).resolves.toEqual({ files: 3, version: teacher.version })
+    await expect(keepCurrentVersion(seeder)).resolves.toEqual({
+      files: 3,
+      manifest: { kind: 'course', manifest: { id: 'course-a', version: '0.2' } },
+      version: teacher.version,
+    })
     cutTeacher()
 
     // The student, still connected only to the seeder, gets it.
@@ -84,5 +92,24 @@ describe('keeping a drive (SLJ-144)', () => {
     expect(Buffer.compare(await student.get('/video.bin'), secondVideo)).toBe(0)
     expect(JSON.parse(await student.get('/course.json')).version).toBe('0.2')
     cutStudent()
+  })
+
+  it('reports a program by its program.json, and nothing for a drive without a manifest', async () => {
+    const curator = new Hyperdrive(makeStore('curator'))
+    await curator.ready()
+    await curator.put('/program.json', Buffer.from(JSON.stringify({ id: 'program-a', courses: [] })))
+    const seederStore = makeStore('program-seeder')
+    const seeder = new Hyperdrive(seederStore, curator.key)
+    await seeder.ready()
+    const cut = connect(curator.corestore, seederStore)
+    await expect(keepCurrentVersion(seeder)).resolves.toMatchObject({
+      manifest: { kind: 'program', manifest: { id: 'program-a' } },
+    })
+    cut()
+
+    const bare = new Hyperdrive(makeStore('bare'))
+    await bare.ready()
+    await bare.put('/notes.txt', Buffer.from('no manifest'))
+    await expect(manifestOf(bare)).resolves.toBeNull()
   })
 })
